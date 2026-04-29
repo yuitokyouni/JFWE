@@ -1,0 +1,35 @@
+- id: loan_auto_major_a_001
+  contract_type: bank_loan
+  parties:
+    - subject_id: bank_mega_a
+      role: lender
+    - subject_id: firm_auto_major_a
+      role: borrower
+  notional: 500000000000
+  currency: JPY
+  interest_rate: 0.012
+  spread: 60
+  maturity_date: 2030-03-31
+  collateral_asset_ids: []
+  covenant: {}
+  seniority: senior_unsecured
+  mark_to_market: 500000000000
+  status: active
+- id: loan_retail_representative_001
+  contract_type: bank_loan
+  parties:
+    - subject_id: bank_regional_group
+      role: lender
+    - subject_id: firm_retail_representative
+      role: borrower
+  notional: 100000000000
+  currency: JPY
+  interest_rate: 0.018
+  spread: 120
+  maturity_date: 2029-03-31
+  collateral_asset_ids:
+    - property_tokyo_office
+  covenant: {}
+  seniority: secured
+  mark_to_market: 100000000000
+  status: active

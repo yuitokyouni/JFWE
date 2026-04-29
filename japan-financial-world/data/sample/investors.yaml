@@ -1,0 +1,27 @@
+- id: investor_long_only_a
+  type: gpif_like
+  tier: 1
+  aum: 200000000000000
+  risk_tolerance: 0.45
+  investment_horizon: multi_year
+  information_speed: 0.5
+  leverage: 0.0
+  mandate: long_only
+  portfolio:
+    equity_auto_major_a: 1000000
+  reaction_to_news: 0.2
+  reaction_to_price: -0.1
+  reaction_to_valuation: 0.5
+- id: investor_foreign_macro_a
+  type: hedge_fund
+  tier: 1
+  aum: 3000000000000
+  risk_tolerance: 0.8
+  investment_horizon: monthly
+  information_speed: 0.9
+  leverage: 2.0
+  mandate: absolute_return
+  portfolio: {}
+  reaction_to_news: 0.7
+  reaction_to_price: 0.4
+  reaction_to_valuation: 0.2

@@ -58,45 +58,53 @@ japan-financial-world/
     ontology.md
     scope.md
     architecture.md
+    world_model.md
+
+  schemas/
+    firm.yaml
+    investor.yaml
+    bank.yaml
+    market.yaml
+    property_market.yaml
+    information_signal.yaml
+    contract.yaml
+    asset.yaml
 
   world/
-    spaces/
-      corporate/
-      investor/
-      bank_debt/
-      exchange/
-      real_estate/
-      information/
-      policy/
-      external_macro/
+    ids.py
+    registry.py
+    clock.py
+    scheduler.py
+    ledger.py
+    state.py
+    loader.py
+    validation.py
 
-    agents/
-      firm.yaml
-      investor.yaml
-      bank.yaml
+  data/
+    sample/
+      firms.yaml
+      investors.yaml
+      banks.yaml
+      markets.yaml
+      assets.yaml
+      contracts.yaml
 
-    assets/
-      asset.yaml
+  spaces/
+    corporate/
+    investors/
+    banking/
+    exchange/
+    real_estate/
+    information/
+    policy/
+    external/
 
-    contracts/
-      contract.yaml
-
-    markets/
-      market.yaml
-      property_market.yaml
-
-    signals/
-      information_signal.yaml
-
-    prices/
-      price.yaml
-
-    ledger/
-      ledger_entry.yaml
+  tests/
 ```
 
-The world directory is the canonical structure. Old event-specific scaffolding
-is intentionally excluded.
+The `world/` directory owns orchestration and shared infrastructure. Domain
+behavior belongs in `spaces/`. Old event-specific scaffolding is intentionally
+excluded.
 
 ## Allowed Interactions
 

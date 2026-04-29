@@ -1,41 +1,31 @@
 # World
 
-Canonical project structure:
+World infrastructure files:
 
 ```text
-Project
-  World
-    Spaces
-      Corporate Space
-      Investor Space
-      Bank / Debt Space
-      Exchange Space
-      Real Estate Space
-      Information Space
-      Policy Space
-      External / Macro Space
-
-    Agents
-    Assets
-    Contracts
-    Markets
-    Signals
-    Prices
-    Ledger
+world/
+  ids.py
+  registry.py
+  clock.py
+  scheduler.py
+  ledger.py
+  state.py
+  loader.py
+  validation.py
 ```
 
-`World` is the container for simulation state. It does not contain ad hoc event
-modules. Cross-space effects must move through agents, assets, contracts,
-markets, signals, prices, or ledger entries.
+`world/` owns orchestration and shared infrastructure. It does not contain
+sector-specific behavior and does not contain ad hoc event modules.
 
-## Directory Roles
+## File Roles
 
-- `spaces/`: bounded simulation spaces with their own update logic.
-- `agents/`: stateful decision-making subjects and their schemas.
-- `assets/`: ownable economic objects.
-- `contracts/`: obligations and relationships between subjects.
-- `markets/`: mechanisms that clear supply and demand.
-- `signals/`: observable information, including disclosure, news, ratings, and
-  price-derived signals.
-- `prices/`: market prices and marks used by other spaces.
-- `ledger/`: append-only record of state changes, transactions, and decisions.
+- `ids.py`: deterministic ID generation.
+- `registry.py`: shared object registry.
+- `clock.py`: daily, monthly, quarterly, and yearly clock.
+- `scheduler.py`: ordered space execution.
+- `ledger.py`: append-only transition records.
+- `state.py`: shared world state snapshots.
+- `loader.py`: YAML sample-world loader.
+- `validation.py`: lightweight validation helpers.
+
+Domain behavior belongs in top-level `spaces/`.

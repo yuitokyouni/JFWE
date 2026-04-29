@@ -9,8 +9,13 @@ Design baseline:
   non-goals.
 - `docs/architecture.md`: spaces, layers, interaction rules, and scheduler
   order.
-- `world/`: the actual world structure: spaces, agents, assets, contracts,
-  markets, signals, prices, and ledger.
+- `schemas/`: canonical YAML schemas for firms, investors, banks, markets,
+  property markets, information signals, contracts, and assets.
+- `world/`: orchestration and shared infrastructure.
+- `data/sample/`: minimal sample firms, investors, banks, markets, assets, and
+  contracts.
+- `spaces/`: domain spaces for corporate, investors, banking, exchange, real
+  estate, information, policy, and external macro behavior.
 
 Implementation should follow the design docs before adding scenario-specific
 logic. Cross-space effects must move through asset ownership, contracts, market

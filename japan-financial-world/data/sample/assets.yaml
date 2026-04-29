@@ -1,0 +1,22 @@
+- id: equity_auto_major_a
+  asset_type: equity
+  issuer_or_owner_ref: firm_auto_major_a
+  currency: JPY
+  book_value: 1000
+  market_value: 3000
+  liquidity: 0.9
+  income_yield: 0.025
+  duration:
+  risk_bucket: equity_risk
+  underlying_ref: firm_auto_major_a
+- id: property_tokyo_office
+  asset_type: real_estate
+  issuer_or_owner_ref: firm_retail_representative
+  currency: JPY
+  book_value: 80000000000
+  market_value: 100000000000
+  liquidity: 0.35
+  income_yield: 0.035
+  duration:
+  risk_bucket: real_asset
+  underlying_ref:

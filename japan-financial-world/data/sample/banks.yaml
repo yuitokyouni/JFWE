@@ -1,0 +1,22 @@
+- id: bank_mega_a
+  type: mega_bank
+  tier: 1
+  capital_ratio: 0.12
+  loan_book:
+    loan_auto_major_a_001: 500000000000
+  real_estate_exposure: 8000000000000
+  risk_appetite: 0.55
+  funding_cost: 0.01
+  collateral_policy: neutral
+  lending_standards: 0.45
+- id: bank_regional_group
+  type: regional_bank_group
+  tier: 2
+  capital_ratio: 0.09
+  loan_book:
+    loan_retail_representative_001: 100000000000
+  real_estate_exposure: 3000000000000
+  risk_appetite: 0.4
+  funding_cost: 0.012
+  collateral_policy: conservative
+  lending_standards: 0.6
