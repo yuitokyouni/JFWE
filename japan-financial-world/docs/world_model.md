@@ -1088,3 +1088,42 @@ Before implementing detailed agents, the project should first implement the foll
 10. future complexity is added through agents, markets, contracts, and signals, not through hidden world-level shortcuts
 
 This is the constitutional base of `japan-financial-world`.
+
+---
+
+## 21. World Kernel v0 — Success Criteria
+
+This section defines the acceptance line for the `World Kernel v0` milestone.
+
+The goal of v0 is not economic realism. It is a stable, reproducible substrate that future spaces and scenarios can be built on. v0 is considered complete when **all** of the following hold:
+
+1. **Schema YAML files load.** All YAML files under `schemas/` and example world YAMLs under `data/` / `examples/` can be loaded without raising.
+2. **Core objects can be registered in the Registry.** Agents, assets, contracts, markets, signals, and prices can be registered through stable WorldIDs and retrieved by ID, type, and category.
+3. **Clock can advance through a full year.** Starting at any valid simulation date, the clock can step forward 365 days and correctly identifies month-end, quarter-end, and year-end boundaries.
+4. **Scheduler correctly triggers Daily / Monthly / Quarterly / Yearly tasks.** Tasks registered at each frequency fire the expected number of times over a one-year run, in deterministic order.
+5. **Ledger records registrations, task executions, and snapshots.** Every `register_object`, scheduled `task_executed`, and `state_snapshot_created` event produces a ledger record with stable identity, simulation date, and required provenance fields.
+6. **State snapshots can be created.** Month-end snapshots are produced automatically and are immutable. State at time `t` is queryable independently from later state.
+7. **Empty world simulation runs without scenario logic.** A world containing only registered objects and no-op tasks can run for one year without any domain-specific economic logic in `world/` or in any `Space`.
+
+### 21.1 What v0 explicitly does not require
+
+The following are explicitly **out of scope** for v0 acceptance and must not be used to gate this milestone:
+
+- firm / investor / bank decision logic
+- market clearing or order books
+- price formation models
+- contract settlement engines
+- macro scenarios (e.g. oil shocks, rate shocks, demographic shifts)
+- portfolio optimization
+- credit analysis
+- any LLM-driven agent behavior
+
+If any of these are tempting to implement before items 1–7 are stable, the temptation should be resisted. v0 is a kernel, not a simulator.
+
+### 21.2 Next milestone — Space interface (v0.2)
+
+After v0 is fixed, the next acceptance line is:
+
+> Empty `Space` instances (Corporate, Investors, Banking, etc.) are registered with the world, the scheduler invokes them at their declared frequency over one year, and the ledger records each invocation.
+
+This milestone introduces the `BaseSpace` contract (`observe`, `step`, `emit`, `snapshot`) but still contains no economic logic. Its purpose is to lock down the boundary between `world/` (coordination) and `spaces/` (domain), before any domain behavior is written.

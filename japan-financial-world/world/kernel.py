@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from world.clock import Clock
 from world.ledger import Ledger
 from world.registry import RegisteredObject, Registry
 from world.scheduler import Scheduler, ScheduledTask, TaskSpec
 from world.state import State
+
+if TYPE_CHECKING:
+    from spaces.base import BaseSpace
 
 
 @dataclass
@@ -31,6 +35,36 @@ class WorldKernel:
             },
             space_id=obj.space,
         )
+
+    def register_space(self, space: "BaseSpace") -> tuple[ScheduledTask, ...]:
+        """
+        Register a Space and its scheduled tasks.
+
+        The space itself is registered in the Registry under its world_id
+        so that future code can look it up by ID. State is not initialized
+        for spaces because spaces are not state-bearing objects.
+
+        Returns the tuple of scheduled tasks created for this space.
+        """
+        self.registry.register_space(
+            space,
+            object_id=space.world_id,
+            metadata={"space_id": space.space_id},
+        )
+        self.ledger.append(
+            event_type="object_registered",
+            simulation_date=self.clock.current_date,
+            object_id=space.world_id,
+            payload={
+                "kind": "space",
+                "space_id": space.space_id,
+                "frequencies": [freq.value for freq in space.frequencies],
+            },
+            space_id=space.space_id,
+        )
+
+        scheduled = tuple(self.register_task(spec) for spec in space.task_specs())
+        return scheduled
 
     def register_task(self, task: TaskSpec) -> ScheduledTask:
         scheduled = self.scheduler.register(task)
