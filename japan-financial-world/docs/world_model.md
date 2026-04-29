@@ -1127,3 +1127,101 @@ After v0 is fixed, the next acceptance line is:
 > Empty `Space` instances (Corporate, Investors, Banking, etc.) are registered with the world, the scheduler invokes them at their declared frequency over one year, and the ledger records each invocation.
 
 This milestone introduces the `BaseSpace` contract (`observe`, `step`, `emit`, `snapshot`) but still contains no economic logic. Its purpose is to lock down the boundary between `world/` (coordination) and `spaces/` (domain), before any domain behavior is written.
+
+---
+
+## 22. Event / Signal Transport Layer (v0.3)
+
+The v0.3 milestone introduces the explicit transport mechanism by which spaces communicate without ever holding direct references to one another.
+
+### 22.1 Why a transport layer
+
+Direct cross-space mutation has already been forbidden in §14. To make that prohibition usable, spaces still need a way to influence each other — through information, not through references.
+
+The transport layer provides exactly that: an explicit, addressable, time-aware, auditable message channel.
+
+If a space ever needs to "tell" another space something, the answer is always the same: emit a `WorldEvent`. There is no other legitimate channel.
+
+### 22.2 WorldEvent
+
+`WorldEvent` is the unit of inter-space communication. It is a plain data record. It carries no behavior.
+
+Required fields:
+
+- `event_id` — stable unique identifier supplied by the publisher.
+- `simulation_date` — ISO date when the event was created.
+- `source_space` — `space_id` of the publishing space.
+- `target_spaces` — tuple of `space_id`s. Empty tuple means broadcast.
+- `event_type` — domain-neutral string tag.
+- `payload` — arbitrary mapping of event-specific data.
+- `visibility` — `"public"`, `"private"`, or `"internal"`.
+- `delay_days` — integer days before the event becomes deliverable.
+- `confidence` — float in `[0, 1]` indicating signal quality.
+- `related_ids` — tuple of WorldIDs the event references.
+
+A `WorldEvent` is immutable after creation. It must not be mutated by the bus, by the kernel, or by any space that receives it.
+
+### 22.3 EventBus
+
+`EventBus` is the only delivery mechanism. It exposes:
+
+- `publish(event, *, on_date=None)` — register an event for future delivery.
+- `collect_for_space(space_id, current_date)` — return events ready for the given space.
+- `pending_events()` — events not yet delivered to any target.
+- `delivered_events()` — events delivered to at least one target.
+
+Delivery rules:
+
+1. Same-tick delivery is forbidden. An event published on date `D` is visible only from date `D + 1` onward (subject to `delay_days`). This makes delivery independent of intra-tick task execution order.
+2. An event is delivered to a space only when `current_date > publication_date` (strict) AND `current_date >= delivery_date` (`simulation_date + delay_days`).
+3. The same `(event_id, space_id)` pair is delivered at most once.
+4. Empty `target_spaces` means broadcast to every space *except* `source_space`.
+5. The bus must not inspect, mutate, or reorder payload contents.
+
+The bus contains no business logic. It does not decide who reacts. Reaction is the responsibility of each receiving space's `observe`.
+
+### 22.4 Kernel responsibility
+
+For each scheduled space task, the kernel wraps execution as:
+
+1. `events = event_bus.collect_for_space(space.space_id, clock.current_date)`
+2. For each delivered event, append `event_delivered` to the ledger.
+3. `space.observe(events, state)`
+4. `space.step(clock, state, registry, ledger)`
+5. `outgoing = space.emit()`
+6. For each outgoing event, `event_bus.publish(event, on_date=current_date)` and append `event_published` to the ledger.
+
+Spaces never call `event_bus` directly through any other path in v0.3. All communication goes through `observe` and `emit`.
+
+### 22.5 Ledger event types
+
+Two new ledger record types are required:
+
+- `event_published` — recorded by the kernel for every event a space emits.
+- `event_delivered` — recorded by the kernel for every event a space receives.
+
+Both records carry `correlation_id = event.event_id` so that the publish/deliver pair can be reconstructed by `correlation_id` regardless of `delay_days`.
+
+### 22.6 What v0.3 does not do
+
+v0.3 must not introduce:
+
+- domain-specific event types (e.g., "loan_default", "stock_crash")
+- routing logic based on payload content
+- agent reactions to specific event types
+- price formation, market clearing, or balance-sheet effects
+- LLM-driven event interpretation
+
+v0.3 is a transport layer. It carries messages. It does not understand them.
+
+### 22.7 v0.3 success criteria
+
+v0.3 is complete when **all** of the following hold:
+
+1. `WorldEvent` exists with all required fields.
+2. `EventBus` provides `publish`, `collect_for_space`, `pending_events`, `delivered_events`.
+3. Empty spaces can emit and observe events without holding direct references to each other.
+4. Delayed events are not delivered before their delivery date.
+5. Targeted events reach only their named targets; broadcasts reach every other space.
+6. The ledger records `event_published` and `event_delivered` for every transport event.
+7. Same-tick delivery is impossible — delivery is always at least one tick after publication.

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable
 
 from world.clock import Clock
+from world.events import WorldEvent
 from world.ledger import Ledger
 from world.registry import Registry
 from world.scheduler import Frequency, TaskSpec
@@ -38,7 +39,11 @@ class BaseSpace:
     def world_id(self) -> str:
         return f"space:{self.space_id}"
 
-    def observe(self, events: Any = None, state: State | None = None) -> None:
+    def observe(
+        self,
+        events: tuple[WorldEvent, ...] = (),
+        state: State | None = None,
+    ) -> None:
         return None
 
     def step(
@@ -50,7 +55,7 @@ class BaseSpace:
     ) -> None:
         return None
 
-    def emit(self) -> tuple[Any, ...]:
+    def emit(self) -> tuple[WorldEvent, ...]:
         return ()
 
     def snapshot(self) -> dict[str, Any]:
@@ -70,12 +75,60 @@ class BaseSpace:
         space = self
 
         def _action(kernel) -> None:
+            bus = getattr(kernel, "event_bus", None)
+            current_date = kernel.clock.current_date
+
+            incoming: tuple[WorldEvent, ...] = ()
+            if bus is not None:
+                incoming = bus.collect_for_space(space.space_id, current_date)
+                for event in incoming:
+                    kernel.ledger.append(
+                        event_type="event_delivered",
+                        simulation_date=current_date,
+                        object_id=event.event_id,
+                        source=event.source_space,
+                        target=space.space_id,
+                        payload={
+                            "event_type": event.event_type,
+                            "source_space": event.source_space,
+                            "target_space": space.space_id,
+                            "visibility": event.visibility,
+                            "delay_days": event.delay_days,
+                        },
+                        space_id=space.space_id,
+                        correlation_id=event.event_id,
+                        confidence=event.confidence,
+                    )
+
+            space.observe(incoming, kernel.state)
             space.step(
                 kernel.clock,
                 kernel.state,
                 kernel.registry,
                 kernel.ledger,
             )
+            outgoing = tuple(space.emit() or ())
+
+            if bus is not None:
+                for event in outgoing:
+                    bus.publish(event, on_date=current_date)
+                    kernel.ledger.append(
+                        event_type="event_published",
+                        simulation_date=current_date,
+                        object_id=event.event_id,
+                        source=event.source_space,
+                        payload={
+                            "event_type": event.event_type,
+                            "source_space": event.source_space,
+                            "target_spaces": list(event.target_spaces),
+                            "visibility": event.visibility,
+                            "delay_days": event.delay_days,
+                            "related_ids": list(event.related_ids),
+                        },
+                        space_id=space.space_id,
+                        correlation_id=event.event_id,
+                        confidence=event.confidence,
+                    )
 
         _action.__name__ = f"{self.space_id}_{frequency.value}_step"
         return _action

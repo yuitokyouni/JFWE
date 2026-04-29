@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from world.clock import Clock
+from world.event_bus import EventBus
 from world.ledger import Ledger
 from world.registry import RegisteredObject, Registry
 from world.scheduler import Scheduler, ScheduledTask, TaskSpec
@@ -20,6 +21,7 @@ class WorldKernel:
     scheduler: Scheduler
     ledger: Ledger
     state: State
+    event_bus: EventBus = field(default_factory=EventBus)
 
     def register_object(self, obj: RegisteredObject) -> None:
         self.registry.register(obj)

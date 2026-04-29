@@ -17,6 +17,8 @@ class RecordType(str, Enum):
     TASK_SCHEDULED = "task_scheduled"
     TASK_EXECUTED = "task_executed"
     SIGNAL_EMITTED = "signal_emitted"
+    EVENT_PUBLISHED = "event_published"
+    EVENT_DELIVERED = "event_delivered"
     PERCEIVED_STATE_UPDATED = "perceived_state_updated"
     ORDER_SUBMITTED = "order_submitted"
     PRICE_UPDATED = "price_updated"
