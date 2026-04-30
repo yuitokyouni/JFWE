@@ -1606,3 +1606,122 @@ v0.6 is complete when **all** of the following hold:
 7. The evaluator does not mutate any source book (ownership, contracts, prices, constraints).
 8. The kernel exposes `kernel.constraints` and `kernel.constraint_evaluator` with default wiring.
 9. All previous milestones (v0, v0.2, v0.3, v0.4, v0.5) continue to pass.
+
+---
+
+## 26. Information / Signal Layer (v0.7)
+
+The v0.7 milestone introduces information as a first-class world object. A signal is a discrete claim, observation, report, or rumor — registered, queryable, and addressable from `WorldEvent` payloads — with no built-in notion of how anyone reacts to it.
+
+### 26.1 Why a signal layer
+
+§22 introduced a transport channel for events; §23 introduced ownership / contract / price state; §24 introduced derived balance sheet views. None of those layers represent *information* per se: ratings, earnings reports, news, regulatory announcements, leaks, rumors. The signal layer fills that gap.
+
+The constitutional rule from §15.4 still applies: **signals do not directly mutate balance sheets, prices, contracts, or ownership.** They become inputs that future agents may observe, weigh, and act upon. v0.7 implements the storage and visibility plumbing only.
+
+### 26.2 InformationSignal
+
+`InformationSignal` is an immutable record. Its fields:
+
+- `signal_id` — stable unique identifier.
+- `signal_type` — domain-neutral string (e.g., `"rating_action"`, `"earnings_report"`, `"news"`, `"internal_memo"`).
+- `subject_id` — the WorldID the signal is *about* (typically an agent or asset).
+- `source_id` — the WorldID that produced the signal.
+- `published_date` — ISO date the signal was published.
+- `effective_date` — ISO date the signal becomes observable (defaults to `published_date` when omitted).
+- `visibility` — one of `"public"`, `"private"`, `"restricted"`, `"leaked"`, `"rumor"`, `"delayed"`. Unsupported values are rejected at construction.
+- `credibility` — float in `[0, 1]`, source quality (not enforced as an interpretive ceiling).
+- `confidence` — float in `[0, 1]`, source's certainty about the content.
+- `payload` — arbitrary mapping of signal-specific data (e.g., `{"rating": "BBB-"}`).
+- `related_ids` — tuple of other WorldIDs the signal references.
+- `metadata` — bag for non-standard attributes; `metadata["allowed_viewers"]` controls access for `private` and `restricted` signals.
+
+Signals are immutable: `add_signal` stores the record once; subsequent updates require a new signal with a new id (preserving the audit trail).
+
+### 26.3 Visibility model
+
+| visibility | Who can see it (subject to effective_date) |
+|----------|---------------------------------------------|
+| public   | anyone |
+| leaked   | anyone (label-only differentiation from public) |
+| rumor    | anyone (low credibility implied by convention; not enforced) |
+| delayed  | anyone, but only on or after `effective_date` |
+| private  | only ids in `metadata["allowed_viewers"]` |
+| restricted | only ids in `metadata["allowed_viewers"]` |
+
+The effective_date filter applies to *all* visibilities, not just `delayed`. A signal whose `effective_date` is later than the query's `as_of_date` is invisible regardless of label.
+
+For v0.7, the differences between `leaked`, `rumor`, and `delayed` are bookkeeping tags. v0.7 does **not** implement narrative interpretation: rumor decay, leak propagation, partial visibility, source-credibility weighting, or analyst summarization. Those belong to later milestones that will reason about how agents weigh information.
+
+### 26.4 SignalBook API
+
+- `add_signal(signal)` — store; rejects duplicates; records `signal_added` to the ledger.
+- `get_signal(signal_id)` — lookup; raises `UnknownSignalError` if not found.
+- `list_by_subject(subject_id)` / `list_by_type(signal_type)` / `list_by_source(source_id)` — filter without applying visibility (the caller is the system itself, not an observer).
+- `list_visible_to(observer_id, *, as_of_date=None)` — apply visibility AND effective_date filtering.
+  - When `as_of_date` is omitted, the book uses its `clock.current_date` if a clock is wired.
+  - When neither `as_of_date` nor `clock` is available, the effective_date filter is **skipped** (all signals treated as effective). This is a v0.7 simplification documented in `test_list_visible_to_without_clock_or_date_skips_effective_date_filter`.
+- `mark_observed(signal_id, observer_id, *, as_of_date=None)` — record an explicit observation; raises `SignalError` if the signal is not visible to that observer; emits `signal_observed` to the ledger.
+- `all_signals()` / `snapshot()` — administrative views; visibility-blind.
+
+`list_*` queries do not record to the ledger (they are reads). Only `add_signal` and `mark_observed` write.
+
+### 26.5 Integration with the EventBus (§22)
+
+A `WorldEvent` may carry a `signal_id` in its payload. This is the canonical pattern for "I want to tell you about a signal":
+
+```python
+WorldEvent(
+    event_id="event:rating_announcement",
+    simulation_date="2026-01-01",
+    source_space="information",
+    target_spaces=("investors",),
+    event_type="signal_emitted",
+    payload={"signal_id": "signal:rating_001"},
+    related_ids=("signal:rating_001",),
+)
+```
+
+The receiving space's `observe()` method can resolve the `signal_id` against `kernel.signals.get_signal(...)`. This pattern decouples *transport* (who hears about the signal existing) from *interpretation* (who actually reads its content).
+
+Critically: **event delivery is not gated by signal visibility.** The bus delivers events to whoever is in `target_spaces`. Whether the receiver is *allowed* to read the referenced signal is a separate query, made through `SignalBook.list_visible_to` or `signal.is_visible_to`. This separation is intentional — coupling transport to visibility would entangle two policies.
+
+### 26.6 Ledger event types
+
+- `signal_added` — emitted by `SignalBook.add_signal` when a ledger is configured.
+- `signal_observed` — emitted by `SignalBook.mark_observed`. Optional, but when used it captures the explicit causality between a receiver and a signal.
+- `signal_emitted` — already defined in §22; conventionally used as the `event_type` of a `WorldEvent` whose payload references a `signal_id`.
+
+These three types form a complete information audit trail: when the signal entered the world, when it was sent over the bus, and when an observer acknowledged it.
+
+### 26.7 Kernel wiring
+
+`WorldKernel` exposes `kernel.signals: SignalBook`. The book is constructed by default and shares the kernel's `clock` and `ledger` via `__post_init__`, alongside the existing books (`ownership`, `contracts`, `prices`, `constraints`).
+
+### 26.8 What v0.7 does not do
+
+v0.7 must not introduce:
+
+- agent reactions to signals (no buying after a downgrade, no panic, no rebalancing)
+- price movement triggered by signals
+- credit decisions based on signals
+- analyst report generation
+- narrative formation, rumor decay, or leak propagation
+- coupling between event delivery and signal visibility (these remain orthogonal)
+- cross-signal aggregation or "consensus" computation
+
+These are deliberately out of scope. v0.7 stores information and lets it flow; later milestones will teach the world to interpret it.
+
+### 26.9 v0.7 success criteria
+
+v0.7 is complete when **all** of the following hold:
+
+1. `InformationSignal` exists with all required fields and is immutable.
+2. `SignalBook` provides `add_signal`, `get_signal`, `list_by_subject`, `list_by_type`, `list_by_source`, `list_visible_to`, `mark_observed`, `all_signals`, and `snapshot`.
+3. Visibility rules enforce public/leaked/rumor as anyone-visible, private/restricted as `allowed_viewers`-only, and `delayed` as effective_date-gated.
+4. Unsupported visibility values are rejected at construction.
+5. `signal_added` is recorded to the ledger on every `add_signal`. `signal_observed` is recorded on every `mark_observed`.
+6. A `WorldEvent` whose payload contains `signal_id` flows through the event bus and lets the receiver resolve the signal via `SignalBook.get_signal`.
+7. `SignalBook` operations do not mutate `OwnershipBook`, `ContractBook`, `PriceBook`, or `ConstraintBook`.
+8. The kernel exposes `kernel.signals` with default wiring.
+9. All previous milestones (v0, v0.2, v0.3, v0.4, v0.5, v0.6) continue to pass.

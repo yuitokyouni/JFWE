@@ -13,6 +13,7 @@ from world.ownership import OwnershipBook
 from world.prices import PriceBook
 from world.registry import RegisteredObject, Registry
 from world.scheduler import Scheduler, ScheduledTask, TaskSpec
+from world.signals import SignalBook
 from world.state import State
 
 if TYPE_CHECKING:
@@ -33,9 +34,16 @@ class WorldKernel:
     balance_sheets: BalanceSheetProjector | None = None
     constraints: ConstraintBook = field(default_factory=ConstraintBook)
     constraint_evaluator: ConstraintEvaluator | None = None
+    signals: SignalBook = field(default_factory=SignalBook)
 
     def __post_init__(self) -> None:
-        for book in (self.ownership, self.contracts, self.prices, self.constraints):
+        for book in (
+            self.ownership,
+            self.contracts,
+            self.prices,
+            self.constraints,
+            self.signals,
+        ):
             if book.ledger is None:
                 book.ledger = self.ledger
             if book.clock is None:
