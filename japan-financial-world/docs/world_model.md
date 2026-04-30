@@ -1725,3 +1725,119 @@ v0.7 is complete when **all** of the following hold:
 7. `SignalBook` operations do not mutate `OwnershipBook`, `ContractBook`, `PriceBook`, or `ConstraintBook`.
 8. The kernel exposes `kernel.signals` with default wiring.
 9. All previous milestones (v0, v0.2, v0.3, v0.4, v0.5, v0.6) continue to pass.
+
+---
+
+## 27. Minimum Corporate State (v0.8)
+
+The v0.8 milestone gives `CorporateSpace` its first piece of native state: a registry of firms keyed by `firm_id`, plus read-only access to the kernel-level projections that describe each firm's financial position, constraint compliance, and observable signals.
+
+This is the first time a domain space carries any state of its own. v0.8 establishes the pattern that every later domain space will follow: store identity-level facts internally, derive everything else from the world's books.
+
+### 27.1 Why a minimum corporate state
+
+Earlier milestones can already represent firms entirely through kernel-level books — a firm's holdings live in `OwnershipBook`, its loans in `ContractBook`, the latest prices of its assets in `PriceBook`, etc. So why should `CorporateSpace` carry *any* internal state?
+
+Because some facts are domain-classification facts, not balance-sheet facts: which sector the firm operates in, what tier (large / mid / small) it occupies, what status (active / delisted / under_review) it is currently in. These influence which firms are picked up by which queries. They are unambiguously "Corporate Space's responsibility" — neither `OwnershipBook` nor any projection has a natural place to put them.
+
+But everything *else* about a firm — its asset value, its liabilities, its leverage, its constraint compliance, the signals it has emitted or received — must continue to live in the kernel-level books. v0.8 enforces this by giving `CorporateSpace` *only* the classification fields, and *only* read access (via projections) to everything else.
+
+This is the load-bearing rule: **CorporateSpace classifies; the world books value.**
+
+### 27.2 FirmState
+
+`FirmState` is an immutable record. Its fields:
+
+- `firm_id` — WorldID of the firm.
+- `sector` — domain-neutral string label (default `"unspecified"`).
+- `tier` — domain-neutral string label (default `"unspecified"`).
+- `status` — domain-neutral string label (default `"active"`).
+- `metadata` — bag for non-standard attributes.
+
+There is intentionally no `cash`, `revenue`, `profit`, `leverage`, `assets`, or `liabilities` field. Anything derivable from the world's books is computed, not stored.
+
+### 27.3 CorporateSpace API additions
+
+`CorporateSpace` now exposes:
+
+- `add_firm_state(firm_state)` — register a firm; rejects duplicate `firm_id`; emits `firm_state_added` to the ledger.
+- `get_firm_state(firm_id)` — returns `FirmState` or `None`. **Does not raise** for unknown firms.
+- `list_firms()` — tuple of all `FirmState`s in insertion order.
+- `snapshot()` — JSON-friendly view of the space's firms, sorted by `firm_id`.
+
+And read-only accessors over the kernel projections:
+
+- `get_balance_sheet_view(firm_id, *, as_of_date=None)` — returns a `BalanceSheetView`, or `None` when the projector is unbound or no date can be resolved.
+- `get_constraint_evaluations(firm_id, *, as_of_date=None)` — returns a tuple of `ConstraintEvaluation`s for the firm, or `()` when no evaluator is bound.
+- `get_visible_signals(observer_id, *, as_of_date=None)` — returns the tuple of `InformationSignal`s visible to the given observer, or `()` when no signal book is bound.
+
+All accessors return safe defaults when refs are unbound. None of them mutate any source book.
+
+### 27.4 The bind() pattern
+
+To pass kernel-level books and projectors into a space without coupling the kernel to specific space subclasses, `BaseSpace` exposes a `bind(kernel)` hook. Default implementation is a no-op.
+
+`WorldKernel.register_space(space)` invokes `space.bind(self)` after Registry/Ledger registration but before task scheduling. Concrete spaces override `bind()` to capture the references they need:
+
+```python
+def bind(self, kernel):
+    if self.registry is None:
+        self.registry = kernel.registry
+    if self.balance_sheets is None:
+        self.balance_sheets = kernel.balance_sheets
+    ...
+```
+
+Two important properties:
+
+1. **bind() is opt-in**: the default no-op means existing empty spaces (Investor, Bank, etc.) keep working unchanged.
+2. **bind() does not overwrite explicit refs**: tests can pass refs at construction (e.g., a custom ledger) and `bind()` will leave those alone, only filling in unset fields. This makes it safe to register the same space pattern in tests with custom wiring.
+
+Spaces that need additional injection points add corresponding fields and extend their `bind()` override. The kernel does not need to know.
+
+### 27.5 What CorporateSpace must not do
+
+v0.8 explicitly forbids the following inside `CorporateSpace` (or any space that follows this pattern):
+
+- mutating `OwnershipBook`, `ContractBook`, `PriceBook`, `ConstraintBook`, or `SignalBook`
+- mutating `BankSpace`, `InvestorSpace`, `ExchangeSpace`, `RealEstateSpace`, or any other space's internal state
+- implementing revenue / profit / earnings update logic
+- implementing asset sale or borrowing decisions
+- implementing scenario or narrative logic
+- reacting to constraint breaches or signals (reading is allowed; reacting is not)
+- producing `WorldEvent`s that carry domain-level decisions (transport-level events for v0.3 testing remain fine)
+
+The space reads. It classifies. It does not act.
+
+### 27.6 Ledger event types
+
+- `firm_state_added` — emitted by `CorporateSpace.add_firm_state` when a ledger is configured.
+
+Existing ledger types continue to apply: reading projections through the space inherits whatever logging the underlying projector or evaluator does. In particular, calling `get_constraint_evaluations` triggers the constraint evaluator's `constraint_evaluated` records (because that is the evaluator's standard behavior). The space adds no separate evaluation record.
+
+### 27.7 Pattern for future domain spaces
+
+`CorporateSpace`'s shape is the template for every future domain space:
+
+- Hold a small dataclass map of identity-level state (e.g., `BankState`, `InvestorState`, `PropertyState`).
+- Override `bind()` to capture kernel projections.
+- Provide `add_*_state` / `get_*_state` / `list_*` for the local registry.
+- Provide read-only accessors that delegate to kernel projections.
+- Override `snapshot()` to expose the local state.
+- Never mutate external books or other spaces.
+
+Domain *behavior* — bank credit decisions, investor portfolio choices, property valuations — belongs to later milestones that will operate on top of this skeleton.
+
+### 27.8 v0.8 success criteria
+
+v0.8 is complete when **all** of the following hold:
+
+1. `FirmState` exists with all required fields and is immutable.
+2. `CorporateSpace` holds a `firm_id -> FirmState` mapping and exposes `add_firm_state`, `get_firm_state`, `list_firms`, and `snapshot`.
+3. `CorporateSpace` exposes read-only accessors `get_balance_sheet_view`, `get_constraint_evaluations`, and `get_visible_signals`.
+4. Unbound or missing references resolve to `None` / `()` rather than raising.
+5. `BaseSpace.bind(kernel)` exists as a no-op; `WorldKernel.register_space` invokes it; `CorporateSpace.bind` captures kernel projections without overwriting explicit construction refs.
+6. `firm_state_added` is recorded to the ledger when configured.
+7. `CorporateSpace` does not mutate `OwnershipBook`, `ContractBook`, `PriceBook`, `ConstraintBook`, or `SignalBook`.
+8. v0.2 scheduler integration still works: an empty world with a populated `CorporateSpace` runs for one year and the scheduler still invokes the space at its declared frequencies.
+9. All previous milestones (v0 through v0.7) continue to pass.

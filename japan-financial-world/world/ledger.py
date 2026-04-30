@@ -33,6 +33,7 @@ class RecordType(str, Enum):
     BALANCE_SHEET_VIEW_CREATED = "balance_sheet_view_created"
     CONSTRAINT_ADDED = "constraint_added"
     CONSTRAINT_EVALUATED = "constraint_evaluated"
+    FIRM_STATE_ADDED = "firm_state_added"
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

@@ -109,6 +109,8 @@ class WorldKernel:
             space_id=space.space_id,
         )
 
+        space.bind(self)
+
         scheduled = tuple(self.register_task(spec) for spec in space.task_specs())
         return scheduled
 

@@ -61,6 +61,18 @@ class BaseSpace:
     def snapshot(self) -> dict[str, Any]:
         return {}
 
+    def bind(self, kernel: Any) -> None:
+        """
+        Hook invoked by WorldKernel.register_space after the space is
+        registered but before its tasks are scheduled.
+
+        BaseSpace's default is a no-op. Concrete spaces may override this
+        to capture references to kernel-level books and projectors
+        (registry, balance_sheets, constraint_evaluator, signals, etc.)
+        without coupling the kernel to any specific space subclass.
+        """
+        return None
+
     def task_specs(self) -> Iterable[TaskSpec]:
         for frequency in self.frequencies:
             yield TaskSpec(
