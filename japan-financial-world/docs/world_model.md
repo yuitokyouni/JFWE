@@ -2199,3 +2199,127 @@ v0.10.1 is complete when **all** of the following hold:
 6. State CRUD, projections, and snapshot semantics remain in their respective concrete spaces.
 7. Test count grows by exactly the number of new DomainSpace contract tests; all previously passing tests continue to pass without modification.
 8. No call site is broken: no positional or keyword-arg callers needed to be rewritten.
+
+---
+
+## 31. Minimum Exchange / Market State (v0.11)
+
+The v0.11 milestone adds `ExchangeSpace`, the fourth concrete domain space. It introduces the first **two-entity** internal state shape (markets and listings, not just one record type), and the first space whose primary kernel reference is `PriceBook` rather than `OwnershipBook` or `ContractBook`. v0.11 does not add trading or price formation behavior of any kind.
+
+### 31.1 Two entity types, by design
+
+Every previous domain space has held a single dataclass map: `firm_id -> FirmState`, `bank_id -> BankState`, `investor_id -> InvestorState`. ExchangeSpace breaks that pattern because the exchange's own structure has two entity types:
+
+- **MarketState** — identity-level facts about a venue (which market, what type, which tier, what status).
+- **ListingState** — the relationship between a market and an asset (whether asset X is listed on market Y, and with what status).
+
+Listings are inherently relational. A single asset can be listed on multiple markets (cross-listed equity), and a single market lists many assets. Storing markets and listings as separate maps is the simplest representation that preserves both perspectives.
+
+### 31.2 MarketState
+
+`MarketState` is an immutable record. Its fields:
+
+- `market_id` — WorldID of the market.
+- `market_type` — domain-neutral string label (default `"unspecified"`). Examples: `"stock_exchange"`, `"bond_market"`, `"fx"`, `"real_estate_transaction"`. v0.11 enumerates none of these.
+- `tier` — domain-neutral string label (default `"unspecified"`).
+- `status` — domain-neutral string label (default `"active"`).
+- `metadata` — bag for non-standard attributes.
+
+There is no `trading_hours`, `lot_size`, `tick_size`, `settlement_cycle`, `index_membership`, or `fee_schedule` field. These are the foundation of trading behavior, and v0.11 does not implement trading.
+
+### 31.3 ListingState
+
+`ListingState` is an immutable record keyed implicitly by `(market_id, asset_id)`. Its fields:
+
+- `market_id` — the market on which the asset is listed.
+- `asset_id` — the listed asset's WorldID.
+- `listing_status` — free-form string. Common labels: `"listed"`, `"delisted"`, `"suspended"`, `"pre_listing"`. v0.11 enumerates none and applies no interpretive rules.
+- `metadata` — bag for non-standard attributes.
+
+There is intentionally no quote, last trade, halt window, lot conversion factor, or order-book reference. ListingState is the **fact of the relationship**, not the trading state.
+
+### 31.4 ExchangeSpace API
+
+ExchangeSpace inherits from `DomainSpace` (§30) and adds:
+
+**Lifecycle:**
+
+- `bind(kernel)` — extends `DomainSpace.bind()` to also capture `kernel.prices`. Other inherited refs (`balance_sheets`, `constraint_evaluator`, `signals`, `ledger`, `clock`, `registry`) are wired by the parent class even though Exchange typically reads only `prices` and `signals`.
+
+**Market CRUD:**
+
+- `add_market_state(market_state)` — register; rejects duplicate `market_id`; emits `market_state_added` to the ledger.
+- `get_market_state(market_id)` — returns `MarketState` or `None`.
+- `list_markets()` — tuple of all markets in **insertion order**.
+
+**Listing CRUD:**
+
+- `add_listing(listing)` — register; rejects duplicate `(market_id, asset_id)` pair; emits `listing_added` to the ledger.
+- `get_listing(market_id, asset_id)` — returns `ListingState` or `None`.
+- `list_listings()` — tuple of all listings in **insertion order**.
+- `list_assets_on_market(market_id)` — tuple of `ListingState` records filtered to one market.
+
+**Price-derived views:**
+
+- `get_latest_price(asset_id)` — wraps `PriceBook.get_latest_price`; returns `None` when unbound or no price observed. Does not require the asset to be listed on any market.
+- `get_price_history(asset_id)` — wraps `PriceBook.get_price_history`; returns `()` when unbound or no observations.
+
+**Inherited from DomainSpace:**
+
+- `get_balance_sheet_view(agent_id)`, `get_constraint_evaluations(agent_id)`, `get_visible_signals(observer_id)`.
+
+**Snapshot:**
+
+- `snapshot()` — returns `{"space_id", "market_count", "listing_count", "markets", "listings"}`. Markets sorted by `market_id`. Listings sorted by `(market_id, asset_id)`. The shape differs from previous spaces because it carries two entity types.
+
+### 31.5 Prices and listings are independent
+
+A deliberate v0.11 simplification: `get_latest_price(asset_id)` returns whatever the `PriceBook` knows, **regardless of whether the asset is listed anywhere**. Similarly, an asset can be listed without ever having been priced. Two reasons:
+
+1. The `PriceBook` is the canonical source for prices (§9, §23.4). Gating `get_latest_price` on listing status would create a second source of truth and force callers to reason about which one is authoritative.
+2. Real markets often have prices for unlisted assets (model marks, off-market trades, appraisals from data vendors), and v0.11 should not preclude that.
+
+This is the same principle as v0.7's transport / visibility separation: ownership of a fact (the price) lives in one place; classification (the listing relationship) lives elsewhere. Joining them is the caller's choice.
+
+### 31.6 What ExchangeSpace must not do
+
+v0.11 explicitly forbids the following inside `ExchangeSpace`:
+
+- mutating `OwnershipBook`, `ContractBook`, `PriceBook`, `ConstraintBook`, or `SignalBook`
+- mutating `CorporateSpace`, `BankSpace`, `InvestorSpace`, `RealEstateSpace`, or any other space's internal state
+- implementing order matching, order books, or limit-order semantics
+- implementing price formation, last-trade vs mid vs VWAP, quote logic, or auction dynamics
+- implementing price impact or market impact estimation
+- implementing trading sessions, opens, closes, halts, or auctions
+- implementing circuit breakers, kill switches, or volatility brakes
+- implementing index construction or rebalancing
+- implementing trade reporting, fee computation, or settlement
+- implementing scenario logic
+- producing `WorldEvent`s that carry trading-decision payloads (transport-level events for testing remain fine)
+
+The space classifies markets and listings. It surfaces prices and signals on request. It does not trade.
+
+### 31.7 Ledger event types
+
+- `market_state_added` — emitted by `ExchangeSpace.add_market_state` when a ledger is configured.
+- `listing_added` — emitted by `ExchangeSpace.add_listing` when a ledger is configured. Records `object_id = asset_id` and `target = market_id`, so the relationship is fully reconstructable from the ledger entry alone.
+
+Existing types continue to apply. `get_latest_price` and `get_price_history` are queries and produce no ledger record.
+
+### 31.8 v0.11 success criteria
+
+v0.11 is complete when **all** of the following hold:
+
+1. `MarketState` exists with all required fields and is immutable.
+2. `ListingState` exists with all required fields and is immutable.
+3. `ExchangeSpace` inherits from `DomainSpace`.
+4. `ExchangeSpace.bind` extends `DomainSpace.bind` to capture `prices`, following the four-property contract from §27.4.
+5. `ExchangeSpace` exposes the market CRUD (`add_market_state` / `get_market_state` / `list_markets`), the listing CRUD (`add_listing` / `get_listing` / `list_listings` / `list_assets_on_market`), and the two price-derived views (`get_latest_price`, `get_price_history`).
+6. Duplicate `market_id` is rejected; duplicate `(market_id, asset_id)` listing is rejected.
+7. The same asset can be listed on multiple markets without conflict.
+8. `market_state_added` and `listing_added` are recorded to the ledger when configured.
+9. `ExchangeSpace` does not mutate any source book or any other space.
+10. Price queries do not depend on listings; both work independently.
+11. Missing-price queries return `None` / `()` and do not crash.
+12. v0.2 scheduler integration still works: a populated `ExchangeSpace` runs for one year and is invoked at its declared frequency (DAILY × 365).
+13. All previous milestones (v0 through v0.10.1) continue to pass.
