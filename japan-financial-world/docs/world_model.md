@@ -2576,3 +2576,180 @@ v0.13 is complete when **all** of the following hold:
 9. Missing-data queries return `None` / `()` and do not crash.
 10. v0.2 scheduler integration still works: a populated `InformationSpace` runs for one year and is invoked at its declared frequency (DAILY × 365).
 11. All previous milestones (v0 through v0.12) continue to pass.
+
+---
+
+## 34. Minimum Policy / External Space State (v0.14)
+
+The v0.14 milestone adds the final two domain spaces — `PolicySpace` and `ExternalSpace` — completing the eight spaces enumerated in §2: Corporate, Investors, Banking, Exchange, Real Estate, Information, Policy, External.
+
+Both are pure classification layers. `PolicySpace` records who has policy-making authority and what instruments they could in principle use; `ExternalSpace` records what exogenous factors the world tracks and where data feeds in from. Neither implements any decision, reaction, shock, or stochastic process.
+
+### 34.1 Why a single milestone for two spaces
+
+Combining Policy and External into one milestone is a deliberate choice. Both are minimal classification layers with no domain-specific kernel ref of their own (they need only `signals` and `registry` from `DomainSpace`), no `bind()` override, and no novel structural element beyond what v0.11–§32 already established. The shared characteristic is that **v0.14 deliberately defines what these spaces will not do** — central bank reaction functions and exogenous shock generation are exactly the kinds of behaviors that a future v1 jurisdiction overlay will need, and v0.14 has to keep its hands off them.
+
+After v0.14, every space from §2 has a state file, a space file, integration tests, and a documented contract. The world kernel is structurally complete; what remains is content (specific firms, specific banks, specific signals, scenarios) and behavior (reactions, decisions, dynamics).
+
+### 34.2 PolicySpace
+
+#### 34.2.1 PolicyAuthorityState
+
+`PolicyAuthorityState` is an immutable record. Its fields:
+
+- `authority_id` — WorldID of the authority.
+- `authority_type` — domain-neutral string label (default `"unspecified"`). Examples: `"central_bank"`, `"financial_regulator"`, `"securities_commission"`, `"finance_ministry"`, `"deposit_insurance"`.
+- `tier` — domain-neutral string label (default `"unspecified"`). Examples: `"national"`, `"regional"`, `"supra-national"`.
+- `status` — domain-neutral string label (default `"active"`).
+- `metadata` — bag for non-standard attributes.
+
+There is no `mandate`, `independence_index`, `voting_members`, `target_rate`, or `reaction_function` field. v0.14 does not implement policy behavior.
+
+#### 34.2.2 PolicyInstrumentState
+
+`PolicyInstrumentState` is an immutable record. Its fields:
+
+- `instrument_id` — primary key.
+- `authority_id` — foreign key to a PolicyAuthorityState. **Not validated** for existence in the space (same rule as v0.12 PropertyAssetState).
+- `instrument_type` — domain-neutral string label (default `"unspecified"`). Examples: `"policy_rate"`, `"reserve_requirement"`, `"open_market_operation"`, `"capital_ratio"`, `"deposit_insurance_ceiling"`.
+- `status` — domain-neutral string label (default `"active"`).
+- `metadata` — bag for non-standard attributes.
+
+There is no `current_rate`, `target_level`, `transmission_lag`, or `effectiveness_estimate` field. v0.14 does not implement policy mechanics.
+
+#### 34.2.3 PolicySpace API
+
+PolicySpace inherits from `DomainSpace` (§30) and **needs no `bind()` override** (third such case, joining CorporateSpace and InformationSpace). The inherited `signals` and `registry` are sufficient.
+
+- Authority CRUD: `add_authority_state` / `get_authority_state` / `list_authorities`.
+- Instrument CRUD: `add_instrument_state` / `get_instrument_state` / `list_instruments`.
+- Filter helper: `list_instruments_by_authority(authority_id)`.
+- `snapshot()` returns `{"space_id", "authority_count", "instrument_count", "authorities", "instruments"}`. Both lists deterministically sorted.
+- Inherits `get_visible_signals` and the other DomainSpace accessors.
+- Frequencies: `(MONTHLY,)` matching realistic policy review cadence.
+
+#### 34.2.4 What PolicySpace must not do
+
+- set, change, or guide policy rates
+- implement reaction functions (Taylor / Brainard / inflation-targeting)
+- conduct liquidity operations or balance-sheet expansion / contraction
+- change regulatory rules (capital ratios, leverage caps)
+- mutate `ConstraintBook` (the ConstraintBook is owned by the kernel; future milestones may have spaces propose constraints, but v0.14 does not)
+- mutate any other source book or any other space
+- implement scenario logic
+
+### 34.3 ExternalSpace
+
+#### 34.3.1 ExternalFactorState
+
+`ExternalFactorState` is an immutable record. Its fields:
+
+- `factor_id` — WorldID of the factor.
+- `factor_type` — domain-neutral string label (default `"unspecified"`). Examples: `"fx_rate"`, `"commodity_price"`, `"foreign_macro"`, `"sovereign_yield"`, `"demographic"`, `"weather"`.
+- `unit` — free-form string label (default `"unspecified"`). Examples: `"USD/JPY"`, `"USD/barrel"`, `"%"`, `"index_points"`, `"persons"`.
+- `status` — domain-neutral string label (default `"active"`).
+- `metadata` — bag for non-standard attributes.
+
+There is no `current_value`, `last_observed`, `volatility`, `shock_model`, or `regime` field. v0.14 does not implement stochastic processes or shock generation.
+
+The `unit` field is captured at the classification layer because future milestones will need to interpret factor values dimensionally (a USD/JPY rate of 150 means something different from a CPI percentage of 150). v0.14 does not enforce any unit grammar — it is a free-form label like every other classifier.
+
+#### 34.3.2 ExternalSourceState
+
+`ExternalSourceState` is an immutable record. Its fields:
+
+- `source_id` — WorldID of the data source.
+- `source_type` — domain-neutral string label (default `"unspecified"`). Examples: `"international_organization"`, `"foreign_central_bank"`, `"foreign_statistical_agency"`, `"data_vendor"`.
+- `status` — domain-neutral string label (default `"active"`).
+- `metadata` — bag for non-standard attributes.
+
+Note that `ExternalSourceState` deliberately does **not** carry a `tier` field, in contrast to `InformationSourceState` (§33.2). The reason: external data sources are typically classified by *kind* (vendor, agency, organization) rather than by tier, and adding a vestigial tier field would invite incorrect taxonomies. If future milestones need a tier-like distinction, they can use `metadata`.
+
+#### 34.3.3 InformationSourceState vs ExternalSourceState
+
+Two spaces have a `source` concept and an `add_source_state` method:
+
+| Concept                | InformationSourceState (§33)                             | ExternalSourceState (§34.3.2)                               |
+| ---------------------- | -------------------------------------------------------- | ----------------------------------------------------------- |
+| What it classifies     | Signal-producing entities about the *domestic* world     | Where *exogenous* data feeds in from                        |
+| Typical examples       | rating agency, wire service, regulator, internal desk    | IMF, World Bank, foreign CB, foreign stat agency, vendor    |
+| Has `tier`?            | yes                                                      | no                                                          |
+| Owns                   | InformationSpace                                         | ExternalSpace                                               |
+
+The two often overlap in practice (e.g., a wire service can be both a signal source and an external data feed) but the classification axes are different. Each space keeps its own view; v0.14 does not merge them.
+
+#### 34.3.4 ExternalSpace API
+
+ExternalSpace inherits from `DomainSpace` and **needs no `bind()` override** (fourth such case).
+
+- Factor CRUD: `add_factor_state` / `get_factor_state` / `list_factors`.
+- Source CRUD: `add_source_state` / `get_source_state` / `list_sources`.
+- `snapshot()` returns `{"space_id", "factor_count", "source_count", "factors", "sources"}`. Both lists deterministically sorted.
+- Inherits `get_visible_signals` and the other DomainSpace accessors.
+- Frequencies: `(DAILY,)` matching typical external observation cadence.
+
+Factors and sources are independent maps in v0.14 — there is no factor → source relation or source → factor relation. Real-world relationships are many-to-many and v0.14 does not pick a representation. Future milestones may introduce a relation map if cross-references become load-bearing.
+
+#### 34.3.5 What ExternalSpace must not do
+
+- generate shocks of any kind (oil, FX, war, natural disaster, pandemic, regime change)
+- implement random walks, AR/ARMA processes, or any stochastic process
+- implement regime switching, regime detection, or regime classification
+- replay historical data (e.g., back-running 1990s asset bubble values)
+- update factor values or maintain factor time series
+- propagate shock impact to prices, ownership, contracts, or any other book
+- mutate any other source book or any other space
+- implement scenario logic
+
+### 34.4 Ledger event types
+
+- `policy_authority_state_added`
+- `policy_instrument_state_added` (records `target = authority_id` for relationship reconstruction)
+- `external_factor_state_added`
+- `external_source_state_added`
+
+Queries produce no ledger record.
+
+### 34.5 v0.14 success criteria
+
+v0.14 is complete when **all** of the following hold:
+
+**PolicySpace:**
+
+1. `PolicyAuthorityState` exists with all required fields and is immutable.
+2. `PolicyInstrumentState` exists with all required fields and is immutable; `authority_id` is required and unvalidated for existence.
+3. `PolicySpace` inherits from `DomainSpace` and requires no `bind()` override.
+4. `PolicySpace` exposes authority CRUD, instrument CRUD, and `list_instruments_by_authority`.
+5. Duplicate `authority_id` is rejected; duplicate `instrument_id` is rejected.
+6. `policy_authority_state_added` and `policy_instrument_state_added` are recorded to the ledger when configured.
+7. PolicySpace does not mutate `ConstraintBook` or any other source book or any other space.
+8. v0.2 scheduler integration still works (MONTHLY × 12).
+
+**ExternalSpace:**
+
+9. `ExternalFactorState` exists with all required fields and is immutable.
+10. `ExternalSourceState` exists with all required fields and is immutable.
+11. `ExternalSpace` inherits from `DomainSpace` and requires no `bind()` override.
+12. `ExternalSpace` exposes factor CRUD and source CRUD.
+13. Duplicate `factor_id` is rejected; duplicate `source_id` is rejected.
+14. `external_factor_state_added` and `external_source_state_added` are recorded to the ledger when configured.
+15. ExternalSpace does not mutate any source book or any other space.
+16. v0.2 scheduler integration still works (DAILY × 365).
+
+**Shared:**
+
+17. Missing-data queries return `None` / `()` and do not crash.
+18. All previous milestones (v0 through v0.13) continue to pass.
+
+### 34.6 World kernel structural completeness
+
+After v0.14, all eight spaces enumerated in §2 (Corporate, Investors, Banking, Exchange, Real Estate, Information, Policy, External) have:
+
+- a state dataclass file (or two, for two-entity spaces)
+- a space implementation file inheriting from `DomainSpace`
+- integration with the kernel via `register_space` and `bind()`
+- ledger event types for state-addition records
+- unit and integration tests
+- a documented contract in `world_model.md`
+
+The world kernel as a constitutional structure is now complete. Subsequent milestones (v1 and beyond) will add domain behavior — Japanese-jurisdiction calibration, central bank reaction functions, investor strategy, market clearing, scenarios — on top of this kernel rather than expanding it.
