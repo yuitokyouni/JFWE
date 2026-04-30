@@ -15,6 +15,7 @@ from world.registry import RegisteredObject, Registry
 from world.scheduler import Scheduler, ScheduledTask, TaskSpec
 from world.signals import SignalBook
 from world.state import State
+from world.valuations import ValuationBook, ValuationComparator
 
 if TYPE_CHECKING:
     from spaces.base import BaseSpace
@@ -35,6 +36,8 @@ class WorldKernel:
     constraints: ConstraintBook = field(default_factory=ConstraintBook)
     constraint_evaluator: ConstraintEvaluator | None = None
     signals: SignalBook = field(default_factory=SignalBook)
+    valuations: ValuationBook = field(default_factory=ValuationBook)
+    valuation_comparator: ValuationComparator | None = None
 
     def __post_init__(self) -> None:
         for book in (
@@ -43,6 +46,7 @@ class WorldKernel:
             self.prices,
             self.constraints,
             self.signals,
+            self.valuations,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
@@ -65,6 +69,14 @@ class WorldKernel:
                 projector=self.balance_sheets,
                 clock=self.clock,
                 ledger=self.ledger,
+            )
+
+        if self.valuation_comparator is None:
+            self.valuation_comparator = ValuationComparator(
+                valuations=self.valuations,
+                prices=self.prices,
+                ledger=self.ledger,
+                clock=self.clock,
             )
 
     def register_object(self, obj: RegisteredObject) -> None:

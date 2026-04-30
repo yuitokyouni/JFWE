@@ -46,6 +46,8 @@ class RecordType(str, Enum):
     POLICY_INSTRUMENT_STATE_ADDED = "policy_instrument_state_added"
     EXTERNAL_FACTOR_STATE_ADDED = "external_factor_state_added"
     EXTERNAL_SOURCE_STATE_ADDED = "external_source_state_added"
+    VALUATION_ADDED = "valuation_added"
+    VALUATION_COMPARED = "valuation_compared"
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

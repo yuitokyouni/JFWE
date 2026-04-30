@@ -2833,3 +2833,117 @@ Subsequent versions will build on this foundation:
 - **v3.xx** adds Japan proprietary / commercial calibration on top of v2.
 
 None of those layers may weaken the v0 invariants above without an explicit, documented decision.
+
+---
+
+## 36. Valuation Layer (v1.1)
+
+The v1.1 milestone is the first implementation step in the v1 line. It adds **valuation as a first-class world object** without introducing fundamentals or any decision-making behavior. v1.1 sits inside the non-behavioral carve-out described in [`v1_behavior_boundary.md`](v1_behavior_boundary.md): it stores claims and compares them against observed prices, but it never acts on a comparison.
+
+For the full design rationale — three-way distinction between price / valuation / fundamental, four worked use cases, the currency-vs-numeraire split, and the explanation of why fundamentals are deferred — see [`v1_valuation_fundamentals_design.md`](v1_valuation_fundamentals_design.md).
+
+### 36.1 Why valuation is not price
+
+`PriceBook` (§9, §23.4) records what was observed: transaction prices, quotes, marks. v1.1 introduces `ValuationBook` for what was *opined*: a valuer's estimate of what something is worth, for a specific purpose, by a specific method, with stated assumptions and a stated confidence. Two valuers can produce different numbers for the same subject on the same day, and v1.1 stores both. There is no "the valuation" of any subject — only valuations.
+
+Conflating the two would weaken v0 invariant 4 (prices are observed, not modeled) and v1 invariant 5 (valuation is not price or truth). v1.1 enforces the separation by giving valuations their own store, their own record type in the ledger, and their own comparator that produces a `ValuationGap` rather than appending into `PriceBook`.
+
+### 36.2 ValuationRecord
+
+`ValuationRecord` is an immutable dataclass with 15 fields:
+
+- `valuation_id` — stable unique identifier.
+- `subject_id` — what is being valued. Free-form WorldID. May refer to firms, assets, contracts, properties, FX pairs, portfolios, markets, or any other world object. v1.1 does not validate that the referenced subject is registered.
+- `valuer_id` — who produced the valuation. Any agent, model, appraiser, or synthetic source.
+- `valuation_type` — domain-neutral string label (`"equity"`, `"debt"`, `"real_estate"`, `"fx_view"`, `"fund_nav"`, …).
+- `purpose` — domain-neutral string label (`"investment_research"`, `"underwriting"`, `"financial_reporting"`, `"covenant_test"`, …).
+- `method` — domain-neutral string label (`"dcf"`, `"comparables"`, `"book_value"`, `"cap_rate"`, `"comparable_sales"`, …).
+- `as_of_date` — ISO date of the valuation.
+- `estimated_value` — float, or `None` if the valuation is qualitative or failed.
+- `currency` — display currency of `estimated_value`.
+- `numeraire` — perspective currency or value basis the valuer reasoned in. Distinct from `currency`; see §36.5.
+- `confidence` — float in `[0, 1]`.
+- `assumptions` — dict of method assumptions (e.g., discount rate, cap rate, terminal growth).
+- `inputs` — dict of model inputs (e.g., free cash flow series, NOI, comparable sales).
+- `related_ids` — tuple of related WorldIDs.
+- `metadata` — bag for non-standard attributes.
+
+v1.1 enumerates none of the type / purpose / method strings. They are free-form so any plausible professional vocabulary fits without schema changes.
+
+### 36.3 ValuationGap
+
+`ValuationGap` is the output of comparing one valuation to the latest observed price. Its fields:
+
+- `subject_id`, `valuation_id`, `as_of_date`, `currency` — copied from the valuation.
+- `estimated_value` — copied from the valuation.
+- `observed_price` — the latest `PriceRecord.price` for the subject, or `None` if no price exists.
+- `absolute_gap` — `estimated_value - observed_price` when both exist.
+- `relative_gap` — `absolute_gap / observed_price` when `observed_price` is non-zero.
+- `metadata["reason"]` — populated when a numeric gap cannot be computed: `"missing_price"`, `"estimated_value_unavailable"`, `"currency_mismatch"`, or `"observed_price_zero"`.
+
+A `ValuationGap` is informational. It records the difference; it does not act on it.
+
+### 36.4 ValuationBook and ValuationComparator
+
+`ValuationBook` API:
+
+- `add_valuation(record)` — store; rejects duplicate `valuation_id`; emits `valuation_added` to the ledger.
+- `get_valuation(valuation_id)` — raises `UnknownValuationError` for unknown ids.
+- `list_by_subject` / `list_by_valuer` / `list_by_type` / `list_by_purpose` / `list_by_method` — five indexed read paths.
+- `get_latest_by_subject(subject_id)` — picks the highest `as_of_date` among the subject's valuations (ISO date strings compare lexicographically; ties break to the most recently added record).
+- `snapshot()` — sorted, JSON-friendly view.
+
+`ValuationComparator` API:
+
+- `compare_to_latest_price(valuation_id)` — produce a `ValuationGap` against the subject's latest price.
+- `compare_subject_latest(subject_id)` — find the latest valuation for the subject and compare.
+
+The comparator records `valuation_compared` to the ledger when a ledger is configured, with `parent_record_ids` referencing the originating `valuation_added` record so the ledger forms a causal chain.
+
+### 36.5 currency vs numeraire
+
+`currency` is the display currency of `estimated_value` — the unit of the number. `numeraire` is the perspective the valuer reasoned in. For purely domestic valuations the two are identical. They differ in cross-border contexts: a USD-perspective fund valuing a JPY-denominated equity sets `currency="JPY"`, `numeraire="USD"`.
+
+v1.1 does **not** implement FX conversion. The comparator detects a currency mismatch by inspecting `metadata["currency"]` on the latest priced observation and refuses to convert; instead, it produces a `ValuationGap` with `metadata["reason"] = "currency_mismatch"`. The choice of FX rate, source, and timestamp is itself a calibration decision and belongs to a later milestone.
+
+### 36.6 Ledger event types
+
+- `valuation_added` — emitted by `ValuationBook.add_valuation` when a ledger is configured. Records `object_id = valuation_id`, `target = subject_id`, `agent_id = valuer_id`.
+- `valuation_compared` — emitted by `ValuationComparator` for every comparison. `correlation_id = valuation_id`. `parent_record_ids` links back to the originating `valuation_added` record so an audit can reconstruct the comparison's origin.
+
+### 36.7 Kernel wiring
+
+`WorldKernel` exposes:
+
+- `kernel.valuations: ValuationBook`
+- `kernel.valuation_comparator: ValuationComparator`
+
+Both are constructed in `__post_init__` with the kernel's `clock`, `ledger`, and `prices` references. Existing v0 behavior is unchanged: every previous test continues to pass.
+
+### 36.8 What v1.1 does not do
+
+v1.1 explicitly does **not**:
+
+- introduce a typed `FundamentalsBook` or `FundamentalView` — deferred.
+- implement any specific valuation engine (DCF, comparables, cap-rate, etc.). v1.1 stores opinions, it does not produce them.
+- implement FX conversion in the comparator.
+- consume valuations to drive any decision. A v1.3 bank that wants to underwrite against an `underwriting`-purpose valuation reads it directly; the valuation layer never pushes.
+- compute "consensus" or "fair value" by aggregating multiple valuations.
+- mutate `PriceBook`, `OwnershipBook`, `ContractBook`, `ConstraintBook`, or `SignalBook`.
+- introduce Japan-specific anything.
+
+### 36.9 v1.1 success criteria
+
+v1.1 is complete when **all** of the following hold:
+
+1. `ValuationRecord` exists with all 15 documented fields and is immutable.
+2. `ValuationGap` exists with all 9 documented fields and is immutable.
+3. `ValuationBook` supports `add_valuation`, `get_valuation`, the five `list_by_*` helpers, `get_latest_by_subject`, and `snapshot`.
+4. `ValuationComparator` supports `compare_to_latest_price` and `compare_subject_latest`.
+5. The four documented failure paths (`missing_price`, `estimated_value_unavailable`, `currency_mismatch`, `observed_price_zero`) all produce a non-crashing `ValuationGap` with the corresponding `metadata["reason"]`.
+6. `subject_id` accepts non-firm WorldIDs (FX pairs, portfolios, properties, contracts, markets) without validation.
+7. Multiple conflicting valuations for the same subject coexist; the book picks no winner.
+8. `valuation_added` and `valuation_compared` are recorded to the ledger; comparison records carry `parent_record_ids` linking to the originating `valuation_added` record.
+9. v1.1 mutates none of `OwnershipBook`, `ContractBook`, `PriceBook`, `ConstraintBook`, or `SignalBook`.
+10. The kernel exposes `kernel.valuations` and `kernel.valuation_comparator` with default wiring.
+11. All previous milestones (v0 through v0.16) continue to pass.
