@@ -2996,10 +2996,12 @@ v1.2 reuses the existing `task_executed` ledger record type. When a task fires t
 The v0 path (`tick` / `run`) is unchanged in behavior:
 
 - All due tasks fire on every tick regardless of declared phase.
-- v0 tests pass without modification (444 v0 + 34 v1.1 + 33 v1.2 = 511 / 511 passing).
+- v0 tests pass without modification (444 v0 + 34 v1.1 + 33 v1.2 + 6 v1.2.1 = 517 / 517 passing).
 - Tasks declared with `Phase.MAIN` continue to be the default and fire under both paths (`tick` includes them; `run_day_with_phases` excludes them — see §37.7).
 
 The v1.2 path (`run_day_with_phases` / `run_with_phases`) is opt-in. Mixing the two paths on the same calendar day would advance the clock twice; the documented rule is "use one or the other per day".
+
+**The rule is enforced (v1.2.1).** See §37.10.
 
 ### 37.7 Why MAIN is excluded from phase dispatch
 
@@ -3036,3 +3038,25 @@ v1.2 is complete when **all** of the following hold:
 9. No source-of-truth book is mutated by the phase dispatcher.
 10. v0 `tick` / `run` behavior is unchanged; v0 tests pass without modification.
 11. All previous milestones (v0 through v1.1) continue to pass.
+
+### 37.10 Run-mode guard (v1.2.1)
+
+§37.6 documents that the v0 path (`tick` / `run`) and the v1.2 path (`run_day_with_phases` / `run_with_phases`) must not be mixed on the same simulation date. v1.2.1 promotes that rule from advisory to **enforced**.
+
+The kernel keeps a private `_run_modes` map (`simulation_date → mode`) populated in `__post_init__`. Every entry into `tick()` calls `_enter_run_mode("date_tick")` before doing any work; every entry into `run_day_with_phases()` calls `_enter_run_mode("intraday_phase")`. The helper:
+
+- Looks up the mode previously recorded for `clock.current_date`.
+- If a mode exists and differs from the requested mode, raises `RuntimeError` with a message naming the date and both modes.
+- Otherwise records the requested mode for `clock.current_date`.
+
+Repeated calls in the *same* mode at the same date are idempotent — the guard rejects only mode mixing, not mode reentry. The map keys on `simulation_date`, so the guard resets naturally as soon as the clock advances to a new date.
+
+The guard does not fire in ordinary sequential use because both paths advance the clock at the end of their work. It only fires when a caller manually rewinds the clock and tries to revisit a date in the other mode. The hardening tests
+[`test_tick_then_run_day_with_phases_on_same_date_raises`](../tests/test_phase_scheduler.py)
+and
+[`test_run_day_with_phases_then_tick_on_same_date_raises`](../tests/test_phase_scheduler.py)
+construct exactly that scenario by assigning a past value to `clock.current_date`.
+
+The v1.2.1 success condition is:
+
+12. The two execution paths remain backward-compatible but cannot be silently mixed on the same simulation date. Mixing raises `RuntimeError` with a message that names both modes and the date, and the guard resets naturally when the clock moves to the next date.

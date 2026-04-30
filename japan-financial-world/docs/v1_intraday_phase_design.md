@@ -155,6 +155,17 @@ separate. Mixing them on the same day would advance the clock
 twice; the choice is "use one or the other per day", not "use
 both".
 
+**This rule is enforced (v1.2.1).** The kernel records which mode
+processed each simulation date in an internal ``_run_modes`` map. A
+call that would process a date already processed in the other mode
+raises ``RuntimeError``. The natural advance-clock semantics means
+the guard never fires during ordinary sequential use — it only
+fires when a caller manually rewinds the clock or otherwise revisits
+a date that has already been claimed. The guard resets naturally
+because each entry is keyed by ``simulation_date``: once the clock
+moves to a new date, the new date carries no mode and either path
+can claim it.
+
 ## Where Phase.MAIN fits
 
 `Phase.MAIN` is the v0 default. Tasks that declare no phase get

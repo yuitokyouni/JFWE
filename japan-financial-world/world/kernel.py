@@ -82,6 +82,48 @@ class WorldKernel:
                 clock=self.clock,
             )
 
+        # ------------------------------------------------------------------
+        # v1.2.1 run-mode guard.
+        #
+        # The kernel exposes two execution paths:
+        #   - tick() / run() — the v0 date-based path.
+        #   - run_day_with_phases() / run_with_phases() — the v1.2 intraday
+        #     phase path.
+        #
+        # Each simulation date must be processed by exactly one path.
+        # Mixing them on the same date would advance the clock twice or
+        # double-fire tasks, so the kernel records which mode was used for
+        # each date and refuses to switch mid-date. The guard resets
+        # naturally because the dict key is the simulation_date — once the
+        # clock advances, the new date has no entry yet.
+        # ------------------------------------------------------------------
+        self._run_modes: dict = {}
+
+    _RUN_MODE_TICK: str = "date_tick"
+    _RUN_MODE_PHASES: str = "intraday_phase"
+
+    def _enter_run_mode(self, mode: str) -> None:
+        """
+        Mark ``self.clock.current_date`` as being processed in ``mode``.
+
+        Raises RuntimeError if the same date was previously processed in
+        a different mode. Repeated calls in the *same* mode are
+        idempotent (e.g. tick() processing one date and then re-entering
+        tick mode at the same date after a manual clock rewind is OK;
+        the modes match).
+        """
+        current = self.clock.current_date
+        existing = self._run_modes.get(current)
+        if existing is not None and existing != mode:
+            raise RuntimeError(
+                f"Cannot mix run modes on simulation date {current}: "
+                f"already entered in {existing!r} mode; refusing to "
+                f"enter {mode!r} mode. Use one of tick()/run() or "
+                f"run_day_with_phases()/run_with_phases() per simulation "
+                f"date, not both."
+            )
+        self._run_modes[current] = mode
+
     def register_object(self, obj: RegisteredObject) -> None:
         self.registry.register(obj)
         self.state.initialize_object(obj.id, obj.attributes)
@@ -145,6 +187,7 @@ class WorldKernel:
         return scheduled
 
     def tick(self) -> None:
+        self._enter_run_mode(self._RUN_MODE_TICK)
         due_tasks = self.scheduler.due_tasks(self.clock)
         for task in due_tasks:
             if callable(task.task):
@@ -252,9 +295,12 @@ class WorldKernel:
             # (or)
             kernel.run_day_with_phases()  # phase-aware tasks + clock advance
 
-        Mixing them on the same day would advance the clock twice; the
-        choice is intentional rather than implicit.
+        Mixing the two modes on the same simulation date is rejected by
+        ``_enter_run_mode``: a date that has been processed in tick mode
+        cannot subsequently be processed in phase mode, and vice versa.
+        See §37.10 of `world_model.md` for the enforced rule.
         """
+        self._enter_run_mode(self._RUN_MODE_PHASES)
         if sequence is None:
             sequence = PhaseSequence.default_phases()
 

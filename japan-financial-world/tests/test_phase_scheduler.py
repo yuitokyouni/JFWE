@@ -1,5 +1,7 @@
 from datetime import date
 
+import pytest
+
 from world.clock import Clock
 from world.kernel import WorldKernel
 from world.ledger import Ledger
@@ -341,3 +343,78 @@ def test_phase_dispatch_creates_no_prices_or_signals_or_book_mutations():
     assert kernel.contracts.snapshot() == contracts_before
     assert kernel.signals.snapshot() == signals_before
     assert kernel.valuations.snapshot() == valuations_before
+
+
+# ---------------------------------------------------------------------------
+# v1.2.1 run-mode guard
+#
+# The kernel rejects calls that would mix the v0 date-based path
+# (tick / run) with the v1.2 intraday phase path (run_day_with_phases /
+# run_with_phases) on the same simulation date. The natural advance-
+# clock semantics means the guard never fires during ordinary
+# sequential use — it only fires when callers manually rewind the clock
+# or otherwise revisit a date that has already been processed in the
+# other mode.
+# ---------------------------------------------------------------------------
+
+
+def test_tick_then_run_day_with_phases_on_same_date_raises():
+    kernel = _kernel(start=date(2026, 1, 1))
+    kernel.tick()  # processes 2026-01-01, advances to 2026-01-02
+    # Manually rewind to revisit the same date in a different mode.
+    kernel.clock.current_date = date(2026, 1, 1)
+
+    with pytest.raises(RuntimeError, match="mix run modes"):
+        kernel.run_day_with_phases()
+
+
+def test_run_day_with_phases_then_tick_on_same_date_raises():
+    kernel = _kernel(start=date(2026, 1, 1))
+    kernel.run_day_with_phases()  # processes 2026-01-01, advances
+    kernel.clock.current_date = date(2026, 1, 1)
+
+    with pytest.raises(RuntimeError, match="mix run modes"):
+        kernel.tick()
+
+
+def test_repeated_tick_in_same_mode_at_same_date_does_not_raise():
+    """Same-mode reentry is idempotent — only mode mixing is rejected."""
+    kernel = _kernel(start=date(2026, 1, 1))
+    kernel.tick()
+    kernel.clock.current_date = date(2026, 1, 1)
+    # Calling tick again at the same date is the same mode, so it is
+    # allowed (and processes the day again).
+    kernel.tick()
+    # Both ticks marked the date with date_tick mode, no error.
+
+
+def test_tick_across_multiple_days_still_works():
+    kernel = _kernel(start=date(2026, 1, 1))
+    kernel.run(days=10)
+    assert kernel.clock.current_date == date(2026, 1, 11)
+
+
+def test_run_with_phases_across_multiple_days_still_works():
+    kernel = _kernel(start=date(2026, 1, 1))
+    kernel.register_task(
+        _make_task("task:opening", phase=Phase.OPENING_AUCTION)
+    )
+    kernel.run_with_phases(days=10)
+    assert kernel.clock.current_date == date(2026, 1, 11)
+    records = kernel.ledger.filter(
+        event_type="task_executed", task_id="task:opening"
+    )
+    assert len(records) == 10
+
+
+def test_sequential_use_of_both_modes_on_different_dates_works():
+    """
+    The guard is per-date. After tick() at date D and the natural clock
+    advance to D+1, calling run_day_with_phases() at D+1 is allowed:
+    D+1 has not been processed in any mode yet.
+    """
+    kernel = _kernel(start=date(2026, 1, 1))
+    kernel.tick()  # D=2026-01-01 in date_tick mode, clock → 2026-01-02
+    kernel.run_day_with_phases()  # D=2026-01-02 in intraday_phase mode
+    kernel.tick()  # D=2026-01-03 in date_tick mode
+    assert kernel.clock.current_date == date(2026, 1, 4)
