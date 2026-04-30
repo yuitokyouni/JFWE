@@ -70,6 +70,20 @@ class BaseSpace:
         to capture references to kernel-level books and projectors
         (registry, balance_sheets, constraint_evaluator, signals, etc.)
         without coupling the kernel to any specific space subclass.
+
+        Contract for overrides:
+            - Idempotent: calling bind() more than once must be safe;
+              the second call should produce the same end state as the
+              first.
+            - Fill-only: bind() must not overwrite a reference that is
+              already set on the space. It only fills in fields that
+              are currently None.
+            - Explicit refs win: anything passed via the dataclass
+              constructor is authoritative. bind() never replaces it.
+            - Hot-swap / reload is out of scope. v0.8 does not support
+              rebinding a space to a different kernel mid-simulation,
+              and overrides are not expected to handle that case.
+              Future milestones may relax this.
         """
         return None
 

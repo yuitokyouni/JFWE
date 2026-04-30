@@ -1762,8 +1762,8 @@ There is intentionally no `cash`, `revenue`, `profit`, `leverage`, `assets`, or 
 
 - `add_firm_state(firm_state)` — register a firm; rejects duplicate `firm_id`; emits `firm_state_added` to the ledger.
 - `get_firm_state(firm_id)` — returns `FirmState` or `None`. **Does not raise** for unknown firms.
-- `list_firms()` — tuple of all `FirmState`s in insertion order.
-- `snapshot()` — JSON-friendly view of the space's firms, sorted by `firm_id`.
+- `list_firms()` — tuple of all `FirmState`s in **insertion order** (a stable v0.8 invariant). Useful for audit-style reads where "added Nth" matters.
+- `snapshot()` — JSON-friendly view of the space's firms, **sorted by `firm_id`** (deterministic regardless of insertion order). Use `list_firms()` if insertion order matters.
 
 And read-only accessors over the kernel projections:
 
@@ -1794,6 +1794,17 @@ Two important properties:
 2. **bind() does not overwrite explicit refs**: tests can pass refs at construction (e.g., a custom ledger) and `bind()` will leave those alone, only filling in unset fields. This makes it safe to register the same space pattern in tests with custom wiring.
 
 Spaces that need additional injection points add corresponding fields and extend their `bind()` override. The kernel does not need to know.
+
+#### bind() contract for overrides
+
+Every `bind()` override (now and in future domain spaces) must satisfy four properties:
+
+1. **Idempotent.** Calling `bind()` more than once must be safe. The second call should produce the same end state as the first. Concretely: gate every assignment on `is None` so a re-call is a no-op.
+2. **Fill-only.** `bind()` must not overwrite a reference that is already set on the space. It only fills in fields that are currently `None`.
+3. **Explicit constructor refs win.** Anything passed via the dataclass constructor (e.g., `CorporateSpace(ledger=custom_ledger)`) is authoritative. `bind()` never replaces it. This is the rule that makes test wiring tractable.
+4. **Hot-swap / reload is out of scope.** v0.8 does not support rebinding a space to a different kernel mid-simulation. Overrides are not expected to handle that case. Future milestones may relax this; for now, register a space exactly once with exactly one kernel.
+
+These four rules are documented on `BaseSpace.bind` and on every concrete override. Tests verify property 3 (`test_bind_does_not_overwrite_explicit_construction_refs`); properties 1, 2, and 4 are invariants of the implementation pattern.
 
 ### 27.5 What CorporateSpace must not do
 

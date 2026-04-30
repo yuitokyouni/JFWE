@@ -58,6 +58,16 @@ class CorporateSpace(BaseSpace):
     # ------------------------------------------------------------------
 
     def bind(self, kernel: Any) -> None:
+        """
+        Capture kernel references the space needs to read projections.
+
+        Contract (see BaseSpace.bind for the full statement):
+            - Idempotent: every assignment is gated on ``is None``, so a
+              second call leaves the space in the same state as the first.
+            - Fill-only: explicit refs supplied via the constructor are
+              never overwritten.
+            - Hot-swap / reload is out of scope.
+        """
         if self.registry is None:
             self.registry = kernel.registry
         if self.balance_sheets is None:
@@ -105,6 +115,15 @@ class CorporateSpace(BaseSpace):
         return self._firms.get(firm_id)
 
     def list_firms(self) -> tuple[FirmState, ...]:
+        """
+        Return all registered firms in insertion order.
+
+        v0.8 documents this as a stable invariant: ``list_firms()``
+        preserves the order in which ``add_firm_state`` was called. This
+        is useful for audit-style reads where "added Nth" is meaningful.
+        Callers that want a deterministic, content-keyed ordering should
+        use :meth:`snapshot`, which sorts by ``firm_id``.
+        """
         return tuple(self._firms.values())
 
     # ------------------------------------------------------------------
@@ -146,6 +165,17 @@ class CorporateSpace(BaseSpace):
         *,
         as_of_date: date | str | None = None,
     ) -> tuple[InformationSignal, ...]:
+        """
+        Return signals visible to ``observer_id``.
+
+        In CorporateSpace the natural caller is querying "what does
+        firm X see?", so ``observer_id`` is typically a firm id (e.g.,
+        ``"firm:toyota"``). The argument is named generically because
+        the underlying check is :meth:`SignalBook.list_visible_to`,
+        which is observer-agnostic — any agent or space id is valid.
+
+        Returns an empty tuple if no SignalBook is bound.
+        """
         if self.signals is None:
             return ()
         return self.signals.list_visible_to(observer_id, as_of_date=as_of_date)
@@ -155,6 +185,13 @@ class CorporateSpace(BaseSpace):
     # ------------------------------------------------------------------
 
     def snapshot(self) -> dict[str, Any]:
+        """
+        Return a deterministic, JSON-friendly view of the space.
+
+        Firms are sorted by ``firm_id`` so the output is stable across
+        runs regardless of insertion order. Use :meth:`list_firms` if
+        insertion order matters.
+        """
         firms = sorted(
             (firm.to_dict() for firm in self._firms.values()),
             key=lambda item: item["firm_id"],
