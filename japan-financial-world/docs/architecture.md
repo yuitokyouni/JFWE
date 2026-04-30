@@ -1,5 +1,14 @@
 # Architecture
 
+> **Note (v0 freeze):** This document describes the long-term ambition for
+> the project's spatial layout, including subspaces and dynamics that v0
+> does not implement. For an accurate description of the v0 architecture
+> as built, see [`architecture_v0.md`](architecture_v0.md). v0 contains
+> eight concrete domain spaces (Corporate, Banking, Investors, Exchange,
+> Real Estate, Information, Policy, External) — not the layer-and-subspace
+> tree below. The layered tree is kept here as a design target for v1+
+> and beyond.
+
 The engine is organized as spaces under a world scheduler. Each space owns its
 internal state and publishes limited outputs. Cross-space interaction is
 restricted to asset ownership, contracts, market prices, information signals,

@@ -2587,7 +2587,7 @@ Both are pure classification layers. `PolicySpace` records who has policy-making
 
 ### 34.1 Why a single milestone for two spaces
 
-Combining Policy and External into one milestone is a deliberate choice. Both are minimal classification layers with no domain-specific kernel ref of their own (they need only `signals` and `registry` from `DomainSpace`), no `bind()` override, and no novel structural element beyond what v0.11–§32 already established. The shared characteristic is that **v0.14 deliberately defines what these spaces will not do** — central bank reaction functions and exogenous shock generation are exactly the kinds of behaviors that a future v1 jurisdiction overlay will need, and v0.14 has to keep its hands off them.
+Combining Policy and External into one milestone is a deliberate choice. Both are minimal classification layers with no domain-specific kernel ref of their own (they need only `signals` and `registry` from `DomainSpace`), no `bind()` override, and no novel structural element beyond what v0.11–§32 already established. The shared characteristic is that **v0.14 deliberately defines what these spaces will not do** — central bank reaction functions and exogenous shock generation are exactly the kinds of behaviors that future v1 reference behavior will introduce, and v0.14 has to keep its hands off them.
 
 After v0.14, every space from §2 has a state file, a space file, integration tests, and a documented contract. The world kernel is structurally complete; what remains is content (specific firms, specific banks, specific signals, scenarios) and behavior (reactions, decisions, dynamics).
 
@@ -2752,7 +2752,13 @@ After v0.14, all eight spaces enumerated in §2 (Corporate, Investors, Banking, 
 - unit and integration tests
 - a documented contract in `world_model.md`
 
-The world kernel as a constitutional structure is now complete. Subsequent milestones (v1 and beyond) will add domain behavior — Japanese-jurisdiction calibration, central bank reaction functions, investor strategy, market clearing, scenarios — on top of this kernel rather than expanding it.
+The world kernel as a constitutional structure is now complete. Subsequent milestones build on it in distinct layers:
+
+- **v1.xx** adds *jurisdiction-neutral reference behavior* — central bank reaction functions, investor strategies, market clearing, valuation, intraday phases — on top of this kernel.
+- **v2.xx** adds *Japan public calibration* on top of v1, using public data sources.
+- **v3.xx** adds *Japan proprietary / commercial calibration* on top of v2, using paid or expert-knowledge data.
+
+v0 itself stays jurisdiction-neutral and behavior-free.
 
 ---
 
@@ -2820,4 +2826,10 @@ v0.15 is the final milestone in the v0 line. After it passes, the project's inva
 - signal content lives in `SignalBook`; classifications live in their respective spaces
 - no decision, valuation, scenario, or stochastic process is implemented anywhere
 
-v1 (and any later versions) will build on this foundation. They are expected to add behavior, calibration to specific Japanese institutions, and scenario logic — but not to weaken any of the v0 invariants above without an explicit, documented decision.
+Subsequent versions will build on this foundation:
+
+- **v1.xx** adds jurisdiction-neutral reference behavior (decisions, valuation, market clearing, intraday phases, scenarios).
+- **v2.xx** adds Japan public calibration on top of v1.
+- **v3.xx** adds Japan proprietary / commercial calibration on top of v2.
+
+None of those layers may weaken the v0 invariants above without an explicit, documented decision.

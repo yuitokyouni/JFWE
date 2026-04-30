@@ -1,5 +1,14 @@
 # Scope
 
+> **Note (v0 freeze):** This document was written as the original ambition
+> scope for the project. It includes targets — behavior, scenarios, Japan
+> calibration, feedback loops — that the v0 milestone deliberately did **not**
+> implement. For an accurate description of what v0 actually delivered (and
+> what is explicitly out of scope for v0), see [`v0_scope.md`](v0_scope.md).
+> The content below remains as a long-term design target for v1 (reference
+> behavior), v2 (Japan public calibration), and v3 (Japan proprietary
+> calibration).
+
 This document defines what v0 should reproduce and what it must deliberately
 avoid. The goal is a complex Japanese financial economy model, but the first
 version must protect the core feedback loop from becoming an unbounded
