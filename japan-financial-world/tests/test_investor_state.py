@@ -13,7 +13,7 @@ from world.ledger import Ledger
 
 
 def _investor(
-    investor_id: str = "investor:gpif",
+    investor_id: str = "investor:reference_fund_a",
     *,
     investor_type: str = "pension_fund",
     tier: str = "tier_1",
@@ -36,7 +36,7 @@ def _investor(
 
 def test_investor_state_carries_required_fields():
     investor = _investor()
-    assert investor.investor_id == "investor:gpif"
+    assert investor.investor_id == "investor:reference_fund_a"
     assert investor.investor_type == "pension_fund"
     assert investor.tier == "tier_1"
     assert investor.status == "active"
@@ -52,7 +52,7 @@ def test_investor_state_to_dict_is_serializable():
     investor = _investor(metadata={"mandate": "diversified"})
     payload = investor.to_dict()
     assert payload == {
-        "investor_id": "investor:gpif",
+        "investor_id": "investor:reference_fund_a",
         "investor_type": "pension_fund",
         "tier": "tier_1",
         "status": "active",
@@ -73,7 +73,7 @@ def test_investor_state_is_immutable():
 
 def test_portfolio_exposure_carries_full_fields():
     exposure = PortfolioExposure(
-        investor_id="investor:gpif",
+        investor_id="investor:reference_fund_a",
         asset_id="asset:aapl",
         quantity=100.0,
         latest_price=150.0,
@@ -81,7 +81,7 @@ def test_portfolio_exposure_carries_full_fields():
         asset_type="equity",
         metadata={},
     )
-    assert exposure.investor_id == "investor:gpif"
+    assert exposure.investor_id == "investor:reference_fund_a"
     assert exposure.asset_id == "asset:aapl"
     assert exposure.quantity == 100.0
     assert exposure.latest_price == 150.0
@@ -91,7 +91,7 @@ def test_portfolio_exposure_carries_full_fields():
 
 def test_portfolio_exposure_allows_missing_values():
     exposure = PortfolioExposure(
-        investor_id="investor:gpif",
+        investor_id="investor:reference_fund_a",
         asset_id="asset:foo",
         quantity=10.0,
         latest_price=None,
@@ -107,7 +107,7 @@ def test_portfolio_exposure_allows_missing_values():
 
 def test_portfolio_exposure_to_dict_is_serializable():
     exposure = PortfolioExposure(
-        investor_id="investor:gpif",
+        investor_id="investor:reference_fund_a",
         asset_id="asset:aapl",
         quantity=100.0,
         latest_price=150.0,
@@ -115,7 +115,7 @@ def test_portfolio_exposure_to_dict_is_serializable():
         asset_type="equity",
     )
     assert exposure.to_dict() == {
-        "investor_id": "investor:gpif",
+        "investor_id": "investor:reference_fund_a",
         "asset_id": "asset:aapl",
         "quantity": 100.0,
         "latest_price": 150.0,
@@ -134,7 +134,7 @@ def test_add_and_get_investor_state():
     space = InvestorSpace()
     investor = _investor()
     space.add_investor_state(investor)
-    assert space.get_investor_state("investor:gpif") is investor
+    assert space.get_investor_state("investor:reference_fund_a") is investor
 
 
 def test_get_investor_state_returns_none_for_unknown():
@@ -209,8 +209,8 @@ def test_add_investor_state_records_to_ledger():
     records = ledger.filter(event_type="investor_state_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "investor:gpif"
-    assert record.agent_id == "investor:gpif"
+    assert record.object_id == "investor:reference_fund_a"
+    assert record.agent_id == "investor:reference_fund_a"
     assert record.payload["investor_type"] == "hedge_fund"
     assert record.payload["tier"] == "tier_2"
     assert record.payload["status"] == "active"
@@ -221,7 +221,7 @@ def test_add_investor_state_records_to_ledger():
 def test_add_investor_state_does_not_record_when_no_ledger():
     space = InvestorSpace()
     space.add_investor_state(_investor())  # should not raise
-    assert space.get_investor_state("investor:gpif") is not None
+    assert space.get_investor_state("investor:reference_fund_a") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -231,24 +231,24 @@ def test_add_investor_state_does_not_record_when_no_ledger():
 
 def test_get_balance_sheet_view_returns_none_when_unbound():
     space = InvestorSpace()
-    assert space.get_balance_sheet_view("investor:gpif") is None
+    assert space.get_balance_sheet_view("investor:reference_fund_a") is None
 
 
 def test_get_constraint_evaluations_returns_empty_when_unbound():
     space = InvestorSpace()
-    assert space.get_constraint_evaluations("investor:gpif") == ()
+    assert space.get_constraint_evaluations("investor:reference_fund_a") == ()
 
 
 def test_get_visible_signals_returns_empty_when_unbound():
     space = InvestorSpace()
-    assert space.get_visible_signals("investor:gpif") == ()
+    assert space.get_visible_signals("investor:reference_fund_a") == ()
 
 
 def test_list_portfolio_positions_returns_empty_when_unbound():
     space = InvestorSpace()
-    assert space.list_portfolio_positions("investor:gpif") == ()
+    assert space.list_portfolio_positions("investor:reference_fund_a") == ()
 
 
 def test_list_portfolio_exposures_returns_empty_when_unbound():
     space = InvestorSpace()
-    assert space.list_portfolio_exposures("investor:gpif") == ()
+    assert space.list_portfolio_exposures("investor:reference_fund_a") == ()

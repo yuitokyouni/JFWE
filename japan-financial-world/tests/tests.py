@@ -9,20 +9,20 @@ from world.ids import (
 
 
 def test_world_id_parses_valid_id() -> None:
-    world_id = WorldID("firm:toyota_like_001")
+    world_id = WorldID("firm:reference_manufacturer_001")
 
-    assert str(world_id) == "firm:toyota_like_001"
+    assert str(world_id) == "firm:reference_manufacturer_001"
     assert world_id.kind == "firm"
-    assert world_id.key == "toyota_like_001"
+    assert world_id.key == "reference_manufacturer_like_001"
     assert world_id.is_agent() is True
 
 
 def test_build_world_id() -> None:
-    world_id = build_world_id("asset", "equity_toyota_like_001")
+    world_id = build_world_id("asset", "equity_reference_manufacturer_001")
 
-    assert str(world_id) == "asset:equity_toyota_like_001"
+    assert str(world_id) == "asset:equity_reference_manufacturer_001"
     assert world_id.kind == "asset"
-    assert world_id.key == "equity_toyota_like_001"
+    assert world_id.key == "equity_reference_manufacturer_001"
 
 
 @pytest.mark.parametrize(
@@ -33,7 +33,7 @@ def test_build_world_id() -> None:
         "firm:",
         ":toyota",
         "Firm:toyota",
-        "firm:Toyota",
+        "firm:the reference manufacturer",
         "unknown:thing_001",
         "asset:equity-toyota",
         "asset:equity toyota",

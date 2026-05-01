@@ -9,9 +9,9 @@ def test_load_single_yaml_file(tmp_path):
     path = tmp_path / "firm.yaml"
     path.write_text(
         """
-id: firm:toyota_like_001
+id: firm:reference_manufacturer_001
 type: firm
-name: Toyota-like Manufacturer
+name: Reference Manufacturer
 sector: manufacturing
 """,
         encoding="utf-8",
@@ -24,8 +24,8 @@ sector: manufacturing
 
     record = result.records[0]
     assert record.object_type == "firm"
-    assert record.object_id == "firm:toyota_like_001"
-    assert record.payload["name"] == "Toyota-like Manufacturer"
+    assert record.object_id == "firm:reference_manufacturer_001"
+    assert record.payload["name"] == "Reference Manufacturer"
 
 
 def test_load_collection_yaml_file(tmp_path):

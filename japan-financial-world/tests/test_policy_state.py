@@ -14,7 +14,7 @@ from world.ledger import Ledger
 
 
 def _authority(
-    authority_id: str = "authority:boj",
+    authority_id: str = "authority:reference_central_bank",
     *,
     authority_type: str = "central_bank",
     tier: str = "national",
@@ -33,7 +33,7 @@ def _authority(
 def _instrument(
     instrument_id: str = "instrument:boj_policy_rate",
     *,
-    authority_id: str = "authority:boj",
+    authority_id: str = "authority:reference_central_bank",
     instrument_type: str = "policy_rate",
     status: str = "active",
     metadata: dict | None = None,
@@ -54,7 +54,7 @@ def _instrument(
 
 def test_authority_state_carries_required_fields():
     auth = _authority()
-    assert auth.authority_id == "authority:boj"
+    assert auth.authority_id == "authority:reference_central_bank"
     assert auth.authority_type == "central_bank"
     assert auth.tier == "national"
     assert auth.status == "active"
@@ -69,7 +69,7 @@ def test_authority_state_rejects_empty_id():
 def test_authority_state_to_dict_is_serializable():
     auth = _authority(authority_type="financial_regulator")
     assert auth.to_dict() == {
-        "authority_id": "authority:boj",
+        "authority_id": "authority:reference_central_bank",
         "authority_type": "financial_regulator",
         "tier": "national",
         "status": "active",
@@ -91,7 +91,7 @@ def test_authority_state_is_immutable():
 def test_instrument_state_carries_required_fields():
     inst = _instrument()
     assert inst.instrument_id == "instrument:boj_policy_rate"
-    assert inst.authority_id == "authority:boj"
+    assert inst.authority_id == "authority:reference_central_bank"
     assert inst.instrument_type == "policy_rate"
     assert inst.status == "active"
 
@@ -118,7 +118,7 @@ def test_add_and_get_authority_state():
     space = PolicySpace()
     auth = _authority()
     space.add_authority_state(auth)
-    assert space.get_authority_state("authority:boj") is auth
+    assert space.get_authority_state("authority:reference_central_bank") is auth
 
 
 def test_get_authority_state_returns_none_for_unknown():
@@ -177,10 +177,10 @@ def test_instrument_can_reference_unregistered_authority():
 def test_list_instruments_by_authority_filters_correctly():
     space = PolicySpace()
     space.add_instrument_state(
-        _instrument(instrument_id="instrument:rate", authority_id="authority:boj")
+        _instrument(instrument_id="instrument:rate", authority_id="authority:reference_central_bank")
     )
     space.add_instrument_state(
-        _instrument(instrument_id="instrument:rrr", authority_id="authority:boj")
+        _instrument(instrument_id="instrument:rrr", authority_id="authority:reference_central_bank")
     )
     space.add_instrument_state(
         _instrument(
@@ -189,7 +189,7 @@ def test_list_instruments_by_authority_filters_correctly():
         )
     )
 
-    boj_instruments = space.list_instruments_by_authority("authority:boj")
+    boj_instruments = space.list_instruments_by_authority("authority:reference_central_bank")
     fsa_instruments = space.list_instruments_by_authority("authority:fsa")
     unknown = space.list_instruments_by_authority("authority:none")
 
@@ -255,7 +255,7 @@ def test_add_authority_records_to_ledger():
     records = ledger.filter(event_type="policy_authority_state_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "authority:boj"
+    assert record.object_id == "authority:reference_central_bank"
     assert record.payload["authority_type"] == "central_bank"
     assert record.simulation_date == "2026-01-01"
     assert record.space_id == "policy"
@@ -272,7 +272,7 @@ def test_add_instrument_records_to_ledger():
     assert len(records) == 1
     record = records[0]
     assert record.object_id == "instrument:boj_policy_rate"
-    assert record.target == "authority:boj"
+    assert record.target == "authority:reference_central_bank"
     assert record.payload["instrument_type"] == "reserve_requirement"
 
 
@@ -280,5 +280,5 @@ def test_add_state_does_not_record_when_no_ledger():
     space = PolicySpace()
     space.add_authority_state(_authority())
     space.add_instrument_state(_instrument())
-    assert space.get_authority_state("authority:boj") is not None
+    assert space.get_authority_state("authority:reference_central_bank") is not None
     assert space.get_instrument_state("instrument:boj_policy_rate") is not None

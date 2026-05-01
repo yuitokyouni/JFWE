@@ -254,9 +254,9 @@ def _iter_objects_from_document(
     Supported v0 shapes:
 
     1. Single object:
-       id: firm:toyota_like_001
+       id: firm:reference_manufacturer_001
        type: firm
-       name: Toyota-like Manufacturer
+       name: Reference Manufacturer
 
     2. List of objects:
        - id: firm:a

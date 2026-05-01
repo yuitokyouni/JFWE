@@ -63,8 +63,8 @@ def test_policy_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:rate_decision",
             signal_type="policy_announcement",
-            subject_id="authority:boj",
-            source_id="authority:boj",
+            subject_id="authority:reference_central_bank",
+            source_id="authority:reference_central_bank",
             published_date="2026-01-01",
         )
     )
@@ -72,8 +72,8 @@ def test_policy_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:internal_minutes",
             signal_type="internal_memo",
-            subject_id="authority:boj",
-            source_id="authority:boj",
+            subject_id="authority:reference_central_bank",
+            source_id="authority:reference_central_bank",
             published_date="2026-01-01",
             visibility="restricted",
             metadata={"allowed_viewers": ("agent:internal_committee",)},
@@ -83,7 +83,7 @@ def test_policy_space_can_read_visible_signals():
     policy = PolicySpace()
     kernel.register_space(policy)
 
-    visible = policy.get_visible_signals("authority:boj")
+    visible = policy.get_visible_signals("authority:reference_central_bank")
     visible_ids = {s.signal_id for s in visible}
     assert "signal:rate_decision" in visible_ids
     assert "signal:internal_minutes" not in visible_ids
@@ -100,8 +100,8 @@ def test_policy_space_does_not_mutate_world_books():
         InformationSignal(
             signal_id="signal:announcement",
             signal_type="policy_announcement",
-            subject_id="authority:boj",
-            source_id="authority:boj",
+            subject_id="authority:reference_central_bank",
+            source_id="authority:reference_central_bank",
             published_date="2026-01-01",
         )
     )
@@ -116,20 +116,20 @@ def test_policy_space_does_not_mutate_world_books():
     kernel.register_space(policy)
     policy.add_authority_state(
         PolicyAuthorityState(
-            authority_id="authority:boj",
+            authority_id="authority:reference_central_bank",
             authority_type="central_bank",
         )
     )
     policy.add_instrument_state(
         PolicyInstrumentState(
             instrument_id="instrument:boj_policy_rate",
-            authority_id="authority:boj",
+            authority_id="authority:reference_central_bank",
             instrument_type="policy_rate",
         )
     )
 
-    policy.get_visible_signals("authority:boj")
-    policy.list_instruments_by_authority("authority:boj")
+    policy.get_visible_signals("authority:reference_central_bank")
+    policy.list_instruments_by_authority("authority:reference_central_bank")
     policy.snapshot()
 
     assert kernel.ownership.snapshot() == ownership_before
@@ -144,7 +144,7 @@ def test_policy_space_runs_for_one_year_after_state_added():
     kernel = _kernel()
     policy = PolicySpace()
     kernel.register_space(policy)
-    policy.add_authority_state(PolicyAuthorityState(authority_id="authority:boj"))
+    policy.add_authority_state(PolicyAuthorityState(authority_id="authority:reference_central_bank"))
 
     kernel.run(days=365)
 

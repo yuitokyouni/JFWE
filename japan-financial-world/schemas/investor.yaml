@@ -13,7 +13,7 @@ fields:
     type: string
   type:
     type: string
-    examples: [gpif_like, passive, retail, insurer, hedge_fund, activist, noise]
+    examples: [passive_long_only, passive, retail, insurer, hedge_fund, activist, noise]
   tier:
     type: integer
     allowed: [1, 2, 3]

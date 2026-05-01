@@ -14,7 +14,7 @@ from world.ledger import Ledger
 
 
 def _market(
-    market_id: str = "market:tse",
+    market_id: str = "market:reference_equity_market",
     *,
     market_type: str = "stock_exchange",
     tier: str = "primary",
@@ -31,8 +31,8 @@ def _market(
 
 
 def _listing(
-    market_id: str = "market:tse",
-    asset_id: str = "asset:toyota_eq",
+    market_id: str = "market:reference_equity_market",
+    asset_id: str = "asset:reference_manufacturer_equity",
     *,
     listing_status: str = "listed",
     metadata: dict | None = None,
@@ -52,7 +52,7 @@ def _listing(
 
 def test_market_state_carries_required_fields():
     market = _market()
-    assert market.market_id == "market:tse"
+    assert market.market_id == "market:reference_equity_market"
     assert market.market_type == "stock_exchange"
     assert market.tier == "primary"
     assert market.status == "active"
@@ -67,7 +67,7 @@ def test_market_state_rejects_empty_market_id():
 def test_market_state_to_dict_is_serializable():
     market = _market(metadata={"timezone": "Asia/Tokyo"})
     assert market.to_dict() == {
-        "market_id": "market:tse",
+        "market_id": "market:reference_equity_market",
         "market_type": "stock_exchange",
         "tier": "primary",
         "status": "active",
@@ -88,8 +88,8 @@ def test_market_state_is_immutable():
 
 def test_listing_state_carries_required_fields():
     listing = _listing()
-    assert listing.market_id == "market:tse"
-    assert listing.asset_id == "asset:toyota_eq"
+    assert listing.market_id == "market:reference_equity_market"
+    assert listing.asset_id == "asset:reference_manufacturer_equity"
     assert listing.listing_status == "listed"
     assert listing.metadata == {}
 
@@ -98,14 +98,14 @@ def test_listing_state_rejects_empty_market_or_asset_id():
     with pytest.raises(ValueError):
         ListingState(market_id="", asset_id="asset:foo")
     with pytest.raises(ValueError):
-        ListingState(market_id="market:tse", asset_id="")
+        ListingState(market_id="market:reference_equity_market", asset_id="")
 
 
 def test_listing_state_to_dict_is_serializable():
     listing = _listing(listing_status="suspended", metadata={"halted_until": "2026-02-01"})
     assert listing.to_dict() == {
-        "market_id": "market:tse",
-        "asset_id": "asset:toyota_eq",
+        "market_id": "market:reference_equity_market",
+        "asset_id": "asset:reference_manufacturer_equity",
         "listing_status": "suspended",
         "metadata": {"halted_until": "2026-02-01"},
     }
@@ -126,7 +126,7 @@ def test_add_and_get_market_state():
     space = ExchangeSpace()
     market = _market()
     space.add_market_state(market)
-    assert space.get_market_state("market:tse") is market
+    assert space.get_market_state("market:reference_equity_market") is market
 
 
 def test_get_market_state_returns_none_for_unknown():
@@ -165,12 +165,12 @@ def test_add_and_get_listing():
     space = ExchangeSpace()
     listing = _listing()
     space.add_listing(listing)
-    assert space.get_listing("market:tse", "asset:toyota_eq") is listing
+    assert space.get_listing("market:reference_equity_market", "asset:reference_manufacturer_equity") is listing
 
 
 def test_get_listing_returns_none_for_unknown_pair():
     space = ExchangeSpace()
-    assert space.get_listing("market:tse", "asset:ghost") is None
+    assert space.get_listing("market:reference_equity_market", "asset:ghost") is None
 
 
 def test_duplicate_listing_rejected():
@@ -182,37 +182,37 @@ def test_duplicate_listing_rejected():
 
 def test_same_asset_can_be_listed_on_multiple_markets():
     space = ExchangeSpace()
-    space.add_listing(_listing(market_id="market:tse", asset_id="asset:toyota_eq"))
-    space.add_listing(_listing(market_id="market:nyse", asset_id="asset:toyota_eq"))
-    assert space.get_listing("market:tse", "asset:toyota_eq") is not None
-    assert space.get_listing("market:nyse", "asset:toyota_eq") is not None
+    space.add_listing(_listing(market_id="market:reference_equity_market", asset_id="asset:reference_manufacturer_equity"))
+    space.add_listing(_listing(market_id="market:nyse", asset_id="asset:reference_manufacturer_equity"))
+    assert space.get_listing("market:reference_equity_market", "asset:reference_manufacturer_equity") is not None
+    assert space.get_listing("market:nyse", "asset:reference_manufacturer_equity") is not None
 
 
 def test_list_listings_returns_all_in_insertion_order():
     space = ExchangeSpace()
-    space.add_listing(_listing(market_id="market:tse", asset_id="asset:a"))
-    space.add_listing(_listing(market_id="market:tse", asset_id="asset:b"))
+    space.add_listing(_listing(market_id="market:reference_equity_market", asset_id="asset:a"))
+    space.add_listing(_listing(market_id="market:reference_equity_market", asset_id="asset:b"))
     space.add_listing(_listing(market_id="market:nyse", asset_id="asset:c"))
 
     listings = space.list_listings()
     assert [(l.market_id, l.asset_id) for l in listings] == [
-        ("market:tse", "asset:a"),
-        ("market:tse", "asset:b"),
+        ("market:reference_equity_market", "asset:a"),
+        ("market:reference_equity_market", "asset:b"),
         ("market:nyse", "asset:c"),
     ]
 
 
 def test_list_assets_on_market_filters_by_market():
     space = ExchangeSpace()
-    space.add_listing(_listing(market_id="market:tse", asset_id="asset:toyota_eq"))
-    space.add_listing(_listing(market_id="market:tse", asset_id="asset:sony_eq"))
+    space.add_listing(_listing(market_id="market:reference_equity_market", asset_id="asset:reference_manufacturer_equity"))
+    space.add_listing(_listing(market_id="market:reference_equity_market", asset_id="asset:sony_eq"))
     space.add_listing(_listing(market_id="market:jgb", asset_id="asset:jgb_10y"))
 
-    on_tse = space.list_assets_on_market("market:tse")
+    on_tse = space.list_assets_on_market("market:reference_equity_market")
     on_jgb = space.list_assets_on_market("market:jgb")
     on_unknown = space.list_assets_on_market("market:nyse")
 
-    assert {l.asset_id for l in on_tse} == {"asset:toyota_eq", "asset:sony_eq"}
+    assert {l.asset_id for l in on_tse} == {"asset:reference_manufacturer_equity", "asset:sony_eq"}
     assert {l.asset_id for l in on_jgb} == {"asset:jgb_10y"}
     assert on_unknown == ()
 
@@ -268,7 +268,7 @@ def test_add_market_state_records_to_ledger():
     records = ledger.filter(event_type="market_state_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "market:tse"
+    assert record.object_id == "market:reference_equity_market"
     assert record.payload["market_type"] == "bond_market"
     assert record.payload["tier"] == "secondary"
     assert record.simulation_date == "2026-01-01"
@@ -285,17 +285,17 @@ def test_add_listing_records_to_ledger():
     records = ledger.filter(event_type="listing_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "asset:toyota_eq"
-    assert record.target == "market:tse"
-    assert record.payload["market_id"] == "market:tse"
-    assert record.payload["asset_id"] == "asset:toyota_eq"
+    assert record.object_id == "asset:reference_manufacturer_equity"
+    assert record.target == "market:reference_equity_market"
+    assert record.payload["market_id"] == "market:reference_equity_market"
+    assert record.payload["asset_id"] == "asset:reference_manufacturer_equity"
     assert record.payload["listing_status"] == "listed"
 
 
 def test_add_market_state_does_not_record_when_no_ledger():
     space = ExchangeSpace()
     space.add_market_state(_market())  # should not raise
-    assert space.get_market_state("market:tse") is not None
+    assert space.get_market_state("market:reference_equity_market") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -305,14 +305,14 @@ def test_add_market_state_does_not_record_when_no_ledger():
 
 def test_get_latest_price_returns_none_when_unbound():
     space = ExchangeSpace()
-    assert space.get_latest_price("asset:toyota_eq") is None
+    assert space.get_latest_price("asset:reference_manufacturer_equity") is None
 
 
 def test_get_price_history_returns_empty_when_unbound():
     space = ExchangeSpace()
-    assert space.get_price_history("asset:toyota_eq") == ()
+    assert space.get_price_history("asset:reference_manufacturer_equity") == ()
 
 
 def test_get_visible_signals_returns_empty_when_unbound():
     space = ExchangeSpace()
-    assert space.get_visible_signals("market:tse") == ()
+    assert space.get_visible_signals("market:reference_equity_market") == ()

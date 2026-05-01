@@ -80,7 +80,7 @@ def test_information_space_can_list_signals_by_source():
         InformationSignal(
             signal_id="signal:moodys_rating_001",
             signal_type="rating_action",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="source:moodys",
             published_date="2026-01-01",
         )
@@ -98,7 +98,7 @@ def test_information_space_can_list_signals_by_source():
         InformationSignal(
             signal_id="signal:sp_rating_001",
             signal_type="rating_action",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="source:sp",
             published_date="2026-01-01",
         )
@@ -123,7 +123,7 @@ def test_information_space_can_list_signals_by_type():
         InformationSignal(
             signal_id="signal:rating_a",
             signal_type="rating_action",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="source:moodys",
             published_date="2026-01-01",
         )
@@ -132,8 +132,8 @@ def test_information_space_can_list_signals_by_type():
         InformationSignal(
             signal_id="signal:earnings_a",
             signal_type="earnings_report",
-            subject_id="firm:toyota",
-            source_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
+            source_id="firm:reference_manufacturer_a",
             published_date="2026-01-01",
         )
     )
@@ -154,7 +154,7 @@ def test_information_space_can_list_visible_signals():
         InformationSignal(
             signal_id="signal:public_news",
             signal_type="news",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="source:reuters",
             published_date="2026-01-01",
         )
@@ -163,8 +163,8 @@ def test_information_space_can_list_visible_signals():
         InformationSignal(
             signal_id="signal:internal_briefing",
             signal_type="internal_memo",
-            subject_id="firm:toyota",
-            source_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
+            source_id="firm:reference_manufacturer_a",
             published_date="2026-01-01",
             visibility="restricted",
             metadata={"allowed_viewers": ("agent:legal",)},
@@ -195,7 +195,7 @@ def test_signal_queries_independent_of_source_or_channel_registration():
         InformationSignal(
             signal_id="signal:from_unregistered",
             signal_type="news",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="source:not_registered_in_info_space",
             published_date="2026-01-01",
         )
@@ -222,7 +222,7 @@ def test_information_space_does_not_mutate_world_books():
         InformationSignal(
             signal_id="signal:rating_001",
             signal_type="rating_action",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="source:moodys",
             published_date="2026-01-01",
         )

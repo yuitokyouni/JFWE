@@ -81,34 +81,34 @@ def test_bind_is_idempotent():
 
 def test_investor_space_can_read_balance_sheet_view():
     kernel = _kernel()
-    kernel.ownership.add_position("investor:gpif", "asset:aapl", 100)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:aapl", 100)
     kernel.prices.set_price("asset:aapl", 150.0, "2026-01-01", "exchange")
 
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
     investor_space.add_investor_state(
         InvestorState(
-            investor_id="investor:gpif",
+            investor_id="investor:reference_fund_a",
             investor_type="pension_fund",
             tier="tier_1",
         )
     )
 
-    view = investor_space.get_balance_sheet_view("investor:gpif")
+    view = investor_space.get_balance_sheet_view("investor:reference_fund_a")
     assert view is not None
-    assert view.agent_id == "investor:gpif"
+    assert view.agent_id == "investor:reference_fund_a"
     assert view.asset_value == 15_000.0
     assert view.as_of_date == "2026-01-01"
 
 
 def test_investor_space_can_read_constraint_evaluations():
     kernel = _kernel()
-    kernel.ownership.add_position("investor:gpif", "asset:cash", 1_000_000)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:cash", 1_000_000)
     kernel.prices.set_price("asset:cash", 1.0, "2026-01-01", "system")
     kernel.constraints.add_constraint(
         ConstraintRecord(
             constraint_id="constraint:gpif_lev",
-            owner_id="investor:gpif",
+            owner_id="investor:reference_fund_a",
             constraint_type="max_leverage",
             threshold=0.7,
             comparison="<=",
@@ -118,7 +118,7 @@ def test_investor_space_can_read_constraint_evaluations():
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
 
-    evaluations = investor_space.get_constraint_evaluations("investor:gpif")
+    evaluations = investor_space.get_constraint_evaluations("investor:reference_fund_a")
     assert len(evaluations) == 1
     # No liabilities -> leverage = 0 -> ok
     assert evaluations[0].status == "ok"
@@ -130,8 +130,8 @@ def test_investor_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:earnings",
             signal_type="earnings_report",
-            subject_id="firm:toyota",
-            source_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
+            source_id="firm:reference_manufacturer_a",
             published_date="2026-01-01",
         )
     )
@@ -139,8 +139,8 @@ def test_investor_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:closed",
             signal_type="internal_memo",
-            subject_id="investor:gpif",
-            source_id="investor:gpif",
+            subject_id="investor:reference_fund_a",
+            source_id="investor:reference_fund_a",
             published_date="2026-01-01",
             visibility="restricted",
             metadata={"allowed_viewers": ("agent:trustee",)},
@@ -150,7 +150,7 @@ def test_investor_space_can_read_visible_signals():
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
 
-    visible = investor_space.get_visible_signals("investor:gpif")
+    visible = investor_space.get_visible_signals("investor:reference_fund_a")
     visible_ids = {s.signal_id for s in visible}
     assert "signal:earnings" in visible_ids
     assert "signal:closed" not in visible_ids
@@ -163,18 +163,18 @@ def test_investor_space_can_read_visible_signals():
 
 def test_list_portfolio_positions_returns_raw_ownership_records():
     kernel = _kernel()
-    kernel.ownership.add_position("investor:gpif", "asset:aapl", 100)
-    kernel.ownership.add_position("investor:gpif", "asset:msft", 50)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:aapl", 100)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:msft", 50)
     kernel.ownership.add_position("investor:other", "asset:aapl", 25)
 
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
 
-    positions = investor_space.list_portfolio_positions("investor:gpif")
+    positions = investor_space.list_portfolio_positions("investor:reference_fund_a")
     asset_ids = {p.asset_id for p in positions}
     assert asset_ids == {"asset:aapl", "asset:msft"}
     # All positions belong to the requested investor.
-    assert all(p.owner_id == "investor:gpif" for p in positions)
+    assert all(p.owner_id == "investor:reference_fund_a" for p in positions)
 
 
 def test_list_portfolio_exposures_combines_ownership_prices_and_registry():
@@ -189,15 +189,15 @@ def test_list_portfolio_exposures_combines_ownership_prices_and_registry():
             id="asset:cash_jpy", kind="asset", type="cash", space="market"
         )
     )
-    kernel.ownership.add_position("investor:gpif", "asset:aapl", 100)
-    kernel.ownership.add_position("investor:gpif", "asset:cash_jpy", 1_000_000)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:aapl", 100)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:cash_jpy", 1_000_000)
     kernel.prices.set_price("asset:aapl", 150.0, "2026-01-01", "exchange")
     kernel.prices.set_price("asset:cash_jpy", 1.0, "2026-01-01", "system")
 
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
 
-    exposures = investor_space.list_portfolio_exposures("investor:gpif")
+    exposures = investor_space.list_portfolio_exposures("investor:reference_fund_a")
     by_asset = {e.asset_id: e for e in exposures}
 
     assert by_asset["asset:aapl"].quantity == 100.0
@@ -215,13 +215,13 @@ def test_list_portfolio_exposures_combines_ownership_prices_and_registry():
 
 def test_list_portfolio_exposures_handles_missing_price_without_crashing():
     kernel = _kernel()
-    kernel.ownership.add_position("investor:gpif", "asset:no_price", 100)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:no_price", 100)
     # No price recorded for asset:no_price.
 
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
 
-    exposures = investor_space.list_portfolio_exposures("investor:gpif")
+    exposures = investor_space.list_portfolio_exposures("investor:reference_fund_a")
     assert len(exposures) == 1
     exposure = exposures[0]
     assert exposure.asset_id == "asset:no_price"
@@ -233,13 +233,13 @@ def test_list_portfolio_exposures_handles_missing_price_without_crashing():
 
 def test_list_portfolio_exposures_handles_missing_registry_entry():
     kernel = _kernel()
-    kernel.ownership.add_position("investor:gpif", "asset:unregistered", 50)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:unregistered", 50)
     kernel.prices.set_price("asset:unregistered", 10.0, "2026-01-01", "system")
 
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
 
-    exposures = investor_space.list_portfolio_exposures("investor:gpif")
+    exposures = investor_space.list_portfolio_exposures("investor:reference_fund_a")
     assert len(exposures) == 1
     exposure = exposures[0]
     assert exposure.asset_type is None
@@ -254,7 +254,7 @@ def test_list_portfolio_exposures_returns_empty_for_investor_with_no_positions()
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
 
-    assert investor_space.list_portfolio_exposures("investor:gpif") == ()
+    assert investor_space.list_portfolio_exposures("investor:reference_fund_a") == ()
 
 
 # ---------------------------------------------------------------------------
@@ -269,12 +269,12 @@ def test_investor_space_does_not_mutate_world_books():
             id="asset:aapl", kind="asset", type="equity", space="market"
         )
     )
-    kernel.ownership.add_position("investor:gpif", "asset:aapl", 100)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:aapl", 100)
     kernel.prices.set_price("asset:aapl", 150.0, "2026-01-01", "exchange")
     kernel.constraints.add_constraint(
         ConstraintRecord(
             constraint_id="constraint:gpif_nav",
-            owner_id="investor:gpif",
+            owner_id="investor:reference_fund_a",
             constraint_type="min_net_asset_value",
             threshold=0.0,
             comparison=">=",
@@ -298,13 +298,13 @@ def test_investor_space_does_not_mutate_world_books():
 
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
-    investor_space.add_investor_state(InvestorState(investor_id="investor:gpif"))
+    investor_space.add_investor_state(InvestorState(investor_id="investor:reference_fund_a"))
 
-    investor_space.get_balance_sheet_view("investor:gpif")
-    investor_space.get_constraint_evaluations("investor:gpif")
-    investor_space.get_visible_signals("investor:gpif")
-    investor_space.list_portfolio_positions("investor:gpif")
-    investor_space.list_portfolio_exposures("investor:gpif")
+    investor_space.get_balance_sheet_view("investor:reference_fund_a")
+    investor_space.get_constraint_evaluations("investor:reference_fund_a")
+    investor_space.get_visible_signals("investor:reference_fund_a")
+    investor_space.list_portfolio_positions("investor:reference_fund_a")
+    investor_space.list_portfolio_exposures("investor:reference_fund_a")
     investor_space.snapshot()
 
     assert kernel.ownership.snapshot() == ownership_before
@@ -322,7 +322,7 @@ def test_investor_space_runs_for_one_year_after_state_added():
     kernel = _kernel()
     investor_space = InvestorSpace()
     kernel.register_space(investor_space)
-    investor_space.add_investor_state(InvestorState(investor_id="investor:gpif"))
+    investor_space.add_investor_state(InvestorState(investor_id="investor:reference_fund_a"))
 
     kernel.run(days=365)
 

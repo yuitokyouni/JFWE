@@ -59,7 +59,7 @@ class ValuationRecord:
       the unit of the number itself. If ``estimated_value`` is 1.5e10 and
       ``currency`` is ``"JPY"``, the claim is "fifteen billion yen".
     - ``numeraire`` — the perspective currency or value basis the valuer
-      is reasoning in. A USD-investor valuing Toyota in JPY for display
+      is reasoning in. A USD-investor valuing the reference manufacturer in JPY for display
       would set ``currency="JPY"`` and ``numeraire="USD"``. A purely
       domestic Japanese DCF valuation would have both ``"JPY"``.
 

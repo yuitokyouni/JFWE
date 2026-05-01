@@ -105,38 +105,38 @@ def test_bind_is_idempotent():
 
 def test_bank_space_can_read_balance_sheet_view():
     kernel = _kernel()
-    kernel.ownership.add_position("bank:mufg", "asset:cash", 10_000)
+    kernel.ownership.add_position("bank:reference_bank_a", "asset:cash", 10_000)
     kernel.prices.set_price("asset:cash", 1.0, "2026-01-01", "system")
 
     bank_space = BankSpace()
     kernel.register_space(bank_space)
     bank_space.add_bank_state(
-        BankState(bank_id="bank:mufg", bank_type="city_bank", tier="large")
+        BankState(bank_id="bank:reference_bank_a", bank_type="city_bank", tier="large")
     )
 
-    view = bank_space.get_balance_sheet_view("bank:mufg")
+    view = bank_space.get_balance_sheet_view("bank:reference_bank_a")
     assert view is not None
-    assert view.agent_id == "bank:mufg"
+    assert view.agent_id == "bank:reference_bank_a"
     assert view.asset_value == 10_000.0
     assert view.as_of_date == "2026-01-01"
 
 
 def test_bank_space_can_read_constraint_evaluations():
     kernel = _kernel()
-    kernel.ownership.add_position("bank:mufg", "asset:cash", 10_000)
+    kernel.ownership.add_position("bank:reference_bank_a", "asset:cash", 10_000)
     kernel.prices.set_price("asset:cash", 1.0, "2026-01-01", "system")
     kernel.contracts.add_contract(
         _loan(
             contract_id="contract:loan_001",
-            lender="bank:mufg",
-            borrower="firm:toyota",
+            lender="bank:reference_bank_a",
+            borrower="firm:reference_manufacturer_a",
             principal=2_000.0,
         )
     )
     kernel.constraints.add_constraint(
         ConstraintRecord(
             constraint_id="constraint:bank_lev",
-            owner_id="bank:mufg",
+            owner_id="bank:reference_bank_a",
             constraint_type="max_leverage",
             threshold=0.7,
             comparison="<=",
@@ -146,7 +146,7 @@ def test_bank_space_can_read_constraint_evaluations():
     bank_space = BankSpace()
     kernel.register_space(bank_space)
 
-    evaluations = bank_space.get_constraint_evaluations("bank:mufg")
+    evaluations = bank_space.get_constraint_evaluations("bank:reference_bank_a")
     # Bank holds 10_000 in cash, lent 2_000 (financial asset), no liabilities
     # against this bank as borrower -> leverage = 0 / 12_000 = 0 -> ok.
     assert len(evaluations) == 1
@@ -169,8 +169,8 @@ def test_bank_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:internal_memo",
             signal_type="internal_memo",
-            subject_id="bank:mufg",
-            source_id="bank:mufg",
+            subject_id="bank:reference_bank_a",
+            source_id="bank:reference_bank_a",
             published_date="2026-01-01",
             visibility="restricted",
             metadata={"allowed_viewers": ("agent:legal",)},
@@ -180,7 +180,7 @@ def test_bank_space_can_read_visible_signals():
     bank_space = BankSpace()
     kernel.register_space(bank_space)
 
-    visible_to_bank = bank_space.get_visible_signals("bank:mufg")
+    visible_to_bank = bank_space.get_visible_signals("bank:reference_bank_a")
     visible_ids = {s.signal_id for s in visible_to_bank}
 
     assert "signal:rate_decision" in visible_ids
@@ -197,8 +197,8 @@ def test_list_contracts_for_bank_returns_all_contracts_with_bank_as_party():
     kernel.contracts.add_contract(
         _loan(
             contract_id="contract:loan_001",
-            lender="bank:mufg",
-            borrower="firm:toyota",
+            lender="bank:reference_bank_a",
+            borrower="firm:reference_manufacturer_a",
             principal=1_000.0,
         )
     )
@@ -215,7 +215,7 @@ def test_list_contracts_for_bank_returns_all_contracts_with_bank_as_party():
         _loan(
             contract_id="contract:loan_003",
             lender="bank:smbc",
-            borrower="bank:mufg",
+            borrower="bank:reference_bank_a",
             principal=500.0,
         )
     )
@@ -223,9 +223,9 @@ def test_list_contracts_for_bank_returns_all_contracts_with_bank_as_party():
     bank_space = BankSpace()
     kernel.register_space(bank_space)
 
-    contracts = bank_space.list_contracts_for_bank("bank:mufg")
+    contracts = bank_space.list_contracts_for_bank("bank:reference_bank_a")
     contract_ids = {c.contract_id for c in contracts}
-    # Every contract where bank:mufg appears as a party.
+    # Every contract where bank:reference_bank_a appears as a party.
     assert contract_ids == {"contract:loan_001", "contract:loan_003"}
 
 
@@ -235,8 +235,8 @@ def test_list_lending_exposures_filters_to_lender_role():
     kernel.contracts.add_contract(
         _loan(
             contract_id="contract:loan_001",
-            lender="bank:mufg",
-            borrower="firm:toyota",
+            lender="bank:reference_bank_a",
+            borrower="firm:reference_manufacturer_a",
             principal=1_000_000.0,
             collateral=("asset:property_a",),
         )
@@ -244,7 +244,7 @@ def test_list_lending_exposures_filters_to_lender_role():
     kernel.contracts.add_contract(
         _loan(
             contract_id="contract:loan_002",
-            lender="bank:mufg",
+            lender="bank:reference_bank_a",
             borrower="firm:sony",
             principal=500_000.0,
         )
@@ -254,7 +254,7 @@ def test_list_lending_exposures_filters_to_lender_role():
         _loan(
             contract_id="contract:loan_003",
             lender="bank:smbc",
-            borrower="bank:mufg",
+            borrower="bank:reference_bank_a",
             principal=300_000.0,
         )
     )
@@ -262,13 +262,13 @@ def test_list_lending_exposures_filters_to_lender_role():
     bank_space = BankSpace()
     kernel.register_space(bank_space)
 
-    exposures = bank_space.list_lending_exposures("bank:mufg")
+    exposures = bank_space.list_lending_exposures("bank:reference_bank_a")
     exposure_ids = {e.contract_id for e in exposures}
     assert exposure_ids == {"contract:loan_001", "contract:loan_002"}
 
     # Borrower id is exposed from metadata.
     by_id = {e.contract_id: e for e in exposures}
-    assert by_id["contract:loan_001"].borrower_id == "firm:toyota"
+    assert by_id["contract:loan_001"].borrower_id == "firm:reference_manufacturer_a"
     assert by_id["contract:loan_001"].principal == 1_000_000.0
     assert by_id["contract:loan_001"].collateral_asset_ids == ("asset:property_a",)
     assert by_id["contract:loan_002"].borrower_id == "firm:sony"
@@ -286,7 +286,7 @@ def test_list_lending_exposures_does_not_infer_role_from_parties_order():
         ContractRecord(
             contract_id="contract:untagged",
             contract_type="loan",
-            parties=("bank:mufg", "firm:toyota"),
+            parties=("bank:reference_bank_a", "firm:reference_manufacturer_a"),
             principal=1_000.0,
             # no metadata.lender_id / borrower_id
         )
@@ -295,10 +295,10 @@ def test_list_lending_exposures_does_not_infer_role_from_parties_order():
     bank_space = BankSpace()
     kernel.register_space(bank_space)
 
-    assert bank_space.list_lending_exposures("bank:mufg") == ()
+    assert bank_space.list_lending_exposures("bank:reference_bank_a") == ()
     # But the broader contracts-for-bank view does include it
     # (because the bank IS in parties).
-    contracts = bank_space.list_contracts_for_bank("bank:mufg")
+    contracts = bank_space.list_contracts_for_bank("bank:reference_bank_a")
     assert {c.contract_id for c in contracts} == {"contract:untagged"}
 
 
@@ -307,8 +307,8 @@ def test_list_lending_exposures_preserves_status():
     kernel.contracts.add_contract(
         _loan(
             contract_id="contract:settled",
-            lender="bank:mufg",
-            borrower="firm:toyota",
+            lender="bank:reference_bank_a",
+            borrower="firm:reference_manufacturer_a",
             principal=1_000.0,
             status="settled",
         )
@@ -316,7 +316,7 @@ def test_list_lending_exposures_preserves_status():
     kernel.contracts.add_contract(
         _loan(
             contract_id="contract:active",
-            lender="bank:mufg",
+            lender="bank:reference_bank_a",
             borrower="firm:sony",
             principal=2_000.0,
             status="active",
@@ -327,7 +327,7 @@ def test_list_lending_exposures_preserves_status():
     kernel.register_space(bank_space)
 
     exposures = {
-        e.contract_id: e for e in bank_space.list_lending_exposures("bank:mufg")
+        e.contract_id: e for e in bank_space.list_lending_exposures("bank:reference_bank_a")
     }
     # v0.9 does NOT filter by status — it copies status verbatim from the
     # contract. Callers decide what to do.
@@ -342,20 +342,20 @@ def test_list_lending_exposures_preserves_status():
 
 def test_bank_space_does_not_mutate_world_books():
     kernel = _kernel()
-    kernel.ownership.add_position("bank:mufg", "asset:cash", 10_000)
+    kernel.ownership.add_position("bank:reference_bank_a", "asset:cash", 10_000)
     kernel.prices.set_price("asset:cash", 1.0, "2026-01-01", "system")
     kernel.contracts.add_contract(
         _loan(
             contract_id="contract:loan_001",
-            lender="bank:mufg",
-            borrower="firm:toyota",
+            lender="bank:reference_bank_a",
+            borrower="firm:reference_manufacturer_a",
             principal=1_000.0,
         )
     )
     kernel.constraints.add_constraint(
         ConstraintRecord(
             constraint_id="constraint:bank_lev",
-            owner_id="bank:mufg",
+            owner_id="bank:reference_bank_a",
             constraint_type="max_leverage",
             threshold=0.7,
             comparison="<=",
@@ -379,14 +379,14 @@ def test_bank_space_does_not_mutate_world_books():
 
     bank_space = BankSpace()
     kernel.register_space(bank_space)
-    bank_space.add_bank_state(BankState(bank_id="bank:mufg"))
+    bank_space.add_bank_state(BankState(bank_id="bank:reference_bank_a"))
 
     # Read every projection through the space.
-    bank_space.get_balance_sheet_view("bank:mufg")
-    bank_space.get_constraint_evaluations("bank:mufg")
-    bank_space.get_visible_signals("bank:mufg")
-    bank_space.list_contracts_for_bank("bank:mufg")
-    bank_space.list_lending_exposures("bank:mufg")
+    bank_space.get_balance_sheet_view("bank:reference_bank_a")
+    bank_space.get_constraint_evaluations("bank:reference_bank_a")
+    bank_space.get_visible_signals("bank:reference_bank_a")
+    bank_space.list_contracts_for_bank("bank:reference_bank_a")
+    bank_space.list_lending_exposures("bank:reference_bank_a")
     bank_space.snapshot()
 
     assert kernel.ownership.snapshot() == ownership_before
@@ -404,7 +404,7 @@ def test_bank_space_runs_for_one_year_after_state_added():
     kernel = _kernel()
     bank_space = BankSpace()
     kernel.register_space(bank_space)
-    bank_space.add_bank_state(BankState(bank_id="bank:mufg"))
+    bank_space.add_bank_state(BankState(bank_id="bank:reference_bank_a"))
 
     kernel.run(days=365)
 

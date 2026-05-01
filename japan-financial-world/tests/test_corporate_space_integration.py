@@ -84,18 +84,18 @@ def test_bind_does_not_overwrite_explicit_construction_refs():
 
 def test_corporate_space_can_read_balance_sheet_view():
     kernel = _kernel()
-    kernel.ownership.add_position("firm:toyota", "asset:cash", 1_000)
+    kernel.ownership.add_position("firm:reference_manufacturer_a", "asset:cash", 1_000)
     kernel.prices.set_price("asset:cash", 1.0, "2026-01-01", "system")
 
     corporate = CorporateSpace()
     kernel.register_space(corporate)
     corporate.add_firm_state(
-        FirmState(firm_id="firm:toyota", sector="auto", tier="large")
+        FirmState(firm_id="firm:reference_manufacturer_a", sector="auto", tier="large")
     )
 
-    view = corporate.get_balance_sheet_view("firm:toyota")
+    view = corporate.get_balance_sheet_view("firm:reference_manufacturer_a")
     assert view is not None
-    assert view.agent_id == "firm:toyota"
+    assert view.agent_id == "firm:reference_manufacturer_a"
     assert view.asset_value == 1_000.0
     # When no as_of_date is passed, the kernel's clock supplies it.
     assert view.as_of_date == "2026-01-01"
@@ -116,15 +116,15 @@ def test_corporate_space_balance_sheet_view_for_unknown_firm_is_empty_view():
 
 def test_corporate_space_can_read_constraint_evaluations():
     kernel = _kernel()
-    kernel.ownership.add_position("firm:toyota", "asset:cash", 1_000)
+    kernel.ownership.add_position("firm:reference_manufacturer_a", "asset:cash", 1_000)
     kernel.prices.set_price("asset:cash", 1.0, "2026-01-01", "system")
     kernel.contracts.add_contract(
-        _loan(lender="agent:bank_a", borrower="firm:toyota", principal=500.0)
+        _loan(lender="agent:bank_a", borrower="firm:reference_manufacturer_a", principal=500.0)
     )
     kernel.constraints.add_constraint(
         ConstraintRecord(
-            constraint_id="constraint:toyota_lev",
-            owner_id="firm:toyota",
+            constraint_id="constraint:reference_manufacturer_leverage_lite",
+            owner_id="firm:reference_manufacturer_a",
             constraint_type="max_leverage",
             threshold=0.7,
             comparison="<=",
@@ -133,9 +133,9 @@ def test_corporate_space_can_read_constraint_evaluations():
 
     corporate = CorporateSpace()
     kernel.register_space(corporate)
-    corporate.add_firm_state(FirmState(firm_id="firm:toyota"))
+    corporate.add_firm_state(FirmState(firm_id="firm:reference_manufacturer_a"))
 
-    evaluations = corporate.get_constraint_evaluations("firm:toyota")
+    evaluations = corporate.get_constraint_evaluations("firm:reference_manufacturer_a")
     assert len(evaluations) == 1
     assert evaluations[0].status == "ok"
     assert evaluations[0].current_value == 0.5
@@ -155,7 +155,7 @@ def test_corporate_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:rating_001",
             signal_type="rating_action",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="agent:rating_agency",
             published_date="2026-01-01",
             payload={"rating": "AA-"},
@@ -165,8 +165,8 @@ def test_corporate_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:internal_001",
             signal_type="internal_memo",
-            subject_id="firm:toyota",
-            source_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
+            source_id="firm:reference_manufacturer_a",
             published_date="2026-01-01",
             visibility="restricted",
             metadata={"allowed_viewers": ("agent:legal",)},
@@ -196,15 +196,15 @@ def test_corporate_space_can_read_visible_signals():
 
 def test_corporate_space_does_not_mutate_world_books():
     kernel = _kernel()
-    kernel.ownership.add_position("firm:toyota", "asset:cash", 1_000)
+    kernel.ownership.add_position("firm:reference_manufacturer_a", "asset:cash", 1_000)
     kernel.prices.set_price("asset:cash", 1.0, "2026-01-01", "system")
     kernel.contracts.add_contract(
-        _loan(lender="agent:bank_a", borrower="firm:toyota", principal=500.0)
+        _loan(lender="agent:bank_a", borrower="firm:reference_manufacturer_a", principal=500.0)
     )
     kernel.constraints.add_constraint(
         ConstraintRecord(
-            constraint_id="constraint:toyota_lev",
-            owner_id="firm:toyota",
+            constraint_id="constraint:reference_manufacturer_leverage_lite",
+            owner_id="firm:reference_manufacturer_a",
             constraint_type="max_leverage",
             threshold=0.7,
             comparison="<=",
@@ -214,7 +214,7 @@ def test_corporate_space_does_not_mutate_world_books():
         InformationSignal(
             signal_id="signal:rating_001",
             signal_type="rating_action",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="agent:rating_agency",
             published_date="2026-01-01",
         )
@@ -228,11 +228,11 @@ def test_corporate_space_does_not_mutate_world_books():
 
     corporate = CorporateSpace()
     kernel.register_space(corporate)
-    corporate.add_firm_state(FirmState(firm_id="firm:toyota"))
+    corporate.add_firm_state(FirmState(firm_id="firm:reference_manufacturer_a"))
 
     # Read every projection through the space.
-    corporate.get_balance_sheet_view("firm:toyota")
-    corporate.get_constraint_evaluations("firm:toyota")
+    corporate.get_balance_sheet_view("firm:reference_manufacturer_a")
+    corporate.get_constraint_evaluations("firm:reference_manufacturer_a")
     corporate.get_visible_signals("corporate")
     corporate.snapshot()
 
@@ -252,7 +252,7 @@ def test_corporate_space_runs_for_one_year_after_state_added():
     kernel = _kernel()
     corporate = CorporateSpace()
     kernel.register_space(corporate)
-    corporate.add_firm_state(FirmState(firm_id="firm:toyota"))
+    corporate.add_firm_state(FirmState(firm_id="firm:reference_manufacturer_a"))
 
     kernel.run(days=365)
 

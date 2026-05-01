@@ -14,9 +14,9 @@ from world.ledger import Ledger
 
 
 def _market(
-    property_market_id: str = "market:tokyo_central_office",
+    property_market_id: str = "market:reference_central_office",
     *,
-    region: str = "tokyo_central",
+    region: str = "reference_central",
     property_type: str = "office",
     tier: str = "prime",
     status: str = "active",
@@ -35,7 +35,7 @@ def _market(
 def _asset(
     asset_id: str = "asset:marunouchi_bldg_a",
     *,
-    property_market_id: str = "market:tokyo_central_office",
+    property_market_id: str = "market:reference_central_office",
     asset_type: str = "office_building",
     status: str = "active",
     metadata: dict | None = None,
@@ -56,8 +56,8 @@ def _asset(
 
 def test_property_market_state_carries_required_fields():
     market = _market()
-    assert market.property_market_id == "market:tokyo_central_office"
-    assert market.region == "tokyo_central"
+    assert market.property_market_id == "market:reference_central_office"
+    assert market.region == "reference_central"
     assert market.property_type == "office"
     assert market.tier == "prime"
     assert market.status == "active"
@@ -72,8 +72,8 @@ def test_property_market_state_rejects_empty_id():
 def test_property_market_state_to_dict_is_serializable():
     market = _market(metadata={"sub_market": "marunouchi"})
     assert market.to_dict() == {
-        "property_market_id": "market:tokyo_central_office",
-        "region": "tokyo_central",
+        "property_market_id": "market:reference_central_office",
+        "region": "reference_central",
         "property_type": "office",
         "tier": "prime",
         "status": "active",
@@ -95,7 +95,7 @@ def test_property_market_state_is_immutable():
 def test_property_asset_state_carries_required_fields():
     asset = _asset()
     assert asset.asset_id == "asset:marunouchi_bldg_a"
-    assert asset.property_market_id == "market:tokyo_central_office"
+    assert asset.property_market_id == "market:reference_central_office"
     assert asset.asset_type == "office_building"
     assert asset.status == "active"
     assert asset.metadata == {}
@@ -115,7 +115,7 @@ def test_property_asset_state_to_dict_is_serializable():
     asset = _asset(asset_type="warehouse", status="under_renovation")
     assert asset.to_dict() == {
         "asset_id": "asset:marunouchi_bldg_a",
-        "property_market_id": "market:tokyo_central_office",
+        "property_market_id": "market:reference_central_office",
         "asset_type": "warehouse",
         "status": "under_renovation",
         "metadata": {},
@@ -137,7 +137,7 @@ def test_add_and_get_property_market_state():
     space = RealEstateSpace()
     market = _market()
     space.add_property_market_state(market)
-    assert space.get_property_market_state("market:tokyo_central_office") is market
+    assert space.get_property_market_state("market:reference_central_office") is market
 
 
 def test_get_property_market_state_returns_none_for_unknown():
@@ -221,16 +221,16 @@ def test_property_asset_can_reference_unregistered_market():
 def test_list_assets_in_property_market_filters_by_market():
     space = RealEstateSpace()
     space.add_property_asset_state(
-        _asset(asset_id="asset:a", property_market_id="market:tokyo_office")
+        _asset(asset_id="asset:a", property_market_id="market:reference_office")
     )
     space.add_property_asset_state(
-        _asset(asset_id="asset:b", property_market_id="market:tokyo_office")
+        _asset(asset_id="asset:b", property_market_id="market:reference_office")
     )
     space.add_property_asset_state(
         _asset(asset_id="asset:c", property_market_id="market:osaka_residential")
     )
 
-    on_tokyo = space.list_assets_in_property_market("market:tokyo_office")
+    on_tokyo = space.list_assets_in_property_market("market:reference_office")
     on_osaka = space.list_assets_in_property_market("market:osaka_residential")
     on_unknown = space.list_assets_in_property_market("market:fukuoka")
 
@@ -295,7 +295,7 @@ def test_add_property_market_state_records_to_ledger():
     records = ledger.filter(event_type="property_market_state_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "market:tokyo_central_office"
+    assert record.object_id == "market:reference_central_office"
     assert record.payload["region"] == "osaka_central"
     assert record.payload["property_type"] == "residential"
     assert record.simulation_date == "2026-01-01"
@@ -313,16 +313,16 @@ def test_add_property_asset_state_records_to_ledger():
     assert len(records) == 1
     record = records[0]
     assert record.object_id == "asset:marunouchi_bldg_a"
-    assert record.target == "market:tokyo_central_office"
+    assert record.target == "market:reference_central_office"
     assert record.payload["asset_type"] == "warehouse"
-    assert record.payload["property_market_id"] == "market:tokyo_central_office"
+    assert record.payload["property_market_id"] == "market:reference_central_office"
 
 
 def test_add_state_does_not_record_when_no_ledger():
     space = RealEstateSpace()
     space.add_property_market_state(_market())  # should not raise
     space.add_property_asset_state(_asset())
-    assert space.get_property_market_state("market:tokyo_central_office") is not None
+    assert space.get_property_market_state("market:reference_central_office") is not None
     assert space.get_property_asset_state("asset:marunouchi_bldg_a") is not None
 
 
@@ -343,4 +343,4 @@ def test_get_price_history_returns_empty_when_unbound():
 
 def test_get_visible_signals_returns_empty_when_unbound():
     space = RealEstateSpace()
-    assert space.get_visible_signals("market:tokyo_central_office") == ()
+    assert space.get_visible_signals("market:reference_central_office") == ()

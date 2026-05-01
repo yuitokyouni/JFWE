@@ -7,9 +7,9 @@ from world.validation import (
 
 def test_infer_object_type_from_explicit_type():
     obj = {
-        "id": "firm:toyota_like_001",
+        "id": "firm:reference_manufacturer_001",
         "type": "firm",
-        "name": "Toyota-like Manufacturer",
+        "name": "Reference Manufacturer",
     }
 
     assert infer_object_type(obj) == "firm"
@@ -26,7 +26,7 @@ def test_infer_object_type_from_id_prefix():
 
 def test_validate_required_fields_detects_missing_name():
     obj = {
-        "id": "firm:toyota_like_001",
+        "id": "firm:reference_manufacturer_001",
     }
 
     issues = validate_required_fields(

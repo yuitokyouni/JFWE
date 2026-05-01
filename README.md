@@ -38,6 +38,40 @@ naming conventions. The repository keeps its legacy `JWFE` /
 `japan-financial-world/` names in this version; any rename is a separate
 migration.
 
+## Disclaimer
+
+This project is **research software** intended for engine design,
+simulation methodology, and structural exploration of how financial
+worlds can be modeled.
+
+- It is **not investment advice.** Nothing in this repository — code,
+  examples, tests, docs, ledger output — should be read as a market
+  view, allocation suggestion, valuation opinion, or trade signal.
+- It is **not a calibrated real-world market model.** v0 and v1 are
+  jurisdiction-neutral and contain only synthetic, fictional reference
+  identifiers. The example data in `data/sample/` and `examples/` is
+  illustrative; numbers and names are placeholders, not measurements.
+- It contains **no proprietary data.** No expert interview notes, no
+  paid feeds, no fund holdings, no named-institution stress results,
+  no client communications. See
+  [`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md)
+  for the public / restricted artifact rules.
+- **Japan calibration is future work.** v2 (Japan public calibration)
+  and v3 (Japan proprietary calibration) have not started. Any
+  reference to BOJ, MUFG, GPIF, Toyota, or other real Japanese
+  institutions in the docs appears only to define what is *prohibited*
+  in v1 or *deferred* to v2 / v3 — never as a present-day capability.
+- It is **not production software.** No SLA, no support commitment,
+  no guarantee of API stability beyond what each milestone's freeze
+  document explicitly promises.
+
+What this project *is*: a causal, auditable, multi-space simulation
+kernel and reference financial system, with an append-only ledger
+designed so that every state-changing event is reconstructable as a
+graph. The intent is to make the *engine* trustworthy in its
+mechanics, not to make any specific *output* trustworthy as a
+real-world claim.
+
 ## Version boundary
 
 | Version | Purpose                                                       | Status                       |

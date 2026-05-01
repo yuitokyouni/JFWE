@@ -9,7 +9,7 @@ from world.ledger import Ledger
 
 
 def _firm(
-    firm_id: str = "firm:toyota",
+    firm_id: str = "firm:reference_manufacturer_a",
     *,
     sector: str = "manufacturing",
     tier: str = "large",
@@ -32,7 +32,7 @@ def _firm(
 
 def test_firm_state_carries_required_fields():
     firm = _firm()
-    assert firm.firm_id == "firm:toyota"
+    assert firm.firm_id == "firm:reference_manufacturer_a"
     assert firm.sector == "manufacturing"
     assert firm.tier == "large"
     assert firm.status == "active"
@@ -48,7 +48,7 @@ def test_firm_state_to_dict_is_serializable():
     firm = _firm(metadata={"founded": "1937"})
     payload = firm.to_dict()
     assert payload == {
-        "firm_id": "firm:toyota",
+        "firm_id": "firm:reference_manufacturer_a",
         "sector": "manufacturing",
         "tier": "large",
         "status": "active",
@@ -71,7 +71,7 @@ def test_add_and_get_firm_state():
     space = CorporateSpace()
     firm = _firm()
     space.add_firm_state(firm)
-    assert space.get_firm_state("firm:toyota") is firm
+    assert space.get_firm_state("firm:reference_manufacturer_a") is firm
 
 
 def test_get_firm_state_returns_none_for_unknown():
@@ -137,8 +137,8 @@ def test_add_firm_state_records_to_ledger():
     records = ledger.filter(event_type="firm_state_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "firm:toyota"
-    assert record.agent_id == "firm:toyota"
+    assert record.object_id == "firm:reference_manufacturer_a"
+    assert record.agent_id == "firm:reference_manufacturer_a"
     assert record.payload["sector"] == "auto"
     assert record.payload["tier"] == "large"
     assert record.payload["status"] == "active"
@@ -150,7 +150,7 @@ def test_add_firm_state_does_not_record_when_no_ledger():
     space = CorporateSpace()
     # Should not raise when ledger is None.
     space.add_firm_state(_firm())
-    assert space.get_firm_state("firm:toyota") is not None
+    assert space.get_firm_state("firm:reference_manufacturer_a") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -160,14 +160,14 @@ def test_add_firm_state_does_not_record_when_no_ledger():
 
 def test_get_balance_sheet_view_returns_none_when_unbound():
     space = CorporateSpace()
-    assert space.get_balance_sheet_view("firm:toyota") is None
+    assert space.get_balance_sheet_view("firm:reference_manufacturer_a") is None
 
 
 def test_get_constraint_evaluations_returns_empty_when_unbound():
     space = CorporateSpace()
-    assert space.get_constraint_evaluations("firm:toyota") == ()
+    assert space.get_constraint_evaluations("firm:reference_manufacturer_a") == ()
 
 
 def test_get_visible_signals_returns_empty_when_unbound():
     space = CorporateSpace()
-    assert space.get_visible_signals("firm:toyota") == ()
+    assert space.get_visible_signals("firm:reference_manufacturer_a") == ()

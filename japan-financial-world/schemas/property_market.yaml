@@ -9,7 +9,7 @@ required:
 fields:
   region:
     type: string
-    examples: [tokyo_cbd, osaka, nagoya, regional_city, logistics_corridor]
+    examples: [central_business_district, osaka, nagoya, regional_city, logistics_corridor]
   asset_type:
     type: string
     examples: [office, residential, retail, logistics, hotel, land]

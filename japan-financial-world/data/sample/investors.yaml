@@ -1,5 +1,5 @@
 - id: investor_long_only_a
-  type: gpif_like
+  type: passive_long_only
   tier: 1
   aum: 200000000000000
   risk_tolerance: 0.45

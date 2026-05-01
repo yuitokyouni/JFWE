@@ -30,7 +30,7 @@ class MarketState:
 
     The intent is to give ExchangeSpace just enough native classification
     to organize markets (e.g., "this is the equity market", "this is the
-    JGB market") without introducing market microstructure.
+    government bond market") without introducing market microstructure.
     """
 
     market_id: str

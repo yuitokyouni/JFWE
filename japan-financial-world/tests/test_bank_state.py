@@ -13,7 +13,7 @@ from world.ledger import Ledger
 
 
 def _bank(
-    bank_id: str = "bank:mufg",
+    bank_id: str = "bank:reference_bank_a",
     *,
     bank_type: str = "city_bank",
     tier: str = "large",
@@ -36,7 +36,7 @@ def _bank(
 
 def test_bank_state_carries_required_fields():
     bank = _bank()
-    assert bank.bank_id == "bank:mufg"
+    assert bank.bank_id == "bank:reference_bank_a"
     assert bank.bank_type == "city_bank"
     assert bank.tier == "large"
     assert bank.status == "active"
@@ -52,7 +52,7 @@ def test_bank_state_to_dict_is_serializable():
     bank = _bank(metadata={"founded": "1880"})
     payload = bank.to_dict()
     assert payload == {
-        "bank_id": "bank:mufg",
+        "bank_id": "bank:reference_bank_a",
         "bank_type": "city_bank",
         "tier": "large",
         "status": "active",
@@ -74,16 +74,16 @@ def test_bank_state_is_immutable():
 def test_lending_exposure_carries_minimum_fields():
     exposure = LendingExposure(
         contract_id="contract:loan_001",
-        lender_id="bank:mufg",
-        borrower_id="firm:toyota",
+        lender_id="bank:reference_bank_a",
+        borrower_id="firm:reference_manufacturer_a",
         principal=1_000_000.0,
         contract_type="loan",
         status="active",
         collateral_asset_ids=("asset:property_a",),
     )
     assert exposure.contract_id == "contract:loan_001"
-    assert exposure.lender_id == "bank:mufg"
-    assert exposure.borrower_id == "firm:toyota"
+    assert exposure.lender_id == "bank:reference_bank_a"
+    assert exposure.borrower_id == "firm:reference_manufacturer_a"
     assert exposure.principal == 1_000_000.0
     assert exposure.contract_type == "loan"
     assert exposure.status == "active"
@@ -93,7 +93,7 @@ def test_lending_exposure_carries_minimum_fields():
 def test_lending_exposure_allows_missing_borrower():
     exposure = LendingExposure(
         contract_id="contract:loan_002",
-        lender_id="bank:mufg",
+        lender_id="bank:reference_bank_a",
         borrower_id=None,
         principal=500_000.0,
         contract_type="loan",
@@ -106,8 +106,8 @@ def test_lending_exposure_allows_missing_borrower():
 def test_lending_exposure_to_dict_is_serializable():
     exposure = LendingExposure(
         contract_id="contract:loan_001",
-        lender_id="bank:mufg",
-        borrower_id="firm:toyota",
+        lender_id="bank:reference_bank_a",
+        borrower_id="firm:reference_manufacturer_a",
         principal=1_000_000.0,
         contract_type="loan",
         status="active",
@@ -115,8 +115,8 @@ def test_lending_exposure_to_dict_is_serializable():
     )
     assert exposure.to_dict() == {
         "contract_id": "contract:loan_001",
-        "lender_id": "bank:mufg",
-        "borrower_id": "firm:toyota",
+        "lender_id": "bank:reference_bank_a",
+        "borrower_id": "firm:reference_manufacturer_a",
         "principal": 1_000_000.0,
         "contract_type": "loan",
         "status": "active",
@@ -133,7 +133,7 @@ def test_add_and_get_bank_state():
     space = BankSpace()
     bank = _bank()
     space.add_bank_state(bank)
-    assert space.get_bank_state("bank:mufg") is bank
+    assert space.get_bank_state("bank:reference_bank_a") is bank
 
 
 def test_get_bank_state_returns_none_for_unknown():
@@ -199,8 +199,8 @@ def test_add_bank_state_records_to_ledger():
     records = ledger.filter(event_type="bank_state_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "bank:mufg"
-    assert record.agent_id == "bank:mufg"
+    assert record.object_id == "bank:reference_bank_a"
+    assert record.agent_id == "bank:reference_bank_a"
     assert record.payload["bank_type"] == "regional_bank"
     assert record.payload["tier"] == "mid"
     assert record.payload["status"] == "active"
@@ -211,7 +211,7 @@ def test_add_bank_state_records_to_ledger():
 def test_add_bank_state_does_not_record_when_no_ledger():
     space = BankSpace()
     space.add_bank_state(_bank())  # should not raise
-    assert space.get_bank_state("bank:mufg") is not None
+    assert space.get_bank_state("bank:reference_bank_a") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -221,24 +221,24 @@ def test_add_bank_state_does_not_record_when_no_ledger():
 
 def test_get_balance_sheet_view_returns_none_when_unbound():
     space = BankSpace()
-    assert space.get_balance_sheet_view("bank:mufg") is None
+    assert space.get_balance_sheet_view("bank:reference_bank_a") is None
 
 
 def test_get_constraint_evaluations_returns_empty_when_unbound():
     space = BankSpace()
-    assert space.get_constraint_evaluations("bank:mufg") == ()
+    assert space.get_constraint_evaluations("bank:reference_bank_a") == ()
 
 
 def test_get_visible_signals_returns_empty_when_unbound():
     space = BankSpace()
-    assert space.get_visible_signals("bank:mufg") == ()
+    assert space.get_visible_signals("bank:reference_bank_a") == ()
 
 
 def test_list_contracts_for_bank_returns_empty_when_unbound():
     space = BankSpace()
-    assert space.list_contracts_for_bank("bank:mufg") == ()
+    assert space.list_contracts_for_bank("bank:reference_bank_a") == ()
 
 
 def test_list_lending_exposures_returns_empty_when_unbound():
     space = BankSpace()
-    assert space.list_lending_exposures("bank:mufg") == ()
+    assert space.list_lending_exposures("bank:reference_bank_a") == ()

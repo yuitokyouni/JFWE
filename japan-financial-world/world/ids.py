@@ -47,10 +47,10 @@ class WorldID:
         kind:key
 
     Examples:
-        firm:toyota_like_001
-        asset:equity_toyota_like_001
+        firm:reference_manufacturer_001
+        asset:equity_reference_manufacturer_001
         contract:loan_000001
-        price:equity_toyota_like_001_2026_04_29
+        price:equity_reference_manufacturer_001_2026_04_29
     """
 
     raw: str

@@ -89,39 +89,39 @@ def _build_full_world() -> tuple[
 
     # ---- Domain-space identity-level state ----
     spaces["corporate"].add_firm_state(  # type: ignore[attr-defined]
-        FirmState(firm_id="firm:toyota", sector="auto", tier="large")
+        FirmState(firm_id="firm:reference_manufacturer_a", sector="auto", tier="large")
     )
     spaces["banking"].add_bank_state(  # type: ignore[attr-defined]
-        BankState(bank_id="bank:mufg", bank_type="city_bank", tier="large")
+        BankState(bank_id="bank:reference_bank_a", bank_type="city_bank", tier="large")
     )
     spaces["investors"].add_investor_state(  # type: ignore[attr-defined]
         InvestorState(
-            investor_id="investor:gpif",
+            investor_id="investor:reference_fund_a",
             investor_type="pension_fund",
             tier="tier_1",
         )
     )
     spaces["exchange"].add_market_state(  # type: ignore[attr-defined]
         MarketState(
-            market_id="market:tse",
+            market_id="market:reference_equity_market",
             market_type="stock_exchange",
             tier="primary",
         )
     )
     spaces["exchange"].add_listing(  # type: ignore[attr-defined]
-        ListingState(market_id="market:tse", asset_id="asset:toyota_eq")
+        ListingState(market_id="market:reference_equity_market", asset_id="asset:reference_manufacturer_equity")
     )
     spaces["real_estate"].add_property_market_state(  # type: ignore[attr-defined]
         PropertyMarketState(
-            property_market_id="market:tokyo_central_office",
-            region="tokyo_central",
+            property_market_id="market:reference_central_office",
+            region="reference_central",
             property_type="office",
         )
     )
     spaces["real_estate"].add_property_asset_state(  # type: ignore[attr-defined]
         PropertyAssetState(
             asset_id="asset:marunouchi_bldg_a",
-            property_market_id="market:tokyo_central_office",
+            property_market_id="market:reference_central_office",
             asset_type="office_building",
         )
     )
@@ -141,7 +141,7 @@ def _build_full_world() -> tuple[
     )
     spaces["policy"].add_authority_state(  # type: ignore[attr-defined]
         PolicyAuthorityState(
-            authority_id="authority:boj",
+            authority_id="authority:reference_central_bank",
             authority_type="central_bank",
             tier="national",
         )
@@ -149,7 +149,7 @@ def _build_full_world() -> tuple[
     spaces["policy"].add_instrument_state(  # type: ignore[attr-defined]
         PolicyInstrumentState(
             instrument_id="instrument:boj_policy_rate",
-            authority_id="authority:boj",
+            authority_id="authority:reference_central_bank",
             instrument_type="policy_rate",
         )
     )
@@ -172,7 +172,7 @@ def _build_full_world() -> tuple[
     # types resolve in projections.
     kernel.register_object(
         RegisteredObject(
-            id="asset:toyota_eq",
+            id="asset:reference_manufacturer_equity",
             kind="asset",
             type="equity",
             space="exchange",
@@ -195,37 +195,37 @@ def _build_full_world() -> tuple[
         )
     )
 
-    # Ownership: GPIF holds Toyota equity; firm holds some cash for
+    # Ownership: the reference fund holds the reference manufacturer equity; firm holds some cash for
     # the leverage constraint to compute against.
-    kernel.ownership.add_position("investor:gpif", "asset:toyota_eq", 100)
-    kernel.ownership.add_position("firm:toyota", "asset:cash_jpy", 1_000_000)
+    kernel.ownership.add_position("investor:reference_fund_a", "asset:reference_manufacturer_equity", 100)
+    kernel.ownership.add_position("firm:reference_manufacturer_a", "asset:cash_jpy", 1_000_000)
 
     # Contracts: bank lends to firm.
     kernel.contracts.add_contract(
         ContractRecord(
             contract_id="contract:loan_001",
             contract_type="loan",
-            parties=("bank:mufg", "firm:toyota"),
+            parties=("bank:reference_bank_a", "firm:reference_manufacturer_a"),
             principal=500_000.0,
             metadata={
-                "lender_id": "bank:mufg",
-                "borrower_id": "firm:toyota",
+                "lender_id": "bank:reference_bank_a",
+                "borrower_id": "firm:reference_manufacturer_a",
             },
         )
     )
 
     # Prices for every priced asset.
-    kernel.prices.set_price("asset:toyota_eq", 2_500.0, "2026-01-01", "exchange")
+    kernel.prices.set_price("asset:reference_manufacturer_equity", 2_500.0, "2026-01-01", "exchange")
     kernel.prices.set_price("asset:cash_jpy", 1.0, "2026-01-01", "system")
     kernel.prices.set_price(
         "asset:marunouchi_bldg_a", 50_000_000_000.0, "2026-01-01", "appraisal"
     )
 
-    # Constraint: leverage ceiling on Toyota.
+    # Constraint: leverage ceiling on the reference manufacturer.
     kernel.constraints.add_constraint(
         ConstraintRecord(
-            constraint_id="constraint:toyota_leverage",
-            owner_id="firm:toyota",
+            constraint_id="constraint:reference_manufacturer_leverage",
+            owner_id="firm:reference_manufacturer_a",
             constraint_type="max_leverage",
             threshold=0.7,
             comparison="<=",
@@ -237,7 +237,7 @@ def _build_full_world() -> tuple[
         InformationSignal(
             signal_id="signal:moodys_rating",
             signal_type="rating_action",
-            subject_id="firm:toyota",
+            subject_id="firm:reference_manufacturer_a",
             source_id="source:moodys",
             published_date="2026-01-01",
             payload={"rating": "AA-"},
@@ -247,8 +247,8 @@ def _build_full_world() -> tuple[
         InformationSignal(
             signal_id="signal:internal_minutes",
             signal_type="internal_memo",
-            subject_id="authority:boj",
-            source_id="authority:boj",
+            subject_id="authority:reference_central_bank",
+            source_id="authority:reference_central_bank",
             published_date="2026-01-01",
             visibility="restricted",
             metadata={"allowed_viewers": ("agent:boj_committee",)},
@@ -325,25 +325,25 @@ def test_corporate_space_reads_balance_sheet_constraints_signals():
     kernel, spaces = _build_full_world()
     corporate = spaces["corporate"]
 
-    view = corporate.get_balance_sheet_view("firm:toyota")
+    view = corporate.get_balance_sheet_view("firm:reference_manufacturer_a")
     assert view is not None
-    assert view.agent_id == "firm:toyota"
-    # Toyota holds 1M of cash @ 1.0 -> asset_value=1_000_000
-    # Toyota borrows 500k from MUFG -> liabilities=500_000
+    assert view.agent_id == "firm:reference_manufacturer_a"
+    # the reference manufacturer holds 1M of cash @ 1.0 -> asset_value=1_000_000
+    # the reference manufacturer borrows 500k from the reference bank -> liabilities=500_000
     assert view.asset_value == 1_000_000.0
     assert view.liabilities == 500_000.0
     assert view.net_asset_value == 500_000.0
 
-    evaluations = corporate.get_constraint_evaluations("firm:toyota")
+    evaluations = corporate.get_constraint_evaluations("firm:reference_manufacturer_a")
     assert len(evaluations) == 1
-    assert evaluations[0].constraint_id == "constraint:toyota_leverage"
+    assert evaluations[0].constraint_id == "constraint:reference_manufacturer_leverage"
     # leverage = 500k / 1M = 0.5 <= 0.7 -> ok
     assert evaluations[0].status == "ok"
 
-    visible = corporate.get_visible_signals("firm:toyota")
+    visible = corporate.get_visible_signals("firm:reference_manufacturer_a")
     visible_ids = {s.signal_id for s in visible}
     assert "signal:moodys_rating" in visible_ids
-    # Restricted signal not visible to firm:toyota.
+    # Restricted signal not visible to firm:reference_manufacturer_a.
     assert "signal:internal_minutes" not in visible_ids
 
 
@@ -351,25 +351,25 @@ def test_bank_space_reads_contracts_lending_balance_sheet_constraints_signals():
     kernel, spaces = _build_full_world()
     bank = spaces["banking"]
 
-    contracts = bank.list_contracts_for_bank("bank:mufg")
+    contracts = bank.list_contracts_for_bank("bank:reference_bank_a")
     assert len(contracts) == 1
     assert contracts[0].contract_id == "contract:loan_001"
 
-    exposures = bank.list_lending_exposures("bank:mufg")
+    exposures = bank.list_lending_exposures("bank:reference_bank_a")
     assert len(exposures) == 1
-    assert exposures[0].borrower_id == "firm:toyota"
+    assert exposures[0].borrower_id == "firm:reference_manufacturer_a"
     assert exposures[0].principal == 500_000.0
 
-    view = bank.get_balance_sheet_view("bank:mufg")
+    view = bank.get_balance_sheet_view("bank:reference_bank_a")
     assert view is not None
     # Bank is lender; principal counts as financial asset.
     assert view.asset_value == 500_000.0
     assert view.liabilities == 0.0
 
-    evaluations = bank.get_constraint_evaluations("bank:mufg")
+    evaluations = bank.get_constraint_evaluations("bank:reference_bank_a")
     assert evaluations == ()  # no constraints attached to the bank
 
-    visible = bank.get_visible_signals("bank:mufg")
+    visible = bank.get_visible_signals("bank:reference_bank_a")
     assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
 
 
@@ -377,28 +377,28 @@ def test_investor_space_reads_portfolio_balance_sheet_constraints_signals():
     kernel, spaces = _build_full_world()
     investor = spaces["investors"]
 
-    positions = investor.list_portfolio_positions("investor:gpif")
+    positions = investor.list_portfolio_positions("investor:reference_fund_a")
     assert len(positions) == 1
-    assert positions[0].asset_id == "asset:toyota_eq"
+    assert positions[0].asset_id == "asset:reference_manufacturer_equity"
     assert positions[0].quantity == 100.0
 
-    exposures = investor.list_portfolio_exposures("investor:gpif")
+    exposures = investor.list_portfolio_exposures("investor:reference_fund_a")
     assert len(exposures) == 1
     e = exposures[0]
-    assert e.asset_id == "asset:toyota_eq"
+    assert e.asset_id == "asset:reference_manufacturer_equity"
     assert e.quantity == 100.0
     assert e.latest_price == 2_500.0
     assert e.market_value == 250_000.0
     assert e.asset_type == "equity"
 
-    view = investor.get_balance_sheet_view("investor:gpif")
+    view = investor.get_balance_sheet_view("investor:reference_fund_a")
     assert view is not None
     assert view.asset_value == 250_000.0
 
-    evaluations = investor.get_constraint_evaluations("investor:gpif")
+    evaluations = investor.get_constraint_evaluations("investor:reference_fund_a")
     assert evaluations == ()
 
-    visible = investor.get_visible_signals("investor:gpif")
+    visible = investor.get_visible_signals("investor:reference_fund_a")
     assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
 
 
@@ -406,18 +406,18 @@ def test_exchange_space_reads_listings_prices_signals():
     kernel, spaces = _build_full_world()
     exchange = spaces["exchange"]
 
-    listings = exchange.list_assets_on_market("market:tse")
+    listings = exchange.list_assets_on_market("market:reference_equity_market")
     assert len(listings) == 1
-    assert listings[0].asset_id == "asset:toyota_eq"
+    assert listings[0].asset_id == "asset:reference_manufacturer_equity"
 
-    latest = exchange.get_latest_price("asset:toyota_eq")
+    latest = exchange.get_latest_price("asset:reference_manufacturer_equity")
     assert latest is not None
     assert latest.price == 2_500.0
 
-    history = exchange.get_price_history("asset:toyota_eq")
+    history = exchange.get_price_history("asset:reference_manufacturer_equity")
     assert len(history) == 1
 
-    visible = exchange.get_visible_signals("market:tse")
+    visible = exchange.get_visible_signals("market:reference_equity_market")
     assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
 
 
@@ -426,7 +426,7 @@ def test_real_estate_space_reads_property_assets_prices_signals():
     real_estate = spaces["real_estate"]
 
     assets = real_estate.list_assets_in_property_market(
-        "market:tokyo_central_office"
+        "market:reference_central_office"
     )
     assert len(assets) == 1
     assert assets[0].asset_id == "asset:marunouchi_bldg_a"
@@ -435,7 +435,7 @@ def test_real_estate_space_reads_property_assets_prices_signals():
     assert latest is not None
     assert latest.price == 50_000_000_000.0
 
-    visible = real_estate.get_visible_signals("market:tokyo_central_office")
+    visible = real_estate.get_visible_signals("market:reference_central_office")
     assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
 
 
@@ -464,9 +464,9 @@ def test_policy_space_reads_visible_signals():
     kernel, spaces = _build_full_world()
     policy = spaces["policy"]
 
-    visible = policy.get_visible_signals("authority:boj")
+    visible = policy.get_visible_signals("authority:reference_central_bank")
     # Policy authority sees the public rating action; the restricted
-    # internal memo is invisible because authority:boj is not in the
+    # internal memo is invisible because authority:reference_central_bank is not in the
     # allowed_viewers list (which contains agent:boj_committee only).
     assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
 
@@ -581,34 +581,34 @@ def test_read_operations_across_all_spaces_do_not_mutate_world_books():
     signals_before = kernel.signals.snapshot()
 
     # Exercise every read accessor on every space.
-    spaces["corporate"].get_balance_sheet_view("firm:toyota")
-    spaces["corporate"].get_constraint_evaluations("firm:toyota")
-    spaces["corporate"].get_visible_signals("firm:toyota")
+    spaces["corporate"].get_balance_sheet_view("firm:reference_manufacturer_a")
+    spaces["corporate"].get_constraint_evaluations("firm:reference_manufacturer_a")
+    spaces["corporate"].get_visible_signals("firm:reference_manufacturer_a")
     spaces["corporate"].snapshot()
 
-    spaces["banking"].list_contracts_for_bank("bank:mufg")
-    spaces["banking"].list_lending_exposures("bank:mufg")
-    spaces["banking"].get_balance_sheet_view("bank:mufg")
-    spaces["banking"].get_constraint_evaluations("bank:mufg")
-    spaces["banking"].get_visible_signals("bank:mufg")
+    spaces["banking"].list_contracts_for_bank("bank:reference_bank_a")
+    spaces["banking"].list_lending_exposures("bank:reference_bank_a")
+    spaces["banking"].get_balance_sheet_view("bank:reference_bank_a")
+    spaces["banking"].get_constraint_evaluations("bank:reference_bank_a")
+    spaces["banking"].get_visible_signals("bank:reference_bank_a")
     spaces["banking"].snapshot()
 
-    spaces["investors"].list_portfolio_positions("investor:gpif")
-    spaces["investors"].list_portfolio_exposures("investor:gpif")
-    spaces["investors"].get_balance_sheet_view("investor:gpif")
-    spaces["investors"].get_constraint_evaluations("investor:gpif")
-    spaces["investors"].get_visible_signals("investor:gpif")
+    spaces["investors"].list_portfolio_positions("investor:reference_fund_a")
+    spaces["investors"].list_portfolio_exposures("investor:reference_fund_a")
+    spaces["investors"].get_balance_sheet_view("investor:reference_fund_a")
+    spaces["investors"].get_constraint_evaluations("investor:reference_fund_a")
+    spaces["investors"].get_visible_signals("investor:reference_fund_a")
     spaces["investors"].snapshot()
 
-    spaces["exchange"].list_assets_on_market("market:tse")
-    spaces["exchange"].get_latest_price("asset:toyota_eq")
-    spaces["exchange"].get_price_history("asset:toyota_eq")
-    spaces["exchange"].get_visible_signals("market:tse")
+    spaces["exchange"].list_assets_on_market("market:reference_equity_market")
+    spaces["exchange"].get_latest_price("asset:reference_manufacturer_equity")
+    spaces["exchange"].get_price_history("asset:reference_manufacturer_equity")
+    spaces["exchange"].get_visible_signals("market:reference_equity_market")
     spaces["exchange"].snapshot()
 
-    spaces["real_estate"].list_assets_in_property_market("market:tokyo_central_office")
+    spaces["real_estate"].list_assets_in_property_market("market:reference_central_office")
     spaces["real_estate"].get_latest_price("asset:marunouchi_bldg_a")
-    spaces["real_estate"].get_visible_signals("market:tokyo_central_office")
+    spaces["real_estate"].get_visible_signals("market:reference_central_office")
     spaces["real_estate"].snapshot()
 
     spaces["information"].list_signals_by_source("source:moodys")
@@ -616,8 +616,8 @@ def test_read_operations_across_all_spaces_do_not_mutate_world_books():
     spaces["information"].list_visible_signals("agent:somebody")
     spaces["information"].snapshot()
 
-    spaces["policy"].list_instruments_by_authority("authority:boj")
-    spaces["policy"].get_visible_signals("authority:boj")
+    spaces["policy"].list_instruments_by_authority("authority:reference_central_bank")
+    spaces["policy"].get_visible_signals("authority:reference_central_bank")
     spaces["policy"].snapshot()
 
     spaces["external"].get_visible_signals("agent:any")
@@ -684,7 +684,7 @@ def test_ledger_records_object_registrations_for_assets_and_spaces():
 
     # Three explicitly registered assets.
     for asset_id in (
-        "asset:toyota_eq",
+        "asset:reference_manufacturer_equity",
         "asset:cash_jpy",
         "asset:marunouchi_bldg_a",
     ):

@@ -154,8 +154,8 @@ def test_real_estate_space_can_read_visible_signals():
         InformationSignal(
             signal_id="signal:zoning_change",
             signal_type="regulatory_announcement",
-            subject_id="market:tokyo_central_office",
-            source_id="agent:tokyo_metropolitan_govt",
+            subject_id="market:reference_central_office",
+            source_id="agent:reference_metropolitan_govt",
             published_date="2026-01-01",
         )
     )
@@ -174,7 +174,7 @@ def test_real_estate_space_can_read_visible_signals():
     real_estate = RealEstateSpace()
     kernel.register_space(real_estate)
 
-    visible = real_estate.get_visible_signals("market:tokyo_central_office")
+    visible = real_estate.get_visible_signals("market:reference_central_office")
     visible_ids = {s.signal_id for s in visible}
     assert "signal:zoning_change" in visible_ids
     assert "signal:internal_underwriting" not in visible_ids
@@ -194,7 +194,7 @@ def test_real_estate_space_does_not_mutate_world_books():
         InformationSignal(
             signal_id="signal:zoning",
             signal_type="regulatory_announcement",
-            subject_id="market:tokyo_central_office",
+            subject_id="market:reference_central_office",
             source_id="agent:govt",
             published_date="2026-01-01",
         )
@@ -210,15 +210,15 @@ def test_real_estate_space_does_not_mutate_world_books():
     kernel.register_space(real_estate)
     real_estate.add_property_market_state(
         PropertyMarketState(
-            property_market_id="market:tokyo_central_office",
-            region="tokyo_central",
+            property_market_id="market:reference_central_office",
+            region="reference_central",
             property_type="office",
         )
     )
     real_estate.add_property_asset_state(
         PropertyAssetState(
             asset_id="asset:marunouchi_bldg_a",
-            property_market_id="market:tokyo_central_office",
+            property_market_id="market:reference_central_office",
             asset_type="office_building",
         )
     )
@@ -226,8 +226,8 @@ def test_real_estate_space_does_not_mutate_world_books():
     # Read every projection through the space.
     real_estate.get_latest_price("asset:marunouchi_bldg_a")
     real_estate.get_price_history("asset:marunouchi_bldg_a")
-    real_estate.get_visible_signals("market:tokyo_central_office")
-    real_estate.list_assets_in_property_market("market:tokyo_central_office")
+    real_estate.get_visible_signals("market:reference_central_office")
+    real_estate.list_assets_in_property_market("market:reference_central_office")
     real_estate.snapshot()
 
     assert kernel.ownership.snapshot() == ownership_before
@@ -246,7 +246,7 @@ def test_real_estate_space_runs_for_one_year_after_state_added():
     real_estate = RealEstateSpace()
     kernel.register_space(real_estate)
     real_estate.add_property_market_state(
-        PropertyMarketState(property_market_id="market:tokyo_central_office")
+        PropertyMarketState(property_market_id="market:reference_central_office")
     )
 
     kernel.run(days=365)
