@@ -442,6 +442,356 @@ is not:
 - **Automatic economic behavior of any kind.** v1.8.x stays
   endogenous-but-bounded.
 
+## Hardening — anchoring variables to spaces, channels, and exposures
+
+> **Why this section exists:** the v1.8.8 design as originally
+> written was at risk of producing *disembodied global state*. A
+> `ReferenceVariableBook` that lives in the kernel and is read by
+> any routine, with no anchoring to spaces, no anchoring to
+> interaction channels, and no anchoring to who actually depends on
+> the variable, would re-introduce the scenario-driven failure mode
+> through a side door — every routine would consult a global
+> "macro environment" object and pretend that was endogenous. The
+> hardening update below adds the explicit hooks that prevent that.
+
+### What a `ReferenceVariable` is — and is not
+
+A `ReferenceVariable` is **not**:
+
+- **Not an `Agent`.** It does not act, decide, hold contracts, or
+  appear as an `actor_id` anywhere. Agents (firms, banks,
+  investors, institutions) are the ones who *observe* variables.
+- **Not a `Space`.** It does not belong to any of the eight v0
+  spaces (Corporate / Banking / Investors / Exchange / Real
+  Estate / Information / Policy / External). It is *published by*
+  one or more spaces and *observed by* zero or more spaces, but
+  it is not itself a space-resident object.
+- **Not a `Scenario`.** A scenario is a forward-going alternative
+  history that v1.8.x does not implement. A reference variable is
+  a name for an observable; specific observations are recorded as
+  data, not generated as scenario branches.
+- **Not a `Shock`.** A shock is an exogenous event that drives
+  behavior. A reference variable's values may change over time,
+  but those values do not auto-trigger any routine.
+- **Not a `PriceBook` replacement.** Prices remain in `PriceBook`,
+  per-asset, per-tick, with no release / vintage concept. A
+  reference variable describes *world state* and may be revised;
+  a price describes *market state* at a moment.
+
+A `ReferenceVariable` **is**:
+
+- A **world-context / field / substrate variable** that exists in
+  the world independently of any one agent, may be observed by
+  agents through routines and interaction channels, and carries an
+  audit-grade history of release dates, vintages, and revisions.
+
+The distinction matters operationally. An agent has a
+`balance_sheet_view`; a variable does not. An agent has an
+`AttentionProfile`; a variable does not. A variable has *consumers*
+(agents that observe it) and *exposures* (agents that depend on
+it); v1.8.10 will introduce explicit `ExposureRecord` to name the
+"depends on" relationship as data.
+
+### The three required hooks
+
+Every `ReferenceVariableSpec` must declare, by construction, three
+hooks that anchor it to the rest of the world:
+
+1. **Source hook — *which space / source publishes or observes
+   this variable.*** Carried by `source_space_id` (required) and
+   `source_id` (optional). Without a source hook a variable is a
+   ghost: someone has to be the publisher / observer of record.
+2. **Scope hook — *which spaces / sectors / subjects / asset
+   classes the variable is relevant to.*** Carried by
+   `related_space_ids`, `related_subject_ids`,
+   `related_sector_ids`, `related_asset_class_ids`,
+   `observability_scope`, `typical_consumer_space_ids`. Without a
+   scope hook a variable is universally global; with the hook,
+   the v1.8.11 menu builder knows whose menus the variable should
+   even be a candidate for.
+3. **Exposure hook — *which agents / assets / contracts / sectors
+   are economically dependent on this variable.*** Lives in v1.8.10
+   `ExposureRecord` rather than on the spec itself, but the spec
+   names which scope the exposure layer is expected to resolve
+   against. Without an exposure hook, the variable becomes a free-
+   floating global driver — exactly the failure the hardening
+   prevents.
+
+The three hooks satisfy a simple invariant: **for every variable,
+something publishes it, something is in scope to read it, and
+something concrete depends on it.** A variable that fails any hook
+should not be registered.
+
+### Updated `ReferenceVariableSpec` field set (additions)
+
+The original §"`ReferenceVariableSpec` — proposed record shape"
+table lists `variable_id`, `variable_name`, `variable_group`,
+`variable_type`, `source_space_id`, `canonical_unit`, `frequency`,
+`observation_kind`, `default_visibility`,
+`expected_release_lag_days`, `metadata`. The hardening update
+**adds** the following fields (or expands `metadata` semantics for
+implementations that prefer a flatter starter schema):
+
+| Field | Type | Hook | Notes |
+| --- | --- | --- | --- |
+| `source_id` | `str \| None` | source | optional named source within `source_space_id` (e.g., a specific `InformationSourceState` id). Null = "the space publishes the variable but no specific source is named." |
+| `related_space_ids` | `tuple[str, ...]` | scope | spaces other than `source_space_id` for which this variable is *relevant* (e.g., `variable:oil_price_reference` is published by `external` but relevant to `corporate`, `banking`, `real_estate`, `information`). |
+| `related_subject_ids` | `tuple[str, ...]` | scope | specific subjects (firm ids, asset ids, market ids) for which this variable is most directly relevant. May be empty for broadly-relevant variables (e.g., `variable:cpi_yoy`). |
+| `related_sector_ids` | `tuple[str, ...]` | scope | sector labels (free-form strings; suggested vocabulary in `metadata`). Used by v1.8.10 to bulk-resolve exposures by sector. |
+| `related_asset_class_ids` | `tuple[str, ...]` | scope | asset-class labels (e.g., `("equity", "real_estate")`). Used by `PortfolioExposure` consumers to filter relevant variables. |
+| `observability_scope` | `str` | scope | controlled vocabulary; suggested values: `"global"` (any space may observe), `"jurisdictional"` (v2+ only), `"private"` (only the source space). v1.8.9 stores; v1.8.11 enforces in the menu builder. |
+| `typical_consumer_space_ids` | `tuple[str, ...]` | scope | spaces typically expected to consume the variable, e.g., `("investors", "banking")` for `variable:credit_spread_reference`. Used by v1.8.11 menu builder for default profile suggestions. |
+
+The fields above are stored as data and **not** validated for
+resolution against the registry, per the v0/v1 cross-reference
+rule. v1.8.10 (`ExposureRecord`) and v1.8.11 (`ObservationMenu`
+builder) will read them; v1.8.9 just persists them.
+
+### Updated `VariableObservation` field set (additions)
+
+The original `VariableObservation` table lists `observation_id`,
+`variable_id`, `as_of_date`, `observation_period_start?`,
+`observation_period_end?`, `release_date?`, `vintage_id?`,
+`revision_of?`, `value`, `unit`, `source_id`, `confidence`,
+`metadata`. The hardening update adds three more anchoring fields
+and clarifies one existing one:
+
+| Field | Type | Hook | Notes |
+| --- | --- | --- | --- |
+| `observed_by_space_id` | `str \| None` | source | the space that *recorded* the observation (often equal to `spec.source_space_id`, but may differ — e.g., a `policy` variable observed by `information` after a press release). |
+| `published_by_source_id` | `str \| None` | source | named publisher within the recording space (preferred name; replaces or aliases the existing `source_id` field for clarity in v1.8.9 implementation). |
+| `carried_by_interaction_id` | `str \| None` | topology | optional `InteractionSpec.interaction_id` naming the channel through which this observation reached its consumers. Null when the observation was simply stored without a channel record. |
+| `as_of_date` | `str` (already in spec) | — | clarified: the date the observation **became visible to agents**. The v1.8.11 menu builder filters using this field. `release_date` is an alias used when the publication moment differs from the observation moment (e.g., embargo / leak); when both exist, `as_of_date` wins for visibility. |
+
+`as_of_date` is the **canonical visibility timestamp**. v1.8.11
+must use it (not `observation_period_start`, not `release_date`)
+when filtering observations against a menu's `as_of_date`. The
+look-ahead-bias rule from §"Why period / release_date / vintage /
+revision_of all matter" is unchanged.
+
+### How variables enter the `S × S × C` interaction topology
+
+The v1.8.3 / v1.8.2 `S × S × C` tensor describes channels between
+spaces. Reference variable observations may be **carried** through
+channels — that is what `VariableObservation.carried_by_interaction_id`
+records. The topology stays about *which channels are possible*;
+the variable layer stays about *what world-context values
+currently are*; the link is data, not enforced.
+
+Five concrete channel examples that v1.8.10+ may register:
+
+| `interaction_id` | source → target | `interaction_type` | typical variables carried |
+| --- | --- | --- | --- |
+| `interaction:external.commodity_feed_to_information` | `external → information` | `commodity_feed` | `variable:oil_price_reference`, `variable:metal_price_reference`, `variable:petrochemical_input_cost` |
+| `interaction:information.macro_data_release_to_investors` | `information → investors` | `macro_data_release` | `variable:gdp_growth`, `variable:cpi_yoy`, `variable:industrial_production_index` |
+| `interaction:information.credit_monitoring_data_to_banking` | `information → banking` | `credit_monitoring_data` | `variable:credit_spread_reference`, `variable:yield_curve_10y_2y` |
+| `interaction:policy.policy_rate_announcement_to_investors` | `policy → investors` | `policy_rate_announcement` | `variable:policy_rate` |
+| `interaction:real_estate.collateral_market_update_to_banking` | `real_estate → banking` | `collateral_market_update` | `variable:rent_index_reference`, `variable:land_price_index_reference` |
+
+These are **illustrative**. v1.8.10+ milestones may register any
+subset; v2 / v3 calibration may add jurisdiction-specific channels
+on top. The crucial property is that *every* variable observation
+that crosses a space boundary should ideally be associated with an
+`InteractionSpec` (and recorded via `carried_by_interaction_id`)
+so the cross-space flow is auditable. v1.8.9 does not enforce this;
+v1.8.11 may enforce it for menu eligibility.
+
+### Responsibility chain — relation to the future Exposure / Dependency layer
+
+The hardening update's central conceptual move: split
+responsibilities cleanly across five record types so no record
+becomes a "global driver."
+
+```
+ReferenceVariableSpec    — what variable EXISTS
+                           (identity, group, source, scope)
+
+VariableObservation      — what value was OBSERVED and WHEN
+                           (period, release date, vintage, revision)
+
+ExposureRecord           — who DEPENDS on it and IN WHAT DIRECTION
+                           (v1.8.10; not yet implemented)
+
+AttentionProfile         — who WATCHES it
+                           (v1.8.5; already implemented)
+
+Routine                  — when it is REVIEWED
+                           (v1.8.4 / v1.8.6 / v1.8.7; already
+                            implemented)
+```
+
+Reading the chain top-to-bottom: a variable can exist (Spec) and
+be observed at concrete moments (Observation) without anyone yet
+depending on it; an exposure can be declared (Exposure) without
+the exposed actor watching the variable today; an actor can watch
+the variable (Attention) without yet running a routine that reads
+it; a routine can run (Routine) and choose, on its own schedule,
+whether the latest observation matters.
+
+**Each step is opt-in.** A variable does not auto-affect any
+exposed actor; an exposed actor does not auto-watch the variable;
+a watching actor does not auto-fire a routine when the variable
+moves. The chain reads top-down (Variable → Observation →
+Exposure → Attention → Routine) for *causality* but each step
+requires explicit data, not implicit propagation.
+
+This is the structural answer to "how do you keep variables from
+becoming disembodied global drivers": you require the data at
+every link.
+
+### Transmission chain examples
+
+The four examples below show how *future* routines will use
+variables. v1.8.x does not model any of these transmissions;
+they are documented to make the attachment points concrete.
+
+#### a. Oil → petrochemical → packaging → logistics → food processor margin
+
+```
+variable:oil_price_reference                    (external publishes)
+   │
+   │ released through interaction:external.commodity_feed_to_information
+   ▼
+variable:petrochemical_input_cost               (information publishes,
+                                                  derived in a future
+                                                  v3 routine)
+   │
+   ▼ (future routine: packaging cost recomputation)
+variable:packaging_cost_index                   (real_economy)
+   │
+   ▼ (future routine: logistics cost recomputation)
+variable:logistics_cost_index                   (real_economy)
+   │
+   ▼ (future routine: food_processor margin pressure
+                       — corporate review routine reads
+                       packaging + logistics + own pricing
+                       power and emits a margin-pressure
+                       signal)
+food_processor's corporate review routine
+```
+
+Each arrow is a **future routine** that v1.8.x has not implemented.
+The variables exist in v1.8.9; the chain is filled in milestone by
+milestone. Crucially, no variable in the chain *automatically*
+moves any other variable. A routine has to be configured to read
+the upstream observation and produce the downstream variable.
+
+#### b. Electricity / power
+
+```
+variable:electricity_price_index, variable:grid_reserve_margin
+   │
+   ▼ (future routine: production-cost recomputation
+                       for electricity-intensive sectors)
+production cost adjustments → corporate routine outputs
+
+   │
+   ▼ (future routine: outage-risk scoring against
+                       grid_reserve_margin thresholds)
+outage-risk signals → bank review consumes
+```
+
+#### c. AI / technology
+
+```
+variable:ai_capability_index, variable:automation_adoption_index
+   │
+   ▼ (future routine: labor-displacement-risk scoring)
+labor displacement risk signals
+   │
+   ▼ (future routine: productivity-frontier reweighting)
+productivity-frontier observation
+   │
+   ▼ (future routine: narrative aggregation in
+                       expectations_narratives group)
+narrative theme index updates
+```
+
+#### d. Interest rates
+
+```
+variable:policy_rate, variable:yield_curve_10y_2y
+   │
+   ▼ (future routine: debt-service-burden recomputation
+                       for indebted firms)
+DSCR view updates                                  (constraint side)
+
+   │
+   ▼ (future routine: discount-rate update in
+                       valuation_refresh routine)
+valuation refresh → ValuationGap
+
+   │
+   ▼ (future routine: bank funding-cost recomputation)
+bank-side funding cost adjustment → bank review
+```
+
+Note: each chain ends in a v1.8.x routine artifact (a signal, a
+view, a `RoutineRunRecord`), not in a balance sheet write or a
+price move. The transmission structure is preserved; the
+behavioral outputs are deferred.
+
+### Hard boundary — variable movement does NOT auto-trigger routines
+
+The hard boundary is the test for whether the v1.8.8 design has
+slipped:
+
+> **A variable observation only matters when *all four* gates are
+> satisfied:**
+>
+> 1. The observation is **visible** by date / release / vintage
+>    (`as_of_date <= menu.as_of_date`, vintage selection rule
+>    applied).
+> 2. The observation is **available** through a channel or menu
+>    (`carried_by_interaction_id` resolves to a channel that the
+>    consumer's `AttentionProfile.watched_channels` includes,
+>    *or* the consumer reads `ReferenceVariableBook` directly
+>    through a menu builder that respects scope).
+> 3. An **`AttentionProfile`** *selects* it
+>    (`watched_variable_ids` / `watched_variable_groups` /
+>    bridged-via-`watched_metrics`).
+> 4. A **`Routine`** consumes it (the v1.8.6 engine writes a
+>    `RoutineRunRecord` whose `input_refs` include the
+>    observation id).
+
+A variable that moves but fails any of the four gates produces no
+behavior. A routine that fires solely because a variable crossed a
+threshold has bypassed gate (4) — that is scenario-driven and
+should be rejected at review.
+
+The four gates correspond to the responsibility chain:
+
+```
+visibility gate     ← VariableObservation.as_of_date / release_date / vintage
+availability gate   ← InteractionSpec / carried_by_interaction_id (or ObservationMenu)
+selection gate      ← AttentionProfile + SelectedObservationSet
+consumption gate    ← Routine + RoutineRunRecord.input_refs
+```
+
+Each gate has its own data record. Removing data for any gate
+breaks the chain — which is exactly why none of them is
+auto-derivable.
+
+### Anti-scenario discipline preserved
+
+The hardening preserves and strengthens the v1.8.1 anti-scenario
+discipline:
+
+- **Absence is partial / degraded, not silent.** A variable with
+  zero observations does not break a routine; the routine runs
+  with an `input_refs` subset and `status="degraded"`. (v1.8.1
+  §43.1; v1.8.6 §48.2.)
+- **Presence does not auto-produce behavior.** A variable
+  observation alone, without exposure declaration + attention
+  selection + routine consumption, has zero behavioral effect.
+  This is the four-gate rule above.
+
+These two rules together pin the layer in place: it is rich enough
+to host real macro / financial / material / energy / technology /
+real-estate / labor / logistics / expectations data (v2 / v3 will
+populate it), and disciplined enough that none of that data
+silently steers the simulation.
+
 ## Anti-scenario discipline — restated
 
 The v1.8.1 anti-scenario principle cascades through v1.8.8:

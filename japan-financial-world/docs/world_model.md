@@ -4150,3 +4150,66 @@ A v1.8.11 `ObservationMenu` builder must filter out observations whose `as_of_da
 3. This section (§50) records the design in the constitutional log.
 4. No `world/`, `spaces/`, `examples/`, or `tests/` file is modified. The 1025-test baseline is unchanged.
 5. v1.8.9 reviewers can land `WorldVariableBook` against the proposed shapes without re-litigating either the look-ahead-bias rule or the anti-scenario discipline.
+
+## 50.1 v1.8.8 hardening — anchoring variables to spaces, channels, and exposures
+
+§50.1 is a **hardening update** to the v1.8.8 design that closed §50. The original design risked producing *disembodied global state*: a `ReferenceVariableBook` read by any routine, with no anchoring to spaces, no anchoring to interaction channels, and no anchoring to who actually depends on the variable, would re-introduce the scenario-driven failure mode through a side door — every routine would consult a global "macro environment" object and pretend that was endogenous. §50.1 closes that door.
+
+The full hardening is in [`v1_reference_variable_layer_design.md`](v1_reference_variable_layer_design.md) under "Hardening — anchoring variables to spaces, channels, and exposures". The constitutional summary:
+
+### 50.1.1 Conceptual classification
+
+A `ReferenceVariable` is **not** an `Agent`, **not** a `Space`, **not** a `Scenario`, **not** a `Shock`, and **not** a `PriceBook` replacement. It **is** a *world-context / field / substrate variable* observable by agents through routines and interaction channels.
+
+### 50.1.2 The three required hooks
+
+Every `ReferenceVariableSpec` must declare three hooks by construction:
+
+1. **Source hook** — which space / source publishes or observes the variable (`source_space_id`, optional `source_id`).
+2. **Scope hook** — which spaces / sectors / subjects / asset classes the variable is relevant to (`related_space_ids`, `related_subject_ids`, `related_sector_ids`, `related_asset_class_ids`, `observability_scope`, `typical_consumer_space_ids`).
+3. **Exposure hook** — which agents / assets / contracts / sectors are economically dependent on the variable (lives in v1.8.10 `ExposureRecord`; the spec just names the scope it resolves against).
+
+Without all three, a variable is a free-floating global driver. v1.8.9 implementations should reject specs that fail any hook.
+
+### 50.1.3 Updated record-shape additions
+
+`ReferenceVariableSpec` adds (relative to the original §50.3 list): `source_id?`, `related_space_ids`, `related_subject_ids`, `related_sector_ids`, `related_asset_class_ids`, `observability_scope`, `typical_consumer_space_ids`.
+
+`VariableObservation` adds: `observed_by_space_id?`, `published_by_source_id?` (renames the original `source_id`), `carried_by_interaction_id?`. The `as_of_date` field is clarified as the **canonical visibility timestamp** that the v1.8.11 menu builder must filter on (not `observation_period_*`, not `release_date` when both exist).
+
+### 50.1.4 Variables in the `S × S × C` topology
+
+Variable observations may be **carried** through `InteractionSpec` channels. The topology stays about *which channels are possible*; the variable layer stays about *what world-context values currently are*. Five illustrative channels (full table in the design doc):
+
+- `external → information` (`commodity_feed`)
+- `information → investors` (`macro_data_release`)
+- `information → banking` (`credit_monitoring_data`)
+- `policy → investors` (`policy_rate_announcement`)
+- `real_estate → banking` (`collateral_market_update`)
+
+The interaction tensor must **not** become a shock tensor. A v3 calibration that wants automatic signal-on-shock behavior puts that inside a routine, not as a hidden side effect of the variable layer.
+
+### 50.1.5 Responsibility chain — five record types, no global driver
+
+```
+ReferenceVariableSpec    — what variable EXISTS
+VariableObservation      — what value was OBSERVED and WHEN
+ExposureRecord           — who DEPENDS on it (v1.8.10)
+AttentionProfile         — who WATCHES it (v1.8.5)
+Routine                  — when it is REVIEWED (v1.8.4 / v1.8.6 / v1.8.7)
+```
+
+Each step is opt-in. A variable does not auto-affect any exposed actor; an exposed actor does not auto-watch the variable; a watching actor does not auto-fire a routine when the variable moves. Each link requires explicit data.
+
+### 50.1.6 Hard boundary — the four gates
+
+A variable observation only matters when **all four** gates are satisfied: visibility (date / release / vintage filter), availability (channel or menu), selection (`AttentionProfile` selects it), consumption (`Routine` reads it via `input_refs`). A routine that fires solely because a variable crossed a threshold has bypassed gate 4 — that is scenario-driven and must be rejected at review.
+
+### 50.1.7 v1.8.8 hardening success criteria
+
+§50.1 is complete when **all** hold:
+
+1. `docs/v1_reference_variable_layer_design.md` carries the "Hardening — anchoring variables to spaces, channels, and exposures" section with the conceptual classification, the three hooks, the updated spec / observation field discussions, the channel examples, the responsibility chain, the four transmission examples (oil / electricity / AI / interest rates), the four-gate hard boundary, and the anti-scenario-discipline restatement.
+2. This section (§50.1) records the hardening in the constitutional log.
+3. No `world/`, `spaces/`, `examples/`, or `tests/` file is modified. The 1025-test baseline is unchanged.
+4. v1.8.9 reviewers reading the hardened design can answer "where does this variable hook into spaces, channels, and exposures?" before they touch any code.
