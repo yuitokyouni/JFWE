@@ -26,7 +26,8 @@ reproduce locally before pushing.
 ## Code health (mirrors CI; reproducible locally)
 
 - [ ] `pytest -q` from `japan-financial-world/` reports the expected
-  passing total (currently `654 passed` at v1.7-public-rc1).
+  passing total (currently `660 passed` at v1.7-public-rc1+,
+  including the replay-determinism test file).
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).
@@ -39,6 +40,15 @@ reproduce locally before pushing.
   `python examples/reference_world/run_reference_loop.py`
   from `japan-financial-world/` produces the seven loop
   record types and day-2 delivery to `(banking, investors)`.
+- [ ] Replay determinism: two runs of the reference demo
+  produce the same canonical ledger trace and the same SHA-256
+  digest. The dedicated test
+  `tests/test_reference_demo_replay.py` enforces this; if it
+  fails, **do not** tag a release until the regression is
+  understood. New non-determinism in the kernel is a v0/v1
+  invariant violation. Helpers live in
+  `examples/reference_world/replay_utils.py`
+  (`canonicalize_ledger(kernel)`, `ledger_digest(kernel)`).
 - [ ] No new `print` / debug statements in committed code.
 - [ ] No accidentally committed `*.bak`, `*.pyc`, `__pycache__/`,
   `.DS_Store`, IDE settings, or notebook output.

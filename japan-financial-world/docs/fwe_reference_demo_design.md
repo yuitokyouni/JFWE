@@ -187,6 +187,50 @@ valuation → action → consequence — is what the demo validates today.
 The demo's job is to make sure that shape is concrete, runnable, and
 inspectable before any specific stress logic is layered on top.
 
+## Replay determinism gate
+
+A second run of the same demo must produce the same canonical
+ledger trace as the first run. This is enforced by
+`tests/test_reference_demo_replay.py` and is a v0 / v1 invariant
+("the ledger is a reproducible, byte-stable causal record for a
+given input").
+
+The helpers in `examples/reference_world/replay_utils.py` define
+the canonical view:
+
+- **`canonicalize_ledger(kernel) -> list[dict]`** — strips two
+  fields that vary across runs by construction:
+    - `record_id`: derived from a stable hash of a body that
+      includes `timestamp.isoformat()`. Different timestamp →
+      different record_id.
+    - `timestamp`: defaults to `datetime.now(timezone.utc)` when a
+      record is appended; wall-clock dependent.
+  And rewrites one field that embeds the volatile `record_id`:
+    - `parent_record_ids` (a tuple of `record_id` strings) becomes
+      `parent_sequences` (a tuple of `int` sequence indices that
+      point to the parent's position in the same ledger).
+  Everything else — `record_type`, `simulation_date`, `source`,
+  `target`, `object_id`, `payload`, `metadata`, `correlation_id`,
+  `causation_id`, `space_id`, `agent_id`, `confidence`, etc. — is
+  preserved verbatim.
+- **`ledger_digest(kernel) -> str`** — SHA-256 hex digest of
+  `json.dumps(canonical, sort_keys=True, separators=(",", ":"),
+  ensure_ascii=False)`. Two runs of the same demo produce the
+  same 64-char digest.
+
+If a future change to v0 / v1 introduces non-determinism into a
+field that the canonical view preserves, the replay tests will
+fail and a milestone document must record either (a) a fix to
+remove the non-determinism, or (b) an explicit decision to add
+the new field to the volatility-allowlist with a justification.
+
+The replay gate is strictly a *correctness* check, not a
+*calibration* check. It does not assert that the trace contains
+the right values — only that running twice produces the same
+values. Calibration assertions (e.g., "the macro process value
+should be X") live in dedicated tests under
+`tests/test_reference_demo.py` and `tests/test_reference_loop.py`.
+
 ## Why the demo uses fictional entities
 
 Three reasons:
@@ -234,8 +278,13 @@ a v1+ behavioral milestone, not an extension of this demo.
   of the ledger trace.
 - `examples/reference_world/run_reference_loop.py` — runnable
   script using only existing v0 / v1 APIs.
+- `examples/reference_world/replay_utils.py` —
+  `canonicalize_ledger(kernel)` / `ledger_digest(kernel)` helpers
+  used by the replay-determinism gate.
 - `tests/test_reference_demo.py` — verifies the script runs and
   produces the expected ledger event types.
+- `tests/test_reference_demo_replay.py` — replay-determinism
+  gate (two runs → same canonical trace + same SHA-256 digest).
 
 No file under `world/`, `spaces/`, or any existing test file is
 modified. The 632 / 632 v0 + v1 test count grows by the number of
