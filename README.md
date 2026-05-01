@@ -7,11 +7,16 @@ contracts, prices, signals, constraints, and inter-space communication all live
 in explicit kernel-level structures so that future behavior can be added on top
 without hidden cross-space writes.
 
-The current code is at the **v1.7** milestone: a jurisdiction-neutral reference
-financial system layered on top of the v0 world kernel. v1 adds reference
-record types, books, and an end-to-end orchestrator that links every record
-type into a single causal ledger trace. v1 does **not** add autonomous
-behavior, decision logic, or country-specific calibration.
+The current code is at the **v1.8** milestone, tagged **`v1.8-public-release`**:
+a jurisdiction-neutral reference financial system (v1.7 freeze) layered on top
+of the v0 world kernel, plus a config-driven experiment harness (v1.8) that
+turns the bundled FWE Reference Demo into a reproducible, manifest-emitting
+run. v1 adds reference record types, books, and an end-to-end orchestrator
+that links every record type into a single causal ledger trace. v1.8 wraps
+that demo behind a small YAML config schema, a SHA-256 ledger-digest replay
+gate, and a JSON manifest. **No autonomous economic behavior is added in
+v1 / v1.8** — no price formation, no trading, no credit decisions, no Japan
+calibration.
 
 ## Project layers
 
@@ -74,12 +79,13 @@ real-world claim.
 
 ## Version boundary
 
-| Version | Purpose                                                       | Status                       |
-| ------- | ------------------------------------------------------------- | ---------------------------- |
-| v0.xx   | Jurisdiction-neutral world kernel                             | **Frozen at v0.16**          |
-| v1.xx   | Jurisdiction-neutral reference financial system               | **Frozen at v1.7**           |
-| v2.xx   | Japan public calibration                                      | Not started                  |
-| v3.xx   | Japan proprietary / commercial calibration                    | Not started                  |
+| Version | Purpose                                                                          | Status                       |
+| ------- | -------------------------------------------------------------------------------- | ---------------------------- |
+| v0.xx   | Jurisdiction-neutral world kernel                                                | **Frozen at v0.16**          |
+| v1.0–v1.7 | Jurisdiction-neutral reference financial system                                | **Frozen at v1.7**           |
+| v1.8    | Experiment harness (config-driven driver + manifest + replay gate, no new behavior) | **Tagged `v1.8-public-release`** |
+| v2.xx   | Japan public calibration                                                         | Not started                  |
+| v3.xx   | Japan proprietary / commercial calibration                                       | Not started                  |
 
 Despite the project name, no Japan-specific calibration is built into v0 or v1
 — both are fully neutral and could be calibrated to any jurisdiction.
@@ -122,6 +128,16 @@ no-cross-mutation rule. v1 layers reference content on that contract:
   changes. This document, `v1_release_summary.md`, `architecture_v1.md`,
   `v1_scope.md`, and `v2_readiness_notes.md` were authored as part of
   the freeze.
+- **v1.8 Experiment harness** — `world/experiment.py` provides
+  `ExperimentConfig` / `load_experiment_config` /
+  `validate_experiment_config` / `run_reference_experiment`. The
+  harness loads a synthetic-only YAML config, validates it, runs the
+  bundled reference demo, and emits a JSON manifest plus a SHA-256
+  ledger digest under the configured `output_dir`. Adds zero
+  simulation behavior; the schema's optional sections are documented
+  for future v1.8.x milestones but raise `NotImplementedError` at
+  runtime in v1.8 itself. See
+  [`docs/v1_experiment_harness_design.md`](japan-financial-world/docs/v1_experiment_harness_design.md).
 
 ## What v0 vs v1 own
 
@@ -141,9 +157,9 @@ is a **v3 task**. See
 [`docs/v1_scope.md`](japan-financial-world/docs/v1_scope.md) and
 [`docs/v2_readiness_notes.md`](japan-financial-world/docs/v2_readiness_notes.md).
 
-## What is intentionally NOT in v0 or v1
+## What is intentionally NOT in v0, v1, or v1.8
 
-Neither v0 nor v1 implements:
+Neither v0 nor v1 (including the v1.8 harness) implements:
 
 - price formation, order matching, market microstructure
 - bank credit decisions, default detection, covenant trips
@@ -184,6 +200,12 @@ Start here:
 - [docs/v2_readiness_notes.md](japan-financial-world/docs/v2_readiness_notes.md)
   — forward-looking note on data sources, entity mapping, license
   review, and v2 vs v3 boundary
+
+**v1.8 (tagged `v1.8-public-release`):**
+- [docs/fwe_reference_demo_design.md](japan-financial-world/docs/fwe_reference_demo_design.md)
+  — reference demo, replay-determinism gate, manifest design
+- [docs/v1_experiment_harness_design.md](japan-financial-world/docs/v1_experiment_harness_design.md)
+  — config-driven harness for the demo
 
 **v1 sub-milestone designs:**
 - [docs/v1_reference_system_design.md](japan-financial-world/docs/v1_reference_system_design.md)

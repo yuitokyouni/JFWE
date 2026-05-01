@@ -15,12 +15,17 @@ is an illustrative round number, not a measurement.
 | File                    | Purpose                                                     |
 | ----------------------- | ----------------------------------------------------------- |
 | `README.md`             | This file (entry point).                                    |
-| `entities.yaml`         | The synthetic entity catalog: 5 firms, 2 banks, 3 investors, 1 exchange, 1 real-estate market, 1 information source, 1 policy authority, 2 external factors. |
+| `entities.yaml`         | Synthetic entity catalog: 5 firms, 2 banks, 3 investor types, 1 exchange, 1 real-estate market, 1 information source, 1 policy authority, 2 external factors, plus seed prices, seed ownership, and the loop parameters. |
 | `expected_story.md`     | Per-step narrative of the ledger trace the script produces. |
 | `run_reference_loop.py` | Runnable script that builds the demo kernel, walks the seven loop steps, advances two ticks, and prints a summary. |
+| `replay_utils.py`       | `canonicalize_ledger(kernel)` and `ledger_digest(kernel)` helpers used by the v1 replay-determinism gate. |
+| `manifest.py`           | `build_reference_demo_manifest(kernel, summary)` and `write_manifest(manifest, path)` helpers for the reproducibility manifest (git_sha, python_version, platform, input file hashes, ledger digest, summary). |
+| `configs/`              | YAML configs for the v1.8 experiment harness. `configs/base.yaml` mirrors the bundled demo and produces the same SHA-256 ledger digest. |
 
 For the design rationale see
-[`../../docs/fwe_reference_demo_design.md`](../../docs/fwe_reference_demo_design.md).
+[`../../docs/fwe_reference_demo_design.md`](../../docs/fwe_reference_demo_design.md)
+and (for the v1.8 harness)
+[`../../docs/v1_experiment_harness_design.md`](../../docs/v1_experiment_harness_design.md).
 
 ## How to run
 

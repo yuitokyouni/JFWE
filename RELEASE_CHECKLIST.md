@@ -11,7 +11,7 @@ For the public / private rules these checks enforce, see
 
 ## Public release gate (must be green for a public release)
 
-A **public release tag** (e.g., `v1.7-public-release`) requires CI
+A **public release tag** (e.g., `v1.8-public-release`) requires CI
 to be green on the commit being tagged. CI runs the items below
 automatically; this section is the manual mirror so you can
 reproduce locally before pushing.
@@ -23,12 +23,13 @@ can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
 - **Date:** 2026-05-01
-- **Commit:** post-`v1.7-public-rc1`, after the manifest milestone
-  (`c347c5d`) and one synthetic-ID cleanup pass.
-- **Status:** all release-gate checks below pass locally. CI status
-  must still be confirmed on the commit being tagged.
+- **Tag:** `v1.8-public-release`, pointing at commit `7fa2c42`
+  ("ci: trigger workflow on version-tag pushes"). The same commit
+  also carries `v1.8-public-rc2`.
+- **Status:** released. All release-gate checks pass locally and
+  on CI under the tag ref.
 - **Local results:**
-  - `pytest -q` → 674 passed
+  - `pytest -q` → 725 passed
   - `compileall world spaces tests examples` → clean
   - `ruff check .` (repo root) → clean
   - `examples/reference_world/run_reference_loop.py` → produces
@@ -38,23 +39,34 @@ new review is performed.
     → 6 / 6 passed
   - Manifest gate (`tests/test_reference_demo_manifest.py`) →
     14 / 14 passed
+  - Experiment-harness gate (`tests/test_experiment_config.py`) →
+    43 / 43 passed
+  - Catalog-shape regression (`tests/test_reference_demo_catalog_shape.py`)
+    → 8 / 8 passed
   - Manifest sample build → ledger digest matches the digest the
     replay test asserts
   - Public-wording audit → zero hits in the "needs softening"
-    category; every match is a bounded NEGATIVE / prohibited-list /
-    future-scope use
+    category
   - Synthetic-ID audit → zero remaining real-name fixtures in
-    `tests/` or `examples/`. The only file that contains the
-    forbidden tokens (`toyota`, `mufg`, `boj`, etc.) is
-    `tests/test_reference_demo.py`, which uses them as the
-    forbidden-list the demo-hygiene test asserts must not appear in
-    object_ids.
+    `tests/` or `examples/`. Forbidden tokens (`toyota`, `mufg`,
+    `boj`, etc.) appear only inside
+    `tests/test_reference_demo.py` as the forbidden-list its
+    hygiene test asserts must not appear in `object_id`s.
+  - `gitleaks detect --redact --log-opts="--all"` (homebrew
+    8.30.1, 46 commits, ~1.56 MB) → no leaks found
+- **CI on tag ref:**
+  - GitHub Actions run for `v1.8-public-release` (push event,
+    headBranch=`v1.8-public-release`, sha=`7fa2c42`):
+    `Tests + lint + demo` ✅ success, `Secret scan (gitleaks)` ✅
+    success.
+  - Same commit also passed CI under `main` and
+    `v1.8-public-rc2` refs.
 - **Notes for the next reviewer:**
-  - Local `gitleaks` was not available during this review; rely on
-    the CI `secret-scan` job (`continue-on-error: true` until a
-    license token is wired) plus a manual pre-tag run before
-    cutting `v1.7-public-release`.
-  - No remaining release-blockers identified.
+  - The `secret-scan` CI job runs gitleaks-action with
+    `continue-on-error: true` (license-key independent). Local
+    gitleaks is the authoritative pre-tag check until a license
+    token is wired.
+  - No remaining release-blockers identified for v1.8.
 
 ### CI
 
