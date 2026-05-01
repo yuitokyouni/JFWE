@@ -1,16 +1,16 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.8.16** (`Freeze / Readiness` —
-docs only, no test count change): `1341 / 1341 passing` (444 v0 +
-188 v1.0-v1.7 frozen reference + 709 post-v1.7 additions covering
-reference demo, replay, manifest, catalog-shape, experiment
-harness, renamed WorldID tests, interactions, routines, attention,
-routine engine, the corporate quarterly reporting routine, the
-world-variable storage layer, the exposure / dependency storage
-layer, the observation-menu builder join service, the
+Snapshot of the test suite at **v1.9.0** (`Living Reference World
+Demo`): `1368 / 1368 passing` (444 v0 + 188 v1.0-v1.7 frozen
+reference + 736 post-v1.7 additions covering reference demo,
+replay, manifest, catalog-shape, experiment harness, renamed
+WorldID tests, interactions, routines, attention, routine engine,
+the corporate quarterly reporting routine, the world-variable
+storage layer, the exposure / dependency storage layer, the
+observation-menu builder join service, the
 heterogeneous-attention investor / bank demo, the investor /
-bank review routines, the endogenous chain harness, and the
-ledger trace report).
+bank review routines, the endogenous chain harness, the ledger
+trace report, and the multi-period living reference world demo).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -277,6 +277,39 @@ no-mutation guarantee.
   determinism; snapshot determinism; ledger emission of
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
+
+## Living reference world (v1.9.0)
+
+- `test_living_reference_world.py` (27) —
+  `LivingReferenceWorldResult` immutable shape;
+  `LivingReferencePeriodSummary` per-period record
+  (4 entries by default); per-period counts exact (one corporate
+  signal + one corporate run per firm per period; one menu /
+  selection / review-run / review-signal per investor and per
+  bank per period); ledger grows in every period; every result
+  id (corporate runs, corporate signals, menus, selections,
+  review runs, review signals) resolves back to a stored record;
+  `created_record_ids` matches `kernel.ledger.records[before:after]`
+  byte-identically; investor and bank selections diverge per
+  period; corporate signals appear in every actor's selection
+  (they all watch `corporate_quarterly_report` by default);
+  determinism — two fresh kernels seeded identically produce
+  byte-identical structural summaries; default
+  `period_dates` is the four 2026 quarter ends, with explicit
+  override honored; defensive errors on `kernel=None`, empty id
+  lists, and empty `period_dates`; full no-mutation guarantee
+  against `valuations` / `prices` / `ownership` / `contracts` /
+  `constraints` / `institutions` / `external_processes` /
+  `relationships` (snapshots byte-equal before / after); also
+  byte-equal on `exposures` and `variables` (the harness does not
+  mutate them after the seed); `kernel.tick()` and
+  `kernel.run(days=N)` do NOT auto-fire the chain; complexity
+  budget — the default sweep produces ≥ 88 records (tight lower
+  bound) and ≤ 200 records (loose upper bound that flags
+  Cartesian-product drift); synthetic-only identifiers verified
+  with a word-boundary forbidden-token check; CLI smoke test
+  prints `[setup]` / `[period 1]` / `[period 4]` / `[ledger]`
+  and the no-economic-behavior summary line.
 
 ## Ledger trace report (v1.8.15)
 
@@ -685,7 +718,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 / v1.8.13 / v1.8.14 / v1.8.15 additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -707,7 +740,8 @@ no-mutation guarantee.
 | Reference review routines (v1.8.13)     | 1     | 32    |
 | Endogenous chain harness (v1.8.14)      | 1     | 29    |
 | Ledger trace report (v1.8.15)           | 1     | 23    |
-| **post-v1.7 subtotal**                  | **18**| **709** |
+| Living reference world (v1.9.0)         | 1     | 27    |
+| **post-v1.7 subtotal**                  | **19**| **736** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -715,8 +749,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 / v1.8.13 / v1.8.14 / v1.8.15) | 18 | 709 |
-| **Total**                        | **60**| **1341** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0) | 19 | 736 |
+| **Total**                        | **61**| **1368** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

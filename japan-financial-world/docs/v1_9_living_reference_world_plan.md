@@ -1,8 +1,40 @@
 # v1.9 Living Reference World Demo — Plan
 
-> **Status:** plan-only. v1.9 has not started; this document
-> defines the goal, scope, complexity discipline, and boundaries.
-> No runtime code exists yet.
+> **Status:** v1.9.0 shipped (see `world_model.md` §59 and
+> `world/reference_living_world.py`). v1.9.x and v1.9.last remain
+> in plan form. This document continues to define the v1.9 line's
+> goal, scope, complexity discipline, and boundaries; the v1.9.0
+> "Shipped" call-out below records what landed in the first
+> sub-release.
+
+## v1.9.0 — what shipped
+
+The v1.9.0 sub-release lands the multi-period sweep:
+
+- `world/reference_living_world.py` exports
+  `run_living_reference_world(kernel, *, firm_ids, investor_ids,
+  bank_ids, period_dates=None, ...)`,
+  `LivingReferenceWorldResult`, and
+  `LivingReferencePeriodSummary`. The harness is **pure
+  orchestration** over existing v1.8 helpers — no new economic
+  behavior.
+- `world/reference_attention.py` re-exposes the v1.8.12 selection
+  rule publicly as `select_observations_for_profile(kernel,
+  profile, menu)`. The private alias is preserved.
+- `examples/reference_world/run_living_reference_world.py` runs a
+  small synthetic seed kernel (3 firms / 2 investors / 2 banks /
+  6 variables / 10 exposures / 4 quarterly periods) and prints a
+  compact `[setup]` / `[period N]` / `[ledger]` / `[summary]`
+  trace.
+- `tests/test_living_reference_world.py` (27 tests) pins shape,
+  per-period counts, persistence, ledger-slice equality,
+  determinism, complexity budget, no-mutation guarantees,
+  no-auto-fire from `tick()` / `run()`, and synthetic-only
+  identifiers.
+
+The full suite passes 1368 tests (1341 prior + 27 living-world).
+Markdown report wiring is intentionally not yet in v1.9.0 — that
+is a v1.9.x polishing step.
 
 ## v1.9 goal
 

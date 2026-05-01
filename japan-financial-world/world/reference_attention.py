@@ -377,13 +377,33 @@ def _select_exposures(
     return tuple(selected)
 
 
-def _build_selected_refs(kernel: Any, profile: AttentionProfile, menu) -> tuple[str, ...]:
+def select_observations_for_profile(
+    kernel: Any, profile: AttentionProfile, menu
+) -> tuple[str, ...]:
     """Apply the v1.8.12 demo selection rule to one menu.
+
+    The rule is **structural**, not economic:
+
+    - signals are kept when ``signal.signal_type`` ∈
+      ``profile.watched_signal_types`` OR ``signal.subject_id`` ∈
+      ``profile.watched_subject_ids``;
+    - variable observations are kept when their underlying
+      variable's ``variable_id`` ∈ ``profile.watched_variable_ids``
+      OR ``variable.variable_group`` ∈
+      ``profile.watched_variable_groups``;
+    - exposures are kept when ``exposure.exposure_type`` ∈
+      ``profile.watched_exposure_types`` OR ``exposure.metric`` ∈
+      ``profile.watched_exposure_metrics``.
 
     Order: signals → variable observations → exposures (menu-order
     within each axis). The order is fixed so that two callers
     consuming the same menu produce identical ``selected_refs``
     tuples.
+
+    This helper is the public entry point used by both the v1.8.12
+    investor / bank attention demo and the v1.9.0 living reference
+    world's per-period selection step. The function is
+    **read-only**: it never mutates the kernel or any book.
     """
     return (
         _select_signals(
@@ -404,6 +424,12 @@ def _build_selected_refs(kernel: Any, profile: AttentionProfile, menu) -> tuple[
             available_exposure_ids=menu.available_exposure_ids,
         )
     )
+
+
+# Backwards-compatible private alias. v1.8.12's
+# run_investor_bank_attention_demo calls this name; keep it so
+# that path stays a one-liner.
+_build_selected_refs = select_observations_for_profile
 
 
 # ---------------------------------------------------------------------------

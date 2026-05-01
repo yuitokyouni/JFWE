@@ -1,6 +1,6 @@
 # FWE Reference Demos
 
-Two synthetic, jurisdiction-neutral demos sit in this directory:
+Three synthetic, jurisdiction-neutral demos sit in this directory:
 
 1. **v1.6 reference loop** (`run_reference_loop.py`) — the original
    one-shot causal trace: external observation → signal →
@@ -13,6 +13,14 @@ Two synthetic, jurisdiction-neutral demos sit in this directory:
    required, and no shock is applied.** With `--markdown` the v1.8.15
    reporter renders a deterministic Markdown summary of every
    record the chain wrote.
+3. **v1.9.0 living reference world**
+   (`run_living_reference_world.py`) — the multi-period sweep: 4
+   quarters × 3 firms / 2 investors / 2 banks. Each quarter every
+   firm publishes a synthetic report, the investor and the bank
+   rebuild their menus, their selections diverge, and both run a
+   review routine. Output is a compact `[setup]` / `[period N]` /
+   `[ledger]` trace. Markdown output is intentionally not yet
+   wired (deferred to v1.9.x polishing).
 
 Both demos are research artifacts. **Neither is a market predictor,
 investment advice, or a calibrated Japan model.** Every entity name
@@ -28,6 +36,7 @@ value is an illustrative round number, not a measurement.
 | `expected_story.md`     | Per-step narrative of the ledger trace the script produces. |
 | `run_reference_loop.py` | Runnable script that builds the demo kernel, walks the seven loop steps, advances two ticks, and prints a summary. |
 | `run_endogenous_chain.py` | v1.8.14 endogenous chain demo. Builds a small synthetic seed kernel, runs `run_reference_endogenous_chain`, and prints a compact operational trace. With `--markdown` it appends the v1.8.15 deterministic ledger trace report. |
+| `run_living_reference_world.py` | v1.9.0 multi-period sweep. Builds a small synthetic seed kernel (3 firms / 2 investors / 2 banks / 6 variables / 10 exposures) and runs `run_living_reference_world` over 4 quarterly periods. Prints a compact `[setup]` / `[period N]` / `[ledger]` trace. |
 | `replay_utils.py`       | `canonicalize_ledger(kernel)` and `ledger_digest(kernel)` helpers used by the v1 replay-determinism gate. |
 | `manifest.py`           | `build_reference_demo_manifest(kernel, summary)` and `write_manifest(manifest, path)` helpers for the reproducibility manifest (git_sha, python_version, platform, input file hashes, ledger digest, summary). |
 | `configs/`              | YAML configs for the v1.8 experiment harness. `configs/base.yaml` mirrors the bundled demo and produces the same SHA-256 ledger digest. |
@@ -50,6 +59,9 @@ python -m examples.reference_world.run_endogenous_chain
 
 # v1.8.14 chain + v1.8.15 deterministic Markdown ledger trace report
 python -m examples.reference_world.run_endogenous_chain --markdown
+
+# v1.9.0 living reference world (4 quarterly periods)
+python -m examples.reference_world.run_living_reference_world
 ```
 
 Expected output (abbreviated):

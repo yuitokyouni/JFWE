@@ -4805,9 +4805,89 @@ This is what makes v1.8.15 viable for the v1.9 Living Reference World Demo: a ye
 | v1.8.13 Investor / Bank Review Routines | Code (§55). | Shipped |
 | v1.8.14 Endogenous Chain Harness | Code (§56). | Shipped |
 | v1.8.15 Ledger Trace Report | Code (§57). | Shipped |
-| **v1.8.16 Freeze / Readiness** | Docs (§58). | **Shipped** |
-| v1.9 Living Reference World Demo | Multi-period sweep over the chain. | Next |
+| v1.8.16 Freeze / Readiness | Docs (§58). | Shipped |
+| **v1.9.0 Living Reference World Demo** | Code (§59). Multi-period sweep over the chain. | **Shipped** |
+| v1.9.x | Report polishing, sparse / performance boundary, public-prototype readiness. | Next |
 | v1.9.last | First lightweight public prototype. | Planned |
+
+## 59. v1.9.0 Living Reference World Demo
+
+§59 (v1.9.0) is the first concrete sub-release of the v1.9 line. Where v1.8.14's harness ran the endogenous chain *once* on a single `as_of_date`, v1.9.0 sweeps the chain across **multiple firms** and **multiple periods** with a small bounded fixture. Each quarter, every firm publishes a synthetic report; the investor and the bank rebuild their menus; their selections diverge along the v1.8.12 attention axes; and both run a review routine that emits a synthetic note. The ledger grows quarter by quarter; nothing else changes.
+
+§59 is the smallest possible "everything composes over time" demonstration and the immediate prerequisite for v1.9.last. The conceptual point: with v1.9.0 you can **see endogenous routine activity recurring across periods, with no external shocks and no economic decision-making**.
+
+### 59.1 What lands in v1.9.0
+
+- `world/reference_living_world.py` — new module:
+  - `LivingReferencePeriodSummary` — immutable per-period summary (corporate signal ids + run ids; investor / bank menu / selection / review-run / review-signal id tuples; record_count_created; metadata).
+  - `LivingReferenceWorldResult` — immutable aggregate (run_id, period_count, firm / investor / bank id tuples, per_period_summaries, created_record_ids, ledger counts before / after, metadata).
+  - `run_living_reference_world(kernel, *, firm_ids, investor_ids, bank_ids, period_dates=None, phase_id=None, run_id=None, metadata=None)` — top-level orchestrator. Defaults `period_dates` to four 2026 quarter-end dates. Iterates each period, registers infra idempotently on the first period (interactions, per-firm corporate routines, per-actor profiles + review routines), then for each period runs the corporate phase → attention phase → review phase via existing v1.8 helpers.
+  - `_build_actor_menu_and_selection` — internal helper that calls `kernel.observation_menu_builder.build_menu(...)` and `select_observations_for_profile(...)` (v1.8.12 public selector) and persists one `SelectedObservationSet` through `AttentionBook.add_selection`. Used per actor per period.
+- `world/reference_attention.py` — `_build_selected_refs` re-exposed publicly as `select_observations_for_profile(kernel, profile, menu)`. Identical behavior; the private alias is kept so v1.8.12's `run_investor_bank_attention_demo` continues to work without changes.
+- `examples/reference_world/run_living_reference_world.py` — runnable CLI with a small synthetic seed kernel (3 firms / 2 investors / 2 banks / 6 variables / 10 exposures) and a compact `[setup]` / `[period N]` / `[ledger]` / `[summary]` trace.
+- `tests/test_living_reference_world.py` — 27 tests pinning result shape, per-period record counts (one corporate report per firm per period; one menu / selection / review per actor per period), persistence (every result id resolves to a stored record), `created_record_ids` ↔ ledger slice equality, heterogeneous attention propagation across periods, determinism, default and explicit `period_dates`, defensive errors, no economic mutation against `valuations` / `prices` / `ownership` / `contracts` / `constraints` / `institutions` / `external_processes` / `relationships`, no mutation of `exposures` / `variables` after setup, no auto-firing from `tick()` / `run()`, a complexity budget that flags accidental Cartesian-product loops, synthetic-only identifiers (word-boundary forbidden-token check), and a CLI smoke test.
+
+### 59.2 Per-period flow
+
+For each `as_of_date` in `period_dates`, the harness runs:
+
+1. **Corporate phase** — for each `firm_id`, call `run_corporate_quarterly_reporting(kernel, firm_id=..., as_of_date=...)`. One `RoutineRunRecord` + one `corporate_quarterly_report` `InformationSignal` per firm.
+2. **Attention phase** — for each investor and each bank, call `kernel.observation_menu_builder.build_menu(...)` (idempotent), apply `select_observations_for_profile(...)` to the resulting menu, and persist one `SelectedObservationSet` through `AttentionBook.add_selection`. Investor and bank selections diverge along the v1.8.12 attention axes.
+3. **Review phase** — for each investor and each bank, call the matching `run_*_review` helper with the period's selection ids. One `RoutineRunRecord` + one review-note `InformationSignal` per actor.
+
+With the v1.9.0 default fixture (3 firms / 2 investors / 2 banks / 4 periods), the sweep produces ~100 ledger records and finishes in well under a second.
+
+### 59.3 Complexity discipline (codified in tests)
+
+v1.9.0 is deliberately bounded:
+
+- **No dense all-to-all traversal.** The per-period flow iterates firms once, then investors once, then banks once. There is no Cartesian iteration over `firms × investors × banks × variables × exposures`.
+- **Sparse menu builds.** The v1.8.11 `ObservationMenuBuilder` already iterates only the actor's exposures and the visible variable observations on the as-of date; v1.9.0 reuses it verbatim.
+- **Sparse selection.** The v1.8.12 selection rule filters menu refs against the actor's watch fields; it does not enumerate all firms or all variables.
+- **No path enumeration.** v1.9.0 does not walk the channel multigraph; the v1.8.3 tensor view stays a sparse projection.
+- **No floating-point accumulation across periods.** All counts are integers; refs are tuples; statuses are string labels. Determinism is byte-level.
+- **Expected complexity:** roughly **O(periods × actors × relevant_refs)**.
+
+The complexity budget is encoded as a test: with the default fixture, the sweep must produce ≥ 88 records (the tight lower bound from the per-period work formula) and ≤ 200 records. Drift in either direction fails the test loudly so the loop is re-examined.
+
+### 59.4 Anti-scope (carried forward from v1.8 verbatim)
+
+§59 introduces no new economic behavior. v1.9.0 does **not** add:
+
+- price formation, trading, investor buy / sell decisions, bank lending decisions, covenant enforcement;
+- valuation refresh, impact estimation, sensitivity calculation, DSCR / LTV updates;
+- corporate actions, policy reactions, scenario engines, stochastic shocks;
+- dense all-to-all interaction traversal (the complexity budget enforces this);
+- Japan calibration; real data ingestion;
+- public web UI; v1.9.0 is CLI-first.
+
+Every existing v1.8 anti-scope rule continues to apply. The only writes the harness performs are the writes the existing component helpers already perform (corporate reporting + menu / selection / review), and they use the same ledger paths.
+
+### 59.5 v1.9.0 success criteria
+
+§59 is complete when **all** hold:
+
+1. `world/reference_living_world.py` exports `run_living_reference_world` + `LivingReferenceWorldResult` + `LivingReferencePeriodSummary` with the v1.9.0 contract.
+2. `select_observations_for_profile` is publicly re-exposed in `world/reference_attention.py`; v1.8.12's `run_investor_bank_attention_demo` continues to pass its existing tests.
+3. The harness produces exactly the expected per-period record counts: one corporate report per firm per period; one menu / selection / review per actor per period; review notes counted alongside.
+4. Every result id resolves to a stored record in the kernel; `created_record_ids` matches `kernel.ledger.records[before:after]` byte-identically.
+5. The result is deterministic across two fresh kernels seeded identically.
+6. The full test suite passes (1368 tests = 1341 prior + 27 living-world).
+7. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+8. `valuations` / `prices` / `ownership` / `contracts` / `constraints` / `institutions` / `external_processes` / `relationships` snapshots are byte-equal before and after the sweep; `exposures` / `variables` snapshots are byte-equal after the seed phase.
+9. `kernel.tick()` / `kernel.run(days=N)` do NOT auto-fire the chain.
+10. The complexity budget (≥ 88 and ≤ 200 records on the default fixture) holds.
+11. All identifiers are synthetic and pass a word-boundary forbidden-token check.
+
+### 59.6 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.8.16 Freeze / Readiness | Docs (§58). | Shipped |
+| **v1.9.0 Living Reference World Demo** | Code (§59). | **Shipped** |
+| v1.9.x | Report polishing, sparse / performance boundary, public-prototype readiness. | Next |
+| v1.9.last | First lightweight public prototype (CLI-first, deterministic, explainability-first). | Planned |
+
 
 
 

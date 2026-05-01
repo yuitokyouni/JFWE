@@ -429,6 +429,27 @@ a v1+ behavioral milestone, not an extension of this demo.
 > include the v1.8.15 Markdown, which is presentation rather than a
 > reproducibility artifact.
 
+### Update — v1.9.0 Living Reference World Demo
+
+> v1.9.0 ships `world/reference_living_world.py::run_living_reference_world`,
+> a sweep helper that runs the v1.8.14 endogenous chain across
+> multiple firms and multiple periods on a single kernel. With the
+> CLI fixture (3 firms, 2 investors, 2 banks, 6 variables, 10
+> exposures, 4 quarterly periods), the demo produces ~100 ledger
+> records and finishes in well under a second. Heterogeneous
+> attention persists across periods: investor and bank selections
+> diverge in every quarter.
+>
+> v1.9.0 does **not** add a new public-release artifact. The v1.7-era
+> reference demo described in this document and the v1.8.0 public
+> release tag remain unaffected. v1.9.0's CLI lives at
+> `examples/reference_world/run_living_reference_world.py` and is a
+> peer of `run_endogenous_chain.py` — neither replaces the v1.7-era
+> one-shot demo, which keeps its role as the manifest +
+> replay-determinism baseline. The Markdown ledger-trace report
+> from v1.8.15 is intentionally not yet wired into v1.9.0; that is
+> a v1.9.x polishing step.
+
 ### Update — v1.8.16 freeze / readiness
 
 > v1.8.16 is documentation only — no new code, no test surface
