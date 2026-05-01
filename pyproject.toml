@@ -15,10 +15,17 @@ requires-python = ">=3.12"
 license = { file = "LICENSE" }
 readme = "README.md"
 
-# Runtime is stdlib-only. The dependency below is a developer /
-# CI-only requirement and is listed under [project.optional-dependencies]
-# so it stays out of any future packaged install.
-dependencies = []
+# Runtime depends on PyYAML so that ``world.loader.load_yaml_file_raw``
+# uses the real YAML parser. The loader keeps a small fallback parser
+# for environments where PyYAML is genuinely unavailable, but that
+# fallback supports only the v0 sample-data shape (top-level lists)
+# and silently misreads top-level mappings — see
+# ``examples/reference_world/entities.yaml`` and the v1.8 reference-
+# demo catalog. Declaring PyYAML here ensures CI and fresh checkouts
+# get the supported configuration by default.
+dependencies = [
+    "pyyaml>=6",
+]
 
 [project.optional-dependencies]
 dev = [
