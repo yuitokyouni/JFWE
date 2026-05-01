@@ -231,6 +231,66 @@ values. Calibration assertions (e.g., "the macro process value
 should be X") live in dedicated tests under
 `tests/test_reference_demo.py` and `tests/test_reference_loop.py`.
 
+## Reproducibility manifest
+
+A reference demo run can produce a small JSON **manifest** that
+captures just enough metadata to identify the run later:
+
+- `manifest_version` — schema version of the manifest itself.
+- `run_type` — fixed string `"fwe_reference_demo"` so a manifest
+  can be routed correctly without inspecting other fields.
+- `git_sha` / `git_dirty` / `git_status` — best-effort probe of the
+  current commit. If `git` is not on `PATH`, or the working
+  directory is not a git repo, the values are `None` and
+  `git_status` records `"git_unavailable"` / `"not_a_repo"` /
+  `"error"`. The builder never crashes on git absence.
+- `python_version` — `sys.version.split()[0]` (e.g. `"3.12.7"`).
+- `platform` — `platform.platform()` (e.g.
+  `"macOS-15.0-arm64-arm-64bit"`).
+- `input_files` — mapping `path -> {"sha256": hex64, "status":
+  "ok"|"missing"}`. The default input is the demo's
+  `entities.yaml`. Missing files are recorded with
+  `status="missing"` rather than crashing the build.
+- `ledger_digest` — the SHA-256 hex digest produced by
+  `replay_utils.ledger_digest(kernel)`. Identical to the value the
+  replay-determinism gate checks.
+- `ledger_record_count` — `len(kernel.ledger.records)`.
+- `summary` — the `DemoSummary` returned by `run_reference_loop.run()`,
+  serialized as a dict.
+
+Two helpers live in
+`examples/reference_world/manifest.py`:
+
+- `build_reference_demo_manifest(kernel, summary, *, input_paths=None)
+  -> dict` — assemble the manifest. Reads only; does not mutate the
+  kernel or its ledger.
+- `write_manifest(manifest, output_path) -> None` — write the
+  manifest as deterministic JSON (`sort_keys=True`, `indent=2`,
+  `ensure_ascii=False`, trailing newline). Two writes of the same
+  manifest dict are byte-identical. Parent directories are created
+  if missing; the write is atomic via a temporary sibling +
+  rename.
+
+Scope discipline:
+
+- The manifest is for **reproducibility**, not for
+  experiment-tracking, scenario archives, or proprietary
+  provenance.
+- The manifest contains **no private or proprietary content** —
+  no expert notes, no paid-data identifiers, no client metadata.
+  Per `docs/public_private_boundary.md`, those belong in JFWE
+  Proprietary's separate, private manifest schema, not here.
+- The manifest is **not** a substitute for the replay-determinism
+  gate. The replay test verifies that two runs produce the same
+  trace; the manifest records *which* trace was produced. Both
+  matter.
+
+If a future calibration milestone (v2 / v3) needs richer
+provenance fields (license id, vendor product code, snapshot id,
+NDA flags), that schema is a separate document — see
+`docs/roadmap/jfwe_proprietary_calibration.md`. The fields in
+this manifest do not change to accommodate v2 / v3 needs.
+
 ## Why the demo uses fictional entities
 
 Three reasons:
@@ -281,10 +341,17 @@ a v1+ behavioral milestone, not an extension of this demo.
 - `examples/reference_world/replay_utils.py` —
   `canonicalize_ledger(kernel)` / `ledger_digest(kernel)` helpers
   used by the replay-determinism gate.
+- `examples/reference_world/manifest.py` —
+  `build_reference_demo_manifest(kernel, summary, ...)` /
+  `write_manifest(manifest, output_path)` helpers for the
+  reproducibility manifest.
 - `tests/test_reference_demo.py` — verifies the script runs and
   produces the expected ledger event types.
 - `tests/test_reference_demo_replay.py` — replay-determinism
   gate (two runs → same canonical trace + same SHA-256 digest).
+- `tests/test_reference_demo_manifest.py` — manifest contract
+  (required fields, hash format, deterministic write,
+  git-unavailable handling, no ledger mutation).
 
 No file under `world/`, `spaces/`, or any existing test file is
 modified. The 632 / 632 v0 + v1 test count grows by the number of

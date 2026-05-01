@@ -26,8 +26,8 @@ reproduce locally before pushing.
 ## Code health (mirrors CI; reproducible locally)
 
 - [ ] `pytest -q` from `japan-financial-world/` reports the expected
-  passing total (currently `660 passed` at v1.7-public-rc1+,
-  including the replay-determinism test file).
+  passing total (currently `674 passed` at v1.7-public-rc1+,
+  including the replay-determinism and manifest test files).
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).
@@ -49,6 +49,17 @@ reproduce locally before pushing.
   invariant violation. Helpers live in
   `examples/reference_world/replay_utils.py`
   (`canonicalize_ledger(kernel)`, `ledger_digest(kernel)`).
+- [ ] Reference demo manifest can be generated. From within
+  Python (or interactively for a release-note attachment):
+  `build_reference_demo_manifest(kernel, summary)` returns a
+  dict; `write_manifest(manifest, path)` writes deterministic
+  JSON. Helpers live in
+  `examples/reference_world/manifest.py`. The dedicated test
+  `tests/test_reference_demo_manifest.py` enforces field shape,
+  hash format, deterministic writes, and graceful git-absent
+  behavior. The manifest is for reproducibility, not proprietary
+  provenance — see
+  `japan-financial-world/docs/public_private_boundary.md`.
 - [ ] No new `print` / debug statements in committed code.
 - [ ] No accidentally committed `*.bak`, `*.pyc`, `__pycache__/`,
   `.DS_Store`, IDE settings, or notebook output.
