@@ -1,3 +1,37 @@
+"""
+YAML loading for FWE world specs and synthetic example data.
+
+YAML parser policy
+------------------
+
+**PyYAML is the supported parser.** The project declares
+``pyyaml>=6`` in ``pyproject.toml``'s ``[project] dependencies`` so
+that any ``pip install -e ".[dev]"`` (or any plain ``pip install
+-e .``) brings PyYAML in by default. The reference demo, the v1.8
+experiment harness, and the test suite all assume the supported
+parser is available.
+
+A small custom fallback parser (``_load_simple_yaml`` below)
+exists only as a defensive last resort for environments where
+PyYAML is genuinely unavailable. It supports a narrow subset:
+
+- Top-level *lists* of mappings (the v0 ``data/sample/*.yaml``
+  shape).
+- One level of nested mappings inside list items.
+- Scalars, ``null`` / ``true`` / ``false``, and quoted strings.
+
+The fallback **does not** support top-level mappings (e.g., the
+``loop:`` block in ``examples/reference_world/entities.yaml``):
+top-level keys whose values are mappings are silently misread as
+empty lists, which crashes the v1.8 reference demo at runtime.
+
+If you find yourself relying on the fallback, the right fix is to
+install PyYAML, not to reshape the YAML around the fallback's
+limitations. The catalog-shape regression test in
+``tests/test_reference_demo_catalog_shape.py`` exists to fail
+loudly when an environment is using the wrong parser.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,6 +47,9 @@ from world.validation import (
 )
 
 
+# PyYAML is the supported parser; see the module docstring above.
+# Keep the import guarded so a degraded environment still loads the
+# module — the fallback parser will at least handle v0 sample data.
 try:
     import yaml
 except ImportError:  # pragma: no cover
@@ -51,6 +88,14 @@ class WorldSpec:
 
 
 def load_yaml_file_raw(path: str | Path) -> Any:
+    """
+    Read a YAML file and return its parsed value.
+
+    Uses PyYAML when available (the supported configuration; see
+    module docstring). Falls back to ``_load_simple_yaml`` only if
+    PyYAML is missing — that path is degraded and supports only
+    the v0 sample-data shape.
+    """
     path = Path(path)
     text = path.read_text(encoding="utf-8")
 
@@ -87,7 +132,29 @@ def _parse_scalar(value: str) -> Any:
 
 
 def _load_simple_yaml(text: str) -> Any:
-    """Small YAML subset loader for v0 tests when PyYAML is unavailable."""
+    """
+    Defensive minimal YAML subset loader, used only when PyYAML is
+    unavailable. NOT the supported parser — see the module
+    docstring.
+
+    Supported shapes (v0 sample-data only):
+
+    - top-level lists of mappings
+    - one level of nested mappings inside list items
+    - scalars, ``null`` / ``true`` / ``false``, and quoted strings
+
+    Unsupported (silently misread):
+
+    - top-level mappings whose values are mappings
+      (e.g. the ``loop:`` block in
+      ``examples/reference_world/entities.yaml``)
+    - inline flow-style mappings or sequences beyond the trivial
+      ``{}`` / ``[]``
+    - multi-document YAML
+
+    If a caller hits the unsupported cases, the fix is to install
+    PyYAML, not to extend this parser.
+    """
 
     root: dict[str, Any] = {}
     current_list_key: str | None = None

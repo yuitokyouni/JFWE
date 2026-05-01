@@ -65,9 +65,17 @@ new review is performed.
 
 ## Code health (mirrors CI; reproducible locally)
 
+- [ ] Dependencies installed via `pip install -e ".[dev]"` from
+  the repo root. This brings in **PyYAML** (declared as a runtime
+  dep in `pyproject.toml`'s `[project] dependencies`) and
+  pytest + ruff (under `[project.optional-dependencies] dev`).
+  PyYAML is required for the reference demo and the v1.8
+  harness; the loader's fallback parser is degraded and will
+  fail loudly via `tests/test_reference_demo_catalog_shape.py`.
 - [ ] `pytest -q` from `japan-financial-world/` reports the expected
-  passing total (currently `674 passed` at v1.7-public-rc1+,
-  including the replay-determinism and manifest test files).
+  passing total (currently `725 passed` at v1.8 + the post-rc1
+  CI fix, including the replay-determinism, manifest,
+  experiment-harness, and catalog-shape test files).
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).

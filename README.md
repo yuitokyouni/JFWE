@@ -221,6 +221,24 @@ Start here:
 - [docs/ontology.md](japan-financial-world/docs/ontology.md) — domain
   ontology
 
+## Installing dependencies
+
+From the **repo root** (this directory), install the project plus
+its dev dependencies (pytest + ruff):
+
+```bash
+pip install -e ".[dev]"
+```
+
+This brings in **PyYAML**, the supported YAML parser for the
+reference demo's catalog (`examples/reference_world/entities.yaml`)
+and the v1.8 experiment harness configs. CI runs the same
+`pip install -e ".[dev]"` step. The `world/loader.py` fallback
+parser is degraded and only handles the v0 sample-data shape; if
+you skip PyYAML, the reference demo will fail at runtime — see
+[`japan-financial-world/world/loader.py`](japan-financial-world/world/loader.py)
+for the exact policy.
+
 ## Running the tests
 
 From the `japan-financial-world` directory:
@@ -229,7 +247,9 @@ From the `japan-financial-world` directory:
 python -m pytest -q
 ```
 
-Expected: `632 passed` (444 v0 + 188 v1).
+Expected: `725 passed` at the latest commit (444 v0 + 188 v1 + the
+reference-demo, replay, manifest, experiment-harness, and catalog-
+shape test additions).
 
 To run only v0 tests, exclude the v1 test files; to run only v1 tests:
 
