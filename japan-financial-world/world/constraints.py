@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 from world.balance_sheet import BalanceSheetProjector, BalanceSheetView
 from world.clock import Clock

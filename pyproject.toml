@@ -1,0 +1,65 @@
+# Repo-root project metadata + tooling config.
+#
+# This file intentionally does NOT declare a build system. The
+# japan-financial-world/ codebase is a research project, not a
+# distributable Python package, and this freeze (v1.7) does not
+# repackage it. The role of this file is to (a) hold development
+# dependencies needed for CI and (b) configure ruff and pytest in
+# one place so contributors and the CI gate agree.
+
+[project]
+name = "japan-financial-world"
+version = "1.7.0+rc1"
+description = "Financial World Engine — research-software simulation kernel and reference financial system. See README.md disclaimer."
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+readme = "README.md"
+
+# Runtime is stdlib-only. The dependency below is a developer /
+# CI-only requirement and is listed under [project.optional-dependencies]
+# so it stays out of any future packaged install.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+# Tests live under japan-financial-world/tests and import from
+# japan-financial-world/world and japan-financial-world/spaces. CI
+# changes into japan-financial-world/ before running pytest, so this
+# config matches that working directory.
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py312"
+# CI runs ruff from japan-financial-world/, so these paths are
+# relative to that directory. The legacy / ambition-only docs and
+# the synthetic-data dirs do not contain Python and need no
+# exclusion.
+extend-exclude = [
+    ".venv",
+    ".pytest_cache",
+    "data",
+]
+
+[tool.ruff.lint]
+# Conservative starter set: pyflakes (F) plus pycodestyle errors
+# (E). E501 (line length) and E402 (module-level import not at top)
+# are excluded for now — line length is high-noise and E402 conflicts
+# with the demo's deliberate sys.path setup. These can be tightened
+# in a later milestone (see docs/roadmap/fwe_core_public_release.md).
+select = ["E", "F"]
+ignore = ["E501", "E402"]

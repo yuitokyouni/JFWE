@@ -9,23 +9,51 @@ For the public / private rules these checks enforce, see
 [`SECURITY.md`](SECURITY.md) and
 [`japan-financial-world/docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md).
 
-## Code health
+## Public release gate (must be green for a public release)
+
+A **public release tag** (e.g., `v1.7-public-release`) requires CI
+to be green on the commit being tagged. CI runs the items below
+automatically; this section is the manual mirror so you can
+reproduce locally before pushing.
+
+### CI
+
+- [ ] `.github/workflows/ci.yml` ran on the commit being tagged and
+  every job is green. A red job blocks the public release; an
+  intermittent flake should be investigated and fixed at the root,
+  not retried.
+
+## Code health (mirrors CI; reproducible locally)
 
 - [ ] `pytest -q` from `japan-financial-world/` reports the expected
-  passing total (currently `632 passed` at v1.7).
-- [ ] `python -m compileall world spaces tests` from
-  `japan-financial-world/` succeeds (no syntax errors anywhere).
-- [ ] `ruff check .` (if configured) passes — or note the open
-  warnings in the release note.
+  passing total (currently `654 passed` at v1.7-public-rc1).
+- [ ] `python -m compileall world spaces tests examples` from
+  `japan-financial-world/` succeeds (no syntax errors anywhere,
+  including the reference demo and test files).
+- [ ] `ruff check .` from repo root passes against the
+  `[tool.ruff]` config in `pyproject.toml`. The starter rule set
+  is `select = ["E", "F"]` with `ignore = ["E501", "E402"]`;
+  if the release tightens this, note the change in the release
+  note.
+- [ ] FWE Reference Demo runs end-to-end:
+  `python examples/reference_world/run_reference_loop.py`
+  from `japan-financial-world/` produces the seven loop
+  record types and day-2 delivery to `(banking, investors)`.
 - [ ] No new `print` / debug statements in committed code.
 - [ ] No accidentally committed `*.bak`, `*.pyc`, `__pycache__/`,
   `.DS_Store`, IDE settings, or notebook output.
 
 ## Secret scanning
 
-- [ ] Run `gitleaks detect` (or equivalent — `trufflehog`, GitHub's
-  secret scanner) over the working tree.
-- [ ] Run the same scanner over the full git history.
+- [ ] CI's `secret-scan` job (gitleaks-action) is green for the
+  commit being tagged. The job is currently `continue-on-error:
+  true` for license-key reasons — a positive find still requires
+  manual triage; do **not** treat the green job as a substitute
+  for reviewing the action log.
+- [ ] If gitleaks is not yet enabled with a license, run
+  `gitleaks detect --redact` locally over the working tree and
+  the full history (`gitleaks detect --redact --log-opts="--all"`)
+  and document a clean run in the release note.
 - [ ] Investigate every hit. Do not skip "looks like a false
   positive" without checking.
 - [ ] If a real secret is found, treat it as compromised — rotate at
@@ -83,13 +111,23 @@ For the public / private rules these checks enforce, see
 
 ## Tagging
 
-After the checklist is clean:
+A release candidate (RC) may be tagged with the public-release
+gate not fully green; a final public-release tag may not.
 
 ```bash
 # from repo root
-git tag -a vX.Y -m "vX.Y — short release note"
-git push origin vX.Y
+# Release candidate (CI may have known yellow items, e.g.,
+# gitleaks not yet licensed):
+git tag -a vX.Y-public-rcN -m "vX.Y-public-rcN — short release note"
+
+# Final public release (CI fully green, every checklist box
+# above ticked):
+git tag -a vX.Y-public-release -m "vX.Y-public-release — short release note"
+
+git push origin <tag>
 ```
 
 The release note should briefly state: what changed, what tests
-report, and any known issues. Do not include marketing language.
+report (e.g., `pytest -q` count, `compileall` clean,
+`ruff check .` clean), and any known issues. Do not include
+marketing language.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 from world.clock import Clock
 from world.ledger import Ledger

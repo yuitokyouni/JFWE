@@ -3,11 +3,8 @@ from datetime import date
 import pytest
 
 from world.clock import Clock
-from world.contracts import ContractBook
 from world.kernel import WorldKernel
 from world.ledger import Ledger
-from world.ownership import OwnershipBook
-from world.prices import PriceBook
 from world.registry import Registry
 from world.scheduler import Scheduler
 from world.signals import (

@@ -338,8 +338,6 @@ class ValuationComparator:
         valuation = self.valuations.get_valuation(valuation_id)
         latest = self.prices.get_latest_price(valuation.subject_id)
 
-        observed_price: float | None = latest.price if latest is not None else None
-
         gap = self._build_gap(valuation, latest)
         self._record_comparison(valuation, gap)
         return gap

@@ -7,7 +7,7 @@ from world.constraints import ConstraintRecord
 from world.contracts import ContractRecord
 from world.kernel import WorldKernel
 from world.ledger import Ledger
-from world.registry import RegisteredObject, Registry
+from world.registry import Registry
 from world.scheduler import Scheduler
 from world.signals import InformationSignal
 from world.state import State

@@ -195,7 +195,7 @@ def test_list_listings_returns_all_in_insertion_order():
     space.add_listing(_listing(market_id="market:nyse", asset_id="asset:c"))
 
     listings = space.list_listings()
-    assert [(l.market_id, l.asset_id) for l in listings] == [
+    assert [(item.market_id, item.asset_id) for item in listings] == [
         ("market:reference_equity_market", "asset:a"),
         ("market:reference_equity_market", "asset:b"),
         ("market:nyse", "asset:c"),
@@ -212,8 +212,8 @@ def test_list_assets_on_market_filters_by_market():
     on_jgb = space.list_assets_on_market("market:jgb")
     on_unknown = space.list_assets_on_market("market:nyse")
 
-    assert {l.asset_id for l in on_tse} == {"asset:reference_manufacturer_equity", "asset:sony_eq"}
-    assert {l.asset_id for l in on_jgb} == {"asset:jgb_10y"}
+    assert {item.asset_id for item in on_tse} == {"asset:reference_manufacturer_equity", "asset:sony_eq"}
+    assert {item.asset_id for item in on_jgb} == {"asset:jgb_10y"}
     assert on_unknown == ()
 
 
@@ -235,7 +235,7 @@ def test_snapshot_sorts_markets_and_listings_deterministically():
     assert snap["market_count"] == 2
     assert snap["listing_count"] == 3
     assert [m["market_id"] for m in snap["markets"]] == ["market:a", "market:b"]
-    assert [(l["market_id"], l["asset_id"]) for l in snap["listings"]] == [
+    assert [(item["market_id"], item["asset_id"]) for item in snap["listings"]] == [
         ("market:a", "asset:x"),
         ("market:a", "asset:z"),
         ("market:b", "asset:y"),
