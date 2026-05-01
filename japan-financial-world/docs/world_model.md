@@ -3493,3 +3493,89 @@ v1.7 is complete when **all** of the following hold:
 8. The freeze record (this section + the four new docs + the three updated docs) is committed under a single v1.7 commit so that the freeze is a discrete, identifiable event in the repository history.
 
 After v1.7 is committed and pushed, the v1 line is closed. The next milestone is either a v1+ behavioral milestone with an explicit charter (e.g., adding price formation as v1.8) or a v2 milestone introducing Japan public calibration on top of the frozen v1 contract.
+
+## 43. v1.8.1 Endogenous Reference Dynamics — Design
+
+The v1.8 experiment harness (§42-era addition) wraps the v1.6 reference demo in a config-driven driver and a manifest. That structure is correct for the v1.7 freeze's "structural completeness" goal but exposes a design gap: the demo's seven-step causal chain only fires when an `ExternalFactorObservation` is recorded. Without an observation, the ledger is silent.
+
+§43 (v1.8.1) is a **design-only** correction. Its principle, in one line:
+
+> External shocks are not the engine of the world. They are optional inputs to an already-running endogenous system.
+
+### 43.1 The Routine concept
+
+A **Routine** is a scheduled, bounded, auditable process that the world runs on its own schedule, independent of external observations. Every routine:
+
+- has explicit inputs (declared, not discovered) and explicit outputs;
+- emits a `RoutineRunRecord` to the ledger on every execution;
+- writes only to the books it owns + emits signals / valuations / institutional actions through existing v1 APIs;
+- can run productively even when no external observation exists for that date.
+
+A routine is the engine of endogenous activity. An external observation, when present, is *optional fuel* — never the trigger.
+
+### 43.2 Proposed record shapes
+
+`RoutineSpec` (immutable per v1 conventions): `routine_id`, `routine_type`, `owner_space_id`, `frequency`, `phase_id?`, `input_refs`, `output_schema`, `enabled`, `metadata`.
+
+`RoutineRunRecord` (per-execution audit): `run_id`, `routine_id`, `as_of_date`, `phase_id?`, `input_refs`, `output_refs`, `parent_record_ids`, `status` ∈ `{completed, skipped, degraded, errored}`, `metadata`.
+
+The `degraded` status is load-bearing: a routine that runs without one of its declared inputs (e.g., a missing external observation) still produces meaningful output and records the missing input in `metadata`. **A degraded run is a valid run, not an error.** This is the operational test for "is this milestone scenario-driven or endogenous?"
+
+### 43.3 The seven reference routines
+
+v1.8.1 names seven candidate routines without implementing any of them:
+
+1. `corporate_quarterly_reporting` — firm files calendar-driven results.
+2. `valuation_refresh` — research desk re-computes a valuation.
+3. `debt_maturity_aging` — projection refresh as time passes.
+4. `bank_review` — bank's periodic exposure review (signal only, no lending change).
+5. `investor_review` — investor's periodic mandate review (signal only, no rebalance).
+6. `relationship_refresh` — `RelationshipView` snapshot, optional decay write.
+7. `information_staleness_update` — projection refresh as time passes.
+
+For each, the design doc specifies what the routine reads, what it writes, what it must not yet do (price moves, trades, contract rewrites, corporate actions, discretionary policy, jurisdiction calibration), and how it appears in the ledger.
+
+### 43.4 Boundaries — what routines may NOT do (yet)
+
+- Move prices (no `PriceBook` writes).
+- Execute trades (no `OwnershipBook` writes representing decisions).
+- Change lending terms (no `ContractBook` rewrites).
+- Trigger corporate actions (no asset sales / buybacks / issuances).
+- Implement discretionary policy (no Taylor / Brainard / inflation-targeting rules).
+- Apply Japan-specific calibration (no real-institution identifiers, no jurisdiction parameters).
+
+The first four boundaries are load-bearing. A routine PR that touches `PriceBook`, `OwnershipBook`, or rewrites `ContractBook` fields is a behavioral milestone, not a routine.
+
+### 43.5 Sensitivity matrices — not the engine
+
+A natural temptation is to ship a sensitivity-matrix layer that translates observations into impact estimates. v1.8.1 commits to two principles:
+
+1. Sensitivity matrices *parameterize* routines; they do not replace them.
+2. A routine that runs without external input must still produce something meaningful. If a routine's only behavior is "look up sensitivity to today's external shock," the design has slipped back into scenario-driven mode.
+
+### 43.6 Relation to ExternalFactorObservation
+
+`ExternalFactorObservation` (§39, v1.4) remains a first-class record type. Routines may include an observation in `input_refs`; if present, the routine uses it; if absent, the routine still runs (with `status="completed"` or `status="degraded"`). Absence of an observation never means absence of activity.
+
+### 43.7 Proposed milestone sequence
+
+| Milestone | Scope |
+| --- | --- |
+| **v1.8.1** | This design doc. No code. |
+| **v1.8.2** | Routine Engine: `RoutineSpec` + `RoutineBook`, `RoutineRunRecord` ledger emission, scheduler integration. Engine plumbing only. |
+| **v1.8.3** | First concrete routine: `corporate_quarterly_reporting`. |
+| **v1.8.4** | `valuation_refresh`, demonstrating the "degraded but valid" path explicitly. |
+| **v1.8.5** | `bank_review`, `investor_review`, `relationship_refresh`, `information_staleness_update`, `debt_maturity_aging`. |
+| **v1.9** | Living Reference World Demo: a year-long run on the routine engine *without any external observation*, with a non-empty ledger on every quarter-end / month-end / review cycle. |
+
+### 43.8 v1.8.1 success criteria
+
+v1.8.1 is complete when **all** of the following hold:
+
+1. `docs/v1_endogenous_reference_dynamics_design.md` exists and states the core principle, the Routine vocabulary, the proposed `RoutineSpec` and `RoutineRunRecord` field sets, the seven reference routines, the boundaries, the sensitivity-matrix discipline, the external-world relation, and the milestone sequence.
+2. `docs/fwe_reference_demo_design.md` carries a direction note pointing at v1.8.1 and flagging that the v1.7 demo is structurally complete but not yet endogenous.
+3. This section (§43) records the design in the constitutional log.
+4. No `world/`, `spaces/`, `examples/`, or `tests/` file is modified. The 725-test baseline is unchanged at v1.8.1.
+5. The v1.8.2 Routine Engine milestone has a clear charter to land against, including the exact record-shape proposals above.
+
+After v1.8.1 ships, the v1.x line is no longer "frozen reference + demo wrapper" — it is "frozen reference + demo wrapper + endogenous activity layer being built milestone by milestone." The v1.9 Living Reference World Demo is the v1.x layer's natural closing milestone.

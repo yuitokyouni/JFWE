@@ -82,6 +82,22 @@ The demo's value is in **causal traceability** — proving that v1's
 record types, books, and orchestrator can be wired into a single
 end-to-end audit trail. It is not a prediction tool of any kind.
 
+> **Direction note (v1.8.1):** the v1.7 reference demo is
+> *structurally* complete but *economically* thin. Every record in
+> its trace is downstream of one `ExternalFactorObservation`; if
+> no observation arrives, the demo writes only setup records. That
+> is correct for v1.7's "structural completeness" goal but is the
+> wrong default for what FWE simulates over time. The v1.8.1
+> Endogenous Reference Dynamics design
+> ([`v1_endogenous_reference_dynamics_design.md`](v1_endogenous_reference_dynamics_design.md))
+> introduces the **Routine** as the primitive of endogenous
+> activity and explicitly demotes external observations from
+> "trigger" to "optional input." A v1.9 successor demo (the
+> Living Reference World Demo) will produce a meaningful ledger
+> for a full year *without* any external observation. This
+> v1.7-era demo is preserved unchanged as the structural-baseline
+> artifact.
+
 ## Demo composition
 
 The demo populates a kernel with:
