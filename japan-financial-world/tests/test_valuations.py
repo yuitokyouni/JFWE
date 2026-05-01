@@ -188,10 +188,10 @@ def test_list_by_valuer_filters_correctly():
         _valuation(valuation_id="valuation:c", valuer_id="valuer:internal_audit")
     )
 
-    moodys = book.list_by_valuer("valuer:moodys_dcf")
+    reference_rating_agency_a = book.list_by_valuer("valuer:moodys_dcf")
     audit = book.list_by_valuer("valuer:internal_audit")
 
-    assert {v.valuation_id for v in moodys} == {"valuation:a", "valuation:b"}
+    assert {v.valuation_id for v in reference_rating_agency_a} == {"valuation:a", "valuation:b"}
     assert {v.valuation_id for v in audit} == {"valuation:c"}
 
 

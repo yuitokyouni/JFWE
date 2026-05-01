@@ -221,10 +221,13 @@ State clearly:
   recommendations, signals, allocations, or solicitations. Anything
   that looks like a price, valuation, or institutional action in an
   FWE artifact is a **simulation record**, not a market view.
-- **FWE / JFWE is NOT a calibrated Japan market model yet.** v2 has
-  not started. The current code is fully jurisdiction-neutral. JFWE
-  Public will be a calibrated Japan model when v2 ships; until then,
-  any Japan-specific claim is out of scope.
+- **FWE / JFWE is NOT a calibrated Japan market model.** v2 (the
+  future Japan public calibration layer) has not started. The
+  current code is fully jurisdiction-neutral. If a future v2
+  milestone ships, JFWE Public would populate v1 books with Japan
+  public data — but that work is not in this freeze, and no
+  Japan-specific claim should be read into the current code,
+  examples, or test fixtures.
 - **FWE / JFWE IS a causal, auditable, multi-space financial-world
   simulation engine.** Every state-changing event is recorded in an
   append-only ledger with cross-references that form a complete

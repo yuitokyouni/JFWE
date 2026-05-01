@@ -61,12 +61,12 @@ opinion. A `ValuationRecord` carries:
 - **referencing which other world objects** (`related_ids`)
 
 The point of recording all eight together is that a valuation only
-makes sense in context. Saying "Toyota is worth ¥45 trillion" without
-specifying who said it, when, why, and using what method is barely
-information. Saying "the sell-side analyst at Source A, on
-2026-01-15, computed a DCF valuation of ¥45 trillion using a 7%
-discount rate and 2% terminal growth, with confidence 0.6" is
-information.
+makes sense in context. Saying "Reference Manufacturer A is worth
+45,000 (units)" without specifying who said it, when, why, and using
+what method is barely information. Saying "the sell-side analyst at
+Source A, on 2026-01-15, computed a DCF valuation of 45,000 (units)
+using a 7% discount rate and 2% terminal growth, with confidence 0.6"
+is information.
 
 `ValuationBook` is therefore append-only and stores conflicting
 claims as separate records. There is no "the valuation" of any

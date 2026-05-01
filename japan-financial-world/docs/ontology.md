@@ -1,6 +1,14 @@
 # Ontology
 
-This project models the Japanese financial economy as interactions between
+> **Note (v1.7 freeze):** This document captures the long-term ontology
+> ambition. The current code (v0 + v1, frozen) is jurisdiction-neutral and
+> contains no Japan-specific calibration; the "Japanese financial economy"
+> framing below is a *future* target carried by the v2 (Japan public)
+> and v3 (Japan proprietary) layers, neither of which is started. For
+> what v0 and v1 actually deliver, see [`v0_release_summary.md`](v0_release_summary.md)
+> and [`v1_release_summary.md`](v1_release_summary.md).
+
+This project models a financial economy as interactions between
 layered spaces, decision-making agents, assets, contracts, information, market
 rules, and constraints. The smallest meaningful unit is not just an agent. It
 is a stateful subject plus the ownership, contract, price, information, and

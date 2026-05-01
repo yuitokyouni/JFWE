@@ -14,7 +14,7 @@ from world.ledger import Ledger
 
 
 def _source(
-    source_id: str = "source:moodys",
+    source_id: str = "source:reference_rating_agency_a",
     *,
     source_type: str = "rating_agency",
     tier: str = "tier_1",
@@ -54,7 +54,7 @@ def _channel(
 
 def test_source_state_carries_required_fields():
     src = _source()
-    assert src.source_id == "source:moodys"
+    assert src.source_id == "source:reference_rating_agency_a"
     assert src.source_type == "rating_agency"
     assert src.tier == "tier_1"
     assert src.status == "active"
@@ -69,7 +69,7 @@ def test_source_state_rejects_empty_id():
 def test_source_state_to_dict_is_serializable():
     src = _source(metadata={"jurisdiction": "global"})
     assert src.to_dict() == {
-        "source_id": "source:moodys",
+        "source_id": "source:reference_rating_agency_a",
         "source_type": "rating_agency",
         "tier": "tier_1",
         "status": "active",
@@ -137,7 +137,7 @@ def test_add_and_get_source_state():
     space = InformationSpace()
     src = _source()
     space.add_source_state(src)
-    assert space.get_source_state("source:moodys") is src
+    assert space.get_source_state("source:reference_rating_agency_a") is src
 
 
 def test_get_source_state_returns_none_for_unknown():
@@ -256,7 +256,7 @@ def test_add_source_state_records_to_ledger():
     records = ledger.filter(event_type="information_source_state_added")
     assert len(records) == 1
     record = records[0]
-    assert record.object_id == "source:moodys"
+    assert record.object_id == "source:reference_rating_agency_a"
     assert record.payload["source_type"] == "wire_service"
     assert record.payload["tier"] == "tier_2"
     assert record.simulation_date == "2026-01-01"
@@ -282,7 +282,7 @@ def test_add_state_does_not_record_when_no_ledger():
     space = InformationSpace()
     space.add_source_state(_source())
     space.add_channel_state(_channel())
-    assert space.get_source_state("source:moodys") is not None
+    assert space.get_source_state("source:reference_rating_agency_a") is not None
     assert space.get_channel_state("channel:reuters_wire") is not None
 
 
@@ -293,7 +293,7 @@ def test_add_state_does_not_record_when_no_ledger():
 
 def test_list_signals_by_source_returns_empty_when_unbound():
     space = InformationSpace()
-    assert space.list_signals_by_source("source:moodys") == ()
+    assert space.list_signals_by_source("source:reference_rating_agency_a") == ()
 
 
 def test_list_signals_by_type_returns_empty_when_unbound():

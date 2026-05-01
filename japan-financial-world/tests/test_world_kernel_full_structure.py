@@ -127,7 +127,7 @@ def _build_full_world() -> tuple[
     )
     spaces["information"].add_source_state(  # type: ignore[attr-defined]
         InformationSourceState(
-            source_id="source:moodys",
+            source_id="source:reference_rating_agency_a",
             source_type="rating_agency",
             tier="tier_1",
         )
@@ -235,10 +235,10 @@ def _build_full_world() -> tuple[
     # Signals: a public rating action and a restricted internal memo.
     kernel.signals.add_signal(
         InformationSignal(
-            signal_id="signal:moodys_rating",
+            signal_id="signal:reference_rating_agency_a_rating",
             signal_type="rating_action",
             subject_id="firm:reference_manufacturer_a",
-            source_id="source:moodys",
+            source_id="source:reference_rating_agency_a",
             published_date="2026-01-01",
             payload={"rating": "AA-"},
         )
@@ -342,7 +342,7 @@ def test_corporate_space_reads_balance_sheet_constraints_signals():
 
     visible = corporate.get_visible_signals("firm:reference_manufacturer_a")
     visible_ids = {s.signal_id for s in visible}
-    assert "signal:moodys_rating" in visible_ids
+    assert "signal:reference_rating_agency_a_rating" in visible_ids
     # Restricted signal not visible to firm:reference_manufacturer_a.
     assert "signal:internal_minutes" not in visible_ids
 
@@ -370,7 +370,7 @@ def test_bank_space_reads_contracts_lending_balance_sheet_constraints_signals():
     assert evaluations == ()  # no constraints attached to the bank
 
     visible = bank.get_visible_signals("bank:reference_bank_a")
-    assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in visible} == {"signal:reference_rating_agency_a_rating"}
 
 
 def test_investor_space_reads_portfolio_balance_sheet_constraints_signals():
@@ -399,7 +399,7 @@ def test_investor_space_reads_portfolio_balance_sheet_constraints_signals():
     assert evaluations == ()
 
     visible = investor.get_visible_signals("investor:reference_fund_a")
-    assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in visible} == {"signal:reference_rating_agency_a_rating"}
 
 
 def test_exchange_space_reads_listings_prices_signals():
@@ -418,7 +418,7 @@ def test_exchange_space_reads_listings_prices_signals():
     assert len(history) == 1
 
     visible = exchange.get_visible_signals("market:reference_equity_market")
-    assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in visible} == {"signal:reference_rating_agency_a_rating"}
 
 
 def test_real_estate_space_reads_property_assets_prices_signals():
@@ -436,26 +436,26 @@ def test_real_estate_space_reads_property_assets_prices_signals():
     assert latest.price == 50_000_000_000.0
 
     visible = real_estate.get_visible_signals("market:reference_central_office")
-    assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in visible} == {"signal:reference_rating_agency_a_rating"}
 
 
 def test_information_space_reads_signals_by_source_type_visibility():
     kernel, spaces = _build_full_world()
     info = spaces["information"]
 
-    by_source = info.list_signals_by_source("source:moodys")
-    assert {s.signal_id for s in by_source} == {"signal:moodys_rating"}
+    by_source = info.list_signals_by_source("source:reference_rating_agency_a")
+    assert {s.signal_id for s in by_source} == {"signal:reference_rating_agency_a_rating"}
 
     by_type = info.list_signals_by_type("rating_action")
-    assert {s.signal_id for s in by_type} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in by_type} == {"signal:reference_rating_agency_a_rating"}
 
     visible = info.list_visible_signals("agent:somebody_public")
-    assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in visible} == {"signal:reference_rating_agency_a_rating"}
 
     # The restricted signal is visible to its allowed viewer.
     visible_committee = info.list_visible_signals("agent:boj_committee")
     assert {s.signal_id for s in visible_committee} == {
-        "signal:moodys_rating",
+        "signal:reference_rating_agency_a_rating",
         "signal:internal_minutes",
     }
 
@@ -468,7 +468,7 @@ def test_policy_space_reads_visible_signals():
     # Policy authority sees the public rating action; the restricted
     # internal memo is invisible because authority:reference_central_bank is not in the
     # allowed_viewers list (which contains agent:boj_committee only).
-    assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in visible} == {"signal:reference_rating_agency_a_rating"}
 
 
 def test_external_space_reads_visible_signals():
@@ -476,7 +476,7 @@ def test_external_space_reads_visible_signals():
     external = spaces["external"]
 
     visible = external.get_visible_signals("agent:strategy_observer")
-    assert {s.signal_id for s in visible} == {"signal:moodys_rating"}
+    assert {s.signal_id for s in visible} == {"signal:reference_rating_agency_a_rating"}
 
 
 # ---------------------------------------------------------------------------
@@ -508,8 +508,8 @@ def test_event_bus_delivers_signal_referencing_event_to_two_target_spaces():
             source_space="information",
             target_spaces=("banking", "investors"),
             event_type="signal_emitted",
-            payload={"signal_id": "signal:moodys_rating"},
-            related_ids=("signal:moodys_rating",),
+            payload={"signal_id": "signal:reference_rating_agency_a_rating"},
+            related_ids=("signal:reference_rating_agency_a_rating",),
         )
     )
 
@@ -528,7 +528,7 @@ def test_event_bus_delivers_signal_referencing_event_to_two_target_spaces():
 
     # The same signal_id is reachable through SignalBook regardless of
     # whether the EventBus delivered the announcement.
-    fetched = kernel.signals.get_signal("signal:moodys_rating")
+    fetched = kernel.signals.get_signal("signal:reference_rating_agency_a_rating")
     assert fetched.signal_type == "rating_action"
 
 
@@ -611,7 +611,7 @@ def test_read_operations_across_all_spaces_do_not_mutate_world_books():
     spaces["real_estate"].get_visible_signals("market:reference_central_office")
     spaces["real_estate"].snapshot()
 
-    spaces["information"].list_signals_by_source("source:moodys")
+    spaces["information"].list_signals_by_source("source:reference_rating_agency_a")
     spaces["information"].list_signals_by_type("rating_action")
     spaces["information"].list_visible_signals("agent:somebody")
     spaces["information"].snapshot()

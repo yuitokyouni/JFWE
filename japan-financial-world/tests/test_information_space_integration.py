@@ -78,19 +78,19 @@ def test_information_space_can_list_signals_by_source():
     kernel = _kernel()
     kernel.signals.add_signal(
         InformationSignal(
-            signal_id="signal:moodys_rating_001",
+            signal_id="signal:reference_rating_agency_a_rating_001",
             signal_type="rating_action",
             subject_id="firm:reference_manufacturer_a",
-            source_id="source:moodys",
+            source_id="source:reference_rating_agency_a",
             published_date="2026-01-01",
         )
     )
     kernel.signals.add_signal(
         InformationSignal(
-            signal_id="signal:moodys_rating_002",
+            signal_id="signal:reference_rating_agency_a_rating_002",
             signal_type="rating_action",
             subject_id="firm:sony",
-            source_id="source:moodys",
+            source_id="source:reference_rating_agency_a",
             published_date="2026-01-01",
         )
     )
@@ -107,12 +107,12 @@ def test_information_space_can_list_signals_by_source():
     info = InformationSpace()
     kernel.register_space(info)
 
-    moodys = info.list_signals_by_source("source:moodys")
+    reference_rating_agency_a = info.list_signals_by_source("source:reference_rating_agency_a")
     sp = info.list_signals_by_source("source:sp")
 
-    assert {s.signal_id for s in moodys} == {
-        "signal:moodys_rating_001",
-        "signal:moodys_rating_002",
+    assert {s.signal_id for s in reference_rating_agency_a} == {
+        "signal:reference_rating_agency_a_rating_001",
+        "signal:reference_rating_agency_a_rating_002",
     }
     assert {s.signal_id for s in sp} == {"signal:sp_rating_001"}
 
@@ -124,7 +124,7 @@ def test_information_space_can_list_signals_by_type():
             signal_id="signal:rating_a",
             signal_type="rating_action",
             subject_id="firm:reference_manufacturer_a",
-            source_id="source:moodys",
+            source_id="source:reference_rating_agency_a",
             published_date="2026-01-01",
         )
     )
@@ -223,7 +223,7 @@ def test_information_space_does_not_mutate_world_books():
             signal_id="signal:rating_001",
             signal_type="rating_action",
             subject_id="firm:reference_manufacturer_a",
-            source_id="source:moodys",
+            source_id="source:reference_rating_agency_a",
             published_date="2026-01-01",
         )
     )
@@ -238,7 +238,7 @@ def test_information_space_does_not_mutate_world_books():
     kernel.register_space(info)
     info.add_source_state(
         InformationSourceState(
-            source_id="source:moodys",
+            source_id="source:reference_rating_agency_a",
             source_type="rating_agency",
             tier="tier_1",
         )
@@ -252,7 +252,7 @@ def test_information_space_does_not_mutate_world_books():
     )
 
     # Read through the space.
-    info.list_signals_by_source("source:moodys")
+    info.list_signals_by_source("source:reference_rating_agency_a")
     info.list_signals_by_type("rating_action")
     info.list_visible_signals("agent:somebody")
     info.snapshot()
@@ -273,7 +273,7 @@ def test_information_space_runs_for_one_year_after_state_added():
     info = InformationSpace()
     kernel.register_space(info)
     info.add_source_state(
-        InformationSourceState(source_id="source:moodys")
+        InformationSourceState(source_id="source:reference_rating_agency_a")
     )
     info.add_channel_state(
         InformationChannelState(channel_id="channel:reuters_wire")

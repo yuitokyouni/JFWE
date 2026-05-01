@@ -107,11 +107,11 @@ def test_list_by_type_filters_correctly():
 
 def test_list_by_source_filters_correctly():
     book = _book()
-    book.add_signal(_signal(signal_id="signal:1", source_id="agent:moodys"))
+    book.add_signal(_signal(signal_id="signal:1", source_id="agent:reference_rating_agency_a"))
     book.add_signal(_signal(signal_id="signal:2", source_id="agent:sp"))
-    book.add_signal(_signal(signal_id="signal:3", source_id="agent:moodys"))
+    book.add_signal(_signal(signal_id="signal:3", source_id="agent:reference_rating_agency_a"))
 
-    from_moodys = book.list_by_source("agent:moodys")
+    from_moodys = book.list_by_source("agent:reference_rating_agency_a")
     assert {s.signal_id for s in from_moodys} == {"signal:1", "signal:3"}
 
 
