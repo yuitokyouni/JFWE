@@ -3579,3 +3579,84 @@ v1.8.1 is complete when **all** of the following hold:
 5. The v1.8.2 Routine Engine milestone has a clear charter to land against, including the exact record-shape proposals above.
 
 After v1.8.1 ships, the v1.x line is no longer "frozen reference + demo wrapper" — it is "frozen reference + demo wrapper + endogenous activity layer being built milestone by milestone." The v1.9 Living Reference World Demo is the v1.x layer's natural closing milestone.
+
+> **Sequence revision:** §44 (v1.8.2) reorders the v1.8.x line so the topology + attention substrate lands *before* the Routine Engine. The authoritative milestone table is in §44.7 below.
+
+## 44. v1.8.2 Interaction Topology and Attention Framework — Design
+
+§43 (v1.8.1) named the *engine* of endogenous activity (Routines). §44 (v1.8.2) names two layers around that engine: the **InteractionTopology** (which channels are possible between spaces) and the **AttentionProfile / ObservationMenu / SelectedObservationSet** stack (what each actor watches, what is available, what was selected).
+
+§44 (v1.8.2) is **design-only**. No `world/`, `spaces/`, `examples/`, or `tests/` file is changed.
+
+The principle, in one line:
+
+> `InteractionTopology` is not the engine of the world. `Routine` is the execution primitive (§43). `InteractionTopology` defines the possible channels routines may use; `AttentionProfile` defines what each actor actually watches.
+
+### 44.1 Spaces as a directed multigraph
+
+Spaces are nodes. Interactions are edges. Edges are **directed** (`Corporate → Banking` ≠ `Banking → Corporate`), the graph is a **multigraph** (a pair may have multiple channels concurrently), and **self-loops are first-class** (most v1.8.1 routines live on the diagonal). The natural data structure is a third-rank tensor `T ∈ S × S × C` where `S` is the set of registered spaces and `C` is the set of channel types. A simple upper-triangular adjacency matrix collapses direction, channel multiplicity, and the diagonal — and is therefore insufficient.
+
+### 44.2 `InteractionSpec`
+
+Static declaration of one channel. Proposed fields:
+
+`interaction_id`, `source_space_id`, `target_space_id`, `source_id?`, `target_id?`, `interaction_type`, `channel_type`, `direction`, `frequency`, `phase_id?`, `visibility` ∈ `{public, restricted, private}`, `enabled`, `required_input_ref_types`, `optional_input_ref_types`, `output_ref_types`, `routine_types_that_may_use_this_channel`, `metadata`.
+
+`routine_types_that_may_use_this_channel` is the load-bearing field that prevents arbitrary routines from publishing on arbitrary channels.
+
+### 44.3 `InteractionBook`
+
+Append-only kernel-level book mirroring v1.4's `ExternalProcessBook`. API: `add_interaction`, `get_interaction`, `list_by_source_space`, `list_by_target_space`, `list_between_spaces`, `list_by_type`, `list_by_channel`, `list_for_routine_type`, `build_space_interaction_matrix`, `snapshot`. The matrix builder is a 2-D collapse of the tensor for diagram / overview consumers; routines should use the filter-style methods.
+
+### 44.4 `AttentionProfile`
+
+Heterogeneous receiver-side declaration. Proposed fields:
+
+`profile_id`, `actor_id`, `actor_type`, `watched_space_ids`, `watched_subject_ids`, `watched_signal_types`, `watched_channels`, `watched_metrics`, `watched_valuation_types`, `watched_constraint_types`, `watched_relationship_types`, `update_frequency`, `phase_id?`, `priority_weights`, `missing_input_policy` ∈ `{degraded, strict, skip}`, `metadata`.
+
+Multiple profiles per actor are allowed and expected (a bank may run "daily liquidity" and "quarterly counterparty review" as separate profiles).
+
+### 44.5 `ObservationMenu` and `SelectedObservationSet`
+
+`ObservationMenu` is a *view*: what is available to an actor at a date / phase, computed fresh per routine run from the actor's profile and the world's current ledger state. Fields: `actor_id`, `as_of_date`, `phase_id?`, `available_signal_ids`, `available_valuation_ids`, `available_constraint_ids`, `available_relationship_ids`, `available_price_ids`, `available_external_observation_ids`, `available_interaction_ids`, `metadata`. **Empty availability lists are normal**, not erroneous.
+
+`SelectedObservationSet` is a *record*: what the actor actually selected from the menu. Fields: `selection_id`, `actor_id`, `attention_profile_id`, `routine_run_id?`, `selected_refs`, `skipped_refs`, `selection_reason` ∈ `{profile_match, priority_top_k, recency, explicit, degraded_no_input}`, `as_of_date`, `phase_id?`, `status` ∈ `{completed, partial, degraded, errored}`, `metadata`.
+
+### 44.6 Degraded operation — restated
+
+The v1.8.1 anti-scenario discipline (§43.1) cascades through v1.8.2 as:
+
+```
+ExternalFactorObservation absent? optional input only.
+ObservationMenu may be partial.
+SelectedObservationSet may have status="partial" / "degraded" with selection_reason="degraded_no_input".
+RoutineRunRecord may have status="degraded" but still produces endogenous output.
+```
+
+A routine that becomes silent solely because the menu was empty is violating §43.1. v1.8.4+ reviewers should reject this pattern.
+
+### 44.7 Revised milestone sequence
+
+| Milestone | Scope | Code? |
+| --- | --- | --- |
+| **v1.8.1 Endogenous Reference Dynamics — Design** | §43. Routine vocabulary; seven candidate routines. (Shipped.) | No |
+| **v1.8.2 Interaction Topology and Attention — Design** | §44. Topology + attention vocabulary. | No |
+| **v1.8.3 InteractionBook + Matrix / Tensor View** | `InteractionSpec` + `InteractionBook` + `build_space_interaction_matrix()` + ledger event types. | Yes (kernel) |
+| **v1.8.4 AttentionProfile / ObservationMenu** | `AttentionProfile` + `SelectedObservationSet` + `ObservationMenu` view builder. Routine-engine plumbing (per §43): `RoutineSpec` + `RoutineBook` + `RoutineRunRecord`. No concrete routine yet. | Yes (kernel) |
+| **v1.8.5 Corporate Reporting Routine** | First concrete routine: `corporate_quarterly_reporting`. Diagonal `Corporate → Corporate` channel. | Yes |
+| **v1.8.6 Investor and Bank Attention Demo** | Two more concrete routines using heterogeneous attention; demonstrates that different actors looking at the same world produce structurally different ledger traces. Remaining §43 reference routines wired here or in v1.8.7+. | Yes |
+| **v1.9 Living Reference World Demo** | Year-long run on the routine + topology + attention stack with **no** external observation; non-empty ledger on every reporting / review cycle. Replay-determinism + manifest preserved. | Yes (demo + tests) |
+
+### 44.8 Boundaries
+
+Topology does not decide behavior. Attention does not execute trades or lending decisions. `ObservationMenu` is a view, not a mutation. `SelectedObservationSet` is a record of attention, not an economic action. Routines may later consume `SelectedObservationSet`, but v1.8.2 does not implement that. All v1.8.1 prohibitions (no price formation, no trading, no credit decisions, no corporate actions, no policy reaction functions, no Japan calibration, no real data, no external-shock scenario engine) are inherited.
+
+### 44.9 v1.8.2 success criteria
+
+§44 is complete when **all** hold:
+
+1. `docs/v1_interaction_topology_design.md` exists and contains the principle, the directed-multigraph rationale, the proposed `InteractionSpec` / `InteractionBook` / `AttentionProfile` / `ObservationMenu` / `SelectedObservationSet` shapes, the heterogeneous-attention examples, the relation to existing v1 modules, the boundaries, and the revised milestone sequence.
+2. `docs/v1_endogenous_reference_dynamics_design.md` carries a "sequence revised by v1.8.2" note pointing at v1.8.2's authoritative table.
+3. This section (§44) records the design in the constitutional log.
+4. No `world/`, `spaces/`, `examples/`, or `tests/` file is modified. The 725-test baseline is unchanged.
+5. v1.8.3 reviewers can land `InteractionBook` against the proposed `InteractionSpec` shape without re-litigating direction; v1.8.4 reviewers can land the attention machinery against the proposed `AttentionProfile` / `ObservationMenu` / `SelectedObservationSet` shapes without re-litigating direction.

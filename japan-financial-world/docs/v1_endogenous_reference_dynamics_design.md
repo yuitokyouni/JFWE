@@ -412,24 +412,35 @@ routines simply stop *requiring* those inputs to fire.
 
 ## Proposed milestone sequence
 
-The path from v1.8.1 (this design) to a "living reference world"
-demo:
+> **Note (revised by v1.8.2):** v1.8.1's original sequence
+> committed v1.8.2 to the Routine Engine. The v1.8.2 Interaction
+> Topology and Attention design
+> ([`v1_interaction_topology_design.md`](v1_interaction_topology_design.md))
+> reorders the v1.8.x line so the topology + attention substrate
+> lands *before* concrete routines — routines should consume the
+> substrate from their first commit rather than being retro-fitted
+> later. The authoritative sequence is the table in v1.8.2's
+> design doc, mirrored below for reference. The original
+> alternative ordering is preserved in the git history of this
+> file.
 
 | Milestone | Scope | Code? |
 | --- | --- | --- |
-| **v1.8.1 Endogenous Reference Dynamics Design** | This document. Establishes the Routine vocabulary, the seven candidate routines, the boundaries, the relation to sensitivity matrices and external observations. No code. | No |
-| **v1.8.2 Routine Engine** | `RoutineSpec` + `RoutineBook`, `RoutineRunRecord` ledger emission, scheduler integration, the four `routine_run_*` ledger event types, no actual routines wired. The engine runs an empty schedule and emits nothing — proves the plumbing. | Yes (kernel) |
-| **v1.8.3 Corporate Reporting Routine** | First concrete routine: `corporate_quarterly_reporting`. Writes a fundamentals-shaped record (within v1.1's `ValuationBook` envelope until v2) plus a `signal_added` of type `"earnings_disclosure"`. Synthetic only. | Yes (one routine) |
-| **v1.8.4 Valuation Refresh Routine** | Second routine: `valuation_refresh`. Optionally consumes an `ExternalFactorObservation` when present. Demonstrates the "degraded but valid" path explicitly. | Yes |
-| **v1.8.5 Review Routines** | `bank_review`, `investor_review`, `relationship_refresh`, `information_staleness_update`, `debt_maturity_aging`. Five routines that purely emit signals / projections, never mutate. | Yes |
-| **v1.9 Living Reference World Demo** | A new (or expanded) reference demo that runs for a full year on the routine engine *without any external observation*. The ledger should contain meaningful records on every quarter-end, every month-end, every relationship review cycle. The replay-determinism gate must hold; the manifest must remain stable. | Yes (demo + tests) |
+| **v1.8.1 Endogenous Reference Dynamics — Design** | This document. Establishes the Routine vocabulary, the seven candidate routines, the boundaries, the relation to sensitivity matrices and external observations. No code. | No |
+| **v1.8.2 Interaction Topology and Attention — Design** | `v1_interaction_topology_design.md`. `InteractionSpec` / `InteractionBook` / `AttentionProfile` / `ObservationMenu` / `SelectedObservationSet` proposed shapes; heterogeneous-attention examples; boundaries. No code. | No |
+| **v1.8.3 InteractionBook + Matrix / Tensor View** | `InteractionSpec` + `InteractionBook` + the corresponding ledger event types + `build_space_interaction_matrix()`. No routines wired yet. | Yes (kernel) |
+| **v1.8.4 AttentionProfile / ObservationMenu** | `AttentionProfile` + `SelectedObservationSet` records, the `ObservationMenu` view builder, the four `attention_*` ledger event types. The Routine Engine *plumbing* lands here too — `RoutineSpec` / `RoutineBook` / `RoutineRunRecord` per v1.8.1's record-shape proposal, but no concrete routine. | Yes (kernel + engine plumbing) |
+| **v1.8.5 Corporate Reporting Routine** | First concrete routine: `corporate_quarterly_reporting`, using its own `AttentionProfile` on the diagonal `Corporate → Corporate` channel. Writes a fundamentals-shaped record (within v1.1's `ValuationBook` envelope until v2) plus a `signal_added` of type `"earnings_disclosure"`. Synthetic only. | Yes (one routine) |
+| **v1.8.6 Investor and Bank Attention Demo** | Two more concrete routines: an investor-side review consuming a value-investor `AttentionProfile`, and a bank-side review consuming the bank profile. Demonstrates that two heterogeneous actors looking at the same world produce structurally different ledger traces. The remaining v1.8.1 reference routines (`valuation_refresh`, `bank_review`, `investor_review`, `relationship_refresh`, `information_staleness_update`, `debt_maturity_aging`) are wired here or in v1.8.7+ on the same substrate. | Yes |
+| **v1.9 Living Reference World Demo** | A new (or expanded) reference demo that runs for a full year on the routine + topology + attention stack *without any external observation*. The ledger should contain meaningful records on every quarter-end, every month-end, every relationship review cycle. The replay-determinism gate must hold; the manifest must remain stable. | Yes (demo + tests) |
 
 After v1.9, the next direction is either (a) v2 (Japan public
-calibration, populating routine parameters from public data) or
-(b) v1+ behavioral milestones that introduce price formation /
-trading / credit decisions on top of the routine substrate. The
-v1.9 demo's success is measured by whether the ledger is
-*economically thick* even when no shock is present.
+calibration, populating routine / attention / topology parameters
+from public data) or (b) v1+ behavioral milestones that introduce
+price formation / trading / credit decisions on top of the routine
++ topology + attention substrate. The v1.9 demo's success is
+measured by whether the ledger is *economically thick* even when
+no shock is present.
 
 ## Open questions / non-decisions
 
