@@ -382,6 +382,36 @@ a v1+ behavioral milestone, not an extension of this demo.
 > across firms / banks / investors into a single year-long trace
 > that the v1.7-era one-shot demo here cannot produce on its own.
 
+### Update — v1.8.14 endogenous chain harness
+
+> v1.8.14 ships `world/reference_chain.py::run_reference_endogenous_chain`,
+> a single orchestration helper that sequences the v1.8.7 corporate
+> reporting routine, the v1.8.12 investor / bank attention demo, and
+> the v1.8.13 investor / bank review routines into one chain. The
+> harness writes nothing itself; every write goes through the existing
+> component helpers, which means the chain reuses the same ledger
+> record types the v1.7-era reference demo already inspects
+> (`routine_added`, `routine_run_recorded`, `signal_added`,
+> `attention_profile_added`, `observation_menu_created`,
+> `observation_set_selected`, `interaction_added`).
+>
+> `EndogenousChainResult` names every primary record id and reports the
+> ledger slice that contains the chain's writes
+> (`ledger_record_count_before`, `ledger_record_count_after`,
+> `created_record_ids`). The summary is convenience; the same chain is
+> fully reconstructable from
+> `kernel.ledger.records[before:after]` — tests pin that the slice's
+> `object_id`s match `created_record_ids` exactly, in order. If the
+> two ever disagree, **trust the ledger**.
+>
+> A small CLI lives at
+> `examples/reference_world/run_endogenous_chain.py`; running it prints
+> a compact human-readable trace and is byte-identical across runs.
+> The v1.7-era reference demo described in this document is unchanged
+> by v1.8.14 — it remains the *one-shot* baseline. v1.8.14 is its
+> compact endogenous companion; v1.9 will sweep this harness over a
+> full calendar year.
+
 No file under `world/`, `spaces/`, or any existing test file is
 modified. The 632 / 632 v0 + v1 test count grows by the number of
 new demo tests; no existing test is changed.

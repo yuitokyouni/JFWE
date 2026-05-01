@@ -1,15 +1,15 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.8.13** (`Investor / Bank
-Review Routines`): `1289 / 1289 passing` (444 v0 + 188 v1.0-v1.7
-frozen reference + 657 post-v1.7 additions covering reference
-demo, replay, manifest, catalog-shape, experiment harness,
-renamed WorldID tests, interactions, routines, attention, routine
-engine, the corporate quarterly reporting routine, the
-world-variable storage layer, the exposure / dependency storage
-layer, the observation-menu builder join service, the
-heterogeneous-attention investor / bank demo, and the investor /
-bank review routines).
+Snapshot of the test suite at **v1.8.14** (`Endogenous Chain
+Harness`): `1318 / 1318 passing` (444 v0 + 188 v1.0-v1.7 frozen
+reference + 686 post-v1.7 additions covering reference demo,
+replay, manifest, catalog-shape, experiment harness, renamed
+WorldID tests, interactions, routines, attention, routine engine,
+the corporate quarterly reporting routine, the world-variable
+storage layer, the exposure / dependency storage layer, the
+observation-menu builder join service, the
+heterogeneous-attention investor / bank demo, the investor /
+bank review routines, and the endogenous chain harness).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -276,6 +276,42 @@ no-mutation guarantee.
   determinism; snapshot determinism; ledger emission of
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
+
+## Endogenous chain harness (v1.8.14)
+
+- `test_reference_endogenous_chain.py` (29) —
+  `EndogenousChainResult` shape and immutability; every result
+  id (corporate run, corporate signal, both attention profiles,
+  both menus, both selections, both review runs, both review
+  signals) resolves back to an actually-stored record in the
+  kernel; phase counts are exact (one corporate run, two menus,
+  two selections, two review runs, three signals); the ledger
+  slice produced during the chain matches
+  `created_record_ids` byte-identically (count, order, ids); the
+  chain uses **only** the existing seven event types
+  (`interaction_added`, `routine_added`, `routine_run_recorded`,
+  `signal_added`, `attention_profile_added`,
+  `observation_menu_created`, `observation_set_selected`); ledger
+  ordering pinned (corporate → attention → investor review → bank
+  review); investor review's `input_refs` includes the investor
+  selection's refs (proving phase 3 ran after phase 2);
+  heterogeneous attention propagates (investor vs bank
+  `selected_refs` differ; `shared` / `investor_only` /
+  `bank_only` agree with set membership; corporate signal lands
+  in `shared_selected_refs`); determinism (two fresh kernels
+  seeded identically produce byte-identical `EndogenousChainResult`
+  values); status semantics (`completed` for the canonical seed;
+  the no-exposure edge case still completes because the corporate
+  signal flows through both selections); date defaulting to
+  `kernel.clock.current_date` and explicit override; defensive
+  rejection of `kernel=None` and empty `firm_id` / `investor_id`
+  / `bank_id`; no-mutation guarantees against `valuations`,
+  `prices`, `ownership`, `contracts`, `constraints`,
+  `institutions`, `external_processes`, `relationships`, plus
+  `exposures` / `variables` byte-equality across the call;
+  `kernel.tick()` and `kernel.run(days=N)` do NOT execute the
+  chain; synthetic-only identifiers verified with a
+  word-boundary forbidden-token check.
 
 ## Investor / bank review routines (v1.8.13)
 
@@ -617,7 +653,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 / v1.8.13 additions
+### v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 / v1.8.13 / v1.8.14 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -637,7 +673,8 @@ no-mutation guarantee.
 | Observation menu builder (v1.8.11)      | 1     | 50    |
 | Reference attention demo (v1.8.12)      | 1     | 23    |
 | Reference review routines (v1.8.13)     | 1     | 32    |
-| **post-v1.7 subtotal**                  | **16**| **657** |
+| Endogenous chain harness (v1.8.14)      | 1     | 29    |
+| **post-v1.7 subtotal**                  | **17**| **686** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -645,8 +682,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 / v1.8.13) | 16 | 657 |
-| **Total**                        | **58**| **1289** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 / v1.8.13 / v1.8.14) | 17 | 686 |
+| **Total**                        | **59**| **1318** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

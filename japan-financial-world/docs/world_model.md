@@ -4285,7 +4285,8 @@ The book writes only to itself + the ledger (via the existing `Ledger.append` pa
 | v1.8.10 Exposure / Dependency Layer | Code (§52). | Shipped |
 | v1.8.11 `ObservationMenu` builder | Code (§53). Read-only join. | Shipped |
 | v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo | Code (§54). Heterogeneous attention. | Shipped |
-| **v1.8.13 Investor / Bank Review Routines** | Code (§55). Routines consume attention. | **Shipped** |
+| v1.8.13 Investor / Bank Review Routines | Code (§55). Routines consume attention. | Shipped |
+| **v1.8.14 Endogenous Chain Harness** | Code (§56). Single helper orchestrates the full chain. | **Shipped** |
 | v1.9 Living Reference World Demo | Code + tests. | Next |
 
 ## 52. v1.8.10 Exposure / Dependency Layer
@@ -4381,7 +4382,8 @@ Each step is opt-in. v1.8.10 does **not** implement the join; it only persists t
 | **v1.8.10 Exposure / Dependency Layer** | Code (§52). Storage + lookup only. | **Shipped** |
 | v1.8.11 `ObservationMenu` builder | Code (§53). Read-only join. | Shipped |
 | v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo | Code (§54). Heterogeneous attention. | Shipped |
-| **v1.8.13 Investor / Bank Review Routines** | Code (§55). Routines consume attention. | **Shipped** |
+| v1.8.13 Investor / Bank Review Routines | Code (§55). Routines consume attention. | Shipped |
+| **v1.8.14 Endogenous Chain Harness** | Code (§56). Single helper orchestrates the full chain. | **Shipped** |
 | v1.9 Living Reference World Demo | Code + tests. | Next |
 
 ## 53. v1.8.11 ObservationMenu Builder
@@ -4452,7 +4454,8 @@ The join is the v1.8.8 hardening's **exposure hook** in code:
 | v1.8.10 Exposure / Dependency Layer | Code (§52). | Shipped |
 | v1.8.11 `ObservationMenu` builder | Code (§53). Read-only join. | Shipped |
 | v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo | Code (§54). Heterogeneous attention. | Shipped |
-| **v1.8.13 Investor / Bank Review Routines** | Code (§55). Routines consume attention. | **Shipped** |
+| v1.8.13 Investor / Bank Review Routines | Code (§55). Routines consume attention. | Shipped |
+| **v1.8.14 Endogenous Chain Harness** | Code (§56). Single helper orchestrates the full chain. | **Shipped** |
 | v1.9 Living Reference World Demo | Code + tests. | Next |
 
 ## 54. v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo
@@ -4610,6 +4613,79 @@ The four counts are **descriptive**, not normative: v1.8.13 does not score risk,
 | v1.8.10 Exposure / Dependency Layer | Code (§52). | Shipped |
 | v1.8.11 `ObservationMenu` builder | Code (§53). | Shipped |
 | v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo | Code (§54). | Shipped |
-| **v1.8.13 Investor / Bank Review Routines** | Code (§55). | **Shipped** |
+| v1.8.13 Investor / Bank Review Routines | Code (§55). | Shipped |
+| **v1.8.14 Endogenous Chain Harness** | Code (§56). Orchestration only. | **Shipped** |
 | v1.9 Living Reference World Demo | Year-long run on the full endogenous chain. | Next |
+
+## 56. v1.8.14 Endogenous Chain Harness
+
+§56 (v1.8.14) is **pure orchestration**. It ships one helper — `run_reference_endogenous_chain` — that calls the existing v1.8.7 / v1.8.12 / v1.8.13 component helpers in order and returns one immutable `EndogenousChainResult` summarizing every record the chain wrote. v1.8.14 does **not** introduce any new economic behavior, any new ledger record type, or any new world-construction logic; it is the first compact non-shock endogenous chain you can run with a single helper call.
+
+The chain it sequences:
+
+1. **Corporate quarterly reporting** — `register_corporate_reporting_interaction` + `register_corporate_quarterly_reporting_routine` + `run_corporate_quarterly_reporting`. Writes one `RoutineRunRecord` and one synthetic `corporate_quarterly_report` `InformationSignal`.
+2. **Heterogeneous investor / bank attention** — `run_investor_bank_attention_demo`. Writes (idempotently) two `AttentionProfile` records, then two `ObservationMenu` records and two `SelectedObservationSet` records, one per actor.
+3. **Investor review** — `register_investor_review_interaction` + `register_investor_review_routine` + `run_investor_review`. Writes one `RoutineRunRecord` and one `investor_review_note` `InformationSignal`, with `input_refs` carrying the investor's selected refs.
+4. **Bank review** — `register_bank_review_interaction` + `register_bank_review_routine` + `run_bank_review`. Symmetric.
+
+§56 is the last v1.8.x milestone before v1.9; it is the smallest possible "everything fits together" demonstration that the v1.8.x stack composes correctly.
+
+### 56.1 What lands in v1.8.14
+
+- `world/reference_chain.py` — new module with `EndogenousChainResult` (immutable summary) and `run_reference_endogenous_chain(kernel, *, firm_id, investor_id, bank_id, as_of_date=None, phase_id=None, metadata=None)`. The harness:
+  - Records `len(kernel.ledger.records)` immediately before and after the chain so the slice of new records is reconstructable.
+  - Captures the ordered tuple of `LedgerRecord.object_id` values created during the call into `EndogenousChainResult.created_record_ids`.
+  - Names every primary record id (corporate run + signal; both menus; both selections; both review runs + review signals; both attention profiles).
+  - Surfaces the v1.8.12 set differences (`shared_selected_refs`, `investor_only_selected_refs`, `bank_only_selected_refs`) so callers do not have to recompute them.
+  - Reports each phase's status (`completed` / `degraded`) verbatim from the underlying component results.
+- `examples/reference_world/run_endogenous_chain.py` — small CLI that builds a synthetic seed kernel, runs the chain, and prints a compact human-readable trace. Re-runs are byte-identical.
+- `tests/test_reference_endogenous_chain.py` — 29 tests pinning result shape, persistence (every result id resolves to a stored record), counts (one corporate run, two menus, two selections, two review runs, three signals total), ledger trace correctness (count diff equals `len(created_record_ids)` and the ids match the slice exactly), ledger ordering (corporate → attention → reviews), event-type discipline (no new record types), heterogeneous attention propagation (set differences agree with membership), determinism across fresh kernels, status semantics, date defaulting, defensive errors, no economic mutation against `valuations` / `prices` / `ownership` / `contracts` / `constraints` / `institutions` / `external_processes` / `relationships` (and no mutation of `exposures` / `variables` after setup), no auto-firing from `tick()` / `run()`, and synthetic-only identifiers.
+
+### 56.2 Determinism contract
+
+Two fresh kernels seeded identically and run with the same `firm_id` / `investor_id` / `bank_id` / `as_of_date` produce byte-identical `EndogenousChainResult`s. Every id in the chain is derived from those inputs (or directly from the as-of-date), and every component helper is itself deterministic. The harness does not consult the wall clock; `as_of_date` defaults to `kernel.clock.current_date`.
+
+This is what makes v1.8.14 a viable foundation for v1.9: a year-long sweep can rerun the same chain on each tick boundary without any non-determinism leaking in.
+
+### 56.3 The summary is convenience, not truth
+
+`EndogenousChainResult` exists so callers can correlate chain phases without re-querying the kernel — but it is **not** the source of truth. The same chain is fully reconstructable from the kernel's ledger by slicing
+`kernel.ledger.records[result.ledger_record_count_before : result.ledger_record_count_after]`. Tests verify that the slice's `object_id`s match `result.created_record_ids` exactly, in the same order. If the result and the ledger ever disagree, **trust the ledger**.
+
+### 56.4 Anti-scope (what v1.8.14 deliberately does not do)
+
+§56 is an orchestration milestone. v1.8.14 does **not** add:
+
+- New economic behavior. No price formation, trading, lending decisions, valuation refresh, impact estimation, sensitivity calculation, DSCR / LTV updates, covenant enforcement, corporate actions, policy reactions.
+- New ledger record types. The chain reuses the existing seven event types (`interaction_added`, `routine_added`, `routine_run_recorded`, `signal_added`, `attention_profile_added`, `observation_menu_created`, `observation_set_selected`); a test pins this.
+- Auto-firing. The harness does not register a scheduler task and does not hook into `tick()` / `run()`. Calling the chain is a deliberate caller act.
+- World construction. The harness *requires* a kernel — it does not seed variables / exposures / etc. on the caller's behalf. v1.9 will own the year-long seed.
+- A year-long simulation. v1.8.14 runs one chain on one `as_of_date`. Sweeping is the v1.9 milestone.
+- Real Japan calibration; no real data ingestion; no scenario engine. All ids are synthetic and pass the v1 forbidden-token check.
+
+### 56.5 v1.8.14 success criteria
+
+§56 is complete when **all** hold:
+
+1. `world/reference_chain.py` exports `EndogenousChainResult` and `run_reference_endogenous_chain` with the v1.8.14 contract.
+2. The harness writes nothing itself; every write goes through the existing v1.8.7 / v1.8.12 / v1.8.13 component helpers.
+3. The result names every primary record id; each id resolves to an actually-stored record in the kernel.
+4. The full test suite passes (1318 tests = 1289 prior + 29 chain).
+5. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+6. `valuations` / `prices` / `ownership` / `contracts` / `constraints` / `institutions` / `external_processes` / `relationships` snapshots are byte-identical before and after the chain.
+7. `exposures` and `variables` snapshots are byte-identical before and after the chain (the harness does not mutate them after setup).
+8. `kernel.tick()` / `kernel.run(days=N)` do NOT run the chain.
+9. The chain is deterministic across fresh kernels seeded identically.
+10. All identifiers are synthetic (word-boundary forbidden-token check).
+
+### 56.6 Position in the v1.8.x sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.8.11 `ObservationMenu` builder | Code (§53). | Shipped |
+| v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo | Code (§54). | Shipped |
+| v1.8.13 Investor / Bank Review Routines | Code (§55). | Shipped |
+| **v1.8.14 Endogenous Chain Harness** | Code (§56). | **Shipped** |
+| v1.9 Living Reference World Demo | Year-long run sweeping the chain. | Next |
+
 
