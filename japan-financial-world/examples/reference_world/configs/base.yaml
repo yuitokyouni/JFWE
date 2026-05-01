@@ -1,0 +1,109 @@
+# FWE Reference Demo — base experiment config (v1.8).
+#
+# This config drives the v1.8 experiment harness. It mirrors the
+# parameters of the bundled FWE Reference Demo so that running it
+# produces the same canonical ledger trace as
+# ``run_reference_loop.run()`` (and therefore the same SHA-256
+# digest verified by tests/test_reference_demo_replay.py).
+#
+# The harness is config-driven but does not yet customize the
+# simulation based on the optional sections below. Those sections
+# are documented schema slots for future v1.8.x milestones; v1.8
+# round-trips them through the manifest but does not act on them.
+#
+# Synthetic-only: every value below uses *_reference_* identifiers.
+# v1.8 rejects configs containing real-firm or jurisdiction-specific
+# tokens (toyota / mufg / smbc / mizuho / boj / fsa / jpx / gpif /
+# tse / nikkei / topix / sony / jgb / nyse).
+
+# --- required fields -------------------------------------------------
+
+# Stable identifier for this run; goes into the manifest. Must not
+# contain spaces or forbidden tokens.
+run_id: "fwe_reference_demo_base_2026_01_01"
+
+# Human-readable label; goes into the manifest. May contain
+# punctuation, but still no forbidden tokens.
+run_label: "FWE Reference Demo — base config (v1.8 harness)"
+
+# ISO YYYY-MM-DD. v1.8 only supports the demo default 2026-01-01.
+start_date: "2026-01-01"
+
+# Number of simulation days to run. v1.8 only supports 2 (the
+# next-tick rule needs day-2 to deliver events published on day-1).
+days: 2
+
+# Either "date_tick" (the v0 default) or "intraday_phase" (v1.2+).
+# v1.8 only supports date_tick; intraday_phase will land in a
+# v1.8.x milestone.
+execution_mode: "date_tick"
+
+# Path (relative to the repo root) of the synthetic entity catalog.
+# v1.8 only supports the bundled demo path.
+input_entities_path: "examples/reference_world/entities.yaml"
+
+# Where the harness writes manifest.json and ledger_digest.txt.
+# Relative paths resolve against the repo root.
+output_dir: "build/experiments/fwe_reference_demo_base"
+
+# Toggle: write {output_dir}/manifest.json after the run.
+manifest_enabled: true
+
+# Toggle: compute the canonical SHA-256 ledger digest and write
+# {output_dir}/ledger_digest.txt.
+replay_digest_enabled: true
+
+# --- optional sections (documented schema; v1.8 round-trips only) ----
+#
+# These five sections describe what *will* be configurable in
+# v1.8.x. v1.8 itself ignores them and uses the bundled demo
+# behavior. Setting any of them in v1.8 raises NotImplementedError
+# at run time so that the schema is validated without silently
+# diverging.
+#
+# A future v1.8.x milestone will wire each section to the
+# corresponding ReferenceLoopRunner step. The shapes below are
+# illustrative — they are NOT applied by v1.8.
+
+external_observations: []
+# Example shape for v1.8.x:
+# - process_id: "process:reference_macro_index"
+#   as_of_date: "2026-01-01"
+#   phase_id: "overnight"
+#   source_id: "source:reference_news_outlet"
+
+signal_templates: []
+# Example shape for v1.8.x:
+# - signal_id: "signal:reference_macro_observed_001"
+#   signal_type: "macro_indicator"
+#   subject_id: "factor:reference_macro_index"
+#   from_observation: 0   # references external_observations[0]
+
+valuation_templates: []
+# Example shape for v1.8.x:
+# - valuation_id: "valuation:reference_demo_001"
+#   subject_id: "firm:reference_manufacturer_a"
+#   valuer_id: "valuer:reference_research_desk"
+#   method: "dcf"
+#   estimated_value: 110.0
+#   currency: "reference_unit"
+#   from_signal: 0   # references signal_templates[0]
+#   compare_to_latest_price: true
+
+institutional_actions: []
+# Example shape for v1.8.x:
+# - action_id: "action:reference_announcement_001"
+#   institution_id: "institution:reference_central_bank"
+#   action_type: "reference_macro_statement"
+#   phase_id: "post_close"
+#   from_valuation: 0   # references valuation_templates[0]
+#   emit_signal:
+#     signal_id: "signal:reference_followup_001"
+#     signal_type: "reference_macro_statement"
+
+event_delivery_targets: []
+# Example shape for v1.8.x:
+# - event_id: "event:reference_announcement_001"
+#   source_space: "information"
+#   target_spaces: ["banking", "investors"]
+#   from_signal: 1    # references the action's emitted signal
