@@ -13,6 +13,31 @@ record types, books, and an end-to-end orchestrator that links every record
 type into a single causal ledger trace. v1 does **not** add autonomous
 behavior, decision logic, or country-specific calibration.
 
+## Project layers
+
+The project is organized into five product layers. The current repository
+contains FWE Core only; Japan-specific calibration is layered separately
+above it.
+
+- **FWE Core** — public; jurisdiction-neutral kernel + reference financial
+  system. This is what the current freeze contains.
+- **FWE Reference** — public; planned synthetic / fictional-country demo on
+  top of FWE Core.
+- **JFWE Public** — partially public; Japan public-data calibration (v2
+  territory). Public release depends on per-source redistribution rights.
+- **JFWE Proprietary** — never public; private commercial calibration with
+  paid data, expert input, and proprietary templates (v3 territory).
+
+FWE / JFWE is **not** a market predictor and **not** investment advice; it
+is a causal, auditable, multi-space financial-world simulation engine. See
+[`docs/product_architecture.md`](japan-financial-world/docs/product_architecture.md),
+[`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md),
+and [`docs/naming_policy.md`](japan-financial-world/docs/naming_policy.md)
+for the full layer definitions, public / restricted artifact rules, and
+naming conventions. The repository keeps its legacy `JWFE` /
+`japan-financial-world/` names in this version; any rename is a separate
+migration.
+
 ## Version boundary
 
 | Version | Purpose                                                       | Status                       |
