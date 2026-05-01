@@ -609,6 +609,34 @@ no-mutation guarantee.
 | post-v1.7 (v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12) | 15 | 625 |
 | **Total**                        | **57**| **1257** |
 
+## Auditing for jurisdiction-neutral identifiers
+
+The v1 line is jurisdiction-neutral by design (see
+`docs/v1_scope.md` and `docs/v1_release_summary.md`). When
+auditing the tree for stray Japan-specific identifiers, prefer
+the canonical token list maintained at
+`world/experiment.py::_FORBIDDEN_TOKENS` (`toyota`, `mufg`,
+`smbc`, `mizuho`, `boj`, `fsa`, `jpx`, `gpif`, `tse`, `nikkei`,
+`topix`, `sony`, `jgb`, `nyse`) and use **word-boundary
+matches**, not raw substring greps.
+
+A naive `grep -RIn "tse\|jgb\|topix"` produces large numbers of
+false positives because, e.g., `"tse"` is a substring of
+`"itself"`. Use word boundaries instead:
+
+```bash
+grep -RInE "\b(toyota|mufg|smbc|mizuho|boj|fsa|jpx|gpif|tse|nikkei|topix|sony|jgb|nyse)\b" .
+```
+
+Some tokens (`JPY`, `USD/JPY`, `cash_jpy`, the v1.1 currency
+display field) appear deliberately in v0 / v1 modules as
+*examples* of free-form unit / currency labels — those are
+**not** jurisdiction-specific behavior and are explicitly
+allowed by `docs/v1_scope.md`. The forbidden-token list above
+is the authoritative gate; new code that introduces any of
+those tokens should fail review unless it is explicitly part
+of the v2 calibration roadmap.
+
 ## How to interpret a failing test
 
 If a test fails after this freeze, one of three things is true:

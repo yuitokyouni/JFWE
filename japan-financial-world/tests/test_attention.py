@@ -286,12 +286,12 @@ def test_profile_v1812_fields_default_empty():
 
 def test_profile_v1812_fields_normalize_to_tuples():
     p = _profile(
-        watched_variable_ids=["variable:cpi_yoy", "variable:jpy_usd"],
+        watched_variable_ids=["variable:cpi_yoy", "variable:reference_fx_pair_a"],
         watched_variable_groups=["fx", "rates"],
         watched_exposure_types=["funding_cost"],
         watched_exposure_metrics=["debt_service_burden"],
     )
-    assert p.watched_variable_ids == ("variable:cpi_yoy", "variable:jpy_usd")
+    assert p.watched_variable_ids == ("variable:cpi_yoy", "variable:reference_fx_pair_a")
     assert p.watched_variable_groups == ("fx", "rates")
     assert p.watched_exposure_types == ("funding_cost",)
     assert p.watched_exposure_metrics == ("debt_service_burden",)
@@ -299,13 +299,13 @@ def test_profile_v1812_fields_normalize_to_tuples():
 
 def test_profile_v1812_fields_appear_in_to_dict():
     p = _profile(
-        watched_variable_ids=("variable:jgb_10y",),
+        watched_variable_ids=("variable:reference_long_rate_10y",),
         watched_variable_groups=("rates",),
         watched_exposure_types=("collateral",),
         watched_exposure_metrics=("collateral_value",),
     )
     d = p.to_dict()
-    assert d["watched_variable_ids"] == ["variable:jgb_10y"]
+    assert d["watched_variable_ids"] == ["variable:reference_long_rate_10y"]
     assert d["watched_variable_groups"] == ["rates"]
     assert d["watched_exposure_types"] == ["collateral"]
     assert d["watched_exposure_metrics"] == ["collateral_value"]
@@ -337,7 +337,7 @@ def test_profile_matches_menu_includes_v1812_dimensions():
     book = AttentionBook()
     profile = _profile(
         profile_id="p:1812:overlap",
-        watched_variable_ids=("variable:jgb_10y",),
+        watched_variable_ids=("variable:reference_long_rate_10y",),
         watched_variable_groups=("rates",),
         watched_exposure_types=("funding_cost",),
         watched_exposure_metrics=("debt_service_burden",),
@@ -347,7 +347,7 @@ def test_profile_matches_menu_includes_v1812_dimensions():
         menu_id="m:1812",
         actor_id=profile.actor_id,
         as_of_date="2026-04-30",
-        available_variable_observation_ids=("o:jgb",),
+        available_variable_observation_ids=("o:reference_long_rate_10y",),
         available_exposure_ids=("e:funding",),
     )
     book.add_menu(menu)

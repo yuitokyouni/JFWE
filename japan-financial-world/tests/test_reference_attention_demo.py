@@ -64,10 +64,10 @@ AS_OF = "2026-04-30"
 
 _REFERENCE_VARIABLES: tuple[tuple[str, str], ...] = (
     ("variable:cpi_yoy", "inflation"),
-    ("variable:jpy_usd", "fx"),
-    ("variable:jgb_10y", "rates"),
+    ("variable:reference_fx_pair_a", "fx"),
+    ("variable:reference_long_rate_10y", "rates"),
     ("variable:credit_spread_reference", "credit"),
-    ("variable:land_index_tokyo", "real_estate"),
+    ("variable:reference_land_index_a", "real_estate"),
     ("variable:electricity_industrial", "energy_power"),
 )
 
@@ -77,7 +77,7 @@ _REFERENCE_EXPOSURES: tuple[ExposureRecord, ...] = (
         exposure_id="exposure:investor_a:fx",
         subject_id=INVESTOR,
         subject_type="investor",
-        variable_id="variable:jpy_usd",
+        variable_id="variable:reference_fx_pair_a",
         exposure_type="translation",
         metric="portfolio_translation_exposure",
         direction="mixed",
@@ -87,7 +87,7 @@ _REFERENCE_EXPOSURES: tuple[ExposureRecord, ...] = (
         exposure_id="exposure:investor_a:rates",
         subject_id=INVESTOR,
         subject_type="investor",
-        variable_id="variable:jgb_10y",
+        variable_id="variable:reference_long_rate_10y",
         exposure_type="discount_rate",
         metric="valuation_discount_rate",
         direction="negative",
@@ -97,7 +97,7 @@ _REFERENCE_EXPOSURES: tuple[ExposureRecord, ...] = (
         exposure_id="exposure:bank_a:funding",
         subject_id=BANK,
         subject_type="bank",
-        variable_id="variable:jgb_10y",
+        variable_id="variable:reference_long_rate_10y",
         exposure_type="funding_cost",
         metric="debt_service_burden",
         direction="positive",
@@ -107,7 +107,7 @@ _REFERENCE_EXPOSURES: tuple[ExposureRecord, ...] = (
         exposure_id="exposure:bank_a:collateral",
         subject_id=BANK,
         subject_type="bank",
-        variable_id="variable:land_index_tokyo",
+        variable_id="variable:reference_land_index_a",
         exposure_type="collateral",
         metric="collateral_value",
         direction="positive",
@@ -258,7 +258,7 @@ def test_investor_selects_investor_relevant_refs():
     k = _seed_kernel()
     result = _run_default_demo(k)
     # FX observation + at least one investor exposure should be selected.
-    assert "obs:variable:jpy_usd:2026Q1" in result.investor_selected_refs
+    assert "obs:variable:reference_fx_pair_a:2026Q1" in result.investor_selected_refs
     assert any(
         ref.startswith("exposure:investor_a:")
         for ref in result.investor_selected_refs
@@ -269,7 +269,7 @@ def test_bank_selects_bank_relevant_refs():
     k = _seed_kernel()
     result = _run_default_demo(k)
     # Real-estate / energy observations + at least one bank exposure.
-    assert "obs:variable:land_index_tokyo:2026Q1" in result.bank_selected_refs
+    assert "obs:variable:reference_land_index_a:2026Q1" in result.bank_selected_refs
     assert (
         "obs:variable:electricity_industrial:2026Q1"
         in result.bank_selected_refs
@@ -284,7 +284,7 @@ def test_investor_does_not_select_bank_only_axes():
     k = _seed_kernel()
     result = _run_default_demo(k)
     assert (
-        "obs:variable:land_index_tokyo:2026Q1"
+        "obs:variable:reference_land_index_a:2026Q1"
         not in result.investor_selected_refs
     )
     assert (
@@ -300,7 +300,7 @@ def test_investor_does_not_select_bank_only_axes():
 def test_bank_does_not_select_investor_only_axes():
     k = _seed_kernel()
     result = _run_default_demo(k)
-    assert "obs:variable:jpy_usd:2026Q1" not in result.bank_selected_refs
+    assert "obs:variable:reference_fx_pair_a:2026Q1" not in result.bank_selected_refs
     assert all(
         not ref.startswith("exposure:investor_a:")
         for ref in result.bank_selected_refs
