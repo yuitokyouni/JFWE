@@ -230,12 +230,14 @@ its dev dependencies (pytest + ruff):
 pip install -e ".[dev]"
 ```
 
-This brings in **PyYAML**, the supported YAML parser for the
-reference demo's catalog (`examples/reference_world/entities.yaml`)
-and the v1.8 experiment harness configs. CI runs the same
-`pip install -e ".[dev]"` step. The `world/loader.py` fallback
-parser is degraded and only handles the v0 sample-data shape; if
-you skip PyYAML, the reference demo will fail at runtime — see
+This brings in **PyYAML 6.x** (pinned `>=6,<7` in `pyproject.toml`),
+the supported YAML parser for the reference demo's catalog
+(`examples/reference_world/entities.yaml`) and the v1.8 experiment
+harness configs. CI runs the same `pip install -e ".[dev]"` step.
+The `world/loader.py` fallback parser is a defensive minimal
+fallback — **not a full YAML implementation** — and only handles
+the v0 sample-data shape. If you skip PyYAML, the reference demo
+will fail at runtime; see
 [`japan-financial-world/world/loader.py`](japan-financial-world/world/loader.py)
 for the exact policy.
 

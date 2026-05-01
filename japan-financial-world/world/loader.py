@@ -5,15 +5,19 @@ YAML parser policy
 ------------------
 
 **PyYAML is the supported parser.** The project declares
-``pyyaml>=6`` in ``pyproject.toml``'s ``[project] dependencies`` so
-that any ``pip install -e ".[dev]"`` (or any plain ``pip install
--e .``) brings PyYAML in by default. The reference demo, the v1.8
-experiment harness, and the test suite all assume the supported
-parser is available.
+``pyyaml>=6,<7`` in ``pyproject.toml``'s ``[project] dependencies``
+(pinned to the 6.x major series — a future PyYAML 7 must be
+evaluated as a deliberate version bump). Any ``pip install -e
+".[dev]"`` (or any plain ``pip install -e .``) brings PyYAML in
+by default. The reference demo, the v1.8 experiment harness, and
+**the full reference demo + experiment config schemas all require
+PyYAML**.
 
 A small custom fallback parser (``_load_simple_yaml`` below)
-exists only as a defensive last resort for environments where
-PyYAML is genuinely unavailable. It supports a narrow subset:
+exists only as a defensive minimal fallback for environments where
+PyYAML is genuinely unavailable. **The fallback should not be
+treated as a full YAML implementation.** It is intentionally
+narrow:
 
 - Top-level *lists* of mappings (the v0 ``data/sample/*.yaml``
   shape).
@@ -24,10 +28,15 @@ The fallback **does not** support top-level mappings (e.g., the
 ``loop:`` block in ``examples/reference_world/entities.yaml``):
 top-level keys whose values are mappings are silently misread as
 empty lists, which crashes the v1.8 reference demo at runtime.
+It also does not support flow-style ``{...}`` / ``[...]`` syntax
+beyond the trivial empty cases, anchors / aliases, multi-document
+streams, multi-line scalars, or any of the advanced YAML 1.1 / 1.2
+features PyYAML covers.
 
 If you find yourself relying on the fallback, the right fix is to
-install PyYAML, not to reshape the YAML around the fallback's
-limitations. The catalog-shape regression test in
+install PyYAML — not to reshape your YAML around the fallback's
+limitations and not to extend the fallback. The catalog-shape
+regression test in
 ``tests/test_reference_demo_catalog_shape.py`` exists to fail
 loudly when an environment is using the wrong parser.
 """

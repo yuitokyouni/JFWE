@@ -66,12 +66,16 @@ new review is performed.
 ## Code health (mirrors CI; reproducible locally)
 
 - [ ] Dependencies installed via `pip install -e ".[dev]"` from
-  the repo root. This brings in **PyYAML** (declared as a runtime
-  dep in `pyproject.toml`'s `[project] dependencies`) and
-  pytest + ruff (under `[project.optional-dependencies] dev`).
-  PyYAML is required for the reference demo and the v1.8
-  harness; the loader's fallback parser is degraded and will
-  fail loudly via `tests/test_reference_demo_catalog_shape.py`.
+  the repo root. This brings in **PyYAML 6.x** (pinned
+  `>=6,<7` as a runtime dep in `pyproject.toml`'s `[project]
+  dependencies`) and pytest + ruff (under
+  `[project.optional-dependencies] dev`). PyYAML is required for
+  the reference demo and the v1.8 harness; the loader's fallback
+  parser is a defensive minimal fallback (not a full YAML
+  implementation) and will fail loudly via
+  `tests/test_reference_demo_catalog_shape.py` if it ends up in
+  use. Adopting PyYAML 7.x is a deliberate version-bump milestone
+  and should not happen by an unpinned upgrade.
 - [ ] `pytest -q` from `japan-financial-world/` reports the expected
   passing total (currently `725 passed` at v1.8 + the post-rc1
   CI fix, including the replay-determinism, manifest,

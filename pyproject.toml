@@ -24,7 +24,13 @@ readme = "README.md"
 # demo catalog. Declaring PyYAML here ensures CI and fresh checkouts
 # get the supported configuration by default.
 dependencies = [
-    "pyyaml>=6",
+    # Pinned to PyYAML 6.x. The supported configuration is exactly
+    # this major series; a future PyYAML 7 may change parsing
+    # semantics (string handling, Unicode rules, scientific notation,
+    # etc.) and must be evaluated as a deliberate version-bump
+    # milestone before being adopted. The loader's fallback parser
+    # is degraded and is not a substitute for PyYAML.
+    "pyyaml>=6,<7",
 ]
 
 [project.optional-dependencies]
