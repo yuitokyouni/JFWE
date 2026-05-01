@@ -1,6 +1,7 @@
 # Test Inventory
 
-Snapshot of the test suite at the **v0.16 freeze**: `444 / 444 passing`.
+Snapshot of the test suite at the **v1.7 freeze**: `632 / 632 passing`
+(444 v0 + 188 v1).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -8,6 +9,10 @@ parentheses are test counts per file. Run the full suite with:
 ```bash
 python -m pytest -q
 ```
+
+The v0 portion (`444 passed`) is unchanged from v0.16 freeze. The v1
+portion (`188 passed`) was added across milestones v1.1 – v1.6; v1.7 is
+documentation-only and adds no new tests.
 
 ## Identity, time, and registration
 
@@ -156,7 +161,70 @@ no-mutation guarantee.
   transport / visibility independence, no source-of-truth book
   mutation across all reads, and a complete ledger audit trail.
 
+## Valuation / fundamentals layer (v1.1)
+
+- `test_valuations.py` (34) — `ValuationRecord` validation,
+  `ValuationBook` CRUD / snapshot / ledger, currency vs numeraire
+  storage, `ValuationGap` computation, `ValuationComparator`
+  comparing against the latest `PriceRecord`, `valuation_compared`
+  ledger emission with `parent_record_ids` lineage, missing-price
+  tolerance, no-mutation guarantee.
+
+## Intraday phase scheduler (v1.2)
+
+- `test_phases.py` (18) — `IntradayPhaseSpec` / `PhaseSequence`
+  validation, ordered traversal, duplicate / unknown phase
+  rejection, phase-id storage on records that carry `phase_id`.
+- `test_phase_scheduler.py` (21) — `Scheduler.run_day_with_phases`
+  dispatch through six intraday phases, MAIN-phase compatibility
+  with v0 tasks, per-date run-mode guard rejecting mixed
+  `date_tick` / `intraday_phase` advancement, scope reset on next
+  date, deterministic order across phase ties.
+
+## Institutional decomposition (v1.3)
+
+- `test_institutions.py` (35) — `InstitutionProfile`,
+  `MandateRecord`, `PolicyInstrumentProfile`,
+  `InstitutionalActionRecord` validation; `InstitutionBook` CRUD /
+  snapshot / ledger; the four-property action contract (explicit
+  inputs / outputs / ledger record / no cross-space mutation);
+  duplicate detection per record type; cross-references stored as
+  data without resolution.
+
+## External world process layer (v1.4)
+
+- `test_external_processes.py` (44) — `ExternalFactorProcess` spec
+  (constant / random_walk / ar1 / regime_switch),
+  `ExternalFactorObservation` with `phase_id` field,
+  `ExternalScenarioPoint` / `ExternalScenarioPath` storage,
+  `ExternalProcessBook` CRUD / snapshot / ledger,
+  `create_constant_observation` helper, duplicate detection,
+  no-runtime-execution guarantee.
+
+## Relationship capital (v1.5)
+
+- `test_relationships.py` (31) — `RelationshipRecord` validation,
+  directed-pair semantics, `RelationshipCapitalBook` CRUD /
+  snapshot / ledger, `relationship_strength_updated` on update,
+  `RelationshipView` latest-strength queries, `decay_spec` stored
+  but not applied automatically, deterministic reads.
+
+## First closed-loop reference economy (v1.6)
+
+- `test_reference_loop.py` (5) — the v1 closing test.
+  `ReferenceLoopRunner` chains `ExternalFactorObservation` →
+  `InformationSignal` → `ValuationRecord` → `ValuationGap` →
+  `InstitutionalActionRecord` → `InformationSignal` → `WorldEvent`
+  → `event_delivered` (D+1). Verifies that every cross-reference
+  field is wired correctly, that `parent_record_ids` form a complete
+  causal graph reconstructable from the ledger alone, that
+  direct-bus and space-driven publication produce equivalent ledger
+  audit trails, and that the runner does not mutate any state
+  outside the books that own each record type.
+
 ## Test count by component
+
+### v0 components (frozen at v0.16)
 
 | Component                        | Files | Tests |
 | -------------------------------- | ----- | ----- |
@@ -170,7 +238,27 @@ no-mutation guarantee.
 | DomainSpace                      | 1     | 10    |
 | Domain spaces (state + integration) × 8 | 16 | 254 |
 | Cross-space integration          | 1     | 16    |
-| **Total**                        | **35**| **444** |
+| **v0 subtotal**                  | **35**| **444** |
+
+### v1 components (frozen at v1.7)
+
+| Component                        | Files | Tests |
+| -------------------------------- | ----- | ----- |
+| Valuation / fundamentals (v1.1)  | 1     | 34    |
+| Intraday phase scheduler (v1.2)  | 2     | 39    |
+| Institutional decomposition (v1.3) | 1   | 35    |
+| External world process (v1.4)    | 1     | 44    |
+| Relationship capital (v1.5)      | 1     | 31    |
+| Reference loop (v1.6)            | 1     | 5     |
+| **v1 subtotal**                  | **7** | **188** |
+
+### v0 + v1 totals
+
+| Layer                            | Files | Tests |
+| -------------------------------- | ----- | ----- |
+| v0                               | 35    | 444   |
+| v1                               | 7     | 188   |
+| **Total**                        | **42**| **632** |
 
 ## How to interpret a failing test
 
@@ -178,7 +266,7 @@ If a test fails after this freeze, one of three things is true:
 
 1. The freeze invariants have been broken. This is a regression and
    should be the default suspicion — every test in this inventory
-   passed at v0.16.
+   passed at v1.7 freeze.
 2. The test environment differs from the freeze environment (e.g., a
    Python version that changed dict ordering, a timezone issue
    affecting date conversions). Check the test name against the

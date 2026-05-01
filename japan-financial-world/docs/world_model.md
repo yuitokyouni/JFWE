@@ -3433,3 +3433,63 @@ v1.6 is complete when **all** of the following hold:
 6. `OwnershipBook`, `ContractBook`, `PriceBook`, `ConstraintBook`, and `RelationshipCapitalBook` are byte-identical before and after the loop runs.
 7. The runner is jurisdiction-neutral. No Japan-specific institution, factor, firm, or data source appears in v1.6 code or tests.
 8. All previous milestones (v0 through v1.5) continue to pass.
+
+## 42. v1 Reference System Freeze (v1.7)
+
+v1.7 closes the v1 line. It is **documentation only**: no Python behavior changes, no record-shape changes, no API additions, no test additions. Its purpose is to declare the v1 reference financial system frozen and to record the v2 hand-off picture before context fades.
+
+### 42.1 What v1.7 freezes
+
+v1.7 declares the following v1 surface frozen:
+
+- **Record shapes.** `ValuationRecord`, `ValuationGap`, `IntradayPhaseSpec`, `PhaseSequence`, `InstitutionProfile`, `MandateRecord`, `PolicyInstrumentProfile`, `InstitutionalActionRecord`, `ExternalFactorProcess`, `ExternalFactorObservation`, `ExternalScenarioPoint`, `ExternalScenarioPath`, `RelationshipRecord`, `RelationshipView`. Field sets, types, defaults, and validation rules are frozen.
+- **Book APIs.** `ValuationBook`, `InstitutionBook`, `ExternalProcessBook`, `RelationshipCapitalBook`. Method signatures, ledger emission contracts, snapshot determinism, and duplicate-detection rules are frozen.
+- **Orchestrator semantics.** `ValuationComparator.compare_to_latest_price`, `ReferenceLoopRunner` step methods. Input shape, cross-reference wiring, and ledger emission are frozen.
+- **Scheduler extensions.** `Phase` enum members (MAIN + 6 intraday phases), `PhaseSequence` reference order, `Scheduler.run_day_with_phases`, per-date run-mode guard. Frozen.
+- **Ledger taxonomy.** Every v1 record type has a corresponding `RecordType` enum member. The set of v1 ledger record types is frozen.
+- **Cross-reference vocabulary.** `related_ids`, `input_refs`, `output_refs`, `target_ids`, `instrument_ids`, `parent_record_ids`, `evidence_refs`, `inputs`, `assumptions`, `payload`, `metadata`. Shape and semantics frozen.
+- **Action contract.** The four-property action contract (explicit inputs / outputs / ledger record / no cross-space mutation). Frozen.
+- **Cross-references-as-data rule.** v1 books do not validate that referenced ids exist. Frozen.
+
+After v1.7, breaking any of the above is a documented decision recorded in a new milestone, not a routine change.
+
+### 42.2 What v1.7 deliberately is not
+
+v1.7 is **not**:
+
+- A v2 design session. v2 will pick a Japan public-data ingestion strategy, an institution-type controlled vocabulary, and a calibration-versioning scheme; none of those decisions is made here.
+- A behavior-adding milestone. v1.7 adds zero Python lines.
+- A test-adding milestone. v1.7 adds zero tests; the suite remains 632 / 632.
+- A re-litigation of v0 or v1 invariants. Every v0 / v1 invariant is preserved.
+
+### 42.3 Documents authored at v1.7
+
+Four new docs and three updated docs together form the freeze record:
+
+**New:**
+
+- `docs/v1_release_summary.md` — what v1 delivered, what it proves, what is out of scope, test status, relationship to v2 / v3.
+- `docs/architecture_v1.md` — text diagram of v0 kernel + v1 modules + ledger causal trace; per-record-type cross-reference vocabulary; run-mode guard.
+- `docs/v1_scope.md` — explicit in/out boundary for v1; v1 vs v2 vs v3 boundary; pre-v2 checklist.
+- `docs/v2_readiness_notes.md` — informal Japan public data source inventory; entity mapping (v1 record shape ← Japan reality) open questions; license-review open questions; v2 vs v3 clarification.
+
+**Updated:**
+
+- `README.md` (repo root) — v1 status, v0 vs v1 layer ownership, doc map updated, test count updated to 632.
+- `docs/test_inventory.md` — v1 test files added, totals updated to 632.
+- `docs/world_model.md` — this section.
+
+### 42.4 v1.7 success criteria
+
+v1.7 is complete when **all** of the following hold:
+
+1. `docs/v1_release_summary.md`, `docs/architecture_v1.md`, `docs/v1_scope.md`, and `docs/v2_readiness_notes.md` exist and describe the v1 freeze surface.
+2. `README.md` references v1 as the current frozen milestone, links to all new v1 docs, and reports `632 passed` as expected.
+3. `docs/test_inventory.md` lists every v1 test file with its individual count, the v1 subtotal (188), and the v0 + v1 total (632).
+4. `pytest -q` reports `632 passed`. No new tests were added; no existing tests were modified.
+5. No Python file in `world/`, `spaces/`, or `tests/` is changed.
+6. No v1 record shape, book API, scheduler extension, ledger record type, or cross-reference field is altered.
+7. Every v0 invariant (no cross-space mutation, append-only ledger, deterministic snapshot, next-tick rule, MAIN-phase compatibility) continues to hold unchanged.
+8. The freeze record (this section + the four new docs + the three updated docs) is committed under a single v1.7 commit so that the freeze is a discrete, identifiable event in the repository history.
+
+After v1.7 is committed and pushed, the v1 line is closed. The next milestone is either a v1+ behavioral milestone with an explicit charter (e.g., adding price formation as v1.8) or a v2 milestone introducing Japan public calibration on top of the frozen v1 contract.
