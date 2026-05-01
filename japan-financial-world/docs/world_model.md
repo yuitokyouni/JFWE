@@ -3353,3 +3353,83 @@ v1.5 is complete when **all** of the following hold:
 10. `kernel.relationships` is exposed with default wiring.
 11. v1.5 mutates none of `OwnershipBook`, `ContractBook`, `PriceBook`, `ConstraintBook`, `SignalBook`, `ValuationBook`, `InstitutionBook`, or `ExternalProcessBook`.
 12. All previous milestones (v0 through v1.4) continue to pass.
+
+---
+
+## 41. First Closed-loop Reference System (v1.6)
+
+The v1.6 milestone is the v1 line's climax. It connects v1.1 valuation, v1.2 intraday phases, v1.3 institutional decomposition, v1.4 ExternalWorld processes, and v1.5 relationship capital into a single end-to-end causal trace through the kernel — without any module mutating state outside its own book and without any economic decision being made.
+
+For the full design rationale and chain diagram, see [`v1_first_closed_loop_design.md`](v1_first_closed_loop_design.md).
+
+### 41.1 The reference loop
+
+v1.6 implements the *shape* of a closed financial-economy feedback loop without any of the decisions:
+
+```
+ExternalFactorObservation  (v1.4, phase_id="overnight")
+  → InformationSignal_1                    (v0.7, related_ids=obs)
+  → ValuationRecord                        (v1.1, related_ids=signal_1, inputs={signal_id})
+  → ValuationGap                           (v1.1, comparator output)
+  → InstitutionalActionRecord              (v1.3, phase_id="post_close",
+                                                  input_refs=valuation,
+                                                  output_refs=signal_2,
+                                                  parent_record_ids=ledger refs)
+  → InformationSignal_2                    (v0.7, related_ids=action)
+  → WorldEvent                             (v0.3, payload signal_id=signal_2)
+  → event_delivered records on day D+1     (v0.3 next-tick rule)
+```
+
+Every step is a record. No step decides. Every link is preserved through `parent_record_ids` (on the action's ledger record), `related_ids` (on signals and events), `input_refs` and `output_refs` (on the action). A reviewer walking the ledger after the run can reach every node from any other.
+
+### 41.2 ReferenceLoopRunner
+
+`world/reference_loop.py` ships a thin orchestrator with one method per step:
+
+- `record_external_observation` — uses v1.4's `create_constant_observation` helper.
+- `emit_signal_from_observation` — adds a signal whose `related_ids` and `payload` reference the observation.
+- `record_valuation_from_signal` — adds a valuation whose `related_ids` and `inputs.signal_id` reference the signal.
+- `compare_valuation_to_price` — calls v1.1's `ValuationComparator.compare_to_latest_price`.
+- `record_institutional_action` — adds an action whose `input_refs` include the valuation, whose `output_refs` name the planned follow-up signal, and whose `parent_record_ids` link to the `valuation_added` and `valuation_compared` ledger records.
+- `emit_signal_from_action` — adds the planned follow-up signal with `related_ids` pointing back to the action.
+- `publish_signal_event` — publishes a `WorldEvent` referencing the follow-up signal, and records `event_published` to the ledger so runner-driven publication produces the same audit trail as `BaseSpace`-driven publication.
+
+The runner does not decide anything; it only chains the bookkeeping. Future behavior modules that consume valuations and produce decisions will call the same book APIs the runner calls.
+
+### 41.3 Phase stamps
+
+The observation is stamped with `phase_id="overnight"` and the action with `phase_id="post_close"`, matching the use cases documented in §37.4 / `v1_intraday_phase_design.md`. v1.6 does not run via `run_day_with_phases` — that is a v1.2 feature exercised separately. The phase stamps on the records document conceptually when each step happens.
+
+### 41.4 What v1.6 does not do
+
+- No price formation, investor trading, bank credit decisions, corporate actions, or policy decisions.
+- No relationship-driven behavior (v1.5 is available but not used in the v1.6 chain).
+- No external shock impact propagation. The observation has a constant value; the gap is just a number.
+- No iteration. The loop demonstrates one cycle; iterating the chain (so the follow-up signal feeds back into the next valuation cycle) is a future behavioral milestone.
+- No Japan-specific calibration. The test uses neutral identifiers (`institution:reference_authority`, `factor:reference_macro_index`, `firm:reference_a`).
+- No price update. `PriceBook` is read by the comparator and never written by the loop. Snapshots of ownership, contracts, prices, constraints, and relationships are byte-identical before and after the loop.
+
+### 41.5 How v1.6 prepares v2 / v3
+
+v2 (Japan public calibration) and v3 (Japan proprietary calibration) plug into the same chain shape with calibrated data:
+
+- The constant `ExternalFactorProcess` becomes a real macro indicator from public Japan data (v2) or paid sources (v3).
+- The `InformationSignal_1` becomes a real disclosure (TDnet, EDINET, BoJ press release) at v2; vendor-curated content at v3.
+- The `ValuationRecord` becomes a real model output (v2 reference DCF; v3 proprietary).
+- The `InstitutionalActionRecord` becomes a real institution's action (v2 BoJ; v3 with proprietary policy intelligence).
+- The `WorldEvent` delivers to the same eight v0 spaces.
+
+The chain shape, record types, and audit trail are unchanged. Calibration changes the data; v1.6 freezes the structure.
+
+### 41.6 v1.6 success criteria
+
+v1.6 is complete when **all** of the following hold:
+
+1. `ReferenceLoopRunner` exists in `world/reference_loop.py` with seven step methods, each delegating to the existing kernel-level book that owns the record type produced.
+2. The end-to-end loop test runs without exceptions and produces all seven expected ledger event types (`external_observation_added`, `signal_added`, `valuation_added`, `valuation_compared`, `institution_action_recorded`, `event_published`, `event_delivered`).
+3. Forward and backward references are preserved at every link in the chain.
+4. The action's `parent_record_ids` includes both the `valuation_added` and `valuation_compared` ledger record IDs.
+5. Event delivery follows the v0.3 next-tick rule: no `event_delivered` records on day 1; both target spaces (`banking`, `investors` — both DAILY-firing) receive on day 2.
+6. `OwnershipBook`, `ContractBook`, `PriceBook`, `ConstraintBook`, and `RelationshipCapitalBook` are byte-identical before and after the loop runs.
+7. The runner is jurisdiction-neutral. No Japan-specific institution, factor, firm, or data source appears in v1.6 code or tests.
+8. All previous milestones (v0 through v1.5) continue to pass.
