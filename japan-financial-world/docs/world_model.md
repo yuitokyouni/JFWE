@@ -4068,5 +4068,85 @@ v1.8.7 is the v1.8.x line's **first economically-suggestive output** — but it 
 | v1.8.5 AttentionProfile + ObservationMenu + SelectedObservationSet | Code (§47). | Shipped |
 | v1.8.6 Routine Engine plumbing | Code (§48). | Shipped |
 | **v1.8.7 Corporate Quarterly Reporting Routine** | Code (§49). First concrete routine; Corporate → Corporate self-loop. | **Shipped** |
-| v1.8.8 Investor + Bank Attention Demo | Two more concrete routines. The investor and bank routines may *read* the v1.8.7 signal through `AttentionProfile` filters — that is the first heterogeneous-attention test. | Next |
-| v1.9 Living Reference World Demo | Year-long run on the routine + topology + attention stack with no external observation; non-empty ledger on every reporting / review cycle. | After v1.8.8 |
+| v1.8.8 Reference Variable Layer — Design | Design (§50). Names the universe of observable world-context variables. | Next |
+| v1.8.9 `WorldVariableBook` / `IndicatorBook` | Code. | After v1.8.8 |
+| v1.8.10 Exposure / Dependency Layer | Code. | After v1.8.9 |
+| v1.8.11 `ObservationMenu` builder | Code. | After v1.8.10 |
+| v1.8.12 Investor + Bank Attention Demo | Code. The first place where two heterogeneous actors looking at the same variable layer produce structurally different ledger traces. | After v1.8.11 |
+| v1.9 Living Reference World Demo | Year-long run on the routine + topology + attention + variable stack with no external observation; non-empty ledger on every reporting / review cycle. | After v1.8.12 |
+
+## 50. v1.8.8 Reference Variable Layer — Design
+
+§50 (v1.8.8) names the universe of observable world-context variables that future routines will read: macro, financial, material, energy, technology, real-estate, labor, logistics, and expectation/narrative measures. The full design is in [`v1_reference_variable_layer_design.md`](v1_reference_variable_layer_design.md).
+
+§50 is **design-only**. No `world/`, `spaces/`, `examples/`, or `tests/` file is changed. The constitutional log entry below summarises the principle and the proposed record shapes; v1.8.9 is the implementation milestone.
+
+### 50.1 Core principle
+
+> Reference variables are observable world-context variables. They are not scenarios and not shocks by default. Their presence does not drive behavior automatically. Their absence does not silence routines.
+
+The v1.8.7 reporting routine writes a signal that nothing reads. v1.8.12's investor + bank demo will be the first place where heterogeneous attention against a shared world produces structurally different ledger traces — but the demo needs *something to watch*. §50 names that something.
+
+§50 does **not** introduce a scenario engine, a stochastic process driver, or a calibrated macro model. Reference variables are *names* (specs) and *data points* (observations). The v1.8.1 anti-scenario discipline cascades through unchanged: a routine that becomes silent because no variable observation is "interesting enough" has slipped back into scenario-driven mode and should be rejected at review.
+
+### 50.2 Distinction from existing books
+
+| Book / view | Answers |
+| --- | --- |
+| `PriceBook` (v0.4) | "What was the last priced observation for this asset?" |
+| `SignalBook` (v0.7) | "What information events have been published?" |
+| `ValuationBook` (v1.1) | "What value claim did *this valuer* make about *this subject*?" |
+| `ExternalProcessBook` (v1.4) | "How does this external factor evolve, and what observations did its process produce?" |
+| `ConstraintEvaluator` (v0.6) | "Does this agent currently breach this constraint?" |
+| **`ReferenceVariableBook`** (v1.8.9) | **"What is the released value of this named world-context variable, and what is its release / vintage history?"** |
+
+Each existing book owns one distinct kind of fact. v1.8.9 introduces a new kind ("released world-context variables with vintages") that does not fit any existing book's shape, so it gets its own.
+
+### 50.3 Proposed record shapes
+
+`ReferenceVariableSpec` — static declaration of one variable. Proposed fields:
+
+`variable_id`, `variable_name`, `variable_group`, `variable_type`, `source_space_id`, `canonical_unit`, `frequency`, `observation_kind`, `default_visibility`, `expected_release_lag_days?`, `metadata`.
+
+`VariableObservation` — one data point per (variable, period, vintage). Proposed fields:
+
+`observation_id`, `variable_id`, `as_of_date`, `observation_period_start?`, `observation_period_end?`, `release_date?`, `vintage_id?`, `revision_of?`, `value`, `unit`, `source_id`, `confidence`, `metadata`.
+
+The four time-ish fields exist to **prevent look-ahead bias**: `observation_period_start` / `observation_period_end` describe *what the observation says*; `as_of_date` / `release_date` describe *when the observation became visible to agents*; `vintage_id` distinguishes multiple observations of the same `(variable, period)`; `revision_of` links each vintage to the prior so the revision history is reconstructable from the ledger alone.
+
+A v1.8.11 `ObservationMenu` builder must filter out observations whose `as_of_date` is later than the menu's `as_of_date`. Otherwise a routine looking at "what did the bank know on 2026-03-31?" would see the 2026Q1 CPI release that lands on 2026-04-15 — the canonical look-ahead-bias mistake.
+
+### 50.4 Variable groups
+
+13 controlled-vocabulary groups: `real_activity`, `inflation`, `rates`, `fx`, `credit`, `financial_market`, `material`, `energy_power`, `logistics`, `real_estate`, `labor`, `technology`, `expectations_narratives`. The full list with examples and attachment-point notes for material / energy / technology transmission is in `v1_reference_variable_layer_design.md` §"Variable groups" / §"Material / energy / technology — transmission attachment points".
+
+### 50.5 Relation to attention, topology, routine
+
+- **Attention.** Future v1.8.10+ work may extend `AttentionProfile` with `watched_variable_ids` and `watched_variable_groups`. Until then, `watched_metrics` bridges.
+- **Topology.** Interaction channels may *carry* variable observations as their content; the topology stays about channels, not scenarios. There is no v1.8.x mechanism that says "when a variable moves by N percent, publish through this channel" — that would re-introduce scenario-driven dynamics.
+- **Routine.** Consumption is read-only; absence is partial / degraded; no look-ahead. A v1.8.11 menu builder enforces the look-ahead filter; routines that bypass the menu and query the variable book directly are responsible for applying the same filter.
+
+### 50.6 Boundaries
+
+§50 is infrastructure for *context*. It is not a GDP / CPI / rate calculator; not a forecaster; not a rate-setting engine; not a commodity / power / technology-diffusion simulator; not a policy reaction engine; not a price formation / trading / lending mechanism; not Japan calibration; not a real-data ingestion harness; not automatic economic behavior of any kind. v2 (Japan public) and v3 (Japan proprietary) populate the same shapes with real data; v1.8.x stays neutral.
+
+### 50.7 Revised v1.8.x sequence (post-v1.8.7)
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| **v1.8.8 Reference Variable Layer — Design** | §50. | **(this design milestone)** |
+| v1.8.9 `WorldVariableBook` / `IndicatorBook` | Code: `ReferenceVariableSpec` + `VariableObservation` + revision history + `list_released_as_of(...)` helper. | Next |
+| v1.8.10 Exposure / Dependency Layer | Code: per-actor exposure declarations distinct from attention. | After v1.8.9 |
+| v1.8.11 `ObservationMenu` builder | Code: helpers that build `ObservationMenu` automatically with look-ahead filtering. | After v1.8.10 |
+| v1.8.12 Investor + Bank Attention Demo | Code: two concrete routines reading the variable layer through heterogeneous attention. | After v1.8.11 |
+| v1.9 Living Reference World Demo | Year-long run on the full stack with no external observation. | After v1.8.12 |
+
+### 50.8 v1.8.8 success criteria
+
+§50 is complete when **all** hold:
+
+1. `docs/v1_reference_variable_layer_design.md` exists and contains the principle, the distinction from existing books, the proposed `ReferenceVariableSpec` and `VariableObservation` field sets, the look-ahead / vintage / revision rationale, the 13 variable groups, the example variable ids, the material / energy / technology attachment points, the relation-to-attention / -topology / -routine sections, the boundaries, and the revised milestone sequence.
+2. `docs/v1_endogenous_reference_dynamics_design.md` and `docs/v1_interaction_topology_design.md` carry sequence-revision notes pointing at v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 as the build path to the v1.8.12 demo and v1.9 closing milestone.
+3. This section (§50) records the design in the constitutional log.
+4. No `world/`, `spaces/`, `examples/`, or `tests/` file is modified. The 1025-test baseline is unchanged.
+5. v1.8.9 reviewers can land `WorldVariableBook` against the proposed shapes without re-litigating either the look-ahead-bias rule or the anti-scenario discipline.
