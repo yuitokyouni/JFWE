@@ -1,13 +1,15 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.8.11** (`ObservationMenu
-Builder`): `1225 / 1225 passing` (444 v0 + 188 v1.0-v1.7 frozen
-reference + 593 post-v1.7 additions covering reference demo,
-replay, manifest, catalog-shape, experiment harness, renamed
-WorldID tests, interactions, routines, attention, routine engine,
-the first concrete routine, the world-variable storage layer, the
-exposure / dependency storage layer, and the observation-menu
-builder join service).
+Snapshot of the test suite at **v1.8.12** (`Attention Variable
+Hooks + Investor / Bank Attention Demo`): `1257 / 1257 passing`
+(444 v0 + 188 v1.0-v1.7 frozen reference + 625 post-v1.7
+additions covering reference demo, replay, manifest,
+catalog-shape, experiment harness, renamed WorldID tests,
+interactions, routines, attention, routine engine, the first
+concrete routine, the world-variable storage layer, the exposure
+/ dependency storage layer, the observation-menu builder join
+service, and the heterogeneous-attention investor / bank
+demo).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -275,6 +277,42 @@ no-mutation guarantee.
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
 
+## Reference attention demo + variable hooks (v1.8.12)
+
+- `test_reference_attention_demo.py` (23) — end-to-end shape of
+  `run_investor_bank_attention_demo`: result is immutable,
+  exactly one `ObservationMenu` per actor is persisted through
+  `AttentionBook.add_menu`, exactly one
+  `SelectedObservationSet` per actor is persisted through
+  `AttentionBook.add_selection`, the canonical investor / bank
+  profiles register idempotently; heterogeneous selection
+  semantics (the corporate-reporting signal is shared, investor
+  picks fx + investor exposures, bank picks real-estate /
+  energy + bank exposures, neither picks the other's axes,
+  `shared_refs` / `investor_only_refs` / `bank_only_refs`
+  agree with set membership); determinism across two fresh
+  kernels (same selected refs, same set differences, same menu
+  ids); ledger evidence using existing record types only
+  (`OBSERVATION_MENU_CREATED` × 2 +
+  `OBSERVATION_SET_SELECTED` × 2 per call, no new types); strict
+  no-mutation guarantees against `valuations`, `prices`,
+  `ownership`, `contracts`, `constraints`, `external_processes`,
+  `institutions`, `relationships`; the demo runs no routine and
+  emits no signal beyond optional setup; `kernel.tick()` and
+  `kernel.run(days=N)` do NOT auto-fire the demo; defensive
+  validation on empty `firm_id` / `investor_id` / `bank_id`;
+  `as_of_date` defaults to `kernel.clock.current_date` when
+  omitted.
+- `test_attention.py` (9 new; 102 → 111) — v1.8.12 `AttentionProfile`
+  extension acceptance: the four new fields
+  (`watched_variable_ids`, `watched_variable_groups`,
+  `watched_exposure_types`, `watched_exposure_metrics`) default
+  to empty tuples, normalize lists to tuples, reject empty
+  strings, round-trip through `to_dict`, appear in the
+  `ATTENTION_PROFILE_ADDED` ledger payload, and extend
+  `profile_matches_menu` so structural overlap is reported on
+  the new dimensions.
+
 ## Observation menu builder (v1.8.11)
 
 - `test_observation_menu_builder.py` (50) — `ObservationMenu`
@@ -541,7 +579,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 additions
+### v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -553,13 +591,14 @@ no-mutation guarantee.
 | WorldID tests (renamed from tests.py)   | 1     | 12    |
 | Interaction topology (v1.8.3)           | 1     | 50    |
 | Routines (v1.8.4)                       | 1     | 72    |
-| Attention (v1.8.5)                      | 1     | 102   |
+| Attention (v1.8.5 + v1.8.12 schema)     | 1     | 111   |
 | Routine engine (v1.8.6)                 | 1     | 50    |
 | Corporate quarterly reporting (v1.8.7)  | 1     | 26    |
 | World variable book (v1.8.9)            | 1     | 91    |
 | Exposure / dependency layer (v1.8.10)   | 1     | 59    |
 | Observation menu builder (v1.8.11)      | 1     | 50    |
-| **post-v1.7 subtotal**                  | **14**| **593** |
+| Reference attention demo (v1.8.12)      | 1     | 23    |
+| **post-v1.7 subtotal**                  | **15**| **625** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -567,8 +606,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11) | 14 | 593 |
-| **Total**                        | **56**| **1225** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8 / v1.8.3 / v1.8.4 / v1.8.5 / v1.8.6 / v1.8.7 / v1.8.9 / v1.8.10 / v1.8.11 / v1.8.12) | 15 | 625 |
+| **Total**                        | **57**| **1257** |
 
 ## How to interpret a failing test
 

@@ -58,6 +58,10 @@ def _profile(
     watched_valuation_types: tuple[str, ...] = ("equity",),
     watched_constraint_types: tuple[str, ...] = (),
     watched_relationship_types: tuple[str, ...] = (),
+    watched_variable_ids: tuple[str, ...] = (),
+    watched_variable_groups: tuple[str, ...] = (),
+    watched_exposure_types: tuple[str, ...] = (),
+    watched_exposure_metrics: tuple[str, ...] = (),
     priority_weights: dict | None = None,
     missing_input_policy: str = "degraded",
     enabled: bool = True,
@@ -77,6 +81,10 @@ def _profile(
         watched_valuation_types=watched_valuation_types,
         watched_constraint_types=watched_constraint_types,
         watched_relationship_types=watched_relationship_types,
+        watched_variable_ids=watched_variable_ids,
+        watched_variable_groups=watched_variable_groups,
+        watched_exposure_types=watched_exposure_types,
+        watched_exposure_metrics=watched_exposure_metrics,
         priority_weights=priority_weights or {},
         missing_input_policy=missing_input_policy,
         enabled=enabled,
@@ -206,6 +214,10 @@ def test_profile_rejects_non_bool_enabled():
         "watched_valuation_types",
         "watched_constraint_types",
         "watched_relationship_types",
+        "watched_variable_ids",
+        "watched_variable_groups",
+        "watched_exposure_types",
+        "watched_exposure_metrics",
     ],
 )
 def test_profile_rejects_empty_strings_in_tuple_fields(tuple_field):
@@ -257,6 +269,97 @@ def test_profile_to_dict_round_trips_fields():
     assert d["actor_type"] == p.actor_type
     assert d["priority_weights"] == {"earnings": 1.0}
     assert d["missing_input_policy"] == "degraded"
+
+
+# ---------------------------------------------------------------------------
+# v1.8.12: variable / exposure watch hooks
+# ---------------------------------------------------------------------------
+
+
+def test_profile_v1812_fields_default_empty():
+    p = _profile()
+    assert p.watched_variable_ids == ()
+    assert p.watched_variable_groups == ()
+    assert p.watched_exposure_types == ()
+    assert p.watched_exposure_metrics == ()
+
+
+def test_profile_v1812_fields_normalize_to_tuples():
+    p = _profile(
+        watched_variable_ids=["variable:cpi_yoy", "variable:jpy_usd"],
+        watched_variable_groups=["fx", "rates"],
+        watched_exposure_types=["funding_cost"],
+        watched_exposure_metrics=["debt_service_burden"],
+    )
+    assert p.watched_variable_ids == ("variable:cpi_yoy", "variable:jpy_usd")
+    assert p.watched_variable_groups == ("fx", "rates")
+    assert p.watched_exposure_types == ("funding_cost",)
+    assert p.watched_exposure_metrics == ("debt_service_burden",)
+
+
+def test_profile_v1812_fields_appear_in_to_dict():
+    p = _profile(
+        watched_variable_ids=("variable:jgb_10y",),
+        watched_variable_groups=("rates",),
+        watched_exposure_types=("collateral",),
+        watched_exposure_metrics=("collateral_value",),
+    )
+    d = p.to_dict()
+    assert d["watched_variable_ids"] == ["variable:jgb_10y"]
+    assert d["watched_variable_groups"] == ["rates"]
+    assert d["watched_exposure_types"] == ["collateral"]
+    assert d["watched_exposure_metrics"] == ["collateral_value"]
+
+
+def test_profile_v1812_fields_appear_in_ledger_payload():
+    ledger = Ledger()
+    book = AttentionBook(ledger=ledger)
+    book.add_profile(
+        _profile(
+            profile_id="p:1812",
+            watched_variable_ids=("variable:cpi_yoy",),
+            watched_variable_groups=("inflation",),
+            watched_exposure_types=("input_cost",),
+            watched_exposure_metrics=("operating_cost_pressure",),
+        )
+    )
+    records = ledger.filter(event_type="attention_profile_added")
+    payload = records[-1].payload
+    assert tuple(payload["watched_variable_ids"]) == ("variable:cpi_yoy",)
+    assert tuple(payload["watched_variable_groups"]) == ("inflation",)
+    assert tuple(payload["watched_exposure_types"]) == ("input_cost",)
+    assert tuple(payload["watched_exposure_metrics"]) == (
+        "operating_cost_pressure",
+    )
+
+
+def test_profile_matches_menu_includes_v1812_dimensions():
+    book = AttentionBook()
+    profile = _profile(
+        profile_id="p:1812:overlap",
+        watched_variable_ids=("variable:jgb_10y",),
+        watched_variable_groups=("rates",),
+        watched_exposure_types=("funding_cost",),
+        watched_exposure_metrics=("debt_service_burden",),
+    )
+    book.add_profile(profile)
+    menu = ObservationMenu(
+        menu_id="m:1812",
+        actor_id=profile.actor_id,
+        as_of_date="2026-04-30",
+        available_variable_observation_ids=("o:jgb",),
+        available_exposure_ids=("e:funding",),
+    )
+    book.add_menu(menu)
+    summary = book.profile_matches_menu(profile.profile_id, menu.menu_id)
+    per = summary["per_dimension"]
+    assert "watched_variable_ids" in per
+    assert "watched_variable_groups" in per
+    assert "watched_exposure_types" in per
+    assert "watched_exposure_metrics" in per
+    assert per["watched_variable_ids"]["menu_available_count"] == 1
+    assert per["watched_exposure_types"]["menu_available_count"] == 1
+    assert summary["has_any_overlap"] is True
 
 
 # ---------------------------------------------------------------------------

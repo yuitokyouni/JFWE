@@ -202,6 +202,15 @@ class AttentionProfile:
     watched_valuation_types: tuple[str, ...] = field(default_factory=tuple)
     watched_constraint_types: tuple[str, ...] = field(default_factory=tuple)
     watched_relationship_types: tuple[str, ...] = field(default_factory=tuple)
+    # v1.8.12 — explicit hooks into the v1.8.9 / v1.8.10 layers.
+    # Watch preferences, NOT decisions. Cross-references are
+    # recorded as data and not validated against
+    # WorldVariableBook / ExposureBook (per the v0/v1
+    # cross-reference rule).
+    watched_variable_ids: tuple[str, ...] = field(default_factory=tuple)
+    watched_variable_groups: tuple[str, ...] = field(default_factory=tuple)
+    watched_exposure_types: tuple[str, ...] = field(default_factory=tuple)
+    watched_exposure_metrics: tuple[str, ...] = field(default_factory=tuple)
     phase_id: str | None = None
     priority_weights: Mapping[str, float] = field(default_factory=dict)
     missing_input_policy: str = "degraded"
@@ -240,6 +249,10 @@ class AttentionProfile:
             "watched_valuation_types",
             "watched_constraint_types",
             "watched_relationship_types",
+            "watched_variable_ids",
+            "watched_variable_groups",
+            "watched_exposure_types",
+            "watched_exposure_metrics",
         ):
             value = getattr(self, tuple_field_name)
             normalized = _normalize_string_tuple(
@@ -269,6 +282,10 @@ class AttentionProfile:
             "watched_valuation_types": list(self.watched_valuation_types),
             "watched_constraint_types": list(self.watched_constraint_types),
             "watched_relationship_types": list(self.watched_relationship_types),
+            "watched_variable_ids": list(self.watched_variable_ids),
+            "watched_variable_groups": list(self.watched_variable_groups),
+            "watched_exposure_types": list(self.watched_exposure_types),
+            "watched_exposure_metrics": list(self.watched_exposure_metrics),
             "priority_weights": dict(self.priority_weights),
             "missing_input_policy": self.missing_input_policy,
             "enabled": self.enabled,
@@ -523,6 +540,14 @@ _DIMENSION_TO_MENU_FIELD: tuple[tuple[str, str], ...] = (
     ("watched_constraint_types", "available_constraint_ids"),
     ("watched_relationship_types", "available_relationship_ids"),
     ("watched_channels", "available_interaction_ids"),
+    # v1.8.12 hooks: profiles can declare interest in specific
+    # variables (by id or group) and exposures (by type or metric).
+    # The structural overlap predicate just reports counts; it
+    # does not read the underlying records.
+    ("watched_variable_ids", "available_variable_observation_ids"),
+    ("watched_variable_groups", "available_variable_observation_ids"),
+    ("watched_exposure_types", "available_exposure_ids"),
+    ("watched_exposure_metrics", "available_exposure_ids"),
 )
 
 
@@ -587,6 +612,16 @@ class AttentionBook:
                     ),
                     "watched_relationship_types": list(
                         profile.watched_relationship_types
+                    ),
+                    "watched_variable_ids": list(profile.watched_variable_ids),
+                    "watched_variable_groups": list(
+                        profile.watched_variable_groups
+                    ),
+                    "watched_exposure_types": list(
+                        profile.watched_exposure_types
+                    ),
+                    "watched_exposure_metrics": list(
+                        profile.watched_exposure_metrics
                     ),
                     "priority_weights": dict(profile.priority_weights),
                 },

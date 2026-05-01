@@ -4283,9 +4283,9 @@ The book writes only to itself + the ledger (via the existing `Ledger.append` pa
 | v1.8.8 hardening — anchor variables to spaces / channels / exposures | Design (§50.1). | Shipped |
 | v1.8.9 WorldVariableBook | Code (§51). Storage + lookup only. | Shipped |
 | v1.8.10 Exposure / Dependency Layer | Code (§52). | Shipped |
-| **v1.8.11 `ObservationMenu` builder** | Code (§53). Read-only join. | **Shipped** |
-| v1.8.12 Investor + Bank Attention Demo | Code. | Next |
-| v1.9 Living Reference World Demo | Code + tests. | After v1.8.12 |
+| v1.8.11 `ObservationMenu` builder | Code (§53). Read-only join. | Shipped |
+| **v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo** | Code (§54). Heterogeneous attention. | **Shipped** |
+| v1.9 Living Reference World Demo | Code + tests. | Next |
 
 ## 52. v1.8.10 Exposure / Dependency Layer
 
@@ -4378,9 +4378,9 @@ Each step is opt-in. v1.8.10 does **not** implement the join; it only persists t
 | v1.8.8 Reference Variable Layer — Design (+ hardening) | Design (§50, §50.1). | Shipped |
 | v1.8.9 WorldVariableBook | Code (§51). | Shipped |
 | **v1.8.10 Exposure / Dependency Layer** | Code (§52). Storage + lookup only. | **Shipped** |
-| **v1.8.11 `ObservationMenu` builder** | Code (§53). Read-only join. | **Shipped** |
-| v1.8.12 Investor + Bank Attention Demo | Code. | Next |
-| v1.9 Living Reference World Demo | Code + tests. | After v1.8.12 |
+| v1.8.11 `ObservationMenu` builder | Code (§53). Read-only join. | Shipped |
+| **v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo** | Code (§54). Heterogeneous attention. | **Shipped** |
+| v1.9 Living Reference World Demo | Code + tests. | Next |
 
 ## 53. v1.8.11 ObservationMenu Builder
 
@@ -4448,6 +4448,88 @@ The join is the v1.8.8 hardening's **exposure hook** in code:
 | v1.8.8 Reference Variable Layer — Design (+ hardening) | Design (§50, §50.1). | Shipped |
 | v1.8.9 WorldVariableBook | Code (§51). | Shipped |
 | v1.8.10 Exposure / Dependency Layer | Code (§52). | Shipped |
-| **v1.8.11 `ObservationMenu` builder** | Code (§53). Read-only join. | **Shipped** |
-| v1.8.12 Investor + Bank Attention Demo | Code. | Next |
-| v1.9 Living Reference World Demo | Code + tests. | After v1.8.12 |
+| v1.8.11 `ObservationMenu` builder | Code (§53). Read-only join. | Shipped |
+| **v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo** | Code (§54). Heterogeneous attention. | **Shipped** |
+| v1.9 Living Reference World Demo | Code + tests. | Next |
+
+## 54. v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo
+
+§54 (v1.8.12) closes the v1.8.x attention loop by giving `AttentionProfile` *explicit* hooks into the v1.8.9 / v1.8.10 layers (variables and exposures), then demonstrates that two heterogeneous actors looking at the same reference world build *different* `SelectedObservationSet` records.
+
+This is the first milestone that operationalizes **heterogeneous attention** as data: an investor and a bank can observe the same menu universe but record structurally different selections, without invoking any economic behavior. The demo is recordable, replayable, and reviewable from the ledger alone.
+
+§54 deliberately does **not** ship: investor-review or bank-review routines, valuation refresh, impact estimation, sensitivity calculation, DSCR / LTV updates, price formation, trading, lending decisions, corporate actions, policy reactions, Japan calibration, real data ingestion, scenario engines, or any automatic economic behavior. Those land in v1.8.13 / v1.9 and beyond.
+
+### 54.1 What lands in v1.8.12
+
+- `world/attention.py` — `AttentionProfile` extended **additively** with four new watch fields:
+  - `watched_variable_ids: tuple[str, ...]`
+  - `watched_variable_groups: tuple[str, ...]`
+  - `watched_exposure_types: tuple[str, ...]`
+  - `watched_exposure_metrics: tuple[str, ...]`
+
+  All default to empty tuples for backwards compatibility, all flow through `__post_init__` normalization, all round-trip through `to_dict()`, and all carry into the existing `ATTENTION_PROFILE_ADDED` ledger payload. The `_DIMENSION_TO_MENU_FIELD` table that drives `profile_matches_menu` is extended so the structural-overlap predicate covers the new dimensions (variable hooks pair with `available_variable_observation_ids`; exposure hooks pair with `available_exposure_ids`). Cross-references are recorded as data and not validated against `WorldVariableBook` or `ExposureBook`, per the v0/v1 cross-reference rule.
+- `world/reference_attention.py` — new module:
+  - `register_investor_attention_profile(...)` and `register_bank_attention_profile(...)` — idempotent helpers that register synthetic `AttentionProfile` records with v1.8.12-relevant defaults (investor watches fx / rates / financial_market / expectations_narratives + portfolio-translation / discount-rate / narrative exposure metrics; bank watches rates / credit / real_estate / energy_power + funding-cost / collateral / input-cost exposure metrics).
+  - `run_investor_bank_attention_demo(kernel, *, firm_id, investor_id, bank_id, as_of_date=None, phase_id=None)` — the top-level helper. Builds one `ObservationMenu` per actor through the v1.8.11 `ObservationMenuBuilder`, applies a structural selection rule (signals filtered by `signal_type` / `subject_id`; variable observations filtered by `variable_id` / `variable_group`; exposures filtered by `exposure_type` / `metric`), persists one `SelectedObservationSet` per actor through `AttentionBook.add_selection`, and returns an immutable `InvestorBankAttentionDemoResult`.
+  - `InvestorBankAttentionDemoResult` — an immutable dataclass carrying the menu / selection ids each actor received plus the convenience set differences (`shared_refs`, `investor_only_refs`, `bank_only_refs`).
+- `tests/test_attention.py` — 9 new tests covering field acceptance, normalization, `to_dict` shape, ledger payload presence, and `profile_matches_menu` extension to the new dimensions.
+- `tests/test_reference_attention_demo.py` — 23 new tests covering result shape, one-menu / one-selection-per-actor persistence, idempotent profile registration, the heterogeneous-selection contract (investor and bank diverge along investor- vs bank-relevant axes), determinism across fresh kernels, ledger evidence using existing record types only, and the no-mutation guarantees against `valuations` / `prices` / `ownership` / `contracts` / `constraints` / `external_processes` / `institutions` / `relationships`. The demo also does not run any routine, does not emit any signal beyond optional setup, and does not auto-fire from `tick()` / `run()`.
+
+### 54.2 Selection semantics — structural, not economic
+
+The demo selection rule is **rule-based and deterministic**. For each actor, the helper asks:
+
+- **Signals** — does `signal.signal_type` ∈ `profile.watched_signal_types`, OR `signal.subject_id` ∈ `profile.watched_subject_ids`?
+- **Variable observations** — does the underlying variable's `variable_id` ∈ `profile.watched_variable_ids`, OR `variable.variable_group` ∈ `profile.watched_variable_groups`?
+- **Exposures** — does `exposure.exposure_type` ∈ `profile.watched_exposure_types`, OR `exposure.metric` ∈ `profile.watched_exposure_metrics`?
+
+Matched refs are concatenated in **menu-order** (signals → variable observations → exposures, preserving each axis's ordering inside the menu) so the output is byte-identical across two fresh kernels with the same seed. The rule is *structural*: it asks "does this ref's record satisfy this profile's filters?" — it does **not** rank, weight, top-k truncate, or otherwise economically prioritize.
+
+Selection in v1.8.12 is **attention**, not **decision**: a `SelectedObservationSet` is the actor noticing this ref, not buying / selling / lending against it.
+
+### 54.3 What heterogeneous attention buys
+
+With v1.8.12 in the tree, the same reference world produces different ledger traces depending on who is looking. In the canonical demo (firm-A reports earnings; macro / fx / rates / land / energy variables are released; investor and bank declare distinct exposures):
+
+- The investor's `SelectedObservationSet` includes the corporate-reporting signal, fx + rates observations, and portfolio-translation / discount-rate exposures.
+- The bank's `SelectedObservationSet` includes the corporate-reporting signal, rates + real-estate + energy observations, and funding-cost / collateral / operating-cost exposures.
+- Both selections share the corporate-reporting signal and the rates observation; everything else diverges cleanly along investor- vs bank-relevant axes.
+
+The shared / diverging structure is computed in the `InvestorBankAttentionDemoResult` (`shared_refs`, `investor_only_refs`, `bank_only_refs`) so callers can verify the divergence without re-querying the books.
+
+### 54.4 Anti-scope (what v1.8.12 deliberately does not do)
+
+§54 is an attention-only milestone. v1.8.12 does **not** add:
+
+- Investor-review or bank-review routines. Selections are recorded; nothing consumes them.
+- Valuation refresh, impact estimation, sensitivity calculation, DSCR / LTV updates, covenant pressure scoring, liquidity stress, price formation, trading, lending decisions, corporate actions, policy reactions.
+- Cross-reference validation. `firm_id` / `investor_id` / `bank_id` are recorded as data; the demo does not check that they exist in the registry.
+- Auto-firing from `tick()` / `run()`. The demo runs only when a caller invokes `run_investor_bank_attention_demo(...)`.
+- Real data. All variable observations, exposures, and the corporate-reporting signal are synthetic.
+- New ledger record types. Profile / menu / selection insertions reuse the v1.8.5 `ATTENTION_PROFILE_ADDED` / `OBSERVATION_MENU_CREATED` / `OBSERVATION_SET_SELECTED` paths.
+
+### 54.5 v1.8.12 success criteria
+
+§54 is complete when **all** hold:
+
+1. `AttentionProfile` carries the four new `watched_*` fields with empty-tuple defaults; `to_dict`, `__post_init__` normalization, and the `ATTENTION_PROFILE_ADDED` ledger payload are extended; `profile_matches_menu` reports overlap on the new dimensions.
+2. `world/reference_attention.py` exports `register_investor_attention_profile`, `register_bank_attention_profile`, `run_investor_bank_attention_demo`, and `InvestorBankAttentionDemoResult` with the v1.8.12 contract.
+3. `tests/test_attention.py` (111 tests = 102 prior + 9 v1.8.12 schema) and `tests/test_reference_attention_demo.py` (23 tests) pass.
+4. The full test suite passes (1257 tests = 1225 prior + 32 v1.8.12).
+5. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+6. No existing test was modified destructively; the four new `AttentionProfile` fields default empty so v1.8.5 / v1.8.6 / v1.8.11 callers see no behavior change.
+7. The demo does not mutate `valuations`, `prices`, `ownership`, `contracts`, `constraints`, `external_processes`, `institutions`, or `relationships` — verified by direct snapshot equality.
+8. The demo does not run any routine and does not emit any signal beyond optional setup.
+9. `tick()` / `run()` does not auto-build menus or selections — verified by direct test.
+10. The demo is deterministic across fresh kernels with the same seed — verified by equality of `investor_selected_refs`, `bank_selected_refs`, `shared_refs`, `investor_only_refs`, `bank_only_refs`, and the menu / selection ids.
+
+### 54.6 Position in the v1.8.x sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.8.9 WorldVariableBook | Code (§51). | Shipped |
+| v1.8.10 Exposure / Dependency Layer | Code (§52). | Shipped |
+| v1.8.11 `ObservationMenu` builder | Code (§53). | Shipped |
+| **v1.8.12 Attention Variable Hooks + Investor / Bank Attention Demo** | Code (§54). | **Shipped** |
+| v1.9 Living Reference World Demo | Year-long run on the routine + topology + attention + variable stack. | Next |
