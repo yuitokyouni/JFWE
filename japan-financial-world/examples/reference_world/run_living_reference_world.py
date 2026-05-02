@@ -250,6 +250,7 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
             f"industry={len(ps.industry_condition_ids)} "
             f"market_conditions={len(ps.market_condition_ids)} "
             f"market_readouts={len(ps.capital_market_readout_ids)} "
+            f"market_environments={len(ps.market_environment_state_ids)} "
             f"firm_states={len(ps.firm_financial_state_ids)} "
             f"themes={len(ps.stewardship_theme_ids)} "
             f"dialogues={len(ps.dialogue_ids)} "

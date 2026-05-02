@@ -110,7 +110,16 @@ LIVING_WORLD_BOUNDARY_STATEMENT: str = (
     "/ overweight / underweight execution, no target weights, "
     "no expected return, no target price, no security "
     "recommendation, no investment advice, no portfolio "
-    "allocation; non-binding labels only."
+    "allocation; non-binding labels only. "
+    "v1.12.2 market environment state: nine compact "
+    "jurisdiction-neutral regime labels (liquidity / volatility "
+    "/ credit / funding / risk_appetite / rate_environment / "
+    "refinancing_window / equity_valuation / "
+    "overall_market_access) derived from v1.11.0 conditions + "
+    "v1.11.1 readout; no price, no yield, no spread, no index "
+    "level, no forecast, no expected return, no recommendation, "
+    "no target price, no target weight, no order, no trade, no "
+    "allocation; labels-only context for downstream agents."
 )
 
 CANONICAL_FORMAT_VERSION: str = "living_world_canonical.v1"
@@ -228,6 +237,9 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
         ),
         "capital_market_readout_ids": list(
             getattr(period, "capital_market_readout_ids", ())
+        ),
+        "market_environment_state_ids": list(
+            getattr(period, "market_environment_state_ids", ())
         ),
         "firm_financial_state_ids": list(
             getattr(period, "firm_financial_state_ids", ())

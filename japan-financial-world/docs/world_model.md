@@ -7194,3 +7194,98 @@ The v1.12.1 living-world digest is **not** equal to the v1.12.0 default digest. 
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `2259 / 2259` (v1.12.0) to `2349 / 2349` (v1.12.1) — `+90` tests (`+81` in the new `tests/test_investor_intent.py`, `+9` v1.12.1 integration tests in `tests/test_living_reference_world.py`). The CLI surface gains an `investor_intents=` column; the per-period record count moves from 64 to 70; the per-run record window widens from `[256, 288]` to `[280, 312]`; the default-fixture `living_world_digest` changes to `475d558d2d0eae491b3f7f4a8c983627d655336c13f3acad9f75439a353f090c` (expected — see §81.7).
+
+## 82. v1.12.2 Market environment state — nine compact regime labels for downstream agents
+
+§82 adds a jurisdiction-neutral, synthetic, **label-based** market environment state layer that sits between the v1.11.1 capital-market readout phase and the v1.12.0 firm-state phase in the living reference world. The environment state normalizes the period's capital-market context (v1.11.0 conditions + v1.11.1 readout) into nine compact regime labels — `liquidity_regime`, `volatility_regime`, `credit_regime`, `funding_regime`, `risk_appetite_regime`, `rate_environment`, `refinancing_window`, `equity_valuation_regime`, `overall_market_access_label` — that downstream LLM-agent / attention-conditioned consumers can read as a single record per period instead of stitching together five `MarketConditionRecord`s plus one `CapitalMarketReadoutRecord`.
+
+This is **not** a price, **not** a yield, **not** a spread, **not** an index level, **not** a forecast, **not** an expected return, **not** a recommendation, **not** a target price, **not** a target weight, **not** an order, **not** a trade, **not** an allocation. The record stores *labels* and plain-id cross-references; it does not move ownership, does not change prices, does not mutate any contract or constraint, and does not emit any execution-class record.
+
+### 82.1 Why this exists
+
+Through v1.12.1 every downstream consumer that wanted the period's market context had to walk five `market_condition` records plus one `capital_market_readout` record and assemble its own composite label set on the fly. v1.12.2 lifts that composite into a single shared, append-only record so:
+
+- a future LLM-agent step can prompt against one compact "market environment" record instead of stitching together six surface records every period;
+- the corporate-side strategic response candidate, the investor-side intent signal, and the firm-side latent state update all cite the *same* environment record (type-correct, additive trigger / evidence slot — never overloaded into a `signal_id` or `industry_condition_id` slot);
+- the canonical view, the markdown report, the manifest summary, and the CLI all expose the regime labels in one place, which makes regression testing on regime-conditioned behavior cheap.
+
+### 82.2 What v1.12.2 ships
+
+- `world/market_environment.py` (new):
+  - `MarketEnvironmentStateRecord` (immutable dataclass) with bounded `confidence` in `[0.0, 1.0]` (bool rejection), three source-id tuples (market_condition / market_readout / industry_condition), and the v1.12.2 anti-fields binding: no `price`, `market_price`, `yield_value`, `spread_bps`, `index_level`, `forecast_value`, `expected_return`, `target_price`, `recommendation`, `investment_advice`, `real_data_value`, `market_size`, `order`, `trade`, or `allocation` field.
+  - `MarketEnvironmentBook` (append-only store) with `add_state` / `get_state` / `list_states` / `list_by_date` / nine `list_by_*_regime` filters / `snapshot`.
+  - `build_market_environment_state(...)` — deterministic builder that reads only the source ids the caller passes (the v1.12.2 *attention discipline*), applies the v1.12.2 mapping rule set, and emits exactly one record. Idempotent on `environment_state_id`. Tolerant of unresolved cited ids (recorded as data; emission never blocks).
+  - Errors: `DuplicateMarketEnvironmentStateError`, `UnknownMarketEnvironmentStateError`.
+  - `MarketEnvironmentStateResult` dataclass returns the produced record.
+- `world/ledger.py` — new `RecordType.MARKET_ENVIRONMENT_STATE_ADDED` (event type `market_environment_state_added`).
+- `world/kernel.py` — `market_environments: MarketEnvironmentBook` wired in `WorldKernel.__post_init__`.
+- `world/firm_state.py` — `FirmFinancialStateRecord` gains the additive `evidence_market_environment_state_ids: tuple[str, ...]` slot; the helper accepts a `market_environment_state_ids` kwarg. Type-correct cross-link — never overloaded into `evidence_market_condition_ids` or `evidence_market_readout_ids`.
+- `world/investor_intent.py` — `InvestorIntentRecord` gains the additive `evidence_market_environment_state_ids: tuple[str, ...]` slot; the helper accepts a `market_environment_state_ids` kwarg.
+- `world/strategic_response.py` — `CorporateStrategicResponseCandidate` gains the additive `trigger_market_environment_state_ids: tuple[str, ...]` slot; the book gains `list_by_market_environment_state(environment_state_id)`. Field-level disambiguation: the new id never rides in `trigger_signal_ids`, `trigger_industry_condition_ids`, or `trigger_market_condition_ids`.
+- `world/reference_living_world.py` — new per-period market-environment phase between the v1.11.1 readout phase and the v1.12.0 firm-state phase. `LivingReferencePeriodSummary` grows additively with `market_environment_state_ids`. The phase reads the period's market-condition + readout + industry-condition ids; downstream firm-state, investor-intent, and corporate-response phases cite the resulting environment id through their respective additive slots.
+- `world/living_world_report.py` — `LivingWorldPeriodReport` grows with `market_environment_state_count` plus the nine regime labels (lifted from the period's `MarketEnvironmentStateRecord`). The Markdown renderer adds a `## Market environment state` section between the v1.11.1 capital-market surface section and the v1.10.5 engagement / response section. The boundary statement is extended in place to cover the v1.12.2 anti-claims.
+- `examples/reference_world/living_world_replay.py` — the canonical view echoes `market_environment_state_ids` per period; the boundary statement constant tracks the reporter's. **Expected digest change**: the v1.12.2 living-world digest is *not* the same as the v1.12.1 default digest.
+- `examples/reference_world/living_world_manifest.py` — manifest summary echoes the new `market_environment_state_total` count.
+- `examples/reference_world/run_living_reference_world.py` — per-period CLI trace line names `market_environments=`.
+- `tests/test_market_environment.py` (new) — 87 tests covering field validation, bounded `confidence` with bool rejection, anti-fields on dataclass + ledger payload, every list / filter method (each of the eight regime label fields), snapshot determinism, ledger emission, kernel wiring, no-mutation against every other source-of-truth book (including v1.12.0 firm states + v1.12.1 investor intents), no-action / no-pricing invariant, the builder's deterministic mapping rule set per regime (constructive defaults, restrictive credit, stressed credit, constrained funding → closed refinancing window, tight liquidity, rising rates, demanding equity, stressed volatility, overall sourced from readout, confidence is mean of cited confidences, tolerance of unresolved cited ids, default-id format, explicit-id override, deterministic across two fresh kernels), plus a jurisdiction-neutral identifier scan over both module and test file.
+- `tests/test_firm_state.py`, `tests/test_investor_intent.py`, `tests/test_strategic_response.py` — additive tests covering the new evidence / trigger slot on each cross-cutting record (helper accepts the kwarg; default leaves the slot empty; tuple-field empty-string rejection covers the new slot; `list_by_market_environment_state` filters exactly and refuses to match other slots).
+- `tests/test_living_reference_world.py` — `+11` v1.12.2 integration tests: one environment per period, environments resolve and carry every regime label, the default fixture lands every period on `open_or_constructive`, the period's environment id is cited on every firm state's `evidence_market_environment_state_ids`, on every investor intent's `evidence_market_environment_state_ids`, and on every corporate-response candidate's `trigger_market_environment_state_ids` (and *only* there — never overloaded into another slot), no forbidden price / forecast payload keys end-to-end, no forbidden action event types, two fresh runs produce byte-identical canonical view, canonical view carries the new id tuples, Markdown report includes the `## Market environment state` section.
+- `tests/test_living_reference_world_performance_boundary.py` — `count_expected_living_world_records` and the per-run upper-bound test refreshed for the v1.12.2 fixture.
+
+### 82.3 Mapping rule set (binding, illustrative, deterministic)
+
+The builder resolves the nine regime labels from the cited evidence by these documented mappings. Each branch returns a *label*; none is a recommendation; none is a calibrated yield, spread, or probability.
+
+- **`liquidity_regime`** ← `market_condition.direction` for `market_type="liquidity_market"`. Mapping: `abundant`/`easing` → `abundant`; `supportive`/`stable`/`mixed` → `normal`; `tightening`/`restrictive`/`stressed` → `tight`; default → `unknown`.
+- **`volatility_regime`** ← `market_condition.direction` for `market_type="volatility_regime"`. Mapping: `calm`/`stable`/`supportive` → `calm`; `elevated`/`tightening`/`mixed` → `elevated`; `stressed`/`restrictive` → `stressed`; default → `unknown`.
+- **`credit_regime`** ← `market_condition.direction` for `market_type="credit_spreads"`. Mapping: `easing`/`narrowing`/`supportive` → `easing`; `stable`/`mixed` → `neutral`; `tightening`/`widening` → `tightening`; `restrictive`/`stressed` → `stressed`; default → `unknown`.
+- **`funding_regime`** ← `market_condition.direction` for `market_type="funding_market"`. Mapping: `supportive`/`easing`/`open` → `cheap`; `stable`/`mixed` → `normal`; `tightening` → `expensive`; `restrictive`/`constrained` → `constrained`; default → `unknown`.
+- **`rate_environment`** ← `market_condition.direction` for `market_type="reference_rates"`. Mapping: `easing`/`falling` → `falling`; `supportive`/`stable`/`mixed` → `low`; `tightening`/`rising` → `rising`; `restrictive`/`high` → `high`; default → `unknown`.
+- **`equity_valuation_regime`** ← `market_condition.direction` for `market_type="equity_market"`. Mapping: `supportive`/`easing` → `supportive`; `stable`/`mixed` → `neutral`; `tightening`/`restrictive`/`stressed` → `demanding`; default → `unknown`.
+- **`refinancing_window`** ← derived from `funding_regime`: `cheap`/`normal` → `open`; `expensive` → `selective`; `constrained` → `closed`; default → `unknown`.
+- **`overall_market_access_label`** ← cited `capital_market_readout.overall_market_access_label`; default → `unknown`.
+- **`risk_appetite_regime`** ← composite priority-order classifier: (1) `risk_on` when overall is `open_or_constructive` AND equity is `supportive` AND liquidity is `abundant`/`normal`; (2) `risk_off` when overall is `selective_or_constrained` AND (liquidity is `tight` OR credit is `tightening`/`stressed`); (3) `unknown` when overall is `unknown`; (4) `neutral` otherwise.
+
+`confidence` is the arithmetic mean of cited records' confidences (market conditions + readouts + industry conditions); when no evidence is cited the helper falls back to `0.5`. Industry-condition ids are recorded as provenance only — v1.12.2 does not derive any of the nine labels from them; future v1.12.x may extend this.
+
+### 82.4 Attention discipline (binding)
+
+The builder reads only the source ids the caller passes; it does not scan the kernel's other books for context. Unresolved cited ids are tolerated (recorded as data on the state's source tuples, but do not block emission). This keeps the builder's read set local and predictable and makes the v1.12.2 environment record reproducible from the cited ids alone — the property a future LLM-agent attention-conditioned consumer needs to re-walk evidence.
+
+### 82.5 Anti-fields and anti-claims (binding)
+
+The record has **no** `price`, `market_price`, `yield_value`, `spread_bps`, `index_level`, `forecast_value`, `expected_return`, `target_price`, `recommendation`, `investment_advice`, `real_data_value`, `market_size`, `order`, `trade`, or `allocation` field. Tests pin the absence on both the dataclass field set and the ledger payload key set.
+
+The book emits **only** `RecordType.MARKET_ENVIRONMENT_STATE_ADDED` records and refuses to mutate any other source-of-truth book in the kernel. v1.12.2 does **not** form prices, calibrate yield curves, calibrate spreads, match orders, clear trades, disseminate quotes, originate loans, recommend any security, advise on any investment, allocate any portfolio, ingest any real data, or apply any Japan-specific calibration.
+
+### 82.6 Performance boundary (binding)
+
+Per-period: `+1` `MarketEnvironmentStateRecord` (one per period, regardless of the number of firms / investors / banks). Per-run: `+ 1 × periods` records. The per-period record count moves from 70 to 71; the per-run record window widens from `[280, 312]` to `[284, 316]`. Setup overhead is unchanged (no new one-off setup records); the helper, the book, and the new evidence / trigger slots add no new event types beyond `market_environment_state_added`.
+
+### 82.7 Living-world digest (expected change)
+
+The default-fixture `living_world_digest` changes from `475d558d2d0eae491b3f7f4a8c983627d655336c13f3acad9f75439a353f090c` (v1.12.1) to `d6b25704014c3f19da330f534d5f8266ce8a9b73b9ee8da378b19c4691cb5dfe` (v1.12.2) because every period now appends one additional `MarketEnvironmentStateRecord` and three additional cross-cutting evidence / trigger tuples. Two fresh v1.12.2 runs produce byte-identical canonical views; only the cross-version digest moves.
+
+### 82.8 What v1.12.2 does not decide
+
+- **Does not** introduce any kind of price formation, yield-curve calibration, spread calibration, index-level construction, forecast, expected return, recommendation, target price, target weight, order, trade, allocation, or execution.
+- **Does not** introduce any LLM-agent step. v1.12.2 is the *substrate* a future LLM-agent step can read; it is not itself an LLM call.
+- **Does not** lock the regime label vocabulary. The recommended jurisdiction-neutral labels are illustrative; the record stores tags without enforcing membership in any controlled vocabulary, leaving room for future tuning milestones.
+- **Does not** replace any of the v1.11.0 / v1.11.1 records. Both remain canonical; the environment record sits *on top* of them as a compact composite.
+- **Does not** introduce Japan calibration; v2.0 remains the design gate.
+
+### 82.9 Position in the v1.12 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 → v1.10.5 (engagement / strategic-response stack) | Code (§70 → §76). | Shipped |
+| v1.11.0 → v1.11.2 (capital-market surface stack) | Code (§77 → §79). | Shipped |
+| v1.12.0 Firm financial latent state | Code (§80). | Shipped |
+| v1.12.1 Investor intent signal | Code (§81). | Shipped |
+| **v1.12.2 Market environment state** | Code (§82). Compact regime-label substrate. | **Shipped** |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v1.12.x next steps (anticipated) | Code. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `2349 / 2349` (v1.12.1) to `2456 / 2456` (v1.12.2) — `+107` tests (`+87` in the new `tests/test_market_environment.py`, `+11` v1.12.2 integration tests in `tests/test_living_reference_world.py`, `+9` evidence / filter / trigger tests across `tests/test_firm_state.py`, `tests/test_investor_intent.py`, `tests/test_strategic_response.py`). The CLI surface gains a `market_environments=` column; the per-period record count moves from 70 to 71; the per-run record window widens from `[280, 312]` to `[284, 316]`; the default-fixture `living_world_digest` changes to `d6b25704014c3f19da330f534d5f8266ce8a9b73b9ee8da378b19c4691cb5dfe` (expected — see §82.7).

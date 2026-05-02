@@ -2289,3 +2289,204 @@ def test_v1_12_1_markdown_report_includes_investor_intent_section():
         or "non-binding labels only" in md_lower
         or "no order submission" in md_lower
     )
+
+
+# ---------------------------------------------------------------------------
+# v1.12.2 — market environment state
+# ---------------------------------------------------------------------------
+
+
+def test_v1_12_2_one_market_environment_per_period():
+    """v1.12.2 emits exactly one MarketEnvironmentStateRecord per
+    period."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        assert len(ps.market_environment_state_ids) == 1
+
+
+def test_v1_12_2_environment_states_resolve_and_carry_regime_labels():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        sid = ps.market_environment_state_ids[0]
+        rec = k.market_environments.get_state(sid)
+        # All nine regime label fields must be non-empty strings.
+        for field_name in (
+            "liquidity_regime",
+            "volatility_regime",
+            "credit_regime",
+            "funding_regime",
+            "risk_appetite_regime",
+            "rate_environment",
+            "refinancing_window",
+            "equity_valuation_regime",
+            "overall_market_access_label",
+        ):
+            value = getattr(rec, field_name)
+            assert isinstance(value, str) and value, (
+                f"empty {field_name} on {sid}"
+            )
+
+
+def test_v1_12_2_default_overall_label_is_open_or_constructive():
+    """Default fixture's market specs are constructive — the
+    environment's overall label should match the default
+    readout."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        sid = ps.market_environment_state_ids[0]
+        rec = k.market_environments.get_state(sid)
+        assert rec.overall_market_access_label == "open_or_constructive"
+
+
+def test_v1_12_2_environment_cited_on_firm_state():
+    """v1.12.2 type-correct cross-link: each firm state's
+    ``evidence_market_environment_state_ids`` must include the
+    period's environment-state id."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        env_id = ps.market_environment_state_ids[0]
+        for fsid in ps.firm_financial_state_ids:
+            state = k.firm_financial_states.get_state(fsid)
+            assert env_id in state.evidence_market_environment_state_ids
+
+
+def test_v1_12_2_environment_cited_on_investor_intent():
+    """v1.12.2 type-correct cross-link: each investor intent's
+    ``evidence_market_environment_state_ids`` must include the
+    period's environment-state id."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        env_id = ps.market_environment_state_ids[0]
+        for iid in ps.investor_intent_ids:
+            intent = k.investor_intents.get_intent(iid)
+            assert env_id in intent.evidence_market_environment_state_ids
+
+
+def test_v1_12_2_environment_cited_on_corporate_response():
+    """v1.12.2 type-correct cross-link: each corporate response
+    candidate's ``trigger_market_environment_state_ids`` must
+    include the period's environment-state id, and the env id
+    must NOT ride in any other trigger slot."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        env_id = ps.market_environment_state_ids[0]
+        for rid in ps.corporate_strategic_response_candidate_ids:
+            cand = k.strategic_responses.get_candidate(rid)
+            assert env_id in cand.trigger_market_environment_state_ids
+            assert env_id not in cand.trigger_signal_ids
+            assert env_id not in cand.trigger_industry_condition_ids
+            assert env_id not in cand.trigger_market_condition_ids
+
+
+def test_v1_12_2_no_price_or_forecast_payload_keys_in_ledger():
+    """v1.12.2 ``market_environment_state_added`` payloads must
+    not carry any anti-field key."""
+    k = _seed_kernel()
+    _run_default(k)
+    forbidden = {
+        "price",
+        "market_price",
+        "yield_value",
+        "spread_bps",
+        "index_level",
+        "forecast_value",
+        "expected_return",
+        "target_price",
+        "recommendation",
+        "investment_advice",
+        "real_data_value",
+        "market_size",
+        "order",
+        "trade",
+        "allocation",
+    }
+    payloads = [
+        record.payload
+        for record in k.ledger.records
+        if record.record_type.value == "market_environment_state_added"
+    ]
+    assert payloads, "no market_environment_state_added records emitted"
+    for payload in payloads:
+        leaked = set(payload.keys()) & forbidden
+        assert not leaked, (
+            "market_environment payload must not include anti-field "
+            f"keys; leaked: {sorted(leaked)}"
+        )
+
+
+def test_v1_12_2_no_forbidden_event_types_appear():
+    """v1.12.2 must not emit any new action / pricing / order /
+    trade / allocation event."""
+    from world.ledger import RecordType
+
+    k = _seed_kernel()
+    _run_default(k)
+    forbidden = {
+        RecordType.ORDER_SUBMITTED,
+        RecordType.PRICE_UPDATED,
+        RecordType.CONTRACT_CREATED,
+        RecordType.CONTRACT_STATUS_UPDATED,
+        RecordType.CONTRACT_COVENANT_BREACHED,
+        RecordType.OWNERSHIP_TRANSFERRED,
+    }
+    seen = {r.record_type for r in k.ledger.records}
+    leaked = seen & forbidden
+    assert not leaked, (
+        f"v1.12.2 must not emit {sorted(t.value for t in leaked)}"
+    )
+
+
+def test_v1_12_2_two_runs_produce_byte_identical_canonical_view():
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+        living_world_digest,
+    )
+
+    k1 = _seed_kernel()
+    r1 = _run_default(k1)
+    k2 = _seed_kernel()
+    r2 = _run_default(k2)
+    can1 = canonicalize_living_world_result(k1, r1)
+    can2 = canonicalize_living_world_result(k2, r2)
+    assert can1 == can2
+    assert living_world_digest(k1, r1) == living_world_digest(k2, r2)
+
+
+def test_v1_12_2_canonical_view_carries_market_environment_id_tuples():
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+    )
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    can = canonicalize_living_world_result(k, r)
+    for ps in can["per_period_summaries"]:
+        assert "market_environment_state_ids" in ps
+        assert len(ps["market_environment_state_ids"]) == 1
+
+
+def test_v1_12_2_markdown_report_includes_market_environment_section():
+    from world.living_world_report import (
+        build_living_world_trace_report,
+        render_living_world_markdown,
+    )
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    report = build_living_world_trace_report(k, r)
+    md = render_living_world_markdown(report)
+    assert "## Market environment state" in md
+    md_lower = md.lower()
+    # v1.12.2 anti-claims must show up either in the section
+    # caption or in the boundary footer.
+    assert (
+        "labels-only context" in md_lower
+        or "no price" in md_lower
+        or "no forecast" in md_lower
+    )

@@ -1,13 +1,14 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.12.1** (`Investor intent
-signal` — pre-action / pre-decision review-posture layer; intents
-are non-binding labels conditioned on cited evidence; per-run
-record-count window widens from `[256, 288]` to `[280, 312]`;
-default-fixture `living_world_digest` changes to `475d558d...` by
-design):
-`2349 / 2349 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1717 post-v1.7 additions covering reference demo, replay, manifest,
+Snapshot of the test suite at **v1.12.2** (`Market environment
+state` — nine compact regime labels per period derived from
+v1.11.0 conditions + v1.11.1 readout, additive type-correct
+evidence / trigger slot on firm-state, investor-intent, and
+corporate-response candidate; per-run record-count window
+widens from `[280, 312]` to `[284, 316]`; default-fixture
+`living_world_digest` changes to `d6b25704...` by design):
+`2456 / 2456 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1824 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -64,6 +65,19 @@ in `world/investor_intent.py` plus the per-period investor-intent
 phase between the v1.10.3 escalation and the v1.10.3 corporate
 response phases, exercised in the new
 `tests/test_investor_intent.py` and extended in
+`tests/test_living_reference_world.py`, and the v1.12.2
+market environment state — `MarketEnvironmentStateRecord` /
+`MarketEnvironmentBook` / `build_market_environment_state` in
+`world/market_environment.py` plus the per-period market
+environment phase between the v1.11.1 readout and the v1.12.0
+firm-state phases plus the additive
+`evidence_market_environment_state_ids` slot on
+`FirmFinancialStateRecord` and `InvestorIntentRecord` plus the
+additive `trigger_market_environment_state_ids` slot on
+`CorporateStrategicResponseCandidate`, exercised in the new
+`tests/test_market_environment.py` and extended in
+`tests/test_firm_state.py`, `tests/test_investor_intent.py`,
+`tests/test_strategic_response.py`, and
 `tests/test_living_reference_world.py`).
 
 This inventory is grouped by what each component verifies. The numbers in
@@ -1158,14 +1172,15 @@ no-mutation guarantee.
 | Performance boundary (v1.9.8)           | 1     | 10    |
 | Stewardship theme signal (v1.10.1)      | 1     | 58    |
 | Portfolio-company dialogue record (v1.10.2) + investor escalation candidate (v1.10.3, added to test_engagement.py) | 1 | 105    |
-| Corporate strategic response candidate (v1.10.3) + v1.10.4.1 type-correct industry-condition cross-reference slot + v1.11.0 type-correct market-condition cross-reference slot (added to test_strategic_response.py) | 1 | 63    |
+| Corporate strategic response candidate (v1.10.3) + v1.10.4.1 type-correct industry-condition cross-reference slot + v1.11.0 type-correct market-condition cross-reference slot + v1.12.2 type-correct market-environment-state cross-reference slot (added to test_strategic_response.py) | 1 | 66    |
 | Industry demand condition signal (v1.10.4) | 1 | 84    |
 | Capital-market condition (v1.11.0) | 1 | 84 |
 | Capital-market readout (v1.11.1) | 1 | 72 |
-| Firm financial latent state (v1.12.0) | 1 | 113 |
-| Investor intent signal (v1.12.1) | 1 | 81 |
-| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 + v1.12.1 additive in test_living_reference_world.py — 15 v1.10.5, 8 v1.11.0, 7 v1.11.1, 15 v1.11.2, 9 v1.12.0, and 9 v1.12.1 integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 / +9 v1.12.1 in test_living_reference_world.py) |
-| **post-v1.7 subtotal**                  | **37**| **1717** |
+| Firm financial latent state (v1.12.0) | 1 | 116 |
+| Investor intent signal (v1.12.1) | 1 | 84 |
+| Market environment state (v1.12.2) | 1 | 87 |
+| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 + v1.12.1 + v1.12.2 additive in test_living_reference_world.py — 15 v1.10.5, 8 v1.11.0, 7 v1.11.1, 15 v1.11.2, 9 v1.12.0, 9 v1.12.1, and 11 v1.12.2 integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 / +9 v1.12.1 / +11 v1.12.2 in test_living_reference_world.py) |
+| **post-v1.7 subtotal**                  | **38**| **1824** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1173,8 +1188,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1) | 37 | 1717 |
-| **Total**                        | **79**| **2349** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2) | 38 | 1824 |
+| **Total**                        | **80**| **2456** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

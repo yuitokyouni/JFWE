@@ -214,6 +214,9 @@ class InvestorIntentRecord:
     )
     evidence_market_readout_ids: tuple[str, ...] = field(default_factory=tuple)
     evidence_market_condition_ids: tuple[str, ...] = field(default_factory=tuple)
+    evidence_market_environment_state_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     evidence_firm_state_ids: tuple[str, ...] = field(default_factory=tuple)
     evidence_valuation_ids: tuple[str, ...] = field(default_factory=tuple)
     evidence_dialogue_ids: tuple[str, ...] = field(default_factory=tuple)
@@ -242,6 +245,7 @@ class InvestorIntentRecord:
         "evidence_selected_observation_set_ids",
         "evidence_market_readout_ids",
         "evidence_market_condition_ids",
+        "evidence_market_environment_state_ids",
         "evidence_firm_state_ids",
         "evidence_valuation_ids",
         "evidence_dialogue_ids",
@@ -304,6 +308,9 @@ class InvestorIntentRecord:
             ),
             "evidence_market_condition_ids": list(
                 self.evidence_market_condition_ids
+            ),
+            "evidence_market_environment_state_ids": list(
+                self.evidence_market_environment_state_ids
             ),
             "evidence_firm_state_ids": list(
                 self.evidence_firm_state_ids
@@ -390,6 +397,9 @@ class InvestorIntentBook:
                     ),
                     "evidence_market_condition_ids": list(
                         intent.evidence_market_condition_ids
+                    ),
+                    "evidence_market_environment_state_ids": list(
+                        intent.evidence_market_environment_state_ids
                     ),
                     "evidence_firm_state_ids": list(
                         intent.evidence_firm_state_ids
@@ -576,6 +586,7 @@ def run_reference_investor_intent_signal(
     selected_observation_set_ids: Sequence[str] = (),
     market_readout_ids: Sequence[str] = (),
     market_condition_ids: Sequence[str] = (),
+    market_environment_state_ids: Sequence[str] = (),
     firm_state_ids: Sequence[str] = (),
     valuation_ids: Sequence[str] = (),
     dialogue_ids: Sequence[str] = (),
@@ -718,6 +729,9 @@ def run_reference_investor_intent_signal(
         ),
         evidence_market_readout_ids=tuple(market_readout_ids),
         evidence_market_condition_ids=tuple(market_condition_ids),
+        evidence_market_environment_state_ids=tuple(
+            market_environment_state_ids
+        ),
         evidence_firm_state_ids=tuple(firm_state_ids),
         evidence_valuation_ids=tuple(valuation_ids),
         evidence_dialogue_ids=tuple(dialogue_ids),

@@ -272,6 +272,9 @@ class CorporateStrategicResponseCandidate:
     trigger_market_condition_ids: tuple[str, ...] = field(
         default_factory=tuple
     )
+    trigger_market_environment_state_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     next_review_date: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -295,6 +298,7 @@ class CorporateStrategicResponseCandidate:
         "trigger_valuation_ids",
         "trigger_industry_condition_ids",
         "trigger_market_condition_ids",
+        "trigger_market_environment_state_ids",
     )
 
     def __post_init__(self) -> None:
@@ -360,6 +364,9 @@ class CorporateStrategicResponseCandidate:
             ),
             "trigger_market_condition_ids": list(
                 self.trigger_market_condition_ids
+            ),
+            "trigger_market_environment_state_ids": list(
+                self.trigger_market_environment_state_ids
             ),
             "metadata": dict(self.metadata),
         }
@@ -444,6 +451,9 @@ class StrategicResponseCandidateBook:
                     ),
                     "trigger_market_condition_ids": list(
                         candidate.trigger_market_condition_ids
+                    ),
+                    "trigger_market_environment_state_ids": list(
+                        candidate.trigger_market_environment_state_ids
                     ),
                 },
                 space_id="strategic_response",
@@ -543,6 +553,31 @@ class StrategicResponseCandidateBook:
             c
             for c in self._candidates.values()
             if condition_id in c.trigger_industry_condition_ids
+        )
+
+    def list_by_market_environment_state(
+        self, environment_state_id: str
+    ) -> tuple[CorporateStrategicResponseCandidate, ...]:
+        """
+        Return every candidate whose
+        ``trigger_market_environment_state_ids`` tuple contains
+        ``environment_state_id``.
+
+        v1.12.2: type-correct cross-reference filter for v1.12.2
+        ``MarketEnvironmentStateRecord`` ids. Environment-state ids
+        do **not** ride in ``trigger_signal_ids``,
+        ``trigger_industry_condition_ids``, or
+        ``trigger_market_condition_ids`` — they live in their own
+        slot so that ledger replay, lineage reconstruction, and
+        report generation can disambiguate ``signal_id`` vs
+        ``industry_condition_id`` vs ``market_condition_id`` vs
+        ``environment_state_id`` by field rather than by payload
+        introspection.
+        """
+        return tuple(
+            c
+            for c in self._candidates.values()
+            if environment_state_id in c.trigger_market_environment_state_ids
         )
 
     def list_by_market_condition(

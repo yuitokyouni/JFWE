@@ -140,7 +140,16 @@ _BOUNDARY_STATEMENT: str = (
     "/ overweight / underweight execution, no target weights, "
     "no expected return, no target price, no security "
     "recommendation, no investment advice, no portfolio "
-    "allocation; non-binding labels only."
+    "allocation; non-binding labels only. "
+    "v1.12.2 market environment state: nine compact "
+    "jurisdiction-neutral regime labels (liquidity / volatility "
+    "/ credit / funding / risk_appetite / rate_environment / "
+    "refinancing_window / equity_valuation / "
+    "overall_market_access) derived from v1.11.0 conditions + "
+    "v1.11.1 readout; no price, no yield, no spread, no index "
+    "level, no forecast, no expected return, no recommendation, "
+    "no target price, no target weight, no order, no trade, no "
+    "allocation; labels-only context for downstream agents."
 )
 
 
@@ -198,6 +207,22 @@ class LivingWorldPeriodReport:
     # period; the period summary carries one readout id per
     # period when v1.11.1 is wired).
     capital_market_readout_count: int = 0
+    # v1.12.2 additive: market-environment-state record count
+    # (one per period when v1.12.2 is wired) plus the period's
+    # nine compact regime labels (lifted from the
+    # ``MarketEnvironmentStateRecord``). When the period has no
+    # environment state, the labels default to empty strings —
+    # the renderer skips empty values.
+    market_environment_state_count: int = 0
+    liquidity_regime: str = ""
+    volatility_regime: str = ""
+    credit_regime: str = ""
+    funding_regime: str = ""
+    risk_appetite_regime: str = ""
+    rate_environment: str = ""
+    refinancing_window: str = ""
+    equity_valuation_regime: str = ""
+    overall_market_access_regime_label: str = ""
     # v1.12.0 additive: firm-financial-state record counts +
     # average pressure scalars across the period's firms. Used
     # by the Markdown renderer's "## Firm financial states"
@@ -256,6 +281,7 @@ class LivingWorldPeriodReport:
             "corporate_strategic_response_candidate_count",
             "market_condition_count",
             "capital_market_readout_count",
+            "market_environment_state_count",
             "firm_financial_state_count",
             "investor_intent_count",
         ):
@@ -376,6 +402,20 @@ class LivingWorldPeriodReport:
             ),
             "market_condition_count": self.market_condition_count,
             "capital_market_readout_count": self.capital_market_readout_count,
+            "market_environment_state_count": (
+                self.market_environment_state_count
+            ),
+            "liquidity_regime": self.liquidity_regime,
+            "volatility_regime": self.volatility_regime,
+            "credit_regime": self.credit_regime,
+            "funding_regime": self.funding_regime,
+            "risk_appetite_regime": self.risk_appetite_regime,
+            "rate_environment": self.rate_environment,
+            "refinancing_window": self.refinancing_window,
+            "equity_valuation_regime": self.equity_valuation_regime,
+            "overall_market_access_regime_label": (
+                self.overall_market_access_regime_label
+            ),
             "firm_financial_state_count": self.firm_financial_state_count,
             "avg_margin_pressure": self.avg_margin_pressure,
             "avg_liquidity_pressure": self.avg_liquidity_pressure,
@@ -928,6 +968,7 @@ def _build_period_report(
             **_extract_firm_state_averages(kernel, period),
             **_extract_investor_intent_summary(kernel, period),
             **_extract_readout_labels(kernel, period),
+            **_extract_market_environment_summary(kernel, period),
             record_type_counts=period_record_type_counts,
             warnings=tuple(period_warnings),
             metadata={
@@ -1095,6 +1136,50 @@ def _extract_readout_labels(
         "liquidity_tone": rec.liquidity_tone,
         "volatility_tone": rec.volatility_tone,
         "overall_market_access_label": rec.overall_market_access_label,
+    }
+
+
+def _extract_market_environment_summary(
+    kernel: Any, period: LivingReferencePeriodSummary
+) -> dict[str, Any]:
+    """v1.12.2 — read the period's MarketEnvironmentStateRecord
+    (if any) and surface its nine compact regime labels into the
+    period report. When the period has no environment state, the
+    labels default to empty strings — the renderer skips empty
+    rows."""
+    empty: dict[str, Any] = {
+        "market_environment_state_count": 0,
+        "liquidity_regime": "",
+        "volatility_regime": "",
+        "credit_regime": "",
+        "funding_regime": "",
+        "risk_appetite_regime": "",
+        "rate_environment": "",
+        "refinancing_window": "",
+        "equity_valuation_regime": "",
+        "overall_market_access_regime_label": "",
+    }
+    state_ids = getattr(period, "market_environment_state_ids", ())
+    if not state_ids:
+        return empty
+    book = getattr(kernel, "market_environments", None)
+    if book is None:
+        return empty
+    try:
+        rec = book.get_state(state_ids[0])
+    except Exception:
+        return empty
+    return {
+        "market_environment_state_count": len(state_ids),
+        "liquidity_regime": rec.liquidity_regime,
+        "volatility_regime": rec.volatility_regime,
+        "credit_regime": rec.credit_regime,
+        "funding_regime": rec.funding_regime,
+        "risk_appetite_regime": rec.risk_appetite_regime,
+        "rate_environment": rec.rate_environment,
+        "refinancing_window": rec.refinancing_window,
+        "equity_valuation_regime": rec.equity_valuation_regime,
+        "overall_market_access_regime_label": rec.overall_market_access_label,
     }
 
 
@@ -1271,6 +1356,59 @@ def render_living_world_markdown(report: LivingWorldTraceReport) -> str:
             "the v1.11.1 rule set. **Not** a market view, **not** "
             "a forecast, **not** a recommendation, **not** deal "
             "advice — readout / report only."
+        )
+        lines.append("")
+
+    # v1.12.2 market environment state section. One row per
+    # period showing the nine compact regime labels lifted from
+    # the period's MarketEnvironmentStateRecord. Sits adjacent to
+    # the v1.11.1 capital-market surface section: the readout
+    # gives the *banker* tone tags; the environment state gives
+    # the same context normalized into nine compact *regime*
+    # labels future LLM agents and attention-conditioned
+    # mechanisms can consume directly.
+    has_v1122_signal = any(
+        ps.get("market_environment_state_count", 0) > 0
+        and ps.get("overall_market_access_regime_label", "")
+        for ps in md["period_summaries"]
+    )
+    if has_v1122_signal:
+        lines.append("## Market environment state")
+        lines.append("")
+        lines.append(
+            "| period | as_of_date | liquidity | volatility | credit | "
+            "funding | risk appetite | rate env | refinancing | "
+            "equity valuation | overall |"
+        )
+        lines.append(
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | "
+            "--- | --- |"
+        )
+        for ps in md["period_summaries"]:
+            if not ps.get("overall_market_access_regime_label", ""):
+                continue
+            lines.append(
+                f"| `{ps['period_id']}` | `{ps['as_of_date']}` | "
+                f"{ps.get('liquidity_regime', '')} | "
+                f"{ps.get('volatility_regime', '')} | "
+                f"{ps.get('credit_regime', '')} | "
+                f"{ps.get('funding_regime', '')} | "
+                f"{ps.get('risk_appetite_regime', '')} | "
+                f"{ps.get('rate_environment', '')} | "
+                f"{ps.get('refinancing_window', '')} | "
+                f"{ps.get('equity_valuation_regime', '')} | "
+                f"{ps.get('overall_market_access_regime_label', '')} |"
+            )
+        lines.append("")
+        lines.append(
+            "> Market environment state normalizes the period's "
+            "market-condition + readout context into nine compact "
+            "regime labels. **Not** a price, **not** a yield, "
+            "**not** a spread, **not** an index level, **not** a "
+            "forecast, **not** an expected return, **not** a "
+            "recommendation, **not** a target price, **not** a "
+            "target weight, **not** an order, **not** a trade, "
+            "**not** an allocation."
         )
         lines.append("")
 

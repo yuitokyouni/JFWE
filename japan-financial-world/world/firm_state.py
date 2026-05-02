@@ -201,10 +201,15 @@ class FirmFinancialStateRecord:
       v0/v1 cross-reference rule).
     - ``evidence_market_condition_ids``,
       ``evidence_market_readout_ids``,
+      ``evidence_market_environment_state_ids``,
       ``evidence_industry_condition_ids``,
       ``evidence_pressure_signal_ids``,
       ``evidence_valuation_ids`` are tuples of plain-id
-      cross-references the update read.
+      cross-references the update read. The
+      ``evidence_market_environment_state_ids`` slot points back
+      to the v1.12.2 ``MarketEnvironmentStateRecord`` that
+      conditioned the update; the link is type-correct and
+      additive (the prior five slots remain unchanged).
     - ``metadata`` is free-form for provenance and rule-version
       notes. Must not carry calibrated numbers.
 
@@ -232,6 +237,9 @@ class FirmFinancialStateRecord:
     previous_state_id: str | None = None
     evidence_market_condition_ids: tuple[str, ...] = field(default_factory=tuple)
     evidence_market_readout_ids: tuple[str, ...] = field(default_factory=tuple)
+    evidence_market_environment_state_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     evidence_industry_condition_ids: tuple[str, ...] = field(default_factory=tuple)
     evidence_pressure_signal_ids: tuple[str, ...] = field(default_factory=tuple)
     evidence_valuation_ids: tuple[str, ...] = field(default_factory=tuple)
@@ -258,6 +266,7 @@ class FirmFinancialStateRecord:
     TUPLE_FIELDS: ClassVar[tuple[str, ...]] = (
         "evidence_market_condition_ids",
         "evidence_market_readout_ids",
+        "evidence_market_environment_state_ids",
         "evidence_industry_condition_ids",
         "evidence_pressure_signal_ids",
         "evidence_valuation_ids",
@@ -324,6 +333,9 @@ class FirmFinancialStateRecord:
             ),
             "evidence_market_readout_ids": list(
                 self.evidence_market_readout_ids
+            ),
+            "evidence_market_environment_state_ids": list(
+                self.evidence_market_environment_state_ids
             ),
             "evidence_industry_condition_ids": list(
                 self.evidence_industry_condition_ids
@@ -411,6 +423,9 @@ class FirmFinancialStateBook:
                     ),
                     "evidence_market_readout_ids": list(
                         state.evidence_market_readout_ids
+                    ),
+                    "evidence_market_environment_state_ids": list(
+                        state.evidence_market_environment_state_ids
                     ),
                     "evidence_industry_condition_ids": list(
                         state.evidence_industry_condition_ids
@@ -582,6 +597,7 @@ def run_reference_firm_financial_state_update(
     previous_state_id: str | None = None,
     market_readout_ids: Sequence[str] = (),
     market_condition_ids: Sequence[str] = (),
+    market_environment_state_ids: Sequence[str] = (),
     industry_condition_ids: Sequence[str] = (),
     pressure_signal_ids: Sequence[str] = (),
     valuation_ids: Sequence[str] = (),
@@ -731,6 +747,9 @@ def run_reference_firm_financial_state_update(
         previous_state_id=resolved_previous_state_id,
         evidence_market_condition_ids=tuple(market_condition_ids),
         evidence_market_readout_ids=tuple(market_readout_ids),
+        evidence_market_environment_state_ids=tuple(
+            market_environment_state_ids
+        ),
         evidence_industry_condition_ids=tuple(industry_condition_ids),
         evidence_pressure_signal_ids=tuple(pressure_signal_ids),
         evidence_valuation_ids=tuple(valuation_ids),

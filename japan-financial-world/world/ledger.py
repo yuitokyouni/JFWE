@@ -77,6 +77,7 @@ class RecordType(str, Enum):
     CAPITAL_MARKET_READOUT_ADDED = "capital_market_readout_added"
     FIRM_LATENT_STATE_UPDATED = "firm_latent_state_updated"
     INVESTOR_INTENT_SIGNAL_ADDED = "investor_intent_signal_added"
+    MARKET_ENVIRONMENT_STATE_ADDED = "market_environment_state_added"
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

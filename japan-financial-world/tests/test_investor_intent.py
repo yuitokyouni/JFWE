@@ -77,6 +77,7 @@ def _intent(
     evidence_selected_observation_set_ids: tuple[str, ...] = (),
     evidence_market_readout_ids: tuple[str, ...] = (),
     evidence_market_condition_ids: tuple[str, ...] = (),
+    evidence_market_environment_state_ids: tuple[str, ...] = (),
     evidence_firm_state_ids: tuple[str, ...] = (),
     evidence_valuation_ids: tuple[str, ...] = (),
     evidence_dialogue_ids: tuple[str, ...] = (),
@@ -99,6 +100,9 @@ def _intent(
         evidence_selected_observation_set_ids=evidence_selected_observation_set_ids,
         evidence_market_readout_ids=evidence_market_readout_ids,
         evidence_market_condition_ids=evidence_market_condition_ids,
+        evidence_market_environment_state_ids=(
+            evidence_market_environment_state_ids
+        ),
         evidence_firm_state_ids=evidence_firm_state_ids,
         evidence_valuation_ids=evidence_valuation_ids,
         evidence_dialogue_ids=evidence_dialogue_ids,
@@ -288,6 +292,7 @@ def test_intent_confidence_rejects_non_numeric(value):
         "evidence_selected_observation_set_ids",
         "evidence_market_readout_ids",
         "evidence_market_condition_ids",
+        "evidence_market_environment_state_ids",
         "evidence_firm_state_ids",
         "evidence_valuation_ids",
         "evidence_dialogue_ids",
@@ -1056,6 +1061,37 @@ def test_helper_records_evidence_id_tuples():
     assert r.record.evidence_dialogue_ids == ("dialogue:a",)
     assert r.record.evidence_escalation_candidate_ids == ("escalation:a",)
     assert r.record.evidence_stewardship_theme_ids == ("theme:a",)
+
+
+def test_helper_records_v1122_market_environment_evidence_id_tuple():
+    """v1.12.2: the helper accepts a
+    ``market_environment_state_ids`` kwarg and stores the tuple
+    on the produced record's
+    ``evidence_market_environment_state_ids`` slot. The slot is
+    additive — pre-v1.12.2 callers (without the kwarg) still get
+    an empty tuple."""
+    kernel = _kernel()
+    r = run_reference_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        market_environment_state_ids=("market_environment:2026-03-31",),
+    )
+    assert r.record.evidence_market_environment_state_ids == (
+        "market_environment:2026-03-31",
+    )
+
+
+def test_helper_default_records_empty_market_environment_evidence():
+    kernel = _kernel()
+    r = run_reference_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+    )
+    assert r.record.evidence_market_environment_state_ids == ()
 
 
 def test_helper_does_not_mutate_evidence_books():

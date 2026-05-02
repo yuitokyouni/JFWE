@@ -67,6 +67,7 @@ def _candidate(
     trigger_valuation_ids: tuple[str, ...] = (),
     trigger_industry_condition_ids: tuple[str, ...] = (),
     trigger_market_condition_ids: tuple[str, ...] = (),
+    trigger_market_environment_state_ids: tuple[str, ...] = (),
     next_review_date: str | None = None,
     metadata: dict | None = None,
 ) -> CorporateStrategicResponseCandidate:
@@ -87,6 +88,9 @@ def _candidate(
         trigger_valuation_ids=trigger_valuation_ids,
         trigger_industry_condition_ids=trigger_industry_condition_ids,
         trigger_market_condition_ids=trigger_market_condition_ids,
+        trigger_market_environment_state_ids=(
+            trigger_market_environment_state_ids
+        ),
         next_review_date=next_review_date,
         metadata=metadata or {},
     )
@@ -136,6 +140,7 @@ def test_response_rejects_empty_required_strings(kwargs):
         "trigger_valuation_ids",
         "trigger_industry_condition_ids",
         "trigger_market_condition_ids",
+        "trigger_market_environment_state_ids",
     ],
 )
 def test_response_rejects_empty_strings_in_tuple_fields(tuple_field):
@@ -555,6 +560,86 @@ def test_list_response_by_market_condition():
     ) == ["resp:cited", "resp:credit_only"]
     assert (
         book.list_by_market_condition("market_condition:missing") == ()
+    )
+
+
+def test_list_response_by_market_environment_state():
+    """v1.12.2: type-correct cross-reference filter for v1.12.2
+    market-environment-state ids."""
+    book = StrategicResponseCandidateBook()
+    book.add_candidate(
+        _candidate(
+            response_candidate_id="resp:env_cited",
+            trigger_market_environment_state_ids=(
+                "market_environment:2026-03-31",
+                "market_environment:2026-06-30",
+            ),
+        )
+    )
+    book.add_candidate(
+        _candidate(
+            response_candidate_id="resp:env_q2_only",
+            trigger_market_environment_state_ids=(
+                "market_environment:2026-06-30",
+            ),
+        )
+    )
+    book.add_candidate(
+        _candidate(
+            response_candidate_id="resp:env_none",
+            trigger_market_environment_state_ids=(),
+        )
+    )
+    assert tuple(
+        c.response_candidate_id
+        for c in book.list_by_market_environment_state(
+            "market_environment:2026-03-31"
+        )
+    ) == ("resp:env_cited",)
+    assert sorted(
+        c.response_candidate_id
+        for c in book.list_by_market_environment_state(
+            "market_environment:2026-06-30"
+        )
+    ) == ["resp:env_cited", "resp:env_q2_only"]
+    assert (
+        book.list_by_market_environment_state("market_environment:missing")
+        == ()
+    )
+
+
+def test_list_by_market_environment_state_does_not_match_other_slots():
+    """An environment-state id sitting in any other trigger slot
+    must NOT be surfaced by list_by_market_environment_state.
+    Field-level disambiguation is what v1.12.2 buys."""
+    book = StrategicResponseCandidateBook()
+    book.add_candidate(
+        _candidate(
+            response_candidate_id="resp:in_signal_slot",
+            trigger_signal_ids=("market_environment:2026-03-31",),
+        )
+    )
+    book.add_candidate(
+        _candidate(
+            response_candidate_id="resp:in_industry_slot",
+            trigger_industry_condition_ids=(
+                "market_environment:2026-03-31",
+            ),
+        )
+    )
+    book.add_candidate(
+        _candidate(
+            response_candidate_id="resp:in_market_condition_slot",
+            trigger_market_condition_ids=(
+                "market_environment:2026-03-31",
+            ),
+        )
+    )
+    assert (
+        book.list_by_market_environment_state(
+            "market_environment:2026-03-31"
+        )
+        == ()
     )
 
 

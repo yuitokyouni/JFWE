@@ -32,6 +32,7 @@ from world.firm_state import FirmFinancialStateBook
 from world.industry import IndustryConditionBook
 from world.investor_intent import InvestorIntentBook
 from world.market_conditions import MarketConditionBook
+from world.market_environment import MarketEnvironmentBook
 from world.market_surface_readout import CapitalMarketReadoutBook
 from world.stewardship import StewardshipBook
 from world.strategic_response import StrategicResponseCandidateBook
@@ -88,6 +89,9 @@ class WorldKernel:
     capital_market_readouts: CapitalMarketReadoutBook = field(
         default_factory=CapitalMarketReadoutBook
     )
+    market_environments: MarketEnvironmentBook = field(
+        default_factory=MarketEnvironmentBook
+    )
     firm_financial_states: FirmFinancialStateBook = field(
         default_factory=FirmFinancialStateBook
     )
@@ -120,6 +124,7 @@ class WorldKernel:
             self.industry_conditions,
             self.market_conditions,
             self.capital_market_readouts,
+            self.market_environments,
             self.firm_financial_states,
             self.investor_intents,
         ):

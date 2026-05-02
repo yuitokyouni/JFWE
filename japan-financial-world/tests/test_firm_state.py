@@ -78,6 +78,7 @@ def _state(
     previous_state_id: str | None = None,
     evidence_market_condition_ids: tuple[str, ...] = (),
     evidence_market_readout_ids: tuple[str, ...] = (),
+    evidence_market_environment_state_ids: tuple[str, ...] = (),
     evidence_industry_condition_ids: tuple[str, ...] = (),
     evidence_pressure_signal_ids: tuple[str, ...] = (),
     evidence_valuation_ids: tuple[str, ...] = (),
@@ -99,6 +100,9 @@ def _state(
         previous_state_id=previous_state_id,
         evidence_market_condition_ids=evidence_market_condition_ids,
         evidence_market_readout_ids=evidence_market_readout_ids,
+        evidence_market_environment_state_ids=(
+            evidence_market_environment_state_ids
+        ),
         evidence_industry_condition_ids=evidence_industry_condition_ids,
         evidence_pressure_signal_ids=evidence_pressure_signal_ids,
         evidence_valuation_ids=evidence_valuation_ids,
@@ -308,6 +312,7 @@ def test_state_margin_pressure_rejects_non_numeric(value):
     [
         "evidence_market_condition_ids",
         "evidence_market_readout_ids",
+        "evidence_market_environment_state_ids",
         "evidence_industry_condition_ids",
         "evidence_pressure_signal_ids",
         "evidence_valuation_ids",
@@ -1164,6 +1169,35 @@ def test_helper_clamps_pressures_to_unit_interval():
         final.response_readiness,
     ):
         assert 0.0 <= v <= 1.0
+
+
+def test_helper_records_v1122_market_environment_evidence_id_tuple():
+    """v1.12.2: the helper accepts a
+    ``market_environment_state_ids`` kwarg and stores the tuple
+    on the produced record's
+    ``evidence_market_environment_state_ids`` slot. The slot is
+    additive — pre-v1.12.2 callers (without the kwarg) still get
+    an empty tuple."""
+    kernel = _kernel()
+    out = run_reference_firm_financial_state_update(
+        kernel,
+        firm_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        market_environment_state_ids=("market_environment:2026-03-31",),
+    )
+    assert out.record.evidence_market_environment_state_ids == (
+        "market_environment:2026-03-31",
+    )
+
+
+def test_helper_default_records_empty_market_environment_evidence():
+    kernel = _kernel()
+    out = run_reference_firm_financial_state_update(
+        kernel,
+        firm_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+    )
+    assert out.record.evidence_market_environment_state_ids == ()
 
 
 def test_helper_does_not_mutate_evidence_books():

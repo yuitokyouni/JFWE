@@ -46,7 +46,7 @@ This milestone records the loop shapes so that:
 3. Anyone reviewing the v1.9 freeze surface can see, in one
    place, what the engine is and is not doing.
 
-## Current loop shapes (v1.12.1)
+## Current loop shapes (v1.12.2)
 
 The following table describes the loop shape of each phase
 inside `world/reference_living_world.run_living_reference_world`.
@@ -59,13 +59,14 @@ v1.11.1+). The `n_obs` and `n_exposures` factors are bounded by
 the fixture's variable count (currently 4) and per-firm exposure
 count (currently 2–3 each).
 
-| Phase                                                    | Loop shape                                | v1.12.1 default        |
+| Phase                                                    | Loop shape                                | v1.12.2 default        |
 | -------------------------------------------------------- | ----------------------------------------- | ---------------------- |
 | Corporate quarterly reporting                            | `O(P × F)`                                | 4 × 3 = 12 reports     |
 | Firm pressure assessment (v1.9.4)                        | `O(P × F × n_exposures)`                  | 4 × 3 × ~2.5 = 30 pass |
 | Industry demand condition (v1.10.4)                      | `O(P × N)`                                | 4 × 3 = 12 conditions  |
 | Capital-market condition (v1.11.0)                       | `O(P × M)`                                | 4 × 5 = 20 conditions  |
 | Capital-market readout (v1.11.1)                         | `O(P × K)`                                | 4 × 1 = 4 readouts     |
+| Market environment state (v1.12.2)                       | `O(P)`                                    | 4 × 1 = 4 states       |
 | Firm financial latent state (v1.12.0)                    | `O(P × F)`                                | 4 × 3 = 12 states      |
 | Menu construction (per actor)                            | `O(P × (I+B) × n_relevant_observations)`  | 4 × 4 × ~4 = 64 pass   |
 | Observation set selection                                | `O(P × (I+B))`                            | 4 × 4 = 16 selections  |
@@ -76,9 +77,9 @@ count (currently 2–3 each).
 | Investor intent signal (v1.12.1)                         | `O(P × I × F)`                            | 4 × 2 × 3 = 24 intents |
 | Corporate strategic response candidate (v1.10.3, corp.)  | `O(P × F)`                                | 4 × 3 = 12 cands.      |
 | Review routines                                          | `O(P × (I+B))`                            | 4 × 4 = 16 reviews     |
-| Reporting / replay / manifest                            | `O(R)` over emitted ledger records        | ~298 records           |
+| Reporting / replay / manifest                            | `O(R)` over emitted ledger records        | ~302 records           |
 
-Per-period record-count breakdown (default fixture, v1.12.1):
+Per-period record-count breakdown (default fixture, v1.12.2):
 
 ```
 2 × F                  corporate run + corporate signal              =  6
@@ -86,6 +87,7 @@ F                      firm pressure signal                          =  3
 N                      industry demand condition (v1.10.4)           =  3
 M                      capital-market condition (v1.11.0)            =  5
 K                      capital-market readout (v1.11.1)              =  1
+1                      market environment state (v1.12.2)            =  1
 F                      firm financial latent state (v1.12.0)         =  3
 2 × (I + B)            menu + selection                              =  8
 I × F                  valuation                                     =  6
@@ -95,11 +97,11 @@ I × F                  investor escalation candidate (v1.10.3, inv.) =  6
 I × F                  investor intent signal (v1.12.1)              =  6
 F                      corporate strategic response candidate        =  3
 2 × (I + B)            review_run + review_signal                    =  8
-                                                            total   = 70
-× 4 periods                                                         = 280
+                                                            total   = 71
+× 4 periods                                                         = 284
 + ~14 one-off setup (interactions, routines, profiles)
 +   4 one-off setup (stewardship themes, v1.10.5)
-                                                          ≈ ~298 records
+                                                          ≈ ~302 records
 ```
 
 Of the loops above:
@@ -214,24 +216,25 @@ loop on the actual `(bank, firm)` lending relationships.
 The discipline above is enforced by
 `tests/test_living_reference_world_performance_boundary.py`.
 **Note on units:** the budget pinned below is a *per-run total*
-(across all four periods), not a per-period count. At v1.12.1
-the per-period count is 70 records (37 v1.9.x + 18 v1.10.5
+(across all four periods), not a per-period count. At v1.12.2
+the per-period count is 71 records (37 v1.9.x + 18 v1.10.5
 + 5 v1.11.0 capital-market + 1 v1.11.1 capital-market readout
-+ 3 v1.12.0 firm financial latent state + 6 v1.12.1 investor
-intent); the per-run total is `70 × 4 = 280`, plus an
-infrastructure allowance for one-off setup records (14 v1.9.x
-infra + 4 v1.10.5 stewardship themes + headroom; v1.11.0 /
-v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 add no new setup records).
++ 1 v1.12.2 market environment state + 3 v1.12.0 firm financial
+latent state + 6 v1.12.1 investor intent); the per-run total is
+`71 × 4 = 284`, plus an infrastructure allowance for one-off
+setup records (14 v1.9.x infra + 4 v1.10.5 stewardship themes
++ headroom; v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 /
+v1.12.2 add no new setup records).
 
 - per-period record formula equals
-  `2F + F + N + M + K + F + 2(I+B) + IF + BF + IF + IF + IF + F + 2(I+B) = 70`
+  `2F + F + N + M + K + 1 + F + 2(I+B) + IF + BF + IF + IF + IF + F + 2(I+B) = 71`
   for the default fixture (with `N = 3` industries,
   `M = 5` markets, `K = 1` capital-market readout per period,
-  one v1.12.0 firm-state record per firm per period, and one
-  v1.12.1 investor-intent record per (investor, firm) pair per
-  period),
+  one v1.12.2 market environment state per period, one v1.12.0
+  firm-state record per firm per period, and one v1.12.1
+  investor-intent record per (investor, firm) pair per period),
 - per-run total record count for a default 4-period sweep sits
-  in `[280, 312]` — i.e. exactly `formula × periods` at the
+  in `[284, 316]` — i.e. exactly `formula × periods` at the
   lower edge plus up to a 32-record infrastructure allowance,
 - the valuation count for the run equals exactly `P × I × F`,
 - the bank credit review count for the run equals exactly
@@ -248,6 +251,8 @@ v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 add no new setup records).
   exactly `P × F` (v1.12.0),
 - the investor intent signal count for the run equals exactly
   `P × I × F` (v1.12.1),
+- the market environment state count for the run equals exactly
+  `P × 1 = P` (v1.12.2),
 - the dialogue count for the run equals exactly `P × I × F`,
 - the investor escalation candidate count for the run equals
   exactly `P × I × F`,

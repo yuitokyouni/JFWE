@@ -85,6 +85,7 @@ from world.market_conditions import (
     MarketConditionRecord,
 )
 from world.market_surface_readout import build_capital_market_readout
+from world.market_environment import build_market_environment_state
 from world.firm_state import run_reference_firm_financial_state_update
 from world.investor_intent import run_reference_investor_intent_signal
 from world.observation_menu_builder import ObservationMenuBuildRequest
@@ -207,6 +208,18 @@ class LivingReferencePeriodSummary:
     capital_market_readout_ids: tuple[str, ...] = field(
         default_factory=tuple
     )
+    # v1.12.2 additive: one market-environment-state id per
+    # period. The state normalizes the period's market_condition
+    # + capital_market_readout into nine compact regime labels
+    # (liquidity / volatility / credit / funding /
+    # risk_appetite / rate_environment / refinancing_window /
+    # equity_valuation / overall_market_access). Storage / report
+    # only — never a price, yield, spread, index level, forecast,
+    # expected return, recommendation, target price, target
+    # weight, order, trade, or allocation.
+    market_environment_state_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     # v1.12.0 additive: one firm-financial-state id per (firm,
     # period) pair. The state is a synthetic latent ordering
     # (margin / liquidity / debt-service / market-access /
@@ -248,6 +261,7 @@ class LivingReferencePeriodSummary:
             "corporate_strategic_response_candidate_ids",
             "market_condition_ids",
             "capital_market_readout_ids",
+            "market_environment_state_ids",
             "firm_financial_state_ids",
             "investor_intent_ids",
         ):
@@ -1283,6 +1297,35 @@ def run_living_reference_world(
             capital_market_readout_ids.append(readout.readout_id)
 
         # ------------------------------------------------------------------
+        # v1.12.2 — market environment state phase.
+        # Normalize the period's market-condition + readout context
+        # into nine compact regime labels (liquidity / volatility /
+        # credit / funding / risk_appetite / rate_environment /
+        # refinancing_window / equity_valuation /
+        # overall_market_access). One environment state per period.
+        # Cited downstream as the v1.12.2 evidence/trigger slot on
+        # firm-state, investor-intent, and corporate strategic
+        # response. Read-only over MarketConditionBook +
+        # CapitalMarketReadoutBook + IndustryConditionBook; writes
+        # only to MarketEnvironmentBook + the kernel ledger. No
+        # recommendation, no forecast, no pricing, no execution.
+        # Idempotent on the environment-state id; re-running the
+        # orchestrator on the same kernel does not duplicate.
+        # ------------------------------------------------------------------
+        market_environment_state_ids: list[str] = []
+        if market_condition_ids or capital_market_readout_ids:
+            environment = build_market_environment_state(
+                kernel,
+                as_of_date=iso_date,
+                market_condition_ids=tuple(market_condition_ids),
+                market_readout_ids=tuple(capital_market_readout_ids),
+                industry_condition_ids=tuple(industry_condition_ids),
+            )
+            market_environment_state_ids.append(
+                environment.environment_state_id
+            )
+
+        # ------------------------------------------------------------------
         # v1.12.0 — firm financial latent state update phase.
         # For each firm, compute one synthetic
         # ``FirmFinancialStateRecord`` from prior state (resolved
@@ -1303,6 +1346,9 @@ def run_living_reference_world(
                 as_of_date=iso_date,
                 market_readout_ids=tuple(capital_market_readout_ids),
                 market_condition_ids=tuple(market_condition_ids),
+                market_environment_state_ids=tuple(
+                    market_environment_state_ids
+                ),
                 industry_condition_ids=(
                     (condition_id_by_industry[firm_to_industry[firm_id]],)
                     if firm_to_industry[firm_id] in condition_id_by_industry
@@ -1634,6 +1680,9 @@ def run_living_reference_world(
                     ),
                     market_readout_ids=tuple(capital_market_readout_ids),
                     market_condition_ids=tuple(market_condition_ids),
+                    market_environment_state_ids=tuple(
+                        market_environment_state_ids
+                    ),
                     firm_state_ids=((firm_state,) if firm_state else ()),
                     valuation_ids=pair_valuation,
                     dialogue_ids=(
@@ -1717,6 +1766,9 @@ def run_living_reference_world(
                         trigger_valuation_ids=firm_valuations,
                         trigger_industry_condition_ids=firm_condition_ref,
                         trigger_market_condition_ids=firm_market_condition_refs,
+                        trigger_market_environment_state_ids=tuple(
+                            market_environment_state_ids
+                        ),
                     )
                 )
             except DuplicateResponseCandidateError:
@@ -1789,6 +1841,9 @@ def run_living_reference_world(
                 market_condition_ids=tuple(market_condition_ids),
                 capital_market_readout_ids=tuple(
                     capital_market_readout_ids
+                ),
+                market_environment_state_ids=tuple(
+                    market_environment_state_ids
                 ),
                 firm_financial_state_ids=tuple(firm_financial_state_ids),
                 investor_intent_ids=tuple(investor_intent_ids),
