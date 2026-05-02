@@ -8228,3 +8228,35 @@ The book emits **only** `PAYMENT_INSTRUCTION_REGISTERED` and `SETTLEMENT_EVENT_R
 v1.13.2 is storage-only. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.13.1. The orchestrator integration arrives at v1.13.5.
 
 The test count moves from `2785 / 2785` (v1.13.1) to `2832 / 2832` (v1.13.2) — `+47` tests in the new `tests/test_settlement_payments.py`.
+
+## 95. v1.13.3 InterbankLiquidityState — generic synthetic interbank-liquidity-context storage
+
+§95 ships the third concrete code milestone in the v1.13 sequence: an append-only `InterbankLiquidityStateBook` that holds immutable `InterbankLiquidityStateRecord` instances. Each record is a **label-based** snapshot of one institution's interbank-liquidity context at a point in time. Storage only — there is **no real balance, no calibrated liquidity model, no bank default, no lending decision, no Japan calibration**.
+
+### 95.1 What v1.13.3 ships
+
+A new module `world/interbank_liquidity.py` containing:
+
+- `InterbankLiquidityStateRecord` (frozen dataclass) — fields: `liquidity_state_id`, `institution_id`, `as_of_date`, four label fields (`liquidity_regime` / `settlement_pressure` / `reserve_access_label` / `funding_stress_label`), `status`, `visibility`, `confidence` in `[0.0, 1.0]` (booleans rejected), four `source_*_ids` plain-id tuples (settlement accounts, payment instructions, settlement events, market environment states), `metadata`.
+- `InterbankLiquidityStateBook` (append-only) — `add_state` / `get_state` / `list_states` / `list_by_institution` / `list_by_date` / `list_by_liquidity_regime` / `get_latest_for_institution` / `snapshot`.
+- New ledger record type `INTERBANK_LIQUIDITY_STATE_RECORDED`, emitted exactly once per `add_state` call.
+- Wired into `WorldKernel.interbank_liquidity`.
+
+Recommended (but not enforced) label vocabulary:
+
+- `liquidity_regime` ∈ { `ample`, `normal`, `tight`, `stressed`, `unknown` }
+- `settlement_pressure` ∈ { `low`, `moderate`, `high`, `severe`, `unknown` }
+- `reserve_access_label` ∈ { `available`, `constrained`, `unknown` }
+- `funding_stress_label` ∈ { `low`, `moderate`, `elevated`, `stressed`, `unknown` }
+
+### 95.2 Anti-claims
+
+The record carries **no** `amount`, `currency_value`, `balance`, `reserve_balance`, `policy_rate`, `interest`, `default_probability`, `lending_decision`, `loan_amount`, `order`, `trade`, `recommendation`, `investment_advice`, `forecast_value`, `actual_value`, `real_data_value`, or `behavior_probability` field. Tests pin the absence on both the dataclass field set and the ledger payload key set. `confidence` is a synthetic ordering in `[0.0, 1.0]`, never a calibrated probability.
+
+The book emits **only** `INTERBANK_LIQUIDITY_STATE_RECORDED` records and refuses to mutate any other source-of-truth book. v1.13.3 does **not** estimate liquidity, schedule reserves, originate loans, run a default model, or apply any Japan-specific rule.
+
+### 95.3 Performance boundary
+
+v1.13.3 is storage-only. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.13.2. The orchestrator integration arrives at v1.13.5.
+
+The test count moves from `2832 / 2832` (v1.13.2) to `2895 / 2895` (v1.13.3) — `+63` tests in the new `tests/test_interbank_liquidity.py`.
