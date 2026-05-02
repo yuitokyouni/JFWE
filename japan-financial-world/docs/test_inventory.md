@@ -1396,8 +1396,9 @@ no-mutation guarantee.
 | v1.0–v1.7 frozen reference       | 7     | 188   |
 | Attention feedback (v1.12.8) + budget/decay/saturation (v1.12.9) | 1 | 122   |
 | Settlement accounts (v1.13.1)        | 1     | 34    |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4 / v1.12.5 / v1.12.6 / v1.12.7 / v1.12.8 / v1.12.9 / v1.13.1) | 41 | 2153 |
-| **Total**                        | **83**| **2785** |
+| Settlement payments (v1.13.2)        | 1     | 47    |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4 / v1.12.5 / v1.12.6 / v1.12.7 / v1.12.8 / v1.12.9 / v1.13.1 / v1.13.2) | 42 | 2200 |
+| **Total**                        | **84**| **2832** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

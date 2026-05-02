@@ -8205,3 +8205,26 @@ The book emits **only** `RecordType.SETTLEMENT_ACCOUNT_REGISTERED` records and r
 v1.13.1 is storage-only and not yet wired into the orchestrator. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.12.last. The orchestrator integration arrives at v1.13.5.
 
 The test count moves from `2751 / 2751` (v1.12.last) to `2785 / 2785` (v1.13.1) — `+34` tests in the new `tests/test_settlement_accounts.py`.
+
+## 94. v1.13.2 PaymentInstructionRecord / SettlementEventRecord — generic synthetic settlement-flow storage
+
+§94 ships the second concrete code milestone in the v1.13 sequence: append-only synthetic payment-instruction and settlement-event records. Storage only — there is **no settlement execution, no real amount, no balance update, no RTGS queue mechanics, no securities settlement execution, no central-bank accounting**. Synthetic-size labels (e.g., `"reference_size_small"` / `"reference_size_medium"` / `"reference_size_large"`) replace any real currency value.
+
+### 94.1 What v1.13.2 ships
+
+- `world/settlement_payments.py` (new) — `PaymentInstructionRecord` (immutable; payer / payee / requested settlement date / synthetic_size_label / instruction_type / status / visibility / `related_contract_ids` / `related_signal_ids`), `SettlementEventRecord` (immutable; instruction_id / as_of_date / event_type / status / source / target / synthetic_size_label / visibility), `SettlementInstructionBook` (append-only with `add_instruction` / `get_instruction` / `list_instructions` / `list_by_payer` / `list_by_payee` / `list_by_status` / `add_event` / `get_event` / `list_events` / `list_events_by_instruction` / `snapshot`), errors `Duplicate*` / `Unknown*` for both record types.
+- `world/ledger.py` — two new record types: `PAYMENT_INSTRUCTION_REGISTERED` and `SETTLEMENT_EVENT_RECORDED`.
+- `world/kernel.py` — wires `WorldKernel.settlement_payments: SettlementInstructionBook`.
+- `tests/test_settlement_payments.py` (new) — 47 tests covering both records' field validation, immutability, anti-fields, every list / filter, ledger emission, kernel wiring, no-mutation invariant, jurisdiction-neutral identifier scan.
+
+### 94.2 Anti-fields and anti-claims (binding)
+
+Both records carry **no** `amount`, `currency_value`, `fx_rate`, `balance`, `debit`, `credit`, `policy_rate`, `interest`, `order`, `trade`, `recommendation`, `investment_advice`, `forecast_value`, `actual_value`, `real_data_value`, or `behavior_probability` field. Tests pin the absence on the dataclass field set and on the ledger payload key set.
+
+The book emits **only** `PAYMENT_INSTRUCTION_REGISTERED` and `SETTLEMENT_EVENT_RECORDED` records. v1.13.2 does **not** clear, settle, route, queue, prioritise, net, or process any payment. It does not deliver securities, accrue interest, calibrate haircuts, calculate balances, or apply any Japan-specific rule.
+
+### 94.3 Performance boundary
+
+v1.13.2 is storage-only. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.13.1. The orchestrator integration arrives at v1.13.5.
+
+The test count moves from `2785 / 2785` (v1.13.1) to `2832 / 2832` (v1.13.2) — `+47` tests in the new `tests/test_settlement_payments.py`.
