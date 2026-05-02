@@ -5748,9 +5748,9 @@ The budget guard is now ≥ 148 (per-period × 4) and ≤ 280.
 | v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). | Shipped |
 | v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). | Shipped |
 | v1.9.6 Living-world Mechanism Integration | Code (§66). | Shipped |
-| **v1.9.7 Reference Bank Credit Review Lite Mechanism** | Code (§67). | **Shipped** |
-| v1.9.8 Performance Boundary | Sparse-iteration hardening. | Next |
-| v1.9.last | First lightweight public prototype. | After v1.9.8 |
+| v1.9.7 Reference Bank Credit Review Lite Mechanism | Code (§67). | Shipped |
+| **v1.9.8 Performance Boundary / Sparse Traversal Discipline** | Docs + tests (§68). | **Shipped** |
+| v1.9.last | First lightweight public prototype. | Next |
 
 
 
@@ -5759,3 +5759,110 @@ The budget guard is now ≥ 148 (per-period × 4) and ≤ 280.
 
 
 
+
+## 68. v1.9.8 Performance Boundary / Sparse Traversal Discipline
+
+### 68.1 Purpose
+
+§68 is a **discipline milestone**, not a behaviour milestone. The runtime, the kernel, and every mechanism are unchanged. What v1.9.8 adds is a written, test-pinned contract about *traversal shape*: which loops are bounded, which loops are demo-only, which record types are forbidden, and what sparse-gating principles future production-scale traversal must follow.
+
+The motivation is concrete. From v1.9.0 to v1.9.7, the living reference world grew bounded all-pairs loops — `O(P × I × F)` for valuation refresh and `O(P × B × F)` for bank credit review. Those products are fine *only* because the fixture is deliberately tiny (3 firms, 2 investors, 2 banks, 4 periods). The same loop shape over a production-scale agent population would scale super-linearly. v1.9.8 records this so that no future contributor can quietly turn the demo into a dense all-to-all simulator.
+
+### 68.2 What lands at v1.9.8
+
+- `docs/performance_boundary.md` — single-file written contract. Covers: current loop shapes per phase, per-period record-count breakdown (`2F + F + 2(I+B) + IF + BF + 2(I+B) = 37` for the default fixture), v1.9 demo discipline, sparse-gating principles for future production scale, future native-acceleration position (deferred), and the semantic caveat that **review is not origination**.
+- `tests/test_living_reference_world_performance_boundary.py` — 10 tests pinning every claim in the doc.
+- A `count_expected_living_world_records(*, firms, investors, banks, periods)` helper inside the test module — a written, reusable formula for the budget.
+- v1.9 plan, behavioral gap audit, model mechanism inventory, README, and test inventory updated.
+
+### 68.3 Loop shapes (v1.9.7 frozen)
+
+`P` = periods, `F` = firms, `I` = investors, `B` = banks.
+
+| Phase                                | Loop shape                              | v1.9 default        |
+| ------------------------------------ | --------------------------------------- | ------------------- |
+| Corporate quarterly reporting        | `O(P × F)`                              | 4 × 3 = 12          |
+| Firm pressure assessment (v1.9.4)    | `O(P × F × n_exposures)`                | ~30                 |
+| Menu construction (per actor)        | `O(P × (I+B) × n_relevant_obs)`         | ~64                 |
+| Observation set selection            | `O(P × (I+B))`                          | 4 × 4 = 16          |
+| Valuation refresh lite (v1.9.5)      | `O(P × I × F)`                          | 4 × 2 × 3 = 24      |
+| Bank credit review lite (v1.9.7)     | `O(P × B × F)`                          | 4 × 2 × 3 = 24      |
+| Review routines                      | `O(P × (I+B))`                          | 4 × 4 = 16          |
+| Reporting / replay / manifest        | `O(R)` over emitted ledger records      | linear scan         |
+
+The two **bounded all-pairs** loops are the valuation `O(P × I × F)` and the credit review `O(P × B × F)`. These are the loops that v1.9.8 explicitly classifies as *demo-bounded monitoring*, allowed only because `I`, `B`, `F` are small constants in the fixture.
+
+### 68.4 v1.9 demo discipline (test-pinned)
+
+1. **All-pairs traversal is allowed inside fixed demo-size fixtures only.** No growth of `F`, `I`, or `B` beyond a small constant without a milestone that first introduces sparse gating.
+2. **No path enumeration.** No mechanism iterates over reachable paths in any graph (interactions, ownership, relationships, exposures). Path-shaped views remain diagnostic, not operational.
+3. **No hidden quadratic loops.** The total record count is pinned to `≥ 148` (per-period × 4 periods) and `≤ 180` (per-period × 4 periods + a 32-record infrastructure allowance). Any change adding a `(actor × actor)` or `(actor × event × firm)` loop fails the test.
+4. **Tensor / matrix views are diagnostic.** v1.8 interaction tensor (`S × S × C`) and matrix views are not execution traversal plans and are not materialised on the per-period sweep path.
+5. **Reporting cost is `O(R)`.** Living-world report, replay-canonicalisation, and manifest are linear scans over the ledger record list.
+
+### 68.5 Sparse-gating principles (future, not implemented)
+
+When future scaling lifts the demo-bounded ceiling, these gating principles apply. None are implemented in v1.9.x; they are pinned here so a future contributor cannot quietly skip them.
+
+- **Bank credit review** must be gated by *(bank, firm)* relationships from `ContractBook` exposures (loans, guarantees, derivatives), held positions, watchlists, sector mandates, or credit-monitoring relationships.
+- **Investor valuation** must be gated by holdings, coverage universes, mandates, or watchlists.
+- **Menus** must be built from actor-specific exposure / relationship / visibility indexes.
+- **Interaction tensor and matrix views** are diagnostic, not traversal plans.
+
+### 68.6 Forbidden record types
+
+`tests/test_living_reference_world_performance_boundary.py::test_no_forbidden_mutation_records_appear` asserts none of the following appear in the ledger after a default sweep:
+
+```
+ORDER_SUBMITTED              CONTRACT_CREATED
+PRICE_UPDATED                CONTRACT_STATUS_UPDATED
+OWNERSHIP_TRANSFERRED        CONTRACT_COVENANT_BREACHED
+```
+
+These are the trade-execution / price-formation / loan-origination / covenant-enforcement mutation events. v1.9 is review-only; if any appear, the demo has crossed a behaviour boundary.
+
+### 68.7 Future native acceleration (deferred)
+
+Python remains adequate for v1.9. The bounded sweep finishes in well under one second; the full 1626-test suite runs in under ten. Candidate hot paths *if* future scaling demands a native component:
+
+- large-scale exposure joins (`ExposureBook` cross-products),
+- large menu construction over big visibility indexes,
+- a market mechanism / limit order book simulation,
+- dense tensor / matrix views if ever materialised on the per-period path,
+- repeated valuation / credit-review sweeps over large agent populations.
+
+**The first step toward scale is profiling and sparse indexing, not a premature native rewrite.** No C++, no Julia, no Rust, no GPU work is in scope for v1.9.x or v1.9.last.
+
+### 68.8 Semantic caveat — review is not origination
+
+A frequent misreading of v1.9.7's `B × F` loop is that it describes a real lending-decision flow. It does not. v1.9.7 produces *review notes* — diagnostic signals about what a bank looked at and how the evidence aggregated as a pressure score. v1.9.7 does not approve, reject, or originate any loan; does not enforce any covenant; does not mutate `ContractBook` or `ConstraintBook`; does not declare default; does not imply a probability of default or an internal rating.
+
+A realistic origination workflow — *firm funding request → bank underwriting → proposed terms → contract mutation* — is **future work**, not v1.9.x. The current dense `B × F` loop is demo-bounded monitoring, used so that every bank records one note about every firm each period for explainability.
+
+### 68.9 v1.9.8 success criteria
+
+§68 is complete when **all** hold:
+
+1. `docs/performance_boundary.md` exists and covers all eight subsections (purpose, current loop shapes, demo discipline, sparse-gating principles, future native acceleration, semantic caveat, test pins, position).
+2. `tests/test_living_reference_world_performance_boundary.py` exists and contains the 10 listed tests, all passing.
+3. `count_expected_living_world_records` returns `148` for the default fixture and scales linearly in `periods`.
+4. Total ledger record count for a default sweep sits in `[148, 180]`.
+5. Per-period record shape is constant across all four periods.
+6. Pressure-signal count = `P × F`; valuation count = `P × I × F`; credit-review count = `P × B × F`.
+7. None of the six forbidden mutation record types appear in the ledger after a default sweep.
+8. No `WARNING` / `ERROR` records appear in the ledger after a default sweep.
+9. The full test suite passes (`1626 = 1616 prior + 10 v1.9.8`).
+10. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+
+### 68.10 Anti-scope
+
+§68 deliberately does **not** add: any new economic behaviour, any new mechanism, any new `MechanismAdapter`, any new ledger record type, any new book; price formation, trading, lending decisions, loan origination, covenant enforcement, contract or constraint mutation; native (C++ / Julia / Rust / GPU) rewrites; profiling harnesses or benchmark suites; Japan calibration, real data ingestion. v1.9.8 is documentation and tests only.
+
+### 68.11 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.6 Living-world Mechanism Integration | Code (§66). | Shipped |
+| v1.9.7 Reference Bank Credit Review Lite Mechanism | Code (§67). | Shipped |
+| **v1.9.8 Performance Boundary / Sparse Traversal Discipline** | Docs + tests (§68). | **Shipped** |
+| v1.9.last | First lightweight public prototype. | Next |

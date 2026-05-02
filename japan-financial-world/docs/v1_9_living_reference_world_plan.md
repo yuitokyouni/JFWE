@@ -477,6 +477,70 @@ The full suite passes 1616 tests (1580 prior + 36 v1.9.7).
 **Recommended next path.** Performance Boundary moves to v1.9.8;
 v1.9.last remains the public prototype freeze.
 
+## v1.9.8 — what shipped
+
+A **discipline milestone**, not a behaviour milestone. v1.9.8
+documents the computational boundaries of the v1.9 living
+reference world and pins them with tests. Nothing about the
+runtime or any mechanism changed; the goal is to prevent silent
+drift from "bounded synthetic demo" into "dense all-to-all
+simulator" before the public prototype freezes.
+
+- `docs/performance_boundary.md` — new doc covering: current
+  loop shapes per phase (`O(P × F)`, `O(P × F × n_exposures)`,
+  `O(P × I × F)`, `O(P × B × F)`, etc.); per-period record-count
+  breakdown (`2F + F + 2(I+B) + IF + BF + 2(I+B) = 37` for the
+  default fixture); v1.9 demo discipline (all-pairs only inside
+  fixed demo-size fixtures, no path enumeration, no hidden
+  quadratic loops, tensor / matrix views are diagnostic, reporting
+  cost is `O(R)`); sparse gating principles for future production
+  scale (bank credit review gated by contracts / exposures /
+  watchlists; investor valuation gated by holdings / mandates /
+  coverage; menus from actor-specific indexes); future
+  acceleration candidates with explicit "no native rewrite in
+  v1.9.x" position; semantic caveat that **review is not
+  origination** — v1.9.7 is review-note generation, not loan
+  approval.
+
+- `tests/test_living_reference_world_performance_boundary.py`
+  (10 tests) — pins the discipline:
+  * `test_performance_boundary_doc_exists` (with a section
+    spot-check),
+  * `test_default_living_world_record_count_is_exactly_per_formula`
+    (lower bound = 148, tight upper bound = 148 + 32 = 180),
+  * `test_per_period_record_count_is_constant_across_periods`,
+  * `test_pressure_signal_count_is_exactly_periods_times_firms`,
+  * `test_valuation_count_is_exactly_periods_times_investors_times_firms`,
+  * `test_credit_review_count_is_exactly_periods_times_banks_times_firms`,
+  * `test_no_forbidden_mutation_records_appear` — none of
+    `ORDER_SUBMITTED`, `PRICE_UPDATED`, `CONTRACT_CREATED`,
+    `CONTRACT_STATUS_UPDATED`, `CONTRACT_COVENANT_BREACHED`,
+    `OWNERSHIP_TRANSFERRED` may appear in the v1.9 ledger,
+  * `test_no_warning_or_error_records_during_default_sweep`,
+  * `test_count_expected_living_world_records_matches_default_fixture`
+    (= 148),
+  * `test_count_expected_living_world_records_scales_linearly_in_periods`.
+
+- A `count_expected_living_world_records(*, firms, investors,
+  banks, periods)` helper sits in the new test module and is
+  a written, reusable formula for the budget. It is intentionally
+  in the test file rather than `world/`: it documents the
+  bounded-fixture assumption and is the canary that fails when
+  the bound is broken, not a runtime planning helper.
+
+**What this milestone explicitly does *not* do.**
+
+- No new economic behaviour. No new mechanism.
+- No price formation. No trading. No lending decisions. No loan
+  origination. No covenant enforcement. No contract mutation.
+- No C++, Julia, Rust, or GPU rewrite.
+- No Japan calibration. No public-data ingestion.
+
+The full suite passes 1626 tests (1616 prior + 10 v1.9.8).
+
+**Recommended next path.** v1.9.last — the first public
+prototype freeze.
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral

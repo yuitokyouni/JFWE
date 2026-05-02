@@ -162,8 +162,8 @@ in well under a second, and are deterministic across invocations.
 | v1.9.4        | Reference Firm Operating Pressure Assessment Mechanism (first concrete `MechanismAdapter`) | Shipped |
 | v1.9.5        | Reference Valuation Refresh Lite Mechanism (`valuation_mechanism` adapter) | Shipped |
 | v1.9.6        | Living-world Mechanism Integration (wires v1.9.4 + v1.9.5 into the multi-period sweep) | Shipped |
-| **v1.9.7**    | **Reference Bank Credit Review Lite Mechanism** (`credit_review_mechanism` adapter; integrated into the multi-period sweep) | **Shipped** |
-| v1.9.8        | Performance Boundary                                      | Next |
+| v1.9.7        | Reference Bank Credit Review Lite Mechanism (`credit_review_mechanism` adapter; integrated into the multi-period sweep) | Shipped |
+| **v1.9.8**    | **Performance Boundary / Sparse Traversal Discipline** (docs + tests pinning loop shapes; no new behaviour) | **Shipped** |
 | v1.9.last     | First lightweight public prototype (synthetic-only, CLI-first, deterministic, explainability-first) | Planned |
 | v2.0          | Japan public-data calibration design gate                 | Not started                  |
 | v3.0          | Proprietary Japan calibration / expert-data layer         | Private                      |
@@ -467,8 +467,8 @@ From the `japan-financial-world` directory:
 python -m pytest -q
 ```
 
-Expected: `1616 passed` at the latest commit (444 v0 + 188 v1
-frozen reference + 984 post-v1.7 additions covering the reference
+Expected: `1626 passed` at the latest commit (444 v0 + 188 v1
+frozen reference + 994 post-v1.7 additions covering the reference
 demo, replay, manifest, catalog-shape, experiment harness, the
 v1.8.x endogenous-activity stack — interactions, routines,
 attention, variable / exposure layers, the menu builder, the
@@ -479,8 +479,10 @@ the v1.9.3 / v1.9.3.1 mechanism interface contract + hardening,
 the CLI argv-isolation pin, the v1.9.4 reference firm operating
 pressure assessment mechanism, the v1.9.5 reference valuation
 refresh lite mechanism, the v1.9.6 integration of those two
-mechanisms into the multi-period sweep, and the v1.9.7 reference
-bank credit review lite mechanism integrated into the same sweep).
+mechanisms into the multi-period sweep, the v1.9.7 reference
+bank credit review lite mechanism integrated into the same sweep,
+and the v1.9.8 performance-boundary / sparse-traversal discipline
+tests pinning the loop shapes of that sweep).
 
 To run only v0 tests, exclude the v1 test files; to run only v1 tests:
 

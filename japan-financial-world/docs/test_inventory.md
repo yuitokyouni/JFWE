@@ -1,8 +1,8 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.7** (`Reference Bank Credit
-Review Lite Mechanism` — third concrete mechanism + integration
-into the multi-period sweep): `1616 / 1616 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
+Snapshot of the test suite at **v1.9.8** (`Performance Boundary /
+Sparse Traversal Discipline` — discipline milestone, no new
+behaviour): `1626 / 1626 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the
@@ -283,6 +283,41 @@ no-mutation guarantee.
   determinism; snapshot determinism; ledger emission of
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
+
+## Performance boundary / sparse traversal discipline (v1.9.8)
+
+- `test_living_reference_world_performance_boundary.py` (10) —
+  pins the v1.9 living reference world's *traversal shape* with
+  no new behaviour. `test_performance_boundary_doc_exists`
+  asserts `docs/performance_boundary.md` exists and contains the
+  expected section headings (Performance Boundary, Current loop
+  shapes, Sparse gating principles, Future acceleration,
+  Semantic caveat, "review is not origination", "demo-bounded").
+  `test_default_living_world_record_count_is_exactly_per_formula`
+  asserts the kernel ledger after a default sweep sits in
+  `[148, 180]` — lower bound = `P × (2F + F + 2(I+B) + IF + BF +
+  2(I+B))`, tight upper = lower + 32-record infrastructure
+  allowance.
+  `test_per_period_record_count_is_constant_across_periods`
+  asserts the per-period summary shape tuple
+  (`corporate_signal_ids`, `firm_pressure_signal_ids`, valuations,
+  credit reviews, etc.) is identical across all four periods.
+  `test_pressure_signal_count_is_exactly_periods_times_firms`,
+  `test_valuation_count_is_exactly_periods_times_investors_times_firms`,
+  and `test_credit_review_count_is_exactly_periods_times_banks_times_firms`
+  pin the three mechanism counts to their exact bounded products.
+  `test_no_forbidden_mutation_records_appear` forbids
+  `ORDER_SUBMITTED` / `PRICE_UPDATED` / `CONTRACT_CREATED` /
+  `CONTRACT_STATUS_UPDATED` / `CONTRACT_COVENANT_BREACHED` /
+  `OWNERSHIP_TRANSFERRED` from appearing in the ledger after a
+  default sweep — those are trade / price / lending mutation
+  events and v1.9 is review-only.
+  `test_no_warning_or_error_records_during_default_sweep`
+  asserts no `WARNING` / `ERROR` records appear (the default
+  fixture is healthy by construction). The
+  `count_expected_living_world_records` helper is exercised by
+  two tests that pin its formula (`148` for the default fixture)
+  and its linearity in `periods`.
 
 ## Reference bank credit review lite (v1.9.7)
 
@@ -1036,7 +1071,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -1070,7 +1105,8 @@ no-mutation guarantee.
 | Living-world integration (v1.9.6 — added in test_living_reference_world.py) | 0 | 9 |
 | Reference bank credit review lite (v1.9.7) | 1 | 29    |
 | Living-world integration (v1.9.7 — added in test_living_reference_world.py) | 0 | 7 |
-| **post-v1.7 subtotal**                  | **28**| **984** |
+| Performance boundary (v1.9.8)           | 1     | 10    |
+| **post-v1.7 subtotal**                  | **29**| **994** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1078,8 +1114,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7) | 28 | 984 |
-| **Total**                        | **70**| **1616** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8) | 29 | 994 |
+| **Total**                        | **71**| **1626** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

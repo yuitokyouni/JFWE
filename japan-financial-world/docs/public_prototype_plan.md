@@ -129,6 +129,18 @@ are true:
     output do not claim "predicts markets," "production-ready,"
     "enterprise-ready," "Japan market simulator," or similar
     unsubstantiated framings.
+12. **Performance boundary documented.** `docs/performance_boundary.md`
+    exists and explicitly states: the v1.9 demo uses bounded
+    all-pairs loops (`O(P × I × F)` valuation, `O(P × B × F)`
+    credit review) only inside fixed demo-size fixtures; future
+    production-scale traversal must be sparse and gated on
+    relationships / exposures / coverage rather than dense
+    actor-product loops; no native (C++ / Julia / Rust / GPU)
+    rewrite is in scope for v1.9. The
+    `tests/test_living_reference_world_performance_boundary.py`
+    suite enforces the discipline (record-budget, exact mechanism
+    counts, no price / trade / contract-mutation records, no
+    warnings or errors on the default sweep).
 
 ## How v1.9.last differs from v1.8.0's public release
 
