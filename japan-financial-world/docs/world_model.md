@@ -7289,3 +7289,103 @@ The default-fixture `living_world_digest` changes from `475d558d2d0eae491b3f7f4a
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `2349 / 2349` (v1.12.1) to `2456 / 2456` (v1.12.2) — `+107` tests (`+87` in the new `tests/test_market_environment.py`, `+11` v1.12.2 integration tests in `tests/test_living_reference_world.py`, `+9` evidence / filter / trigger tests across `tests/test_firm_state.py`, `tests/test_investor_intent.py`, `tests/test_strategic_response.py`). The CLI surface gains a `market_environments=` column; the per-period record count moves from 70 to 71; the per-run record window widens from `[280, 312]` to `[284, 316]`; the default-fixture `living_world_digest` changes to `d6b25704014c3f19da330f534d5f8266ce8a9b73b9ee8da378b19c4691cb5dfe` (expected — see §82.7).
+
+## 83. v1.12.3 EvidenceResolver / ActorContextFrame — making attention load-bearing
+
+§83 adds a **read-only evidence resolution layer** that turns the ids an actor selected (via ``SelectedObservationSet``) plus optional explicit-id kwargs into a structured, actor-specific ``ActorContextFrame``. The frame is the *information bottleneck* that future attention-conditioned mechanisms (v1.12.4 investor intent, v1.12.5 valuation, v1.12.6 bank credit review, v1.12.7 next-period attention feedback) will consume — instead of silently scanning all books for context, those mechanisms will read only what the resolver surfaced for *this* actor on *this* date.
+
+This is a **substrate** milestone, not a behavior change. Every existing mechanism continues to consume evidence the way it did before. v1.12.3 ships the dataclasses, the prefix-dispatch resolver, and the tests that pin the discipline; future v1.12.x milestones will refactor mechanisms one by one to consume ``ActorContextFrame`` instead of evidence ids directly.
+
+### 83.1 Why this exists
+
+Through v1.12.2 the engine accumulated rich per-period evidence — corporate signals, pressure signals, industry / market / environment context, firm latent state, valuations, dialogues, escalations, intents — and helpers cited the right evidence by **caller-supplied id tuples** (the v1.12.x *attention discipline*). But the *attention surface* itself — the v1.8.5 ``SelectedObservationSet`` an actor produced — was rarely the *load-bearing* gate. Most mechanisms would happily resolve evidence even when nothing pointed at it; selection was a record on the side.
+
+v1.12.3 turns this around without yet changing any mechanism's contract:
+
+- a future attention-conditioned investor intent step (v1.12.4) will call ``resolve_actor_context(...)`` with the investor's ``SelectedObservationSet`` and the helper's read set will be exactly what the actor saw — not what the orchestrator could find;
+- a future attention-conditioned valuation step (v1.12.5) will read its evidence the same way, so a valuation produced in a sparse-attention regime is structurally distinguishable from one produced under full information;
+- a future bank credit review step (v1.12.6) will consume the bank's selected refs, not the kernel's full ledger;
+- a future v1.12.7 feedback step (next-period attention conditioned on prior frames) has a frame-shaped object to remember.
+
+### 83.2 What v1.12.3 ships
+
+- `world/evidence.py` (new):
+  - `EvidenceRef` — immutable record of one resolved evidence id plus its bucket and resolution status. Carries lightweight metadata only (id, type, source book, status); never the full record content. Confidential dialogue / engagement content does not flow through this layer.
+  - `ActorContextFrame` — immutable per-(actor, period) frame carrying eleven resolved-id bucket tuples (signals / variable_observations / exposures / market_conditions / market_readouts / market_environment_states / industry_conditions / firm_states / valuations / dialogues / escalation_candidates) plus the `unresolved_refs` tail and a synthetic `confidence` ordering in `[0.0, 1.0]` (booleans rejected). Has the v1.12.3 anti-fields binding: no `content`, `transcript`, `notes`, `minutes`, `attendees`, `order`, `trade`, `buy`, `sell`, `rebalance`, `target_weight`, `expected_return`, `target_price`, `recommendation`, `investment_advice`, `portfolio_allocation`, or `execution` field.
+  - `EvidenceResolver` — frozen dataclass wrapper that holds a kernel reference and exposes `resolve_actor_context(...)` as a method. The class is stateless; every interesting input lives on the call's keyword args.
+  - `resolve_actor_context(kernel, *, actor_id, actor_type, as_of_date, selected_observation_set_ids=(), explicit_*_ids=(), context_frame_id=None, strict=False, metadata=None)` — module-level helper that walks the inputs, classifies refs by id-prefix dispatch, resolves each against the matching book, and emits one ``ActorContextFrame``. Idempotent / deterministic / never mutates any source-of-truth book.
+  - Errors: `EvidenceResolutionError` (base), `StrictEvidenceResolutionError` (strict mode).
+  - Module-level constants: `ALL_BUCKETS`, `STATUS_RESOLVED`, `STATUS_UNRESOLVED`, plus eleven `BUCKET_*` labels — exported so future mechanisms can pin against them.
+- `world/kernel.py` — `evidence_resolver: EvidenceResolver | None = None` field on `WorldKernel`; auto-instantiated in `__post_init__` after the observation-menu builder.
+- `tests/test_evidence_resolver.py` (new) — 84 tests covering field validation (every required string, the bounded `confidence` with bool rejection), immutability of both dataclasses, anti-fields on the frame's dataclass field set, the prefix dispatch over every v1.9 → v1.12.2 id type (signal / obs:variable / exposure / market_condition / readout / market_environment / industry_condition / firm_state / valuation / dialogue / escalation), explicit-id resolution per bucket, selection-driven resolution, the v1.12.3 dedup-with-first-seen-order rule, the unresolved-ref capture, strict mode, the no-mutation invariant against every other source-of-truth book, the no-ledger-write invariant, the no-content-leak guarantee on dialogue resolution, kwarg-bucket-overrides-prefix-dispatch escape hatch, deterministic output across two fresh kernels, plus a jurisdiction-neutral identifier scan over both module and test file.
+
+### 83.3 Resolution rules (binding)
+
+The resolver's behavior is fixed by these rules. None of them is a recommendation; each is a documented dispatch step.
+
+1. **No global scan.** The resolver reads only the ids the caller passes — selection ids + explicit-id kwargs. It does **not** scan the kernel's other books for additional context.
+2. **Prefix dispatch over selection refs.** For each cited ``SelectedObservationSet``, the resolver iterates `selected_refs`, classifies each by id prefix against the v1.12.3 prefix table, and attempts to resolve it against the matching book. Successful resolution puts the id in the bucket's `resolved_*_ids` tuple; a failure puts it in `unresolved_refs`.
+3. **Explicit-id kwargs override prefix dispatch.** A caller who passes an id via `explicit_signal_ids=` lands it in the signal bucket regardless of its actual prefix — the escape hatch for callers whose ids do not follow the orchestrator's id conventions.
+4. **First-seen order, dedup collapsed.** Each bucket preserves the order in which ids were first seen across selection refs and explicit kwargs combined. Duplicates are collapsed to the first occurrence; unresolved refs are deduped on `(ref_id, ref_type)`. Two fresh resolves of the same input produce byte-identical frames.
+5. **Tolerant by default; strict on demand.** Unresolved selection ids and unresolved evidence ids land in `unresolved_refs` and never raise — unless the caller passes `strict=True`, in which case the resolver raises `StrictEvidenceResolutionError` after walking all inputs.
+6. **No ledger writes by default.** v1.12.3 emits no ledger record. A future audit milestone may optionally turn that on; the dataclass + resolver are designed to support it without breaking the no-mutation invariant.
+7. **No mutation of any other book.** The resolver only calls per-book getters (`get_signal` / `get_observation` / etc.) to confirm an id resolves; it never adds, edits, or removes anything on any other source-of-truth book.
+
+### 83.4 Prefix dispatch table
+
+The v1.12.3 prefix table maps id prefixes to (bucket, source-book attribute, getter method name). Longer prefixes win first; the bare `signal:` entry is intentionally last so a more specific prefix (`obs:variable:`, `escalation:`, `dialogue:`, etc.) gets a chance to match first.
+
+| ID prefix | Bucket | Kernel book | Getter |
+| --- | --- | --- | --- |
+| `obs:variable:` | `variable_observation` | `variables` | `get_observation` |
+| `exposure:` | `exposure` | `exposures` | `get_exposure` |
+| `market_condition:` | `market_condition` | `market_conditions` | `get_condition` |
+| `readout:` | `market_readout` | `capital_market_readouts` | `get_readout` |
+| `market_environment:` | `market_environment_state` | `market_environments` | `get_state` |
+| `industry_condition:` | `industry_condition` | `industry_conditions` | `get_condition` |
+| `firm_state:` | `firm_state` | `firm_financial_states` | `get_state` |
+| `valuation:` | `valuation` | `valuations` | `get_valuation` |
+| `dialogue:` | `dialogue` | `engagement` | `get_dialogue` |
+| `escalation:` | `escalation_candidate` | `escalations` | `get_candidate` |
+| `signal:` | `signal` | `signals` | `get_signal` |
+
+A future milestone may extend the table without touching the dataclasses.
+
+### 83.5 Anti-fields and anti-claims (binding)
+
+The dataclasses store **only** ids and lightweight bucket / status metadata. They deliberately have **no** `content`, `transcript`, `notes`, `minutes`, `attendees`, `order`, `trade`, `buy`, `sell`, `rebalance`, `target_weight`, `expected_return`, `target_price`, `recommendation`, `investment_advice`, or `portfolio_allocation` field. Tests pin the absence on the dataclass field set.
+
+The resolver does **not** form prices, calibrate yield curves, calibrate spreads, match orders, clear trades, disseminate quotes, originate loans, recommend any security, advise on any investment, allocate any portfolio, ingest any real data, apply any Japan-specific calibration, execute any LLM-agent step, or compute any behavior probability.
+
+### 83.6 Performance boundary (binding)
+
+v1.12.3 ships **substrate only**: the orchestrator does not call the resolver on the per-period sweep, so the per-period record budget and the per-run record window are **unchanged** from v1.12.2 (`71` per period, `[284, 316]` per run). The default-fixture `living_world_digest` is **unchanged** from v1.12.2 (`d6b25704014c3f19da330f534d5f8266ce8a9b73b9ee8da378b19c4691cb5dfe`); v1.12.3 introduces no new ledger record and no new per-period state. Future v1.12.4 → v1.12.7 milestones that consume the frame will be the digest-changing milestones.
+
+### 83.7 What v1.12.3 does not decide
+
+- **Does not** introduce trading, price formation, lending decisions, investment recommendations, portfolio allocation, order submission, or any execution-class behavior.
+- **Does not** introduce real data ingestion or Japan calibration.
+- **Does not** introduce LLM-agent execution. The frame is the *substrate* a future LLM-agent step can read; it is not itself an LLM call.
+- **Does not** compute any behavior probability.
+- **Does not** refactor v1.12.0 / v1.12.1 / v1.12.2 mechanism contracts. Existing helpers continue to accept evidence id kwargs the way they always have; future milestones will optionally consume `ActorContextFrame` instead.
+- **Does not** lock the bucket vocabulary. A future milestone may extend `ALL_BUCKETS` with new bucket labels (e.g., `intent`, `response_candidate`) when that becomes useful.
+
+### 83.8 Position in the v1.12 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 → v1.10.5 (engagement / strategic-response stack) | Code (§70 → §76). | Shipped |
+| v1.11.0 → v1.11.2 (capital-market surface stack) | Code (§77 → §79). | Shipped |
+| v1.12.0 Firm financial latent state | Code (§80). | Shipped |
+| v1.12.1 Investor intent signal | Code (§81). | Shipped |
+| v1.12.2 Market environment state | Code (§82). | Shipped |
+| **v1.12.3 EvidenceResolver / ActorContextFrame** | Code (§83). Read-only attention bottleneck substrate. | **Shipped** |
+| v1.12.4 Attention-conditioned investor intent (anticipated) | Code. | Planned |
+| v1.12.5 Attention-conditioned valuation (anticipated) | Code. | Planned |
+| v1.12.6 Attention-conditioned bank credit review (anticipated) | Code. | Planned |
+| v1.12.7 Next-period attention feedback (anticipated) | Code. | Planned |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `2456 / 2456` (v1.12.2) to `2540 / 2540` (v1.12.3) — `+84` tests in the new `tests/test_evidence_resolver.py`. The per-period record count, per-run window, and `living_world_digest` are unchanged from v1.12.2 (substrate-only milestone — no new ledger record, no new per-period state).

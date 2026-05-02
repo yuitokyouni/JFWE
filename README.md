@@ -29,18 +29,17 @@ and
 The reference data is fully synthetic; Japan calibration is v2 / v3
 territory.
 
-The current code is at **v1.12.2 market environment state** —
-nine compact regime labels per period (liquidity / volatility /
-credit / funding / risk_appetite / rate_environment /
-refinancing_window / equity_valuation / overall_market_access)
-that downstream LLM-agent / attention-conditioned consumers can
-read as a single record per period, plus type-correct cross-link
-slots on firm-state, investor-intent, and corporate-response
-candidate — layered on top of v1.12.1 investor intent signal,
-v1.12.0 firm financial latent state, v1.11.2 demo market regime
-presets, v1.11.1 capital-market readout, v1.11.0 capital-market
-surface, v1.10.5 living-world integration, and the **v1.9.last
-public prototype freeze**. v1.9 layered
+The current code is at **v1.12.3 EvidenceResolver /
+ActorContextFrame** — a read-only evidence resolution layer that
+turns the ids an actor selected (via `SelectedObservationSet`)
+plus optional explicit-id kwargs into a structured, actor-
+specific `ActorContextFrame`, making attention a real
+information bottleneck future v1.12.4 → v1.12.7 mechanisms will
+consume — layered on top of v1.12.2 market environment state,
+v1.12.1 investor intent signal, v1.12.0 firm financial latent
+state, v1.11.2 demo market regime presets, v1.11.1 capital-market
+readout, v1.11.0 capital-market surface, v1.10.5 living-world
+integration, and the **v1.9.last public prototype freeze**. v1.9 layered
 three review-only synthetic mechanisms (firm operating-pressure
 assessment, valuation refresh lite, bank credit review lite) onto
 the v1.8 endogenous activity stack and integrated them into a
@@ -260,7 +259,8 @@ in well under a second, and are deterministic across invocations.
 | v1.11.2       | Demo market regime presets (four named synthetic presets — `constructive` / `mixed` / `constrained` / `tightening` — selectable via the `--market-regime` CLI flag and the `market_regime` kwarg on `run_living_reference_world`; +15 tests; default behavior preserved bit-for-bit when the flag is omitted, so the v1.11.1 default-fixture digest is unchanged; per-run record-count window unchanged at `[244, 276]`; demo-config layer only — no real data, no calibrated yields / spreads / index levels, no forecasts, no recommendations, no transaction execution) | Shipped |
 | v1.12.0       | Firm financial latent state (`FirmFinancialStateRecord` + `FirmFinancialStateBook` + `run_reference_firm_financial_state_update` in new `world/firm_state.py`; ledger `FIRM_LATENT_STATE_UPDATED` + kernel wiring; living-world demo gains a per-period firm-state phase between the v1.11.1 readout and the attention phase; one state per (firm, period) chained via `previous_state_id` to the prior period's state; six bounded synthetic pressure / readiness scalars in `[0, 1]` updated by a small documented rule set; +122 tests; per-run record-count window widens from `[244, 276]` to `[256, 288]`; default-fixture `living_world_digest` changes by design; **first time-crossing endogenous state-update layer in public FWE** — market regimes / readouts / industry demand / pressure evidence accumulate over time into per-firm latent state, while every anti-claim from v1.10.x / v1.11.x is preserved bit-for-bit: no revenue / sales / EBITDA / net_income / cash_balance / debt_amount / real_financial_statement / forecast_value / actual_value / accounting_value / investment_recommendation, no contract mutation, no covenant enforcement, no pricing, no Japan calibration) | Shipped |
 | v1.12.1       | Investor intent signal (`InvestorIntentRecord` + `InvestorIntentBook` + `run_reference_investor_intent_signal` in new `world/investor_intent.py`; ledger `INVESTOR_INTENT_SIGNAL_ADDED` + kernel wiring; living-world demo gains a per-period investor-intent phase between v1.10.3 escalation and v1.10.3 corporate response; one intent per (investor, firm, period) with eight evidence id tuples cited from the period's selection / readout / market_condition / firm_state / valuation / dialogue / escalation / theme; deterministic priority-order classifier across `deepen_due_diligence` / `risk_flag_watch` / `decrease_confidence` / `engagement_watch` / `hold_review`; +90 tests; per-run record-count window widens from `[256, 288]` to `[280, 312]`; default-fixture `living_world_digest` changes by design; **non-binding labels only** — no order, no trade, no rebalance, no target weight, no overweight / underweight execution, no expected return, no target price, no security recommendation, no investment advice, no portfolio allocation, no execution; pre-action review posture only) | Shipped |
-| **v1.12.2**   | **Market environment state** (`MarketEnvironmentStateRecord` + `MarketEnvironmentBook` + `build_market_environment_state` in new `world/market_environment.py`; ledger `MARKET_ENVIRONMENT_STATE_ADDED` + kernel wiring; living-world demo gains a per-period market-environment phase between the v1.11.1 readout and the v1.12.0 firm-state phase; one environment record per period with nine compact regime labels — `liquidity_regime` / `volatility_regime` / `credit_regime` / `funding_regime` / `risk_appetite_regime` / `rate_environment` / `refinancing_window` / `equity_valuation_regime` / `overall_market_access_label` — derived from v1.11.0 conditions + v1.11.1 readout by a small documented mapping rule set; type-correct additive cross-link slots `evidence_market_environment_state_ids` on `FirmFinancialStateRecord` and `InvestorIntentRecord` plus `trigger_market_environment_state_ids` on `CorporateStrategicResponseCandidate` (never overloaded into `signal_id` / `industry_condition_id` / `market_condition_id` slots); +107 tests; per-run record-count window widens from `[280, 312]` to `[284, 316]`; default-fixture `living_world_digest` changes by design; **labels-only context** — no price, no yield, no spread, no index level, no forecast, no expected return, no recommendation, no target price, no target weight, no order, no trade, no allocation; compact substrate for downstream LLM-agent / attention-conditioned consumers) | **Shipped (2456 tests)** |
+| v1.12.2       | Market environment state (`MarketEnvironmentStateRecord` + `MarketEnvironmentBook` + `build_market_environment_state` in new `world/market_environment.py`; ledger `MARKET_ENVIRONMENT_STATE_ADDED` + kernel wiring; living-world demo gains a per-period market-environment phase between the v1.11.1 readout and the v1.12.0 firm-state phase; one environment record per period with nine compact regime labels — `liquidity_regime` / `volatility_regime` / `credit_regime` / `funding_regime` / `risk_appetite_regime` / `rate_environment` / `refinancing_window` / `equity_valuation_regime` / `overall_market_access_label` — derived from v1.11.0 conditions + v1.11.1 readout by a small documented mapping rule set; type-correct additive cross-link slots `evidence_market_environment_state_ids` on `FirmFinancialStateRecord` and `InvestorIntentRecord` plus `trigger_market_environment_state_ids` on `CorporateStrategicResponseCandidate` (never overloaded into `signal_id` / `industry_condition_id` / `market_condition_id` slots); +107 tests; per-run record-count window widens from `[280, 312]` to `[284, 316]`; default-fixture `living_world_digest` changes by design; **labels-only context** — no price, no yield, no spread, no index level, no forecast, no expected return, no recommendation, no target price, no target weight, no order, no trade, no allocation; compact substrate for downstream LLM-agent / attention-conditioned consumers) | Shipped |
+| **v1.12.3**   | **EvidenceResolver / ActorContextFrame** (`EvidenceRef` + `ActorContextFrame` + `EvidenceResolver` + `resolve_actor_context` in new `world/evidence.py`; optional `WorldKernel.evidence_resolver` field; read-only evidence resolution layer that turns SelectedObservationSet ids and explicit evidence ids into a structured, actor-specific context frame partitioned across eleven buckets — signals / variable observations / exposures / market_conditions / market_readouts / market_environment_states / industry_conditions / firm_states / valuations / dialogues / escalation_candidates — plus an `unresolved_refs` tail; deterministic prefix dispatch over every v1.9 → v1.12.2 id type with explicit-kwarg override as an escape hatch; tolerant by default with optional `strict=True` mode; +84 tests; per-run record-count window unchanged from v1.12.2 (substrate-only — no new ledger record, no new per-period state); default-fixture `living_world_digest` unchanged from v1.12.2 by design; **substrate only** — no trading, no price formation, no lending decisions, no investment recommendations, no portfolio allocation, no order submission, no real data ingestion, no Japan calibration, no LLM-agent execution, no behavior probabilities, no ledger writes by default, no mutation of any other source-of-truth book; this is the attention bottleneck future v1.12.4 → v1.12.7 attention-conditioned mechanisms will consume) | **Shipped (2540 tests)** |
 | v1.10.last    | Public engagement layer freeze (docs-only) | Planned |
 | v2.0          | Japan public-data calibration design gate                 | Not started                  |
 | v3.0          | Proprietary Japan calibration / expert-data layer         | Private                      |
@@ -531,7 +531,7 @@ Start here:
 
 **Tests:**
 - [docs/test_inventory.md](japan-financial-world/docs/test_inventory.md)
-  — 2456 tests grouped by component (444 v0 + 188 v1.0–v1.7 + 1824 post-v1.7)
+  — 2540 tests grouped by component (444 v0 + 188 v1.0–v1.7 + 1908 post-v1.7)
 
 **Long-form / original ambition (kept for reference):**
 - [docs/architecture.md](japan-financial-world/docs/architecture.md) —
@@ -569,8 +569,8 @@ From the `japan-financial-world` directory:
 python -m pytest -q
 ```
 
-Expected: `2456 passed` at the latest commit (444 v0 + 188 v1
-frozen reference + 1824 post-v1.7 additions covering the reference
+Expected: `2540 passed` at the latest commit (444 v0 + 188 v1
+frozen reference + 1908 post-v1.7 additions covering the reference
 demo, replay, manifest, catalog-shape, experiment harness, the
 v1.8.x endogenous-activity stack — interactions, routines,
 attention, variable / exposure layers, the menu builder, the

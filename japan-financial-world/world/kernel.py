@@ -28,6 +28,7 @@ from world.scheduler import Phase, Scheduler, ScheduledTask, TaskSpec
 from world.signals import SignalBook
 from world.state import State
 from world.engagement import DialogueBook, EscalationCandidateBook
+from world.evidence import EvidenceResolver
 from world.firm_state import FirmFinancialStateBook
 from world.industry import IndustryConditionBook
 from world.investor_intent import InvestorIntentBook
@@ -100,6 +101,12 @@ class WorldKernel:
     )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
+    # v1.12.3 — read-only evidence resolution service. Stateless;
+    # never mutates any other source-of-truth book; never emits
+    # a ledger record by default. Future v1.12.x mechanisms will
+    # consume the produced ActorContextFrame instead of scanning
+    # books globally.
+    evidence_resolver: EvidenceResolver | None = None
 
     def __post_init__(self) -> None:
         for book in (
@@ -189,6 +196,16 @@ class WorldKernel:
                 interactions=self.interactions,
                 clock=self.clock,
             )
+
+        # v1.12.3 evidence resolver — stateless read-only helper
+        # that turns the ids an actor selected (via
+        # ``SelectedObservationSet``) plus optional explicit-id
+        # kwargs into a structured ``ActorContextFrame``. Writes
+        # nothing; never mutates any other source-of-truth book.
+        # Future attention-conditioned mechanisms will consume
+        # the frame instead of scanning books globally.
+        if self.evidence_resolver is None:
+            self.evidence_resolver = EvidenceResolver(kernel=self)
 
         # ------------------------------------------------------------------
         # v1.2.1 run-mode guard.

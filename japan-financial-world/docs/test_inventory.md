@@ -1,14 +1,15 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.12.2** (`Market environment
-state` — nine compact regime labels per period derived from
-v1.11.0 conditions + v1.11.1 readout, additive type-correct
-evidence / trigger slot on firm-state, investor-intent, and
-corporate-response candidate; per-run record-count window
-widens from `[280, 312]` to `[284, 316]`; default-fixture
-`living_world_digest` changes to `d6b25704...` by design):
-`2456 / 2456 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1824 post-v1.7 additions covering reference demo, replay, manifest,
+Snapshot of the test suite at **v1.12.3** (`EvidenceResolver /
+ActorContextFrame` — read-only evidence resolution layer that
+turns SelectedObservationSet ids and explicit evidence ids into
+a structured actor-specific context frame; substrate-only
+milestone — per-run record-count window and `living_world_digest`
+both unchanged from v1.12.2; this is the attention bottleneck
+future v1.12.4 → v1.12.7 attention-conditioned mechanisms will
+consume):
+`2540 / 2540 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1908 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -78,7 +79,13 @@ additive `trigger_market_environment_state_ids` slot on
 `tests/test_market_environment.py` and extended in
 `tests/test_firm_state.py`, `tests/test_investor_intent.py`,
 `tests/test_strategic_response.py`, and
-`tests/test_living_reference_world.py`).
+`tests/test_living_reference_world.py`, and the v1.12.3
+EvidenceResolver / ActorContextFrame — read-only evidence
+resolution layer (`EvidenceRef` + `ActorContextFrame` +
+`EvidenceResolver` + `resolve_actor_context` in new
+`world/evidence.py`) plus the optional
+`WorldKernel.evidence_resolver` field, exercised in the new
+`tests/test_evidence_resolver.py`).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -1179,8 +1186,9 @@ no-mutation guarantee.
 | Firm financial latent state (v1.12.0) | 1 | 116 |
 | Investor intent signal (v1.12.1) | 1 | 84 |
 | Market environment state (v1.12.2) | 1 | 87 |
-| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 + v1.12.1 + v1.12.2 additive in test_living_reference_world.py — 15 v1.10.5, 8 v1.11.0, 7 v1.11.1, 15 v1.11.2, 9 v1.12.0, 9 v1.12.1, and 11 v1.12.2 integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 / +9 v1.12.1 / +11 v1.12.2 in test_living_reference_world.py) |
-| **post-v1.7 subtotal**                  | **38**| **1824** |
+| EvidenceResolver / ActorContextFrame (v1.12.3) | 1 | 84 |
+| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 + v1.12.1 + v1.12.2 additive in test_living_reference_world.py — 15 v1.10.5, 8 v1.11.0, 7 v1.11.1, 15 v1.11.2, 9 v1.12.0, 9 v1.12.1, and 11 v1.12.2 integration tests; v1.12.3 is substrate-only and adds no living-world integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 / +9 v1.12.1 / +11 v1.12.2 in test_living_reference_world.py) |
+| **post-v1.7 subtotal**                  | **39**| **1908** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1188,8 +1196,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2) | 38 | 1824 |
-| **Total**                        | **80**| **2456** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3) | 39 | 1908 |
+| **Total**                        | **81**| **2540** |
 
 ## Auditing for jurisdiction-neutral identifiers
 
