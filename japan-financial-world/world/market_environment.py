@@ -203,6 +203,13 @@ class MarketEnvironmentStateRecord:
     source_market_condition_ids: tuple[str, ...] = field(default_factory=tuple)
     source_market_readout_ids: tuple[str, ...] = field(default_factory=tuple)
     source_industry_condition_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.13.5 additive slot — plain-id citations to interbank
+    # liquidity states. Citation-only; the record never reads
+    # the cited record's content. Empty by default for backwards
+    # compatibility.
+    evidence_interbank_liquidity_state_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
@@ -225,6 +232,7 @@ class MarketEnvironmentStateRecord:
         "source_market_condition_ids",
         "source_market_readout_ids",
         "source_industry_condition_ids",
+        "evidence_interbank_liquidity_state_ids",
     )
 
     def __post_init__(self) -> None:
@@ -285,6 +293,9 @@ class MarketEnvironmentStateRecord:
             ),
             "source_industry_condition_ids": list(
                 self.source_industry_condition_ids
+            ),
+            "evidence_interbank_liquidity_state_ids": list(
+                self.evidence_interbank_liquidity_state_ids
             ),
             "metadata": dict(self.metadata),
         }
@@ -359,6 +370,9 @@ class MarketEnvironmentBook:
                     ),
                     "source_industry_condition_ids": list(
                         state.source_industry_condition_ids
+                    ),
+                    "evidence_interbank_liquidity_state_ids": list(
+                        state.evidence_interbank_liquidity_state_ids
                     ),
                 },
                 space_id="market_environment",
@@ -633,6 +647,7 @@ def build_market_environment_state(
     market_condition_ids: Sequence[str] = (),
     market_readout_ids: Sequence[str] = (),
     industry_condition_ids: Sequence[str] = (),
+    evidence_interbank_liquidity_state_ids: Sequence[str] = (),
     environment_state_id: str | None = None,
     visibility: str = "internal_only",
     metadata: Mapping[str, Any] | None = None,
@@ -771,6 +786,9 @@ def build_market_environment_state(
         source_market_condition_ids=tuple(market_condition_ids),
         source_market_readout_ids=tuple(market_readout_ids),
         source_industry_condition_ids=tuple(industry_condition_ids),
+        evidence_interbank_liquidity_state_ids=tuple(
+            evidence_interbank_liquidity_state_ids
+        ),
         metadata=dict(metadata or {}),
     )
     book.add_state(record)

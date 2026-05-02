@@ -2603,6 +2603,12 @@ def test_v1_12_9_living_world_digest_pinned():
     `metadata["focus_stale_counts"]` carry-forward map; the
     memory `SelectedObservationSet` is now budget-bounded
     rather than fully accumulating.
+
+    The digest moves again at v1.13.5: the orchestrator now
+    emits one `interbank_liquidity_state_recorded` ledger
+    record per bank per period (2 banks × 4 periods = 8 new
+    records in the default fixture) and stamps the cited ids
+    onto each `bank_credit_review_note` payload + metadata.
     """
     from examples.reference_world.living_world_replay import (
         living_world_digest,
@@ -2611,10 +2617,10 @@ def test_v1_12_9_living_world_digest_pinned():
     k = _seed_kernel()
     r = _run_default(k)
     expected = (
-        "e328f955922117f7d9697ea9a68877c418b818eedbab888f2d82c4b9ac4070b0"
+        "916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379"
     )
     assert living_world_digest(k, r) == expected, (
-        "v1.12.9 living_world_digest moved unexpectedly. If the "
+        "v1.13.5 living_world_digest moved unexpectedly. If the "
         "shift is intentional, update the pinned value here AND "
         "in docs/world_model.md and docs/test_inventory.md."
     )

@@ -8294,3 +8294,23 @@ The book emits **only** `CENTRAL_BANK_OPERATION_SIGNAL_RECORDED` and `COLLATERAL
 v1.13.4 is storage-only. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.13.3. The orchestrator integration arrives at v1.13.5.
 
 The test count moves from `2895 / 2895` (v1.13.3) to `2973 / 2973` (v1.13.4) — `+78` tests in the new `tests/test_central_bank_signals.py`.
+
+## 97. v1.13.5 MarketEnvironment + BankCreditReview integration — minimal additive cross-link
+
+§97 ships the integration milestone in the v1.13 sequence. It is **citation-only**: every cross-link is a plain-id list; no record reads another record's content. The v1.12.6 watch-label classifier is **unchanged**, so every prior watch-label test remains bit-for-bit identical.
+
+### 97.1 What v1.13.5 ships
+
+1. **Additive slot on `MarketEnvironmentStateRecord`** — `evidence_interbank_liquidity_state_ids: tuple[str, ...]`, default empty. The slot is normalised by the existing `_normalize_string_tuple` helper and surfaces in `to_dict()` and on the `market_environment_state_added` ledger payload. `build_market_environment_state` accepts the same kwarg and threads it through.
+2. **Additive kwarg on `run_attention_conditioned_bank_credit_review_lite`** — `explicit_interbank_liquidity_state_ids: Sequence[str] = ()`. The helper resolves each cited id via `kernel.interbank_liquidity.get_state` (silent skip on miss, mirroring the existing helper convention) and stamps the resolved ids on the produced `bank_credit_review_note` signal's `payload["resolved_interbank_liquidity_state_ids"]` and `metadata["resolved_interbank_liquidity_state_ids"]`. The classifier inputs are unchanged. The resolver itself (`world.evidence`) is **not** extended; the helper reads the kernel directly (mirroring how it already reads `kernel.firm_financial_states`).
+3. **Living-world wiring** — `run_living_reference_world` emits one `InterbankLiquidityStateRecord` per bank per period (placeholder labels: `liquidity_regime="normal"` / `settlement_pressure="low"` / `reserve_access_label="available"` / `funding_stress_label="low"`; `confidence=0.5`; `source_market_environment_state_ids` cites the period's `market_environment_state_ids`). Each `(bank, firm)` review call passes the bank's per-period state id as `explicit_interbank_liquidity_state_ids`.
+
+### 97.2 Performance boundary
+
+v1.13.5 changes the per-period record count from **79** (v1.12.x baseline) to **81** (`+banks=2` for the default fixture). The per-run total moves from `[316, 364]` to `[324, 372]`. The integration-test `living_world_digest` moves from `e328f955922117f7d9697ea9a68877c418b818eedbab888f2d82c4b9ac4070b0` (v1.12.9) to `916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379` (v1.13.5) by design — the new `interbank_liquidity_state_recorded` ledger records and the new `resolved_interbank_liquidity_state_ids` payload key on each `bank_credit_review_note` flow into the canonical view's bytes.
+
+### 97.3 Anti-claims
+
+The integration is **citation-only**. The orchestrator **does not** estimate liquidity, schedule reserves, originate loans, run a default model, change the watch-label classifier, change any pre-v1.13.5 payload key, or apply any Japan-specific rule. The placeholder state's labels are fixed strings, never the output of a calibrated model.
+
+The test count moves from `2973 / 2973` (v1.13.4) to `2988 / 2988` (v1.13.5) — `+15` tests in the new `tests/test_v1_13_5_integration.py`.

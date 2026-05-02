@@ -87,6 +87,10 @@ from world.market_conditions import (
 from world.market_surface_readout import build_capital_market_readout
 from world.market_environment import build_market_environment_state
 from world.firm_state import run_reference_firm_financial_state_update
+from world.interbank_liquidity import (
+    DuplicateInterbankLiquidityStateError,
+    InterbankLiquidityStateRecord,
+)
 from world.attention_feedback import (
     FOCUS_LABEL_DIALOGUE,
     FOCUS_LABEL_ENGAGEMENT,
@@ -1766,6 +1770,44 @@ def run_living_reference_world(
         bank_credit_review_signal_ids: list[str] = []
         bank_credit_review_mechanism_run_ids: list[str] = []
 
+        # v1.13.5 — emit one synthetic InterbankLiquidityStateRecord
+        # per bank per period. Storage only; the labels are fixed
+        # (``normal`` / ``low`` / ``available`` / ``low``) and a
+        # synthetic ``confidence=0.5`` so the per-period content is
+        # deterministic and bit-identical across runs. The state's
+        # provenance cites this period's market-environment state
+        # ids; it is **not** computed from any model — it is a
+        # placeholder reference state that lets v1.13.5 wire the
+        # cross-link slot. The bank credit review helper records
+        # the ids on the produced note's audit payload + metadata
+        # without changing the v1.12.6 watch-label classifier.
+        interbank_liquidity_state_id_by_bank: dict[str, str] = {}
+        for bank_id in banks:
+            ils_id = (
+                f"interbank_liquidity_state:{bank_id}:{iso_date}"
+            )
+            try:
+                kernel.interbank_liquidity.add_state(
+                    InterbankLiquidityStateRecord(
+                        liquidity_state_id=ils_id,
+                        institution_id=bank_id,
+                        as_of_date=iso_date,
+                        liquidity_regime="normal",
+                        settlement_pressure="low",
+                        reserve_access_label="available",
+                        funding_stress_label="low",
+                        status="active",
+                        visibility="internal_only",
+                        confidence=0.5,
+                        source_market_environment_state_ids=tuple(
+                            market_environment_state_ids
+                        ),
+                    )
+                )
+            except DuplicateInterbankLiquidityStateError:
+                pass
+            interbank_liquidity_state_id_by_bank[bank_id] = ils_id
+
         for bank_id, bank_selection_id in zip(banks, bank_selection_ids):
             for firm_id in firms:
                 # All valuations on this firm in this period.
@@ -1811,6 +1853,9 @@ def run_living_reference_world(
                         ),
                         explicit_market_environment_state_ids=tuple(
                             market_environment_state_ids
+                        ),
+                        explicit_interbank_liquidity_state_ids=(
+                            interbank_liquidity_state_id_by_bank[bank_id],
                         ),
                     )
                 )

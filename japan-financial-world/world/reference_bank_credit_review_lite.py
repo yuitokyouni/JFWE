@@ -917,6 +917,7 @@ def run_attention_conditioned_bank_credit_review_lite(
     explicit_industry_condition_ids: Sequence[str] = (),
     explicit_exposure_ids: Sequence[str] = (),
     explicit_variable_observation_ids: Sequence[str] = (),
+    explicit_interbank_liquidity_state_ids: Sequence[str] = (),
     request_id: str | None = None,
     signal_id: str | None = None,
     strict: bool = False,
@@ -1274,12 +1275,41 @@ def run_attention_conditioned_bank_credit_review_lite(
         ),
     }
 
+    # v1.13.5 additive: cite explicit interbank-liquidity-state
+    # ids the caller surfaced. Citation-only — the helper does
+    # NOT change the v1.12.6 watch-label classifier from these,
+    # so all existing watch-label tests remain bit-for-bit
+    # identical. Only ids that resolve to records in
+    # ``kernel.interbank_liquidity`` are recorded; missing ids
+    # are silently skipped (the existing helper convention).
+    resolved_interbank_liquidity_state_ids: tuple[str, ...] = ()
+    if explicit_interbank_liquidity_state_ids:
+        resolved_buf: list[str] = []
+        for lsid in explicit_interbank_liquidity_state_ids:
+            try:
+                kernel.interbank_liquidity.get_state(lsid)
+            except Exception:
+                continue
+            resolved_buf.append(lsid)
+        resolved_interbank_liquidity_state_ids = tuple(resolved_buf)
+    if resolved_interbank_liquidity_state_ids:
+        payload["resolved_evidence_buckets"][
+            "interbank_liquidity_states"
+        ] = len(resolved_interbank_liquidity_state_ids)
+        payload["resolved_interbank_liquidity_state_ids"] = list(
+            resolved_interbank_liquidity_state_ids
+        )
+
     extra_metadata = dict(proposed.get("metadata", {}))
     extra_metadata["attention_conditioned"] = True
     extra_metadata["context_frame_id"] = frame.context_frame_id
     extra_metadata["context_frame_status"] = frame.status
     extra_metadata["context_frame_confidence"] = frame.confidence
     extra_metadata["watch_label"] = watch_label
+    if resolved_interbank_liquidity_state_ids:
+        extra_metadata["resolved_interbank_liquidity_state_ids"] = list(
+            resolved_interbank_liquidity_state_ids
+        )
     if frame.unresolved_refs:
         extra_metadata["unresolved_refs"] = [
             r.to_dict() for r in frame.unresolved_refs

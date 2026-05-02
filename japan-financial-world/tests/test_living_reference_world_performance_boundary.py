@@ -238,6 +238,7 @@ def count_expected_living_world_records(
         firms                                  firm financial latent state (v1.12.0)
         2 * (investors + banks)                menu + selection
         investors * firms                      valuation (v1.9.5)
+        banks                                  interbank liquidity state (v1.13.5)
         banks * firms                          bank credit review note (v1.9.7)
         investors * firms                      portfolio-company dialogue (v1.10.2)
         investors * firms                      investor escalation candidate (v1.10.3)
@@ -249,8 +250,8 @@ def count_expected_living_world_records(
 
     For the default fixture (3 firms, 2 investors, 2 banks,
     3 industries, 5 markets, 1 readout/period, 1 environment
-    state/period, 4 periods) this is 79 records per period × 4
-    periods = 316.
+    state/period, 4 periods) this is 81 records per period × 4
+    periods = 324.
 
     v1.12.8 also creates a *memory* SelectedObservationSet per
     actor from period 1 onwards (when the actor has a
@@ -272,6 +273,7 @@ def count_expected_living_world_records(
         + firms                                # firm financial latent state (v1.12.0)
         + 2 * actors                           # menu + selection
         + investors * firms                    # valuation
+        + banks                                # interbank liquidity state (v1.13.5)
         + banks * firms                        # credit review
         + investors * firms                    # dialogue (v1.10.2)
         + investors * firms                    # escalation candidate (v1.10.3, investor)
@@ -336,10 +338,11 @@ def test_default_living_world_total_run_record_count_matches_formula():
     v1.12.1 / v1.12.2 add no new setup records). v1.12.8 adds
     8 records per period (4 attention-state + feedback per
     investor + 4 per bank) plus a residual 0–8 memory-selection
-    records per post-period (period 0 has none); the per-run
-    minimum from the formula is 316, the tight upper window
-    accommodates the residual + setup overhead and lands at
-    [316, 364].
+    records per post-period (period 0 has none). v1.13.5 adds
+    ``banks`` interbank-liquidity records per period (2 in the
+    default fixture). The per-run minimum from the v1.13.5
+    formula is 324; the tight upper window accommodates the
+    residual + setup overhead and lands at [324, 372].
     """
     k = _seed_kernel()
     r = run_living_reference_world(
@@ -562,12 +565,13 @@ def test_count_expected_living_world_records_matches_default_fixture():
         banks=len(_BANK_IDS),
         periods=len(_PERIOD_DATES),
     )
-    # Per docs/performance_boundary.md (v1.12.8):
-    # 4 × 79 = 316 records per run from the per-period formula
+    # Per docs/performance_boundary.md (v1.13.5):
+    # 4 × 81 = 324 records per run from the per-period formula
     # (v1.12.7 baseline 71 + v1.12.8's 8 attention-feedback
+    # records per period + v1.13.5's banks=2 interbank-liquidity
     # records per period). Memory selections are
     # period-dependent and not in the formula.
-    assert total == 316
+    assert total == 324
 
 
 def test_count_expected_living_world_records_scales_linearly_in_periods():
