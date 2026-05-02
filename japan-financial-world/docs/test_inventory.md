@@ -1,9 +1,8 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.4** (`Reference Firm
-Operating Pressure Assessment Mechanism` — first concrete
-mechanism on the hardened v1.9.3.1 interface): `1543 / 1543
-passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
+Snapshot of the test suite at **v1.9.5** (`Reference Valuation
+Refresh Lite Mechanism` — second concrete mechanism on the
+hardened v1.9.3.1 interface): `1571 / 1571 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the
@@ -284,6 +283,44 @@ no-mutation guarantee.
   determinism; snapshot determinism; ledger emission of
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
+
+## Reference valuation refresh lite (v1.9.5)
+
+- `test_reference_valuation_refresh_lite.py` (28) — adapter
+  satisfies `MechanismAdapter`;
+  `MechanismSpec` carries the right vocabulary
+  (`model_id == VALUATION_REFRESH_MODEL_ID`,
+  `model_family == "valuation_mechanism"`,
+  `version == "0.1"`, `calibration_status == "synthetic"`,
+  `stochasticity == "deterministic"`); adapter rejects a kernel
+  argument; runs without a kernel (proves it reads
+  `request.evidence` only); missing pressure evidence yields
+  `status="degraded"` with `baseline_value` if supplied
+  (otherwise `None`); pressure signal whose `subject_id` does
+  not match `request.actor_id` is ignored; algorithm
+  correctness — zero pressure → baseline; full pressure (1.0) →
+  baseline × 0.70 + confidence 0.6; custom coefficient overrides
+  via `request.parameters` work; deterministic across two fresh
+  kernels; request not mutated; proposed valuation carries
+  every required field; `method` label is verbatim
+  `"synthetic_lite_pressure_adjusted"`; metadata carries the
+  four boundary flags (`no_price_movement`,
+  `no_investment_advice`, `synthetic_only`, `model_id`) and
+  `pressure_signal_id` link; `related_ids` include the pressure
+  signal; caller helper commits exactly one `ValuationRecord`
+  through `ValuationBook.add_valuation`; `evidence_refs`
+  preserved verbatim on the `MechanismRunRecord` (default
+  concatenation order and explicit override); `as_of_date`
+  defaults to `kernel.clock.current_date`; defensive errors on
+  `kernel=None`, empty `firm_id`, empty `valuer_id`; full
+  no-mutation guarantee against `prices`, `ownership`,
+  `contracts`, `constraints`, `exposures`, `variables`,
+  `institutions`, `external_processes`, `relationships`,
+  `routines`, `attention`, `interactions`, and the signal count
+  (the mechanism reads but does not emit signals); only one new
+  ledger record per call (the `valuation_added` from
+  `ValuationBook.add_valuation`); module constants and committed
+  identifiers pass a word-boundary forbidden-token check.
 
 ## Reference firm operating pressure assessment (v1.9.4)
 
@@ -920,7 +957,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -950,7 +987,8 @@ no-mutation guarantee.
 | Mechanism interface contract (v1.9.3 + v1.9.3.1) | 1 | 65    |
 | CLI argv-isolation pin                  | 1     | 8     |
 | Reference firm operating pressure (v1.9.4) | 1  | 28    |
-| **post-v1.7 subtotal**                  | **26**| **911** |
+| Reference valuation refresh lite (v1.9.5) | 1  | 28    |
+| **post-v1.7 subtotal**                  | **27**| **939** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -958,8 +996,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4) | 26 | 911 |
-| **Total**                        | **68**| **1543** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5) | 27 | 939 |
+| **Total**                        | **69**| **1571** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

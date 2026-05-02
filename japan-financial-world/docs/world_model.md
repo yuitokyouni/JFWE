@@ -5154,7 +5154,7 @@ The manifest is **synthetic-demo metadata only**. It carries no real data, no pr
 | v1.9.2 Living World Replay / Manifest / Digest | Code (§62). | Shipped |
 | **v1.9.3 Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface** | Docs + interface contract (§63). | **Shipped** |
 | v1.9.4 Synthetic Firm Financial Update / Margin Pressure | First concrete `MechanismAdapter`. | Next |
-| v1.9.5 Valuation Refresh Lite | `valuation_mechanism` adapter. | After v1.9.4 |
+| v1.9.5 Reference Valuation Refresh Lite Mechanism | `valuation_mechanism` adapter (§65). | Shipped |
 | v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | After v1.9.5 |
 | v1.9.7 Performance Boundary | Sparse-iteration / complexity-budget hardening. | After v1.9.6 |
 | v1.9.last | First lightweight public prototype. | After v1.9.7 |
@@ -5248,9 +5248,9 @@ These principles apply to v1.9.4+ mechanisms and are pinned in the contract test
 | v1.9.2 Living World Replay / Manifest / Digest | Code (§62). | Shipped |
 | v1.9.3 Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Docs + interface contract (§63). | Shipped |
 | v1.9.3.1 Mechanism Interface Hardening | Code (§63.9). Deep-freeze + rename + ordering clarification. | Shipped |
-| **v1.9.4 Reference Firm Operating Pressure Assessment Mechanism** | Code (§64). First concrete `MechanismAdapter`. | **Shipped** |
-| v1.9.5 Valuation Refresh Lite | `valuation_mechanism` adapter. | Next |
-| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | After v1.9.5 |
+| v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). First concrete `MechanismAdapter`. | Shipped |
+| **v1.9.5 Reference Valuation Refresh Lite Mechanism** | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | **Shipped** |
+| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
 | v1.9.7 Performance Boundary | Sparse-iteration hardening. | After v1.9.6 |
 | v1.9.last | First lightweight public prototype. | After v1.9.7 |
 
@@ -5372,9 +5372,9 @@ The proposed signal mapping carries:
 | --- | --- | --- |
 | v1.9.3 Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Docs + interface contract (§63). | Shipped |
 | v1.9.3.1 Mechanism Interface Hardening | Code (§63.9). | Shipped |
-| **v1.9.4 Reference Firm Operating Pressure Assessment Mechanism** | Code (§64). First concrete `MechanismAdapter`. | **Shipped** |
-| v1.9.5 Valuation Refresh Lite | `valuation_mechanism` adapter. | Next |
-| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | After v1.9.5 |
+| v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). First concrete `MechanismAdapter`. | Shipped |
+| **v1.9.5 Reference Valuation Refresh Lite Mechanism** | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | **Shipped** |
+| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
 | v1.9.7 Performance Boundary | Sparse-iteration hardening. | After v1.9.6 |
 | v1.9.last | First lightweight public prototype. | After v1.9.7 |
 
@@ -5427,6 +5427,108 @@ def apply(self, request: MechanismRunRequest) -> MechanismOutputBundle: ...
 9. The full test suite passes (1507 = 1481 prior + 26 v1.9.3.1).
 10. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
 11. v1.9.0 / v1.9.1 / v1.9.2 modules are byte-identical before / after.
+
+## 65. v1.9.5 Reference Valuation Refresh Lite Mechanism
+
+§65 (v1.9.5) ships the project's **second concrete mechanism** on the v1.9.3 / v1.9.3.1 hardened interface. It consumes the v1.9.4 firm-pressure-assessment signal (plus optional corporate reporting signals, selected observation sets, variable observations, and exposures) and proposes one **opinionated synthetic** `ValuationRecord` that is committed through the existing v1.1 `ValuationBook.add_valuation` ledger path.
+
+### 65.1 What this is — and is not
+
+This is **not a true valuation model**. It is a synthetic reference mechanism showing how diagnostic pressure and selected evidence can produce an auditable valuation claim. Every produced `ValuationRecord` is stamped with `method = "synthetic_lite_pressure_adjusted"`; calibration is `"synthetic"`; the metadata carries four boundary flags (`no_price_movement`, `no_investment_advice`, `synthetic_only`, `model_id`) so any reader can immediately see what the claim *isn't*.
+
+§65 explicitly does **not**:
+
+- form, observe, or move any market price;
+- trade, allocate, or rebalance any portfolio;
+- make a buy / sell / hold recommendation;
+- make a lending decision;
+- enforce or trip a covenant;
+- update any firm financial statement, balance-sheet line item, cash, leverage, revenue, margin, or DSCR / LTV measure;
+- imply that the produced `estimated_value` is canonical truth — it is *one valuer's opinionated claim* under the synthetic, jurisdiction-neutral assumptions documented in the module;
+- imply investment advice;
+- ingest real data, calibrate, or run a scenario engine.
+
+### 65.2 What lands in v1.9.5
+
+- `world/reference_valuation_refresh_lite.py` — new module:
+  - Constants: `VALUATION_REFRESH_MODEL_ID`, `VALUATION_REFRESH_MODEL_FAMILY = "valuation_mechanism"` (per the v1.9.3 family vocabulary), `VALUATION_REFRESH_MECHANISM_VERSION = "0.1"`, `VALUATION_REFRESH_METHOD_LABEL = "synthetic_lite_pressure_adjusted"`, `VALUATION_REFRESH_VALUATION_TYPE = "synthetic_firm_equity_estimate"`, `VALUATION_REFRESH_PURPOSE = "reference_pressure_aware_valuation"`.
+  - `ValuationRefreshLiteAdapter` — frozen dataclass implementing `MechanismAdapter`. `apply(request)` reads `request.evidence` + `request.parameters` only; returns `MechanismOutputBundle` with one `proposed_valuation_records` mapping. Adapter takes **no kernel parameter**, reads no book, and never mutates the request.
+  - `ValuationRefreshLiteResult` — caller-side aggregate of (request, output, run_record, valuation_id, valuation_summary).
+  - `run_reference_valuation_refresh_lite(kernel, *, firm_id, valuer_id, as_of_date=None, pressure_signal_ids=..., corporate_signal_ids=..., selected_observation_set_ids=..., variable_observation_ids=..., exposure_ids=..., baseline_value=..., currency="unspecified", numeraire="unspecified", pressure_haircut_per_unit_pressure=None, confidence_decay_per_unit_pressure=None, ...)` — caller-side helper. Resolves evidence from `SignalBook` / `WorldVariableBook` / `ExposureBook` / `AttentionBook` (selections); calls the adapter; commits the one proposed `ValuationRecord` through `kernel.valuations.add_valuation`; constructs the `MechanismRunRecord` for audit.
+- `tests/test_reference_valuation_refresh_lite.py` — 28 tests pinning every contract requirement (see §65.5).
+
+### 65.3 Algorithm
+
+Given a v1.9.4 pressure assessment with `overall_pressure ∈ [0, 1]` and a caller-supplied `baseline_value`:
+
+```
+pressure_haircut_fraction
+    = pressure_haircut_per_unit_pressure × overall_pressure
+estimated_value
+    = baseline_value × (1 − clamp(pressure_haircut_fraction, 0, 1))
+confidence
+    = clamp(1 − confidence_decay_per_unit_pressure × overall_pressure, 0, 1)
+```
+
+Default coefficients: `pressure_haircut_per_unit_pressure = 0.30`, `confidence_decay_per_unit_pressure = 0.40`. Pressure of 1.0 trims the baseline by 30% and drops confidence to 0.6. Coefficients are caller-overridable through `request.parameters`.
+
+**Degraded path.** If no pressure assessment signal is present in evidence:
+
+- with `baseline_value` supplied → `estimated_value = baseline_value`, `confidence = 1.0`, `status = "degraded"`;
+- without `baseline_value` → `estimated_value = None`, `confidence = 0.0`, `status = "degraded"`.
+
+The mechanism never crashes on missing optional evidence (v1.8.1 anti-scenario rule).
+
+### 65.4 Mechanism interface contract
+
+The adapter implements `MechanismAdapter`:
+
+- `apply(request: MechanismRunRequest) -> MechanismOutputBundle`.
+- The adapter is a frozen dataclass; deterministic across two byte-identical requests.
+- The adapter does **not** accept a kernel parameter (a defensive test pins this — passing a kernel raises `TypeError`).
+- The adapter does **not** read any book or the ledger (a contract test proves it by constructing a request without a kernel).
+- The adapter does **not** mutate the request (the v1.9.3.1 deep-freeze property carries; we re-pin it).
+- The adapter does **not** commit any proposal — the caller helper does it.
+
+The proposed `ValuationRecord` mapping carries `valuation_id`, `subject_id`, `valuer_id`, `valuation_type`, `purpose`, `method`, `as_of_date`, `estimated_value`, `currency` / `numeraire` (default `"unspecified"`), `confidence`, `assumptions` (coefficient values + linear-haircut flag + baseline-supplied flag), `inputs` (overall_pressure, baseline_value, pressure_signal_id, evidence_counts, pressure_signal_status), `related_ids` (pressure signal id + any other signals + selected observation set ids), and `metadata` (model_id, model_family, version, calibration_status, method, the four boundary flags `no_price_movement` / `no_investment_advice` / `synthetic_only` / `model_id`, plus the `pressure_signal_id` link and the verbatim boundary statement).
+
+### 65.5 v1.9.5 success criteria
+
+§65 is complete when **all** hold:
+
+1. `world/reference_valuation_refresh_lite.py` exports the constants, `ValuationRefreshLiteAdapter`, `ValuationRefreshLiteResult`, and `run_reference_valuation_refresh_lite`.
+2. The adapter satisfies `MechanismAdapter`; the spec uses `model_family="valuation_mechanism"`, `calibration_status="synthetic"`, `stochasticity="deterministic"`.
+3. The adapter runs without a kernel; rejects a kernel argument; does not mutate the request.
+4. Missing pressure evidence yields `status="degraded"` with conservative output (baseline-only or `None`).
+5. The proposed valuation carries every required field including the `synthetic_lite_pressure_adjusted` method label.
+6. The metadata carries the four boundary flags and the `pressure_signal_id` link.
+7. The caller helper commits exactly one `ValuationRecord` through `ValuationBook.add_valuation`; `evidence_refs` lineage is preserved verbatim on the `MechanismRunRecord`.
+8. No mutation against `prices` / `ownership` / `contracts` / `constraints` / `exposures` / `variables` / `institutions` / `external_processes` / `relationships` / `routines` / `attention` / `interactions`; `signals` count is unchanged (the mechanism reads the v1.9.4 signal but emits no new `InformationSignal`).
+9. The full test suite passes (1571 = 1543 prior + 28 valuation).
+10. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+
+### 65.6 Anti-scope
+
+§65 deliberately does **not** add:
+
+- price formation, trading, buy/sell decisions, portfolio rebalancing;
+- lending decisions, covenant enforcement;
+- firm financial statement updates;
+- bank credit decisions;
+- market clearing;
+- Japan calibration, real data ingestion, scenario engines;
+- automatic scheduler firing.
+
+### 65.7 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.3 / v1.9.3.1 Mechanism interface + hardening | Docs + contract (§63 / §63.9). | Shipped |
+| v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). | Shipped |
+| **v1.9.5 Reference Valuation Refresh Lite Mechanism** | Code (§65). Second concrete `MechanismAdapter`. | **Shipped** |
+| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
+| v1.9.7 Performance Boundary | Sparse-iteration hardening. | After v1.9.6 |
+| v1.9.last | First lightweight public prototype. | After v1.9.7 |
 
 
 

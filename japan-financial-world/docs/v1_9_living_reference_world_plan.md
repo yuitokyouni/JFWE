@@ -271,6 +271,78 @@ identifiers (word-boundary forbidden-token check).
 
 The full suite passes 1543 tests (1515 prior + 28 firm-pressure).
 
+## v1.9.5 — what shipped
+
+The **second concrete mechanism** on the v1.9.3.1 hardened
+interface. Consumes the v1.9.4 firm-pressure-assessment signal
+and proposes one **opinionated synthetic** `ValuationRecord`.
+This is not a true valuation model — it is a synthetic reference
+mechanism showing how diagnostic pressure and selected evidence
+can produce an auditable valuation claim.
+
+- `world/reference_valuation_refresh_lite.py` exports
+  `VALUATION_REFRESH_MODEL_ID`,
+  `VALUATION_REFRESH_MODEL_FAMILY = "valuation_mechanism"`,
+  `VALUATION_REFRESH_MECHANISM_VERSION = "0.1"`,
+  `VALUATION_REFRESH_METHOD_LABEL = "synthetic_lite_pressure_adjusted"`,
+  `ValuationRefreshLiteAdapter` (frozen dataclass implementing
+  the v1.9.3 / v1.9.3.1 `MechanismAdapter` Protocol),
+  `ValuationRefreshLiteResult`, and
+  `run_reference_valuation_refresh_lite(kernel, *, firm_id,
+  valuer_id, as_of_date=None, pressure_signal_ids=...,
+  corporate_signal_ids=..., selected_observation_set_ids=...,
+  variable_observation_ids=..., exposure_ids=...,
+  baseline_value=..., currency="unspecified",
+  numeraire="unspecified",
+  pressure_haircut_per_unit_pressure=None,
+  confidence_decay_per_unit_pressure=None, ...)` as the
+  caller-side helper.
+
+- The adapter applies a synthetic linear pressure-haircut to a
+  caller-supplied baseline value (default coefficients: 0.30
+  haircut per unit pressure; 0.40 confidence decay per unit
+  pressure). At pressure 1.0 the baseline is trimmed by 30% and
+  confidence drops to 0.6. The adapter is read-only against the
+  kernel (no kernel argument; reads `request.evidence` and
+  `request.parameters` only) and never mutates the request.
+
+- The caller helper resolves the v1.9.4 pressure signal +
+  optional auxiliary evidence from the kernel books, calls the
+  adapter, commits the one proposed `ValuationRecord` through
+  `kernel.valuations.add_valuation`, and returns the
+  `ValuationRefreshLiteResult` (request + output + run_record +
+  valuation_id + valuation_summary) for audit.
+
+**Hard boundary** (embedded verbatim in the valuation's metadata
+as four flags + one boundary string): `no_price_movement`,
+`no_investment_advice`, `synthetic_only`, `model_id`,
+`pressure_signal_id`, plus *"valuation_claim_only;
+no_price_movement; no_investment_advice; synthetic_only;
+no_canonical_truth_claim"*.
+
+`tests/test_reference_valuation_refresh_lite.py` (28 tests)
+pins the contract: adapter satisfies `MechanismAdapter`; spec
+valid; doesn't accept a kernel; can run without a kernel;
+missing pressure evidence yields `status="degraded"` with
+conservative output (baseline-only or `None`); algorithm
+correctness (zero-pressure, full-pressure, custom-coefficient
+paths); deterministic across two byte-identical requests;
+request not mutated; valuation proposal carries every required
+field including the method label; metadata carries the four
+boundary flags and the `pressure_signal_id` link;
+`related_ids` includes the pressure signal id; caller helper
+commits exactly one `ValuationRecord`; `evidence_refs`
+preserved verbatim on the `MechanismRunRecord`; full
+no-mutation guarantee against prices / ownership / contracts /
+constraints / variables / exposures / institutions /
+external_processes / relationships / routines / attention /
+interactions; only one new ledger record per call (the
+`valuation_added` from `ValuationBook.add_valuation`);
+synthetic-only identifiers (word-boundary forbidden-token
+check).
+
+The full suite passes 1571 tests (1543 prior + 28 valuation).
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral
