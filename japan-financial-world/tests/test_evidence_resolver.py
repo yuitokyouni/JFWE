@@ -341,6 +341,32 @@ def _seed_dialogue(
     return dlg_id
 
 
+def _seed_interbank_liquidity_state(
+    kernel: WorldKernel,
+    *,
+    state_id: str = "interbank_liquidity_state:bank:reference_megabank_a:2026-03-31",
+    institution_id: str = "bank:reference_megabank_a",
+    as_of_date: str = "2026-03-31",
+) -> str:
+    from world.interbank_liquidity import InterbankLiquidityStateRecord
+
+    kernel.interbank_liquidity.add_state(
+        InterbankLiquidityStateRecord(
+            liquidity_state_id=state_id,
+            institution_id=institution_id,
+            as_of_date=as_of_date,
+            liquidity_regime="normal",
+            settlement_pressure="low",
+            reserve_access_label="available",
+            funding_stress_label="low",
+            status="active",
+            visibility="internal_only",
+            confidence=0.5,
+        )
+    )
+    return state_id
+
+
 def _seed_escalation(
     kernel: WorldKernel,
     *,
@@ -547,6 +573,7 @@ def test_frame_confidence_rejects_non_numeric(value):
         "resolved_valuation_ids",
         "resolved_dialogue_ids",
         "resolved_escalation_candidate_ids",
+        "resolved_interbank_liquidity_state_ids",
     ],
 )
 def test_frame_rejects_empty_strings_in_tuple_fields(tuple_field):
@@ -1310,6 +1337,365 @@ def test_resolver_selection_then_explicit_preserves_order():
         explicit_signal_ids=(s2, s3),
     )
     assert f.resolved_signal_ids == (s1, s2, s3)
+
+
+# ---------------------------------------------------------------------------
+# v1.13.6 — interbank liquidity state bucket
+# ---------------------------------------------------------------------------
+
+
+def test_v1_13_6_bucket_constant_in_all_buckets():
+    """The v1.13.6 bucket constant must be in ``ALL_BUCKETS`` and
+    pair with a ``resolved_interbank_liquidity_state_ids`` slot
+    on :class:`ActorContextFrame`."""
+    from world.evidence import BUCKET_INTERBANK_LIQUIDITY_STATE
+
+    assert BUCKET_INTERBANK_LIQUIDITY_STATE in ALL_BUCKETS
+    field_names = {f.name for f in dataclass_fields(ActorContextFrame)}
+    assert "resolved_interbank_liquidity_state_ids" in field_names
+
+
+def test_v1_13_6_explicit_interbank_liquidity_state_id_resolves():
+    """Citing an existing interbank-liquidity-state id via the
+    explicit kwarg lands it in the resolver's resolved bucket."""
+    k = _kernel()
+    sid = _seed_interbank_liquidity_state(k)
+    f = resolve_actor_context(
+        k,
+        actor_id="bank:reference_megabank_a",
+        actor_type="bank",
+        as_of_date="2026-03-31",
+        explicit_interbank_liquidity_state_ids=(sid,),
+    )
+    assert f.resolved_interbank_liquidity_state_ids == (sid,)
+    assert f.status == "resolved"
+    assert f.confidence == 1.0
+    assert f.unresolved_refs == ()
+
+
+def test_v1_13_6_selection_ref_with_interbank_liquidity_prefix_resolves():
+    """A selection ref that starts with
+    ``interbank_liquidity_state:`` is dispatched to the new
+    bucket via the prefix table."""
+    k = _kernel()
+    sid = _seed_interbank_liquidity_state(k)
+    sel_id = _seed_selection(k, selected_refs=(sid,))
+    f = resolve_actor_context(
+        k,
+        actor_id="investor:reference_pension_a",
+        actor_type="investor",
+        as_of_date="2026-03-31",
+        selected_observation_set_ids=(sel_id,),
+    )
+    assert f.resolved_interbank_liquidity_state_ids == (sid,)
+    assert f.unresolved_refs == ()
+
+
+def test_v1_13_6_unknown_explicit_id_goes_to_unresolved():
+    """An unknown interbank-liquidity-state id is recorded on
+    ``unresolved_refs`` (not raised) under default (non-strict)
+    mode."""
+    k = _kernel()
+    f = resolve_actor_context(
+        k,
+        actor_id="bank:reference_megabank_a",
+        actor_type="bank",
+        as_of_date="2026-03-31",
+        explicit_interbank_liquidity_state_ids=(
+            "interbank_liquidity_state:does_not_exist:2026-03-31",
+        ),
+    )
+    assert any(
+        r.ref_id == "interbank_liquidity_state:does_not_exist:2026-03-31"
+        and r.ref_type == "interbank_liquidity_state"
+        and r.source_book == "interbank_liquidity"
+        and r.status == "unresolved"
+        for r in f.unresolved_refs
+    )
+    assert f.status == "partially_resolved"
+    assert 0.0 <= f.confidence < 1.0
+
+
+def test_v1_13_6_strict_mode_raises_on_unknown_interbank_liquidity_id():
+    """``strict=True`` makes an unknown interbank-liquidity-state
+    id fail loudly instead of landing on ``unresolved_refs``."""
+    k = _kernel()
+    with pytest.raises(StrictEvidenceResolutionError):
+        resolve_actor_context(
+            k,
+            actor_id="bank:reference_megabank_a",
+            actor_type="bank",
+            as_of_date="2026-03-31",
+            explicit_interbank_liquidity_state_ids=(
+                "interbank_liquidity_state:nope:2026-03-31",
+            ),
+            strict=True,
+        )
+
+
+def test_v1_13_6_resolver_does_not_mutate_interbank_liquidity_book():
+    """Resolving against ``kernel.interbank_liquidity`` is a
+    read-only operation."""
+    k = _kernel()
+    sid = _seed_interbank_liquidity_state(k)
+    snap_before = k.interbank_liquidity.snapshot()
+    resolve_actor_context(
+        k,
+        actor_id="bank:reference_megabank_a",
+        actor_type="bank",
+        as_of_date="2026-03-31",
+        explicit_interbank_liquidity_state_ids=(sid,),
+    )
+    assert k.interbank_liquidity.snapshot() == snap_before
+
+
+def test_v1_13_6_resolver_does_not_emit_ledger_record_for_interbank_resolution():
+    """Resolving an interbank-liquidity-state id must not write a
+    ledger record. The v1.12.3 substrate is read-only by default."""
+    k = _kernel()
+    sid = _seed_interbank_liquidity_state(k)
+    ledger_count_before = len(k.ledger.records)
+    resolve_actor_context(
+        k,
+        actor_id="bank:reference_megabank_a",
+        actor_type="bank",
+        as_of_date="2026-03-31",
+        explicit_interbank_liquidity_state_ids=(sid,),
+    )
+    assert len(k.ledger.records) == ledger_count_before
+
+
+def test_v1_13_6_resolver_deterministic_for_interbank_liquidity_inputs():
+    """Two fresh resolves of the same explicit interbank-liquidity
+    inputs produce byte-identical frames."""
+    k1 = _kernel()
+    sid1 = _seed_interbank_liquidity_state(k1)
+    k2 = _kernel()
+    sid2 = _seed_interbank_liquidity_state(k2)
+    assert sid1 == sid2
+
+    def _resolve(k, sid):
+        return resolve_actor_context(
+            k,
+            actor_id="bank:reference_megabank_a",
+            actor_type="bank",
+            as_of_date="2026-03-31",
+            explicit_interbank_liquidity_state_ids=(sid,),
+        )
+
+    f1 = _resolve(k1, sid1)
+    f2 = _resolve(k2, sid2)
+    assert f1.to_dict() == f2.to_dict()
+
+
+def test_v1_13_6_resolver_class_method_accepts_new_kwarg():
+    """The :class:`EvidenceResolver` method wrapper threads the
+    new kwarg through to the module helper."""
+    k = _kernel()
+    sid = _seed_interbank_liquidity_state(k)
+    f = k.evidence_resolver.resolve_actor_context(
+        actor_id="bank:reference_megabank_a",
+        actor_type="bank",
+        as_of_date="2026-03-31",
+        explicit_interbank_liquidity_state_ids=(sid,),
+    )
+    assert f.resolved_interbank_liquidity_state_ids == (sid,)
+
+
+def test_v1_13_6_dedup_preserves_first_seen_order_in_interbank_bucket():
+    """Duplicates among explicit interbank ids collapse in
+    first-seen order, matching the existing per-bucket
+    determinism."""
+    k = _kernel()
+    s1 = _seed_interbank_liquidity_state(
+        k,
+        state_id="interbank_liquidity_state:bank:reference_megabank_a:2026-03-31",
+        institution_id="bank:reference_megabank_a",
+    )
+    s2 = _seed_interbank_liquidity_state(
+        k,
+        state_id="interbank_liquidity_state:bank:reference_regional_b:2026-03-31",
+        institution_id="bank:reference_regional_b",
+    )
+    f = resolve_actor_context(
+        k,
+        actor_id="bank:reference_megabank_a",
+        actor_type="bank",
+        as_of_date="2026-03-31",
+        explicit_interbank_liquidity_state_ids=(s2, s1, s2, s1),
+    )
+    assert f.resolved_interbank_liquidity_state_ids == (s2, s1)
+
+
+def test_v1_13_6_to_dict_contains_new_bucket_key():
+    """``ActorContextFrame.to_dict`` must surface the new bucket
+    so downstream audit / replay code can read it."""
+    k = _kernel()
+    sid = _seed_interbank_liquidity_state(k)
+    f = resolve_actor_context(
+        k,
+        actor_id="bank:reference_megabank_a",
+        actor_type="bank",
+        as_of_date="2026-03-31",
+        explicit_interbank_liquidity_state_ids=(sid,),
+    )
+    out = f.to_dict()
+    assert out["resolved_interbank_liquidity_state_ids"] == [sid]
+
+
+def test_v1_13_6_anti_fields_still_absent_with_new_bucket():
+    """v1.13.6 must not leak any anti-field even though a new
+    bucket joins the dataclass."""
+    field_names = {f.name for f in dataclass_fields(ActorContextFrame)}
+    forbidden = {
+        "content",
+        "transcript",
+        "notes",
+        "minutes",
+        "attendees",
+        "order",
+        "trade",
+        "buy",
+        "sell",
+        "rebalance",
+        "target_weight",
+        "expected_return",
+        "target_price",
+        "recommendation",
+        "investment_advice",
+        "portfolio_allocation",
+        "execution",
+        "lending_decision",
+        "internal_rating",
+        "pd",
+        "lgd",
+        "ead",
+        "underwriting",
+    }
+    leaked = field_names & forbidden
+    assert not leaked, sorted(leaked)
+
+
+def test_v1_13_6_bank_credit_review_reads_frame_bucket():
+    """The v1.13.5 attention-conditioned bank credit review helper
+    now sources its ``resolved_interbank_liquidity_state_ids``
+    from the resolver frame bucket. When the caller cites a
+    valid interbank-liquidity-state id, the produced signal's
+    payload + metadata stamp the same id."""
+    from datetime import date as _date
+
+    from world.contracts import ContractBook  # noqa: F401  (kernel-level)
+    from world.firm_state import FirmFinancialStateRecord
+    from world.interbank_liquidity import InterbankLiquidityStateRecord
+    from world.reference_bank_credit_review_lite import (
+        run_attention_conditioned_bank_credit_review_lite,
+    )
+    from world.signals import InformationSignal
+
+    k = WorldKernel(
+        registry=Registry(),
+        clock=Clock(current_date=_date(2026, 3, 31)),
+        scheduler=Scheduler(),
+        ledger=Ledger(),
+        state=State(),
+    )
+
+    bank_id = "bank:reference_megabank_a"
+    firm_id = "firm:reference_corp_a"
+
+    k.signals.add_signal(
+        InformationSignal(
+            signal_id="signal:reference_corp_a:pressure:2026-03-31",
+            signal_type="firm_pressure_assessment",
+            subject_id=firm_id,
+            source_id=firm_id,
+            published_date="2026-03-31",
+            payload={"overall_operating_pressure": 0.4},
+            visibility="public",
+        )
+    )
+    k.signals.add_signal(
+        InformationSignal(
+            signal_id="signal:reference_corp_a:report:2026-03-31",
+            signal_type="reference_quarterly_report",
+            subject_id=firm_id,
+            source_id=firm_id,
+            published_date="2026-03-31",
+            payload={"note": "synthetic"},
+            visibility="public",
+        )
+    )
+    k.firm_financial_states.add_state(
+        FirmFinancialStateRecord(
+            state_id="firm_state:reference_corp_a:2026-03-31",
+            firm_id=firm_id,
+            as_of_date="2026-03-31",
+            status="active",
+            visibility="internal_only",
+            margin_pressure=0.4,
+            liquidity_pressure=0.4,
+            debt_service_pressure=0.4,
+            market_access_pressure=0.4,
+            funding_need_intensity=0.4,
+            response_readiness=0.4,
+            confidence=0.5,
+        )
+    )
+    k.interbank_liquidity.add_state(
+        InterbankLiquidityStateRecord(
+            liquidity_state_id="interbank_liquidity_state:bank:reference_megabank_a:2026-03-31",
+            institution_id=bank_id,
+            as_of_date="2026-03-31",
+            liquidity_regime="normal",
+            settlement_pressure="low",
+            reserve_access_label="available",
+            funding_stress_label="low",
+            status="active",
+            visibility="internal_only",
+            confidence=0.5,
+        )
+    )
+
+    result = run_attention_conditioned_bank_credit_review_lite(
+        k,
+        bank_id=bank_id,
+        firm_id=firm_id,
+        as_of_date="2026-03-31",
+        explicit_pressure_signal_ids=(
+            "signal:reference_corp_a:pressure:2026-03-31",
+        ),
+        explicit_corporate_signal_ids=(
+            "signal:reference_corp_a:report:2026-03-31",
+        ),
+        explicit_firm_state_ids=(
+            "firm_state:reference_corp_a:2026-03-31",
+        ),
+        explicit_interbank_liquidity_state_ids=(
+            "interbank_liquidity_state:bank:reference_megabank_a:2026-03-31",
+        ),
+    )
+
+    sig = k.signals.get_signal(result.signal_id)
+    assert sig.payload["resolved_interbank_liquidity_state_ids"] == [
+        "interbank_liquidity_state:bank:reference_megabank_a:2026-03-31",
+    ]
+    assert (
+        sig.payload["resolved_evidence_buckets"][
+            "interbank_liquidity_states"
+        ]
+        == 1
+    )
+    assert sig.metadata["resolved_interbank_liquidity_state_ids"] == [
+        "interbank_liquidity_state:bank:reference_megabank_a:2026-03-31",
+    ]
+    # Anti-claim metadata flags from v1.9.7 still on every record.
+    for flag in (
+        "no_lending_decision",
+        "no_internal_rating",
+        "no_probability_of_default",
+        "synthetic_only",
+    ):
+        assert flag in sig.metadata
 
 
 # ---------------------------------------------------------------------------

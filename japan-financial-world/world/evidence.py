@@ -159,6 +159,15 @@ BUCKET_ESCALATION_CANDIDATE: str = "escalation_candidate"
 # evidence; theme ids start with ``theme:`` per the v1.10.x
 # orchestrator's id convention.
 BUCKET_STEWARDSHIP_THEME: str = "stewardship_theme"
+# v1.13.6 — interbank liquidity state bucket. Repairs the
+# evidence-substrate gap introduced at v1.13.5: the v1.13.5
+# bank-credit-review helper read kernel.interbank_liquidity
+# directly, bypassing the v1.12.3 resolver. v1.13.6 adds the
+# bucket so interbank-liquidity-state ids flow through the
+# same substrate as every other piece of evidence and so the
+# context frame becomes a faithful audit of what the actor
+# attended to.
+BUCKET_INTERBANK_LIQUIDITY_STATE: str = "interbank_liquidity_state"
 
 ALL_BUCKETS: tuple[str, ...] = (
     BUCKET_SIGNAL,
@@ -173,6 +182,7 @@ ALL_BUCKETS: tuple[str, ...] = (
     BUCKET_DIALOGUE,
     BUCKET_ESCALATION_CANDIDATE,
     BUCKET_STEWARDSHIP_THEME,
+    BUCKET_INTERBANK_LIQUIDITY_STATE,
 )
 
 
@@ -337,6 +347,13 @@ class ActorContextFrame:
     resolved_stewardship_theme_ids: tuple[str, ...] = field(
         default_factory=tuple
     )
+    # v1.13.6 — first-class evidence bucket for interbank
+    # liquidity state ids. Citation-only — the resolver never
+    # reads the cited record's content, only confirms the id
+    # resolves against ``kernel.interbank_liquidity``.
+    resolved_interbank_liquidity_state_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     unresolved_refs: tuple[EvidenceRef, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -362,6 +379,7 @@ class ActorContextFrame:
         "resolved_dialogue_ids",
         "resolved_escalation_candidate_ids",
         "resolved_stewardship_theme_ids",
+        "resolved_interbank_liquidity_state_ids",
     )
 
     def __post_init__(self) -> None:
@@ -443,6 +461,9 @@ class ActorContextFrame:
             ),
             "resolved_stewardship_theme_ids": list(
                 self.resolved_stewardship_theme_ids
+            ),
+            "resolved_interbank_liquidity_state_ids": list(
+                self.resolved_interbank_liquidity_state_ids
             ),
             "unresolved_refs": [r.to_dict() for r in self.unresolved_refs],
             "metadata": dict(self.metadata),
@@ -536,6 +557,16 @@ _PREFIX_TABLE: tuple[tuple[str, str, str, str], ...] = (
         "stewardship",
         "get_theme",
     ),
+    # v1.13.6 — interbank liquidity state prefix dispatch.
+    # Ids start with ``interbank_liquidity_state:`` per the
+    # v1.13.5 living-world emission convention. Resolved
+    # against ``kernel.interbank_liquidity.get_state``.
+    (
+        "interbank_liquidity_state:",
+        BUCKET_INTERBANK_LIQUIDITY_STATE,
+        "interbank_liquidity",
+        "get_state",
+    ),
     # The ``signal:`` prefix is intentionally last among the
     # short-prefix entries so a more specific prefix gets a
     # chance to match first.
@@ -561,6 +592,7 @@ _BUCKET_TO_FRAME_FIELD: Mapping[str, str] = {
     BUCKET_DIALOGUE: "resolved_dialogue_ids",
     BUCKET_ESCALATION_CANDIDATE: "resolved_escalation_candidate_ids",
     BUCKET_STEWARDSHIP_THEME: "resolved_stewardship_theme_ids",
+    BUCKET_INTERBANK_LIQUIDITY_STATE: "resolved_interbank_liquidity_state_ids",
 }
 
 
@@ -624,6 +656,7 @@ class EvidenceResolver:
         explicit_dialogue_ids: Sequence[str] = (),
         explicit_escalation_candidate_ids: Sequence[str] = (),
         explicit_stewardship_theme_ids: Sequence[str] = (),
+        explicit_interbank_liquidity_state_ids: Sequence[str] = (),
         context_frame_id: str | None = None,
         strict: bool = False,
         metadata: Mapping[str, Any] | None = None,
@@ -652,6 +685,9 @@ class EvidenceResolver:
             explicit_dialogue_ids=explicit_dialogue_ids,
             explicit_escalation_candidate_ids=explicit_escalation_candidate_ids,
             explicit_stewardship_theme_ids=explicit_stewardship_theme_ids,
+            explicit_interbank_liquidity_state_ids=(
+                explicit_interbank_liquidity_state_ids
+            ),
             context_frame_id=context_frame_id,
             strict=strict,
             metadata=metadata,
@@ -679,6 +715,10 @@ _EXPLICIT_BUCKET_KWARGS: tuple[tuple[str, str], ...] = (
     ("explicit_dialogue_ids", BUCKET_DIALOGUE),
     ("explicit_escalation_candidate_ids", BUCKET_ESCALATION_CANDIDATE),
     ("explicit_stewardship_theme_ids", BUCKET_STEWARDSHIP_THEME),
+    (
+        "explicit_interbank_liquidity_state_ids",
+        BUCKET_INTERBANK_LIQUIDITY_STATE,
+    ),
 )
 
 
@@ -695,6 +735,7 @@ _BUCKET_TO_SOURCE_BOOK: Mapping[str, str] = {
     BUCKET_DIALOGUE: "engagement",
     BUCKET_ESCALATION_CANDIDATE: "escalations",
     BUCKET_STEWARDSHIP_THEME: "stewardship",
+    BUCKET_INTERBANK_LIQUIDITY_STATE: "interbank_liquidity",
 }
 
 
@@ -711,6 +752,7 @@ _BUCKET_TO_GETTER: Mapping[str, str] = {
     BUCKET_DIALOGUE: "get_dialogue",
     BUCKET_ESCALATION_CANDIDATE: "get_candidate",
     BUCKET_STEWARDSHIP_THEME: "get_theme",
+    BUCKET_INTERBANK_LIQUIDITY_STATE: "get_state",
 }
 
 
@@ -772,6 +814,7 @@ def resolve_actor_context(
     explicit_dialogue_ids: Sequence[str] = (),
     explicit_escalation_candidate_ids: Sequence[str] = (),
     explicit_stewardship_theme_ids: Sequence[str] = (),
+    explicit_interbank_liquidity_state_ids: Sequence[str] = (),
     context_frame_id: str | None = None,
     strict: bool = False,
     metadata: Mapping[str, Any] | None = None,
@@ -933,6 +976,9 @@ def resolve_actor_context(
         "explicit_dialogue_ids": explicit_dialogue_ids,
         "explicit_escalation_candidate_ids": explicit_escalation_candidate_ids,
         "explicit_stewardship_theme_ids": explicit_stewardship_theme_ids,
+        "explicit_interbank_liquidity_state_ids": (
+            explicit_interbank_liquidity_state_ids
+        ),
     }
     for kwarg_name, bucket in _EXPLICIT_BUCKET_KWARGS:
         ids = _normalize_string_tuple(

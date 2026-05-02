@@ -1384,9 +1384,9 @@ no-mutation guarantee.
 | Firm financial latent state (v1.12.0) | 1 | 116 |
 | Investor intent signal (v1.12.1) + v1.12.4 attention-conditioned helper | 1 | 103 |
 | Market environment state (v1.12.2) | 1 | 87 |
-| EvidenceResolver / ActorContextFrame (v1.12.3) | 1 | 84 |
+| EvidenceResolver / ActorContextFrame (v1.12.3 base + v1.13.6 interbank-liquidity bucket) | 1 | 98 |
 | Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 + v1.12.1 + v1.12.2 + v1.12.4 additive in test_living_reference_world.py — 15 v1.10.5, 8 v1.11.0, 7 v1.11.1, 15 v1.11.2, 9 v1.12.0, 9 v1.12.1, 11 v1.12.2, and 4 v1.12.4 integration tests; v1.12.3 is substrate-only and adds no living-world integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 / +9 v1.12.1 / +11 v1.12.2 / +4 v1.12.4 in test_living_reference_world.py) |
-| **post-v1.7 subtotal**                  | **39**| **1948** |
+| **post-v1.7 subtotal**                  | **39**| **1962** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1401,8 +1401,8 @@ no-mutation guarantee.
 | Central-bank signals (v1.13.4)       | 1     | 78    |
 | v1.13.5 integration                  | 1     | 15    |
 | Corporate financing need (v1.14.1)   | 1     | 64    |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4 / v1.12.5 / v1.12.6 / v1.12.7 / v1.12.8 / v1.12.9 / v1.13.1 / v1.13.2 / v1.13.3 / v1.13.4 / v1.13.5 / v1.14.1) | 42 | 2200 |
-| **Total**                        | **88**| **3052** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4 / v1.12.5 / v1.12.6 / v1.12.7 / v1.12.8 / v1.12.9 / v1.13.1 / v1.13.2 / v1.13.3 / v1.13.4 / v1.13.5 / v1.13.6 / v1.14.1) | 42 | 2214 |
+| **Total**                        | **88**| **3066** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

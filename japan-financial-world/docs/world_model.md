@@ -8380,3 +8380,33 @@ The book emits **only** `CORPORATE_FINANCING_NEED_RECORDED` records and refuses 
 v1.14.1 is storage-only and not yet wired into the orchestrator. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.13.last. The orchestrator integration arrives at v1.14.5.
 
 The test count moves from `2988 / 2988` (v1.13.last) to `3052 / 3052` (v1.14.1) — `+64` tests in the new `tests/test_corporate_financing.py`.
+
+## 100. v1.13.6 EvidenceResolver interbank liquidity slot — substrate-gap repair
+
+§100 closes the evidence-substrate gap that v1.13.5 left open. v1.13.5 wired the bank-credit-review helper to `kernel.interbank_liquidity` directly (mirroring the existing direct-read of `kernel.firm_financial_states`); v1.13.6 lifts that read into the v1.12.3 `EvidenceResolver` so interbank-liquidity-state ids become a first-class evidence bucket alongside signals, valuations, firm states, market environment states, etc.
+
+### 100.1 What v1.13.6 ships
+
+- New bucket constant `BUCKET_INTERBANK_LIQUIDITY_STATE = "interbank_liquidity_state"`, appended to `ALL_BUCKETS`.
+- New tuple field `resolved_interbank_liquidity_state_ids: tuple[str, ...]` on `ActorContextFrame`, defaulting empty, surfaced in `to_dict()` and validated by the existing string-tuple normaliser.
+- New prefix-dispatch row `("interbank_liquidity_state:", BUCKET_INTERBANK_LIQUIDITY_STATE, "interbank_liquidity", "get_state")` so selection refs that follow the v1.13.5 living-world id convention dispatch automatically.
+- New explicit kwarg `explicit_interbank_liquidity_state_ids` on both `EvidenceResolver.resolve_actor_context` and the module-level `resolve_actor_context`.
+- New entries in `_BUCKET_TO_FRAME_FIELD`, `_BUCKET_TO_SOURCE_BOOK`, `_BUCKET_TO_GETTER`, and `_EXPLICIT_BUCKET_KWARGS`.
+- The v1.12.6 attention-conditioned bank credit review helper (`run_attention_conditioned_bank_credit_review_lite`) now threads `explicit_interbank_liquidity_state_ids` into the resolver and reads back from `frame.resolved_interbank_liquidity_state_ids` instead of scanning `kernel.interbank_liquidity` directly. Strict mode now correctly raises on unknown ids; unresolved ids land on `frame.unresolved_refs` instead of being silently dropped.
+
+### 100.2 Anti-claims preserved
+
+The substrate is read-only. The resolver:
+
+- writes nothing — no ledger record, no mutation of any other source-of-truth book, including `kernel.interbank_liquidity`;
+- never reads the cited record's content — only confirms via `kernel.interbank_liquidity.get_state(id)` that the id resolves;
+- never produces a price, yield, spread, lending decision, internal rating, PD / LGD / EAD, underwriting, calibrated probability, recommendation, or investment advice;
+- never enforces a Japan calibration.
+
+The v1.12.6 watch-label classifier inputs are **unchanged**. The bank credit review note's payload + metadata bytes are bit-for-bit identical to v1.13.5 when the same set of resolvable ids is passed in. Tests pin every existing watch-label outcome bit-for-bit.
+
+### 100.3 Performance boundary
+
+v1.13.6 is a substrate refactor — no new ledger records, no new orchestrator phase. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.13.5 / v1.13.last (`916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379`). The default-fixture replay remains byte-identical.
+
+The test count moves from `3052 / 3052` (v1.14.1) to `3066 / 3066` (v1.13.6) — `+14` tests appended to `tests/test_evidence_resolver.py` covering: bucket-constant presence, explicit-kwarg resolution, selection-prefix dispatch, unresolved-ref capture under default mode, strict-mode raise, no-mutation against `kernel.interbank_liquidity`, no-ledger-write, deterministic per-bucket order, dedup behavior, `to_dict` round-trip, anti-field absence with the new bucket present, the resolver-class-method wrapper, and an end-to-end bank-credit-review test confirming `frame.resolved_interbank_liquidity_state_ids` lands on the produced signal's payload + metadata while every v1.9.7 anti-claim flag (`no_lending_decision` / `no_internal_rating` / `no_probability_of_default` / `synthetic_only`) is preserved.

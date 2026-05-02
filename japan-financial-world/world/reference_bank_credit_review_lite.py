@@ -1041,6 +1041,9 @@ def run_attention_conditioned_bank_credit_review_lite(
         explicit_variable_observation_ids=tuple(
             explicit_variable_observation_ids
         ),
+        explicit_interbank_liquidity_state_ids=tuple(
+            explicit_interbank_liquidity_state_ids
+        ),
         strict=strict,
     )
 
@@ -1275,23 +1278,18 @@ def run_attention_conditioned_bank_credit_review_lite(
         ),
     }
 
-    # v1.13.5 additive: cite explicit interbank-liquidity-state
-    # ids the caller surfaced. Citation-only — the helper does
-    # NOT change the v1.12.6 watch-label classifier from these,
-    # so all existing watch-label tests remain bit-for-bit
-    # identical. Only ids that resolve to records in
-    # ``kernel.interbank_liquidity`` are recorded; missing ids
-    # are silently skipped (the existing helper convention).
-    resolved_interbank_liquidity_state_ids: tuple[str, ...] = ()
-    if explicit_interbank_liquidity_state_ids:
-        resolved_buf: list[str] = []
-        for lsid in explicit_interbank_liquidity_state_ids:
-            try:
-                kernel.interbank_liquidity.get_state(lsid)
-            except Exception:
-                continue
-            resolved_buf.append(lsid)
-        resolved_interbank_liquidity_state_ids = tuple(resolved_buf)
+    # v1.13.6 — interbank-liquidity-state ids now flow through
+    # the v1.12.3 ``EvidenceResolver`` substrate (§100). The
+    # helper reads ``frame.resolved_interbank_liquidity_state_ids``
+    # rather than scanning ``kernel.interbank_liquidity``
+    # directly, restoring v1.12 attention/evidence discipline.
+    # Citation-only — the v1.12.6 watch-label classifier inputs
+    # are unchanged. Unresolved ids land in
+    # ``frame.unresolved_refs`` (or raise under ``strict=True``)
+    # rather than being silently dropped.
+    resolved_interbank_liquidity_state_ids: tuple[str, ...] = (
+        frame.resolved_interbank_liquidity_state_ids
+    )
     if resolved_interbank_liquidity_state_ids:
         payload["resolved_evidence_buckets"][
             "interbank_liquidity_states"
