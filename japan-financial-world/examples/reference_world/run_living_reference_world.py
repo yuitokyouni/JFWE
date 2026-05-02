@@ -237,15 +237,20 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
         f"investors={len(result.investor_ids)}, "
         f"banks={len(result.bank_ids)}, "
         f"variables={len(_REFERENCE_VARIABLES)}, "
-        f"exposures={len(_seed_exposures())}"
+        f"exposures={len(_seed_exposures())}, "
+        f"industries={len(result.industry_ids)}, "
+        f"themes={len(result.stewardship_theme_ids)}"
     )
     for idx, ps in enumerate(result.per_period_summaries, start=1):
         print(
             f"[period {idx}] as_of={ps.as_of_date} "
             f"reports={len(ps.corporate_signal_ids)} "
             f"pressures={len(ps.firm_pressure_signal_ids)} "
-            f"menus={len(ps.investor_menu_ids) + len(ps.bank_menu_ids)} "
-            f"selections={len(ps.investor_selection_ids) + len(ps.bank_selection_ids)} "
+            f"industry={len(ps.industry_condition_ids)} "
+            f"themes={len(ps.stewardship_theme_ids)} "
+            f"dialogues={len(ps.dialogue_ids)} "
+            f"escalations={len(ps.investor_escalation_candidate_ids)} "
+            f"responses={len(ps.corporate_strategic_response_candidate_ids)} "
             f"valuations={len(ps.valuation_ids)} "
             f"credit_reviews={len(ps.bank_credit_review_signal_ids)} "
             f"reviews={len(ps.investor_review_run_ids) + len(ps.bank_review_run_ids)} "
@@ -258,12 +263,18 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
     )
     print(
         "[summary] integrated chain: corporate reporting -> firm "
-        "pressure assessment -> heterogeneous attention -> valuation "
-        "refresh lite -> bank credit review lite -> review. No "
-        "price formation, no trading, no lending decisions, no "
-        "covenant enforcement, no contract or constraint mutation, "
-        "no firm financial statement updates, no canonical-truth "
-        "valuation, no investment advice."
+        "pressure assessment -> industry demand condition -> "
+        "heterogeneous attention -> valuation refresh lite -> bank "
+        "credit review lite -> portfolio-company dialogue metadata -> "
+        "investor escalation candidates -> corporate strategic "
+        "response candidates -> review. No price formation, no "
+        "trading, no lending decisions, no covenant enforcement, "
+        "no contract or constraint mutation, no firm financial "
+        "statement updates, no canonical-truth valuation, no "
+        "investment advice, no voting execution, no proxy filing, "
+        "no public-campaign execution, no corporate-action "
+        "execution, no disclosure filing, no demand / revenue "
+        "forecasting, no Japan calibration."
     )
 
 

@@ -29,18 +29,27 @@ and
 The reference data is fully synthetic; Japan calibration is v2 / v3
 territory.
 
-The current code is at the **v1.9.last public prototype freeze**.
-v1.9 layered three review-only synthetic mechanisms (firm
-operating-pressure assessment, valuation refresh lite, bank credit
-review lite) onto the v1.8 endogenous activity stack and integrated
-them into a deterministic four-quarter sweep over a small synthetic
-fixture. The headline artifact is the **living reference world**:
-3 firms × 2 investors × 2 banks × 4 quarters, runnable from a clean
-clone with a single command, byte-deterministic across runs, and
-fully reconstructable from the kernel's append-only ledger. **No
-autonomous economic behavior is added in v1 / v1.8 / v1.9** — no
-price formation, no trading, no lending decisions, no firm
-financial-statement updates, no Japan calibration.
+The current code is at **v1.10.5 living-world integration**, layered
+on top of the **v1.9.last public prototype freeze**. v1.9 layered
+three review-only synthetic mechanisms (firm operating-pressure
+assessment, valuation refresh lite, bank credit review lite) onto
+the v1.8 endogenous activity stack and integrated them into a
+deterministic four-quarter sweep over a small synthetic fixture.
+v1.10.x added a non-binding engagement / strategic-response storage
+layer on top: stewardship themes → portfolio-company dialogue
+metadata → investor escalation candidates → corporate strategic
+response candidates, with industry demand condition context.
+v1.10.5 wires that layer into the living reference world demo as
+five new per-period phases plus one setup-time phase. The headline
+artifact is the **living reference world**: 3 firms × 2 investors ×
+2 banks × 3 industries × 4 quarters, runnable from a clean clone
+with a single command, byte-deterministic across runs, and fully
+reconstructable from the kernel's append-only ledger. **No
+autonomous economic behavior is added in v1 / v1.8 / v1.9 / v1.10**
+— no price formation, no trading, no lending decisions, no
+voting / proxy filing / corporate-action execution, no
+disclosure-filing execution, no demand or revenue forecasting, no
+firm financial-statement updates, no Japan calibration.
 
 ## Current public prototype (v1.9.last)
 
@@ -234,8 +243,8 @@ in well under a second, and are deterministic across invocations.
 | v1.10.2       | Portfolio-company dialogue record (`PortfolioCompanyDialogueRecord` + `DialogueBook` + ledger `PORTFOLIO_COMPANY_DIALOGUE_RECORDED` + kernel wiring + 53 tests; engagement metadata storage / audit only — no transcript, content, notes, minutes, attendees, verbatim, or paraphrase fields) | Shipped |
 | v1.10.3       | Investor escalation candidate + corporate strategic response candidate (`InvestorEscalationCandidate` + `EscalationCandidateBook` added to `world/engagement.py`; `CorporateStrategicResponseCandidate` + `StrategicResponseCandidateBook` in new `world/strategic_response.py`; ledger `INVESTOR_ESCALATION_CANDIDATE_ADDED` + `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` + kernel wiring + 107 tests; candidate-metadata storage / audit only — no execution, no vote_cast / proposal_filed / campaign_executed / exit_executed / letter_sent on the investor side, no buyback_executed / dividend_changed / divestment_executed / merger_executed / board_change_executed / disclosure_filed on the corporate side) | Shipped |
 | v1.10.4       | Industry demand condition signal (`IndustryDemandConditionRecord` + `IndustryConditionBook` in new `world/industry.py`; ledger `INDUSTRY_DEMAND_CONDITION_ADDED` + kernel wiring + 84 tests; synthetic, jurisdiction-neutral context evidence — bounded `demand_strength` and `confidence` in `[0.0, 1.0]`; no forecast_value / revenue_forecast / sales_forecast / market_size / vendor_consensus fields; not a demand forecast, not a revenue model, not real data) | Shipped |
-| **v1.10.4.1** | **Type-correct industry-condition cross-reference slot** (additive `trigger_industry_condition_ids` field + `list_by_industry_condition` filter on `CorporateStrategicResponseCandidate` / `StrategicResponseCandidateBook`; +4 tests; backward-compatible — disambiguates `signal_id` vs `condition_id` by field, not by payload introspection; no new primitive, no new book, no new ledger record type) | **Shipped (1932 tests)** |
-| v1.10.5       | Living-world integration (wires v1.10.1–v1.10.3 into the multi-period sweep behind a v1.10-scoped fixture, separate from the v1.9.last default fixture) | Planned |
+| v1.10.4.1     | Type-correct industry-condition cross-reference slot (additive `trigger_industry_condition_ids` field + `list_by_industry_condition` filter on `CorporateStrategicResponseCandidate` / `StrategicResponseCandidateBook`; +4 tests; backward-compatible — disambiguates `signal_id` vs `condition_id` by field, not by payload introspection; no new primitive, no new book, no new ledger record type) | Shipped |
+| **v1.10.5**   | **Living-world integration** (wires v1.10.1 → v1.10.4 (+ v1.10.4.1) into `world/reference_living_world.py` as five new per-period phases — industry demand → dialogue → escalation → corporate response — plus one setup-time phase — stewardship themes; `LivingReferencePeriodSummary` / `LivingReferenceWorldResult` / `LivingWorldTraceReport` / canonical / manifest grow additively; CLI surfaces new counts; +15 integration tests; per-run record window widens from `[148, 180]` to `[220, 252]`; `living_world_digest` value differs from v1.9.last by design; no new mechanism, no new `RecordType`, no new book, no executed action) | **Shipped (1947 tests)** |
 | v1.10.last    | Public engagement layer freeze (docs-only) | Planned |
 | v2.0          | Japan public-data calibration design gate                 | Not started                  |
 | v3.0          | Proprietary Japan calibration / expert-data layer         | Private                      |
@@ -506,7 +515,7 @@ Start here:
 
 **Tests:**
 - [docs/test_inventory.md](japan-financial-world/docs/test_inventory.md)
-  — 1932 tests grouped by component (444 v0 + 188 v1.0–v1.7 + 1300 post-v1.7)
+  — 1947 tests grouped by component (444 v0 + 188 v1.0–v1.7 + 1315 post-v1.7)
 
 **Long-form / original ambition (kept for reference):**
 - [docs/architecture.md](japan-financial-world/docs/architecture.md) —
@@ -544,8 +553,8 @@ From the `japan-financial-world` directory:
 python -m pytest -q
 ```
 
-Expected: `1932 passed` at the latest commit (444 v0 + 188 v1
-frozen reference + 1300 post-v1.7 additions covering the reference
+Expected: `1947 passed` at the latest commit (444 v0 + 188 v1
+frozen reference + 1315 post-v1.7 additions covering the reference
 demo, replay, manifest, catalog-shape, experiment harness, the
 v1.8.x endogenous-activity stack — interactions, routines,
 attention, variable / exposure layers, the menu builder, the
@@ -567,10 +576,13 @@ the v1.10.3 investor escalation candidate storage / audit layer
 strategic response candidate storage / audit layer in the
 strategic-response test file, the v1.10.4 industry demand
 condition signal storage / audit layer in the new
-industry-conditions test file, and the v1.10.4.1 additive
+industry-conditions test file, the v1.10.4.1 additive
 type-correct industry-condition cross-reference slot on
 `CorporateStrategicResponseCandidate` exercised in the
-strategic-response test file).
+strategic-response test file, and the v1.10.5 living-world
+integration that wires the v1.10.1 → v1.10.4.1 storage layer
+into the living reference world demo's per-period sweep
+exercised in `tests/test_living_reference_world.py`).
 
 To run only v0 tests, exclude the v1 test files; to run only v1 tests:
 

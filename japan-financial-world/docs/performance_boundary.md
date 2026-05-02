@@ -46,49 +46,63 @@ This milestone records the loop shapes so that:
 3. Anyone reviewing the v1.9 freeze surface can see, in one
    place, what the engine is and is not doing.
 
-## Current loop shapes (v1.9.7)
+## Current loop shapes (v1.10.5)
 
 The following table describes the loop shape of each phase
 inside `world/reference_living_world.run_living_reference_world`.
 `P` = number of periods, `F` = number of firms, `I` = number
-of investors, `B` = number of banks. The `n_obs` and
-`n_exposures` factors are bounded by the fixture's variable
+of investors, `B` = number of banks, `N` = number of unique
+industries derived from the firm → industry map. The `n_obs`
+and `n_exposures` factors are bounded by the fixture's variable
 count (currently 4) and per-firm exposure count (currently
 2–3 each).
 
-| Phase                             | Loop shape                                | v1.9 default           |
-| --------------------------------- | ----------------------------------------- | ---------------------- |
-| Corporate quarterly reporting     | `O(P × F)`                                | 4 × 3 = 12 reports     |
-| Firm pressure assessment (v1.9.4) | `O(P × F × n_exposures)`                  | 4 × 3 × ~2.5 = 30 pass |
-| Menu construction (per actor)     | `O(P × (I+B) × n_relevant_observations)`  | 4 × 4 × ~4 = 64 pass   |
-| Observation set selection         | `O(P × (I+B))`                            | 4 × 4 = 16 selections  |
-| Valuation refresh lite (v1.9.5)   | `O(P × I × F)`                            | 4 × 2 × 3 = 24 valns   |
-| Bank credit review lite (v1.9.7)  | `O(P × B × F)`                            | 4 × 2 × 3 = 24 reviews |
-| Review routines                   | `O(P × (I+B))`                            | 4 × 4 = 16 reviews     |
-| Reporting / replay / manifest     | `O(R)` over emitted ledger records        | ~162 records           |
+| Phase                                                    | Loop shape                                | v1.10.5 default        |
+| -------------------------------------------------------- | ----------------------------------------- | ---------------------- |
+| Corporate quarterly reporting                            | `O(P × F)`                                | 4 × 3 = 12 reports     |
+| Firm pressure assessment (v1.9.4)                        | `O(P × F × n_exposures)`                  | 4 × 3 × ~2.5 = 30 pass |
+| Industry demand condition (v1.10.4)                      | `O(P × N)`                                | 4 × 3 = 12 conditions  |
+| Menu construction (per actor)                            | `O(P × (I+B) × n_relevant_observations)`  | 4 × 4 × ~4 = 64 pass   |
+| Observation set selection                                | `O(P × (I+B))`                            | 4 × 4 = 16 selections  |
+| Valuation refresh lite (v1.9.5)                          | `O(P × I × F)`                            | 4 × 2 × 3 = 24 valns   |
+| Bank credit review lite (v1.9.7)                         | `O(P × B × F)`                            | 4 × 2 × 3 = 24 reviews |
+| Portfolio-company dialogue (v1.10.2)                     | `O(P × I × F)`                            | 4 × 2 × 3 = 24 dialog. |
+| Investor escalation candidate (v1.10.3, investor)        | `O(P × I × F)`                            | 4 × 2 × 3 = 24 cands.  |
+| Corporate strategic response candidate (v1.10.3, corp.)  | `O(P × F)`                                | 4 × 3 = 12 cands.      |
+| Review routines                                          | `O(P × (I+B))`                            | 4 × 4 = 16 reviews     |
+| Reporting / replay / manifest                            | `O(R)` over emitted ledger records        | ~238 records           |
 
-Per-period record-count breakdown (default fixture, v1.9.7):
+Per-period record-count breakdown (default fixture, v1.10.5):
 
 ```
 2 × F                  corporate run + corporate signal              =  6
 F                      firm pressure signal                          =  3
+N                      industry demand condition (v1.10.4)           =  3
 2 × (I + B)            menu + selection                              =  8
 I × F                  valuation                                     =  6
 B × F                  bank credit review note                       =  6
+I × F                  portfolio-company dialogue (v1.10.2)          =  6
+I × F                  investor escalation candidate (v1.10.3, inv.) =  6
+F                      corporate strategic response candidate        =  3
 2 × (I + B)            review_run + review_signal                    =  8
-                                                            total   = 37
-× 4 periods                                                         = 148
-+ ~14 one-off setup records (interactions, routines, profiles)
-                                                          ≈ ~162 records
+                                                            total   = 55
+× 4 periods                                                         = 220
++ ~14 one-off setup (interactions, routines, profiles)
++   4 one-off setup (stewardship themes, v1.10.5)
+                                                          ≈ ~238 records
 ```
 
 Of the loops above:
 
 - The **bounded all-pairs** loops are the valuation
-  `O(P × I × F)` and the bank credit review `O(P × B × F)`.
-  These are the two we explicitly classify as *demo-bounded
-  monitoring*, not production traversal patterns.
-- All other loops are linear in the actor or firm count.
+  `O(P × I × F)`, the bank credit review `O(P × B × F)`, the
+  portfolio-company dialogue `O(P × I × F)`, and the investor
+  escalation candidate `O(P × I × F)`. These four are the only
+  bounded all-pairs traversals; v1.10.5 deliberately did **not**
+  add a new dense shape (it reuses the existing `I × F` shape
+  for both engagement records).
+- All other loops are linear in the actor, firm, or industry
+  count.
 
 ## v1.9 demo discipline
 
@@ -190,24 +204,41 @@ loop on the actual `(bank, firm)` lending relationships.
 The discipline above is enforced by
 `tests/test_living_reference_world_performance_boundary.py`.
 **Note on units:** the budget pinned below is a *per-run total*
-(across all four periods), not a per-period count. The
-per-period count is 37 records; the per-run total is
-`37 × 4 = 148`, plus an infrastructure allowance for one-off
-setup records.
+(across all four periods), not a per-period count. At v1.10.5
+the per-period count is 55 records (37 v1.9.x + 18 v1.10.5);
+the per-run total is `55 × 4 = 220`, plus an infrastructure
+allowance for one-off setup records (14 v1.9.x infra +
+4 v1.10.5 stewardship themes + headroom).
 
 - per-period record formula equals
-  `2F + F + 2(I+B) + IF + BF + 2(I+B) = 37` for the default
-  fixture,
+  `2F + F + N + 2(I+B) + IF + BF + IF + IF + F + 2(I+B) = 55`
+  for the default fixture (with `N = 3` industries),
 - per-run total record count for a default 4-period sweep sits
-  in `[148, 180]` — i.e. exactly `formula × periods` at the
+  in `[220, 252]` — i.e. exactly `formula × periods` at the
   lower edge plus up to a 32-record infrastructure allowance,
 - the valuation count for the run equals exactly `P × I × F`,
 - the bank credit review count for the run equals exactly
   `P × B × F`,
 - the firm pressure signal count for the run equals exactly
   `P × F`,
+- the industry demand condition count for the run equals
+  exactly `P × N`,
+- the dialogue count for the run equals exactly `P × I × F`,
+- the investor escalation candidate count for the run equals
+  exactly `P × I × F`,
+- the corporate strategic response candidate count for the run
+  equals exactly `P × F`,
+- the stewardship theme count for the run equals exactly
+  `I × T` where `T` is the number of theme types (default 2),
 - no order, price-update, contract-mutation, ownership-
-  transfer, or covenant-breach records appear in the ledger,
+  transfer, covenant-breach, institution-action-recorded, or
+  firm-state-added records appear in the ledger,
+- no v1.10 ledger payload carries a forecast / revenue /
+  market-size / vote_cast / proposal_filed / campaign_executed /
+  exit_executed / letter_sent / buyback_executed /
+  dividend_changed / divestment_executed / merger_executed /
+  board_change_executed / disclosure_filed / transcript /
+  content / notes / minutes / attendees key,
 - no warnings or errors appear in the ledger on the default
   sweep.
 

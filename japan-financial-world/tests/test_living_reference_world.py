@@ -921,3 +921,310 @@ def test_cli_smoke_prints_per_period_trace():
     assert "no canonical-truth valuation" in out
     assert "no investment advice" in out
     assert "no lending decisions" in out
+    # v1.10.5 — every period line names the v1.10 phases; the
+    # summary line names the engagement / response chain and
+    # carries the v1.10 anti-claims.
+    assert "industry=" in out
+    assert "themes=" in out
+    assert "dialogues=" in out
+    assert "escalations=" in out
+    assert "responses=" in out
+    assert "industry demand condition" in out
+    assert "investor escalation candidates" in out
+    assert "corporate strategic response candidates" in out
+    assert "no voting execution" in out
+    assert "no proxy filing" in out
+    assert "no public-campaign execution" in out
+    assert "no corporate-action execution" in out
+    assert "no disclosure filing" in out
+    assert "no demand / revenue forecasting" in out
+
+
+# ===========================================================================
+# v1.10.5 — engagement / strategic-response integration
+# ===========================================================================
+
+
+def test_v1_10_5_industry_condition_per_industry_per_period():
+    """Each period emits one IndustryDemandConditionRecord per
+    unique industry derived from the firm_industry_map default
+    (3 firms → 3 distinct industries by keyword)."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    assert len(r.industry_ids) == 3
+    for ps in r.per_period_summaries:
+        assert len(ps.industry_condition_ids) == 3
+
+
+def test_v1_10_5_industry_conditions_resolve_to_stored_records():
+    k = _seed_kernel()
+    r = _run_default(k)
+    seen_cids: set[str] = set()
+    for ps in r.per_period_summaries:
+        seen_cids.update(ps.industry_condition_ids)
+    for cid in seen_cids:
+        rec = k.industry_conditions.get_condition(cid)
+        assert 0.0 <= rec.demand_strength <= 1.0
+        assert 0.0 <= rec.confidence <= 1.0
+
+
+def test_v1_10_5_stewardship_themes_registered_setup_level():
+    """Themes are setup-level: 2 themes × 2 investors = 4 themes,
+    same theme tuple appears on every period summary."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    assert len(r.stewardship_theme_ids) == 4
+    for ps in r.per_period_summaries:
+        assert ps.stewardship_theme_ids == r.stewardship_theme_ids
+
+
+def test_v1_10_5_stewardship_themes_idempotent_on_re_run():
+    """Calling the chain twice on the same kernel against
+    *non-overlapping* period dates must NOT raise on duplicate
+    theme ids — themes are setup-level and registration is
+    idempotent. Periods themselves are intentionally
+    non-overlapping (re-running the corporate-reporting routine
+    on the same date is unrelated to the v1.10.5 idempotency
+    contract this test pins)."""
+    k = _seed_kernel()
+    first_window = _PERIOD_DATES[:2]
+    second_window = _PERIOD_DATES[2:]
+    r1 = run_living_reference_world(
+        k,
+        firm_ids=_FIRM_IDS,
+        investor_ids=_INVESTOR_IDS,
+        bank_ids=_BANK_IDS,
+        period_dates=first_window,
+    )
+    r2 = run_living_reference_world(
+        k,
+        firm_ids=_FIRM_IDS,
+        investor_ids=_INVESTOR_IDS,
+        bank_ids=_BANK_IDS,
+        period_dates=second_window,
+        run_id="run:living:rerun",
+    )
+    assert r1.stewardship_theme_ids == r2.stewardship_theme_ids
+    # Single set of theme records remains in the kernel — the
+    # second call must not have produced a parallel theme set.
+    assert (
+        len(k.stewardship.list_themes())
+        == len(r1.stewardship_theme_ids)
+    )
+
+
+def test_v1_10_5_dialogues_one_per_investor_firm_pair_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected = len(_INVESTOR_IDS) * len(_FIRM_IDS)
+    for ps in r.per_period_summaries:
+        assert len(ps.dialogue_ids) == expected
+
+
+def test_v1_10_5_dialogue_records_resolve_and_carry_pressure_link():
+    k = _seed_kernel()
+    r = _run_default(k)
+    period = r.per_period_summaries[0]
+    pressure_set = set(period.firm_pressure_signal_ids)
+    for did in period.dialogue_ids:
+        d = k.engagement.get_dialogue(did)
+        assert d.initiator_id in _INVESTOR_IDS
+        assert d.counterparty_id in _FIRM_IDS
+        # The dialogue carries the firm's pressure signal in the
+        # dedicated v1.10.2 slot — never in related_signal_ids.
+        assert any(p in pressure_set for p in d.related_pressure_signal_ids)
+
+
+def test_v1_10_5_investor_escalation_candidates_one_per_pair_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected = len(_INVESTOR_IDS) * len(_FIRM_IDS)
+    for ps in r.per_period_summaries:
+        assert len(ps.investor_escalation_candidate_ids) == expected
+
+
+def test_v1_10_5_escalation_candidates_resolve_and_link_dialogues():
+    k = _seed_kernel()
+    r = _run_default(k)
+    period = r.per_period_summaries[0]
+    dialogue_set = set(period.dialogue_ids)
+    for eid in period.investor_escalation_candidate_ids:
+        c = k.escalations.get_candidate(eid)
+        assert c.investor_id in _INVESTOR_IDS
+        assert c.target_company_id in _FIRM_IDS
+        # Each escalation cites at least one dialogue from the
+        # same period — the integration assertion that the
+        # v1.10.5 orchestrator wired the pair link end-to-end.
+        assert any(did in dialogue_set for did in c.dialogue_ids)
+
+
+def test_v1_10_5_corporate_response_candidates_one_per_firm_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        assert (
+            len(ps.corporate_strategic_response_candidate_ids)
+            == len(_FIRM_IDS)
+        )
+
+
+def test_v1_10_5_corporate_response_uses_industry_condition_slot_not_signal_slot():
+    """v1.10.4.1 type-correct cross-reference: industry-condition
+    ids must appear in trigger_industry_condition_ids and **not**
+    in trigger_signal_ids."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    period = r.per_period_summaries[0]
+    industry_condition_set = set(period.industry_condition_ids)
+    for rid in period.corporate_strategic_response_candidate_ids:
+        c = k.strategic_responses.get_candidate(rid)
+        # At least one industry-condition id from this period is
+        # cited in the dedicated slot.
+        assert any(
+            cid in industry_condition_set
+            for cid in c.trigger_industry_condition_ids
+        )
+        # The signal slot must NOT carry any industry-condition id.
+        for sid in c.trigger_signal_ids:
+            assert sid not in industry_condition_set
+
+
+def test_v1_10_5_no_voting_or_corporate_action_payload_keys_in_ledger():
+    """No v1.10.5 record's ledger payload may carry an execution /
+    transcript / forecast key — the candidate-only / no-execution /
+    no-forecast discipline applies end-to-end in the integrated
+    demo."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    forbidden_keys = {
+        "vote_cast",
+        "proposal_filed",
+        "campaign_executed",
+        "exit_executed",
+        "letter_sent",
+        "buyback_executed",
+        "dividend_changed",
+        "divestment_executed",
+        "merger_executed",
+        "board_change_executed",
+        "disclosure_filed",
+        "transcript",
+        "content",
+        "notes",
+        "minutes",
+        "attendees",
+        "verbatim",
+        "paraphrase",
+        "body",
+        "forecast_value",
+        "revenue_forecast",
+        "sales_forecast",
+        "market_size",
+        "demand_index_value",
+        "vendor_consensus",
+        "consensus_forecast",
+        "real_data_value",
+    }
+    for rec in k.ledger.records[
+        r.ledger_record_count_before : r.ledger_record_count_after
+    ]:
+        leaked = set(rec.payload.keys()) & forbidden_keys
+        assert not leaked, (
+            f"v1.10.5 demo record {rec.object_id!r} leaks forbidden "
+            f"payload keys: {sorted(leaked)}"
+        )
+
+
+def test_v1_10_5_no_forbidden_action_class_event_types_appear():
+    """The integrated v1.10.5 sweep must emit no action-class
+    record types — even from the new engagement / response phases."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    forbidden_event_types = {
+        "order_submitted",
+        "price_updated",
+        "contract_created",
+        "contract_status_updated",
+        "contract_covenant_breached",
+        "ownership_position_added",
+        "ownership_transferred",
+        "institution_action_recorded",
+        "firm_state_added",
+    }
+    seen = {
+        rec.event_type
+        for rec in k.ledger.records[
+            r.ledger_record_count_before : r.ledger_record_count_after
+        ]
+    }
+    assert seen.isdisjoint(forbidden_event_types), (
+        "v1.10.5 integrated sweep emitted forbidden action-class "
+        f"records: {sorted(seen & forbidden_event_types)}"
+    )
+
+
+def test_v1_10_5_no_other_books_mutated_by_engagement_phases():
+    """The engagement / response phases must not mutate any other
+    source-of-truth book. Snapshot every kernel book that v1.10
+    is *not* expected to write into and compare before / after."""
+    k = _seed_kernel()
+    snaps_before = {
+        "ownership": k.ownership.snapshot(),
+        "contracts": k.contracts.snapshot(),
+        "prices": k.prices.snapshot(),
+        "constraints": k.constraints.snapshot(),
+        "institutions": k.institutions.snapshot(),
+        "external_processes": k.external_processes.snapshot(),
+        "relationships": k.relationships.snapshot(),
+    }
+    _run_default(k)
+    assert k.ownership.snapshot() == snaps_before["ownership"]
+    assert k.contracts.snapshot() == snaps_before["contracts"]
+    assert k.prices.snapshot() == snaps_before["prices"]
+    assert k.constraints.snapshot() == snaps_before["constraints"]
+    assert k.institutions.snapshot() == snaps_before["institutions"]
+    assert (
+        k.external_processes.snapshot()
+        == snaps_before["external_processes"]
+    )
+    assert k.relationships.snapshot() == snaps_before["relationships"]
+
+
+def test_v1_10_5_two_runs_produce_byte_identical_canonical_view():
+    """v1.10.5 additions to LivingReferencePeriodSummary and the
+    canonical view must remain deterministic — two fresh runs of
+    the default fixture produce byte-identical canonical JSON."""
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+        living_world_digest,
+    )
+
+    k1 = _seed_kernel()
+    r1 = _run_default(k1)
+    k2 = _seed_kernel()
+    r2 = _run_default(k2)
+    can1 = canonicalize_living_world_result(k1, r1)
+    can2 = canonicalize_living_world_result(k2, r2)
+    assert can1 == can2
+    assert living_world_digest(k1, r1) == living_world_digest(k2, r2)
+
+
+def test_v1_10_5_canonical_view_carries_engagement_id_tuples():
+    """The canonical view must surface the v1.10.5 id tuples
+    explicitly so a downstream lineage / replay consumer does not
+    need to re-walk the ledger to find them."""
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+    )
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    can = canonicalize_living_world_result(k, r)
+    assert "industry_ids" in can
+    assert "stewardship_theme_ids" in can
+    for ps in can["per_period_summaries"]:
+        assert "industry_condition_ids" in ps
+        assert "stewardship_theme_ids" in ps
+        assert "dialogue_ids" in ps
+        assert "investor_escalation_candidate_ids" in ps
+        assert "corporate_strategic_response_candidate_ids" in ps

@@ -214,34 +214,44 @@ def count_expected_living_world_records(
     investors: int,
     banks: int,
     periods: int,
+    industries: int = 3,
 ) -> int:
     """Returns the **total** record count across the entire
     multi-period run — i.e. the per-period formula multiplied
     by ``periods``. This is **not** a per-period count.
 
     Excludes the one-off setup records (interactions, routines,
-    profiles) that the helper registers on first invocation;
-    those are bounded by the upper budget in the test that
-    consumes this helper.
+    profiles, stewardship themes) that the helper registers on
+    first invocation; those are bounded by the upper budget in the
+    test that consumes this helper.
 
     Per period (multiplied by ``periods`` to obtain the run total):
         2 * firms                  corporate run + corporate signal
         firms                      firm pressure signal (v1.9.4)
+        industries                 industry demand condition (v1.10.4)
         2 * (investors + banks)    menu + selection
         investors * firms          valuation (v1.9.5)
         banks * firms              bank credit review note (v1.9.7)
+        investors * firms          portfolio-company dialogue (v1.10.2)
+        investors * firms          investor escalation candidate (v1.10.3)
+        firms                      corporate strategic response candidate (v1.10.3)
         2 * (investors + banks)    review_run + review_signal
 
     For the default fixture (3 firms, 2 investors, 2 banks,
-    4 periods) this is 37 records per period × 4 periods = 148.
+    3 industries, 4 periods) this is 55 records per period × 4
+    periods = 220.
     """
     actors = investors + banks
     per_period = (
         2 * firms                  # corp run + corp signal
         + firms                    # pressure signal
+        + industries               # industry demand condition (v1.10.4)
         + 2 * actors               # menu + selection
         + investors * firms        # valuation
         + banks * firms            # credit review
+        + investors * firms        # dialogue (v1.10.2)
+        + investors * firms        # escalation candidate (v1.10.3, investor)
+        + firms                    # response candidate (v1.10.3, corporate)
         + 2 * actors               # review_run + review_signal
     )
     return per_period * periods
@@ -285,13 +295,15 @@ def test_default_living_world_total_run_record_count_matches_formula():
     """Total record count for a full default *run* (4 periods)
     equals the per-period formula × 4 plus a small
     infrastructure allowance for one-off setup (interactions,
-    routines, profiles, attention configs).
+    routines, profiles, attention configs, stewardship themes).
 
     Note on units: the budget pinned here is a **per-run total
-    across all four periods**, NOT a per-period count. The
-    per-period count is 37 records; the per-run total is
-    37 × 4 = 148, plus up to 32 records of one-off setup
-    overhead, giving a tight total-run window of [148, 180].
+    across all four periods**, NOT a per-period count. At v1.10.5
+    the per-period count is 55 records (37 v1.9.x + 18 v1.10.5);
+    the per-run total is 55 × 4 = 220, plus up to 32 records of
+    one-off setup overhead (14 v1.9.x infra + 4 v1.10.5
+    stewardship themes + headroom), giving a tight total-run
+    window of [220, 252].
     """
     k = _seed_kernel()
     r = run_living_reference_world(
@@ -317,10 +329,10 @@ def test_default_living_world_total_run_record_count_matches_formula():
     )
     # Tight per-run upper bound: no more than 32 setup records
     # on top of the per-period work over the entire run. v1.9.7
-    # currently sits at ~14 such records; 32 leaves headroom for
-    # harmless infra adjustments but is far below any quadratic
-    # explosion (which would push the count to triple-digit
-    # growth per period).
+    # sits at ~14 such records; v1.10.5 adds 4 stewardship-theme
+    # records to setup; 32 leaves headroom for harmless infra
+    # adjustments but is far below any quadratic explosion (which
+    # would push the count to triple-digit growth per period).
     upper_bound = expected_run_total + 32
     assert r.created_record_count <= upper_bound, (
         f"living world produced {r.created_record_count} records "
@@ -512,8 +524,9 @@ def test_count_expected_living_world_records_matches_default_fixture():
         banks=len(_BANK_IDS),
         periods=len(_PERIOD_DATES),
     )
-    # Per docs/performance_boundary.md: 4 × 37 = 148
-    assert total == 148
+    # Per docs/performance_boundary.md (v1.10.5):
+    # 4 × 55 = 220 records per run from the per-period formula.
+    assert total == 220
 
 
 def test_count_expected_living_world_records_scales_linearly_in_periods():

@@ -102,12 +102,22 @@ _EXPECTED_LIVING_WORLD_EVENT_TYPES: tuple[str, ...] = (
 
 # Hard-boundary statement. Emitted verbatim under the
 # `## Boundaries` section of the Markdown report. Per the v1.9.1
-# task spec; expanded from the v1.9.1-prep draft to include
-# "no investment advice".
+# task spec, extended at v1.10.5 to cover the engagement /
+# strategic-response layer (no voting / proxy filing / public
+# campaign / corporate-action execution / disclosure filing /
+# demand or revenue forecasting / firm financial-statement
+# updates). The v1.9.1 preamble is preserved verbatim so existing
+# canonical snapshots that read the prefix still match.
 _BOUNDARY_STATEMENT: str = (
     "No price formation, no trading, no lending decisions, "
     "no valuation behavior, no Japan calibration, no real data, "
-    "no investment advice."
+    "no investment advice. "
+    "v1.10.5 engagement / strategic-response layer: no voting, "
+    "no proxy filing, no public-campaign execution, no exit "
+    "execution, no AGM/EGM action, no corporate-action execution "
+    "(buyback / dividend / divestment / merger / governance "
+    "change), no disclosure-filing execution, no demand / sales "
+    "/ revenue forecasting, no firm financial-statement updates."
 )
 
 
@@ -151,6 +161,13 @@ class LivingWorldPeriodReport:
     # v1.9.7 additive: bank credit review lite. Default 0 for
     # backwards compat.
     credit_review_signal_count: int = 0
+    # v1.10.5 additive: engagement / strategic-response layer.
+    # Default 0 for backwards compat with pre-v1.10 result objects.
+    industry_condition_count: int = 0
+    stewardship_theme_count: int = 0
+    dialogue_count: int = 0
+    investor_escalation_candidate_count: int = 0
+    corporate_strategic_response_candidate_count: int = 0
     record_type_counts: tuple[tuple[str, int], ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -172,6 +189,11 @@ class LivingWorldPeriodReport:
             "pressure_signal_count",
             "valuation_count",
             "credit_review_signal_count",
+            "industry_condition_count",
+            "stewardship_theme_count",
+            "dialogue_count",
+            "investor_escalation_candidate_count",
+            "corporate_strategic_response_candidate_count",
         ):
             value = getattr(self, name)
             if not isinstance(value, int) or value < 0:
@@ -234,6 +256,15 @@ class LivingWorldPeriodReport:
             "pressure_signal_count": self.pressure_signal_count,
             "valuation_count": self.valuation_count,
             "credit_review_signal_count": self.credit_review_signal_count,
+            "industry_condition_count": self.industry_condition_count,
+            "stewardship_theme_count": self.stewardship_theme_count,
+            "dialogue_count": self.dialogue_count,
+            "investor_escalation_candidate_count": (
+                self.investor_escalation_candidate_count
+            ),
+            "corporate_strategic_response_candidate_count": (
+                self.corporate_strategic_response_candidate_count
+            ),
             "record_type_counts": [
                 [event_type, count]
                 for event_type, count in self.record_type_counts
@@ -745,6 +776,19 @@ def _build_period_report(
             credit_review_signal_count=len(
                 getattr(period, "bank_credit_review_signal_ids", ())
             ),
+            industry_condition_count=len(
+                getattr(period, "industry_condition_ids", ())
+            ),
+            stewardship_theme_count=len(
+                getattr(period, "stewardship_theme_ids", ())
+            ),
+            dialogue_count=len(getattr(period, "dialogue_ids", ())),
+            investor_escalation_candidate_count=len(
+                getattr(period, "investor_escalation_candidate_ids", ())
+            ),
+            corporate_strategic_response_candidate_count=len(
+                getattr(period, "corporate_strategic_response_candidate_ids", ())
+            ),
             record_type_counts=period_record_type_counts,
             warnings=tuple(period_warnings),
             metadata={
@@ -862,6 +906,50 @@ def render_living_world_markdown(report: LivingWorldTraceReport) -> str:
     else:
         lines.append("- _(none)_")
     lines.append("")
+
+    # v1.10.5 engagement / strategic-response section. Per-period
+    # counts for stewardship themes (setup-level; same on every
+    # period), industry demand conditions, dialogues, escalation
+    # candidates, and corporate strategic response candidates. The
+    # table is intentionally narrow so it does not crowd the v1.9
+    # core flow above.
+    has_v110_signal = any(
+        ps.get("dialogue_count", 0)
+        + ps.get("investor_escalation_candidate_count", 0)
+        + ps.get("corporate_strategic_response_candidate_count", 0)
+        + ps.get("industry_condition_count", 0)
+        + ps.get("stewardship_theme_count", 0)
+        > 0
+        for ps in md["period_summaries"]
+    )
+    if has_v110_signal:
+        lines.append("## v1.10 engagement / response")
+        lines.append("")
+        lines.append(
+            "| period | as_of_date | themes | industries | "
+            "dialogues | escalations | responses |"
+        )
+        lines.append(
+            "| --- | --- | --- | --- | --- | --- | --- |"
+        )
+        for ps in md["period_summaries"]:
+            lines.append(
+                f"| `{ps['period_id']}` | `{ps['as_of_date']}` | "
+                f"{ps.get('stewardship_theme_count', 0)} | "
+                f"{ps.get('industry_condition_count', 0)} | "
+                f"{ps.get('dialogue_count', 0)} | "
+                f"{ps.get('investor_escalation_candidate_count', 0)} | "
+                f"{ps.get('corporate_strategic_response_candidate_count', 0)} |"
+            )
+        lines.append("")
+        lines.append(
+            "> All v1.10 entries are storage / metadata / "
+            "candidates only — no voting execution, no proxy "
+            "filing, no public campaign, no corporate action, no "
+            "disclosure filing, no demand / revenue forecast, no "
+            "firm financial-statement update."
+        )
+        lines.append("")
 
     # Attention divergence summary.
     lines.append("## Attention divergence")

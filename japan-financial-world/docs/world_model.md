@@ -6139,8 +6139,8 @@ A `StewardshipThemeRecord` and the `StewardshipBook` storing it are jurisdiction
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
-| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
-| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
+| **v1.10.5 Living-world integration** | Code (§76). | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6221,8 +6221,8 @@ A `PortfolioCompanyDialogueRecord` and the `DialogueBook` storing it are jurisdi
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
-| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
-| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
+| **v1.10.5 Living-world integration** | Code (§76). | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6345,8 +6345,8 @@ The v1.10.3 candidate records and their books are jurisdiction-neutral, signal-o
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
-| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
-| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
+| **v1.10.5 Living-world integration** | Code (§76). | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6424,8 +6424,8 @@ An `IndustryDemandConditionRecord` and the `IndustryConditionBook` storing it ar
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
-| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
-| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
+| **v1.10.5 Living-world integration** | Code (§76). | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6484,9 +6484,165 @@ Two alternatives were considered and rejected:
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
-| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | **Code (§75). Additive.** | **Shipped** |
+| v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `1928 / 1928` (v1.10.4) to `1932 / 1932` (v1.10.4.1) — `+4` new tests in `tests/test_strategic_response.py` (one extra parametrize entry plus three new test functions). The CLI surface, the default fixture, the per-period flow, the reproducibility surface, and the performance boundary of v1.9.last are all preserved unchanged.
+
+## 76. v1.10.5 Living-world integration
+
+§76 wires the v1.10.1 → v1.10.4 (and v1.10.4.1) engagement / strategic-response storage primitives into the existing v1.9 living reference world demo. The runtime grows by five new phases (industry demand → stewardship setup → dialogue → escalation → corporate response) and the `LivingReferencePeriodSummary` / `LivingReferenceWorldResult` / report / canonical / manifest surfaces grow additively to surface the new id tuples. **No new mechanism is introduced.** The integration is composition over the v1.10 storage books only: every v1.10 link in the demo chain is non-binding, candidate-only, and content-free, exactly as the per-record contracts of §71 → §75 prescribe. The v1.10 hard boundary (§70.3) and the meta-abstraction deferral rule (§70.4) continue to hold without modification.
+
+### 76.1 What the demo now demonstrates
+
+The integrated chain over a single period:
+
+```
+corporate quarterly report (§49)
+  → firm operating-pressure assessment (§64)
+    → industry demand condition (§74)
+      → heterogeneous attention (§54)
+        → valuation refresh lite (§65)
+          → bank credit review lite (§67)
+            → portfolio-company dialogue metadata (§72)
+              → investor escalation candidate (§73)
+              → corporate strategic response candidate (§73)
+                → review routines (§55)
+```
+
+The investor side and the corporate side run in parallel. Every cross-reference is plain-id and not validated against any other book (the v0/v1 cross-reference rule). Industry-condition ids ride in the v1.10.4.1 type-correct `trigger_industry_condition_ids` slot on `CorporateStrategicResponseCandidate`, never in `trigger_signal_ids`.
+
+### 76.2 What v1.10.5 ships
+
+- `world/reference_living_world.py` — extends the orchestrator with three optional kwargs (`firm_industry_map`, `industry_demand_states`, `stewardship_theme_types`) plus five new per-period phases and one new setup-time phase. The `LivingReferencePeriodSummary` dataclass grows additively with `industry_condition_ids` / `stewardship_theme_ids` / `dialogue_ids` / `investor_escalation_candidate_ids` / `corporate_strategic_response_candidate_ids`; `LivingReferenceWorldResult` grows with setup-level `industry_ids` / `stewardship_theme_ids`. Every new field defaults to `()` so older callers keep working.
+- `world/living_world_report.py` — `LivingWorldPeriodReport` grows with `industry_condition_count` / `stewardship_theme_count` / `dialogue_count` / `investor_escalation_candidate_count` / `corporate_strategic_response_candidate_count`. The Markdown renderer adds a concise `## v1.10 engagement / response` section between the per-period table and the attention divergence section. The boundary statement is extended in place to cover the v1.10 anti-claims; the v1.9.1 prefix is preserved verbatim.
+- `examples/reference_world/living_world_replay.py` — the canonical view echoes setup-level `industry_ids` / `industry_count` / `stewardship_theme_ids` / `stewardship_theme_count` plus the per-period v1.10 id tuples. The boundary statement constant tracks the reporter's. **Expected digest change:** the v1.10.5 living-world digest is *not* the same as the v1.9.last digest — the canonical view now includes the new id tuples and the boundary string was extended. Two fresh runs of the v1.10.5 default fixture produce byte-identical canonical JSON and the same digest; the digest just differs from v1.9.last.
+- `examples/reference_world/living_world_manifest.py` — the manifest summary echoes the new counts (`industry_count`, `stewardship_theme_count`, `industry_condition_total`, `dialogue_total`, `investor_escalation_candidate_total`, `corporate_strategic_response_candidate_total`).
+- `examples/reference_world/run_living_reference_world.py` — the per-period CLI trace line names the v1.10 phases (`industry=`, `themes=`, `dialogues=`, `escalations=`, `responses=`); the summary line names the integrated chain and carries the v1.10 anti-claims.
+- `tests/test_living_reference_world.py` — `+15` new tests pinning v1.10.5 integration invariants. See §76.7.
+- `tests/test_living_reference_world_performance_boundary.py` — the per-period formula and the per-run upper bound are updated to reflect the v1.10.5 contributions. See §76.5.
+
+### 76.3 Per-period flow (runtime order)
+
+The runtime flow follows data dependencies, not narrative order:
+
+1. **Corporate phase** (§49) — one corporate quarterly report per firm.
+2. **Firm pressure phase** (§64) — one pressure signal per firm.
+3. **Industry demand condition phase** (§74, NEW) — one record per unique industry derived from `firm_industry_map`. Synthetic context evidence; *not* a forecast.
+4. **Attention phase** (§54) — one menu + one selection per actor.
+5. **Valuation phase** (§65) — one valuation per (investor, firm).
+6. **Bank credit review phase** (§67) — one review note per (bank, firm).
+7. **Dialogue phase** (§72, NEW) — one dialogue record per (investor, firm). Carries metadata only: theme refs, corp-signal ref, valuation refs, pressure-signal refs. No transcript / content / notes / minutes / attendees.
+8. **Investor escalation phase** (§73, NEW) — one candidate per (investor, firm). Carries the option, never the act: theme refs, dialogue refs, signal refs (corp + pressure), valuation refs.
+9. **Corporate strategic response phase** (§73, NEW) — one candidate per firm. Carries the option, never the act: theme refs (across all investors that talked to the firm), dialogue refs (with this firm), signal refs (corp + pressure), valuation refs (on this firm), `trigger_industry_condition_ids` (the firm's industry's per-period condition).
+10. **Review phase** (§55) — one investor review run + one bank review run.
+
+**Setup-time (NEW, idempotent, fires once per kernel):** stewardship themes — one per (investor, theme_type) for `theme_types = ("capital_allocation_discipline", "governance_structure")` by default. The same theme tuple is echoed on every period summary's `stewardship_theme_ids` so a downstream consumer sees which themes were active without joining against the result.
+
+### 76.4 Default fixture
+
+The default fixture is the v1.9.last fixture plus three keyword-derived industries and four stewardship themes:
+
+| Slice | Count | Source |
+| --- | --- | --- |
+| firms | 3 | unchanged |
+| investors | 2 | unchanged |
+| banks | 2 | unchanged |
+| periods | 4 | unchanged |
+| industries | 3 | derived from firm-id keyword (manufacturer / retailer / utility) |
+| themes per investor | 2 | `_DEFAULT_STEWARDSHIP_THEME_TYPES` |
+| stewardship themes (setup) | 4 | `2 investors × 2 themes` |
+
+The `industry_ids` are deduplicated from `firm_industry_map.values()` and sorted for canonical-view determinism. Callers may override via `firm_industry_map=` and `industry_demand_states=` kwargs.
+
+### 76.5 Performance boundary (binding)
+
+The v1.10.5 per-period formula and per-run window are pinned by `tests/test_living_reference_world_performance_boundary.py` and `count_expected_living_world_records`:
+
+```
+per_period_total =
+    2 * firms                    # corporate run + corporate signal
+  + firms                        # firm pressure signal (v1.9.4)
+  + industries                   # industry demand condition (v1.10.4)
+  + 2 * (investors + banks)      # menu + selection
+  + investors * firms            # valuation (v1.9.5)
+  + banks * firms                # bank credit review (v1.9.7)
+  + investors * firms            # dialogue (v1.10.2)
+  + investors * firms            # escalation candidate (v1.10.3 investor)
+  + firms                        # response candidate (v1.10.3 corporate)
+  + 2 * (investors + banks)      # review run + review signal
+```
+
+For the default fixture (firms=3, investors=2, banks=2, industries=3, periods=4):
+
+- per-period: **55 records** (was 37 at v1.9.last; **+18** v1.10.5: +3 industry, +6 dialogue, +6 escalation, +3 response).
+- per-run total formula: 55 × 4 = **220 records**.
+- setup allowance (one-off): up to **32 records** (14 v1.9.x infra + 4 v1.10.5 stewardship themes + headroom). The historical v1.9.last allowance was the same 32; v1.10.5 fits within it.
+- per-run window: **[220, 252]** (formula → formula + 32 setup headroom).
+
+The bounded all-pairs loops are **demo-bounded only**. Production-scale traversal still requires sparse gating per §68. v1.10.5 does *not* introduce any new dense traversal: the dialogue and escalation loops are the same `investors × firms` shape that valuation already walks; the response loop is `firms` only; the industry loop is `industries` only.
+
+### 76.6 Living-world digest (expected change)
+
+The v1.10.5 living-world digest is **not** equal to the v1.9.last digest. The canonical view now carries:
+
+- setup-level `industry_ids` / `industry_count` / `stewardship_theme_ids` / `stewardship_theme_count`;
+- per-period `industry_condition_ids` / `stewardship_theme_ids` / `dialogue_ids` / `investor_escalation_candidate_ids` / `corporate_strategic_response_candidate_ids`;
+- the extended `boundary_statement` covering the v1.10 anti-claims.
+
+This is **expected** and is part of v1.10.5's freeze surface. Tests assert that two fresh runs of the v1.10.5 default fixture produce *byte-identical* canonical JSON and the same digest, but no test pins the v1.10.5 digest to the v1.9.last digest. The default-fixture digest at v1.10.5 is `2e21cd0e2d12c92fff56e7de193c2acf6a1a59489b32643add4aa4b157f6e652`.
+
+### 76.7 What v1.10.5 tests pin
+
+`tests/test_living_reference_world.py` adds 15 v1.10.5-specific integration tests on top of the v1.9.x suite:
+
+- one industry condition per industry per period;
+- conditions resolve to `IndustryConditionBook` with strength / confidence in `[0.0, 1.0]`;
+- stewardship themes are setup-level (`investors × theme_types` records, same tuple on every period summary);
+- stewardship-theme registration is idempotent across re-runs on the same kernel;
+- one dialogue per (investor, firm) per period; dialogues resolve and carry the firm's pressure signal in the dedicated v1.10.2 slot;
+- one investor escalation candidate per (investor, firm) per period; escalations resolve and link the same period's dialogue;
+- one corporate response candidate per firm per period;
+- corporate response candidates use the v1.10.4.1 `trigger_industry_condition_ids` slot for industry-condition refs and **never** `trigger_signal_ids` (an explicit anti-leak assertion);
+- no v1.10.5 ledger payload across the integrated demo carries any of `vote_cast` / `proposal_filed` / `campaign_executed` / `exit_executed` / `letter_sent` / `buyback_executed` / `dividend_changed` / `divestment_executed` / `merger_executed` / `board_change_executed` / `disclosure_filed` / `transcript` / `content` / `notes` / `minutes` / `attendees` / `verbatim` / `paraphrase` / `body` / `forecast_value` / `revenue_forecast` / `sales_forecast` / `market_size` / `demand_index_value` / `vendor_consensus` / `consensus_forecast` / `real_data_value` keys;
+- the integrated sweep emits no `order_submitted` / `price_updated` / `contract_*` / `ownership_*` / `institution_action_recorded` / `firm_state_added` records;
+- the engagement phases mutate no other source-of-truth book (`ownership` / `contracts` / `prices` / `constraints` / `institutions` / `external_processes` / `relationships` snapshots before / after match exactly);
+- two fresh runs produce byte-identical canonical JSON and the same `living_world_digest`;
+- the canonical view surfaces the v1.10 id tuples explicitly so a downstream lineage / replay consumer does not have to re-walk the ledger.
+
+The CLI smoke test pins the `industry=` / `themes=` / `dialogues=` / `escalations=` / `responses=` columns and the v1.10 anti-claims in the summary line.
+
+### 76.8 No-behavior boundary (binding)
+
+v1.10.5 is **integration only**. It does **not**:
+
+- introduce any new mechanism, new `MechanismAdapter`, new `RecordType`, new book, or new kernel attribute;
+- mutate any source-of-truth book outside the v1.10 storage books (and the kernel ledger's append-only growth);
+- enforce any vocabulary against any country / regulator / code / named institution — every controlled-vocabulary tag remains illustrative;
+- emit voting, proxy filing, public-campaign, exit, AGM / EGM action, corporate-action execution (buyback / dividend / divestment / merger / governance change), disclosure-filing execution, demand / sales / revenue forecasting, firm financial-statement updates, investment recommendation, trading, price formation, lending decisions, real-data ingestion, Japan calibration, jurisdiction-specific stewardship codes, or calibrated behavior probabilities;
+- alter the v1.9.5 / v1.9.7 mechanism contracts. Valuation and credit-review inputs are unchanged; the v1.10 phases are downstream of those mechanisms in the runtime order, not upstream.
+
+### 76.9 What v1.10.5 does not decide
+
+- The v1.10.last freeze gate (anti-claim list, scope-language audit, forbidden-token scan, CI green on the tag commit). v1.10.last lands as a docs-only follow-up.
+- The fixture composition for v2.x Japan public-data calibration. The v1.10.5 demo remains 100% synthetic.
+- Whether the meta-abstractions (`actor_business_model_transition_pressure`, `actor_strategic_response_candidate`) ever ship in public FWE. The deferral rule of §70.4 stays in force; v1.10.5 does *not* introduce them.
+
+### 76.10 Position in the v1.10 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
+| v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
+| v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
+| v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
+| v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
+| **v1.10.5 Living-world integration** | Code (§76). | **Shipped** |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `1932 / 1932` (v1.10.4.1) to `1947 / 1947` (v1.10.5) — `+15` v1.10.5 integration tests in `tests/test_living_reference_world.py`. The CLI surface, the default fixture *shape*, the per-period flow, and the reproducibility surface all grow additively; the `living_world_digest` value changes (expected — see §76.6) and the per-run record window widens from `[148, 180]` to `[220, 252]` (documented — see §76.5).

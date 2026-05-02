@@ -110,7 +110,32 @@ def _git_probe() -> dict[str, Any]:
 
 def _summary_from_result(result: LivingReferenceWorldResult) -> dict[str, Any]:
     """Compact summary echoing the result's headline fields. Kept
-    intentionally narrow so the manifest stays small."""
+    intentionally narrow so the manifest stays small.
+
+    v1.10.5 additive: engagement-layer counts (industries,
+    stewardship themes, dialogues, escalation candidates,
+    corporate strategic response candidates) are echoed when the
+    result carries them; they fall through to 0 for older result
+    objects without the v1.10 fields.
+    """
+    industry_count = len(getattr(result, "industry_ids", ()))
+    theme_count = len(getattr(result, "stewardship_theme_ids", ()))
+    dialogue_total = sum(
+        len(getattr(p, "dialogue_ids", ()))
+        for p in result.per_period_summaries
+    )
+    escalation_total = sum(
+        len(getattr(p, "investor_escalation_candidate_ids", ()))
+        for p in result.per_period_summaries
+    )
+    response_total = sum(
+        len(getattr(p, "corporate_strategic_response_candidate_ids", ()))
+        for p in result.per_period_summaries
+    )
+    industry_condition_total = sum(
+        len(getattr(p, "industry_condition_ids", ()))
+        for p in result.per_period_summaries
+    )
     return {
         "run_id": result.run_id,
         "period_count": result.period_count,
@@ -120,6 +145,12 @@ def _summary_from_result(result: LivingReferenceWorldResult) -> dict[str, Any]:
         "firm_count": len(result.firm_ids),
         "investor_count": len(result.investor_ids),
         "bank_count": len(result.bank_ids),
+        "industry_count": industry_count,
+        "stewardship_theme_count": theme_count,
+        "industry_condition_total": industry_condition_total,
+        "dialogue_total": dialogue_total,
+        "investor_escalation_candidate_total": escalation_total,
+        "corporate_strategic_response_candidate_total": response_total,
         "created_record_count": result.created_record_count,
     }
 

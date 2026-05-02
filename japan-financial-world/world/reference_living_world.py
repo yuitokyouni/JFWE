@@ -70,7 +70,25 @@ from datetime import date
 from typing import Any, Mapping, Sequence
 
 from world.attention import AttentionProfile, SelectedObservationSet
+from world.engagement import (
+    DuplicateDialogueError,
+    DuplicateEscalationCandidateError,
+    InvestorEscalationCandidate,
+    PortfolioCompanyDialogueRecord,
+)
+from world.industry import (
+    DuplicateIndustryConditionError,
+    IndustryDemandConditionRecord,
+)
 from world.observation_menu_builder import ObservationMenuBuildRequest
+from world.stewardship import (
+    DuplicateStewardshipThemeError,
+    StewardshipThemeRecord,
+)
+from world.strategic_response import (
+    CorporateStrategicResponseCandidate,
+    DuplicateResponseCandidateError,
+)
 from world.reference_attention import (
     register_bank_attention_profile,
     register_investor_attention_profile,
@@ -150,6 +168,26 @@ class LivingReferencePeriodSummary:
     bank_review_run_ids: tuple[str, ...] = field(default_factory=tuple)
     investor_review_signal_ids: tuple[str, ...] = field(default_factory=tuple)
     bank_review_signal_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.10.5 additive: engagement / strategic-response integration.
+    # ``industry_condition_ids`` carries one entry per industry per
+    # period (v1.10.4); ``stewardship_theme_ids`` echoes the
+    # setup-level themes registered for the run (the same tuple
+    # appears on every period summary so a downstream consumer can
+    # see which themes were active for every period without joining
+    # against the result-level setup); ``dialogue_ids`` and
+    # ``investor_escalation_candidate_ids`` carry one entry per
+    # (investor, firm) pair (v1.10.2 / v1.10.3 investor side);
+    # ``corporate_strategic_response_candidate_ids`` carries one
+    # entry per firm (v1.10.3 corporate side).
+    industry_condition_ids: tuple[str, ...] = field(default_factory=tuple)
+    stewardship_theme_ids: tuple[str, ...] = field(default_factory=tuple)
+    dialogue_ids: tuple[str, ...] = field(default_factory=tuple)
+    investor_escalation_candidate_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    corporate_strategic_response_candidate_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     record_count_created: int = 0
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -171,6 +209,11 @@ class LivingReferencePeriodSummary:
             "bank_review_run_ids",
             "investor_review_signal_ids",
             "bank_review_signal_ids",
+            "industry_condition_ids",
+            "stewardship_theme_ids",
+            "dialogue_ids",
+            "investor_escalation_candidate_ids",
+            "corporate_strategic_response_candidate_ids",
         ):
             value = tuple(getattr(self, tuple_field_name))
             for entry in value:
@@ -206,6 +249,16 @@ class LivingReferenceWorldResult:
     created_record_ids: tuple[str, ...]
     ledger_record_count_before: int
     ledger_record_count_after: int
+    # v1.10.5 additive: setup-level engagement context. The
+    # ``industry_ids`` tuple names the unique industries the run
+    # generated demand-condition records against (one record per
+    # industry per period; the per-period tuple lives on
+    # :class:`LivingReferencePeriodSummary`). The
+    # ``stewardship_theme_ids`` tuple names the themes registered
+    # once at setup; the same tuple is echoed on every period
+    # summary's ``stewardship_theme_ids`` field for convenience.
+    industry_ids: tuple[str, ...] = field(default_factory=tuple)
+    stewardship_theme_ids: tuple[str, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -222,6 +275,8 @@ class LivingReferenceWorldResult:
             "investor_ids",
             "bank_ids",
             "created_record_ids",
+            "industry_ids",
+            "stewardship_theme_ids",
         ):
             value = tuple(getattr(self, tuple_field_name))
             for entry in value:
@@ -253,6 +308,152 @@ _DEFAULT_QUARTER_END_DATES: tuple[str, ...] = (
     "2026-09-30",
     "2026-12-31",
 )
+
+
+# v1.10.5 — defaults for the engagement / strategic-response layer.
+# Every label is generic and jurisdiction-neutral; the orchestrator
+# never enforces vocabulary against any country, regulator, code, or
+# named institution. Callers may override every default below.
+
+_DEFAULT_STEWARDSHIP_THEME_TYPES: tuple[str, ...] = (
+    "capital_allocation_discipline",
+    "governance_structure",
+)
+
+# Generic substring → industry keyword mapping. Used by
+# ``_default_industry_for_firm`` to assign each firm a synthetic,
+# jurisdiction-neutral industry id so the v1.10.4 demand-condition
+# phase has a non-degenerate fixture out of the box. The list is
+# matched in declaration order on the lowercased firm_id.
+_DEFAULT_FIRM_INDUSTRY_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("manufacturer", "industry:reference_manufacturing_general"),
+    ("retailer", "industry:reference_retail_general"),
+    ("utility", "industry:reference_utility_general"),
+    ("bank", "industry:reference_financial_general"),
+    ("real_estate", "industry:reference_real_estate_general"),
+    ("property", "industry:reference_real_estate_general"),
+    ("energy", "industry:reference_energy_general"),
+)
+
+_FALLBACK_INDUSTRY_ID: str = "industry:reference_general"
+
+# v1.10.4: synthetic per-industry demand condition. The triple
+# (direction, strength, confidence) is small, deterministic, and
+# explicitly *not* a forecast — values are chosen to be visible /
+# distinguishable in the report, never calibrated. ``demand_strength``
+# and ``confidence`` are bounded in [0.0, 1.0] inclusive per the
+# v1.10.4 record contract. If a key is missing the orchestrator
+# falls back to ``_DEFAULT_INDUSTRY_DEMAND_STATE`` below.
+_INDUSTRY_DEMAND_DEFAULTS: Mapping[str, tuple[str, float, float]] = {
+    "industry:reference_manufacturing_general": ("stable", 0.5, 0.5),
+    "industry:reference_retail_general": ("contracting", 0.4, 0.5),
+    "industry:reference_utility_general": ("expanding", 0.6, 0.5),
+    "industry:reference_financial_general": ("stable", 0.5, 0.5),
+    "industry:reference_real_estate_general": ("stable", 0.5, 0.5),
+    "industry:reference_energy_general": ("expanding", 0.6, 0.5),
+    "industry:reference_general": ("stable", 0.5, 0.5),
+}
+_DEFAULT_INDUSTRY_DEMAND_STATE: tuple[str, float, float] = (
+    "stable",
+    0.5,
+    0.5,
+)
+
+
+def _default_industry_for_firm(firm_id: str) -> str:
+    lower = firm_id.lower()
+    for keyword, industry_id in _DEFAULT_FIRM_INDUSTRY_KEYWORDS:
+        if keyword in lower:
+            return industry_id
+    return _FALLBACK_INDUSTRY_ID
+
+
+def _resolve_firm_industry_map(
+    firms: Sequence[str],
+    firm_industry_map: Mapping[str, str] | None,
+) -> dict[str, str]:
+    if firm_industry_map is None:
+        return {firm_id: _default_industry_for_firm(firm_id) for firm_id in firms}
+    out: dict[str, str] = {}
+    for firm_id in firms:
+        ind = firm_industry_map.get(firm_id)
+        if not isinstance(ind, str) or not ind:
+            ind = _default_industry_for_firm(firm_id)
+        out[firm_id] = ind
+    return out
+
+
+def _theme_id_for(investor_id: str, theme_type: str) -> str:
+    return f"theme:{investor_id}:{theme_type}:setup"
+
+
+def _industry_condition_id_for(industry_id: str, as_of_date: str) -> str:
+    return f"industry_condition:{industry_id}:{as_of_date}"
+
+
+def _industry_label_for(industry_id: str) -> str:
+    """Short jurisdiction-neutral display label derived from id."""
+    if industry_id.startswith("industry:"):
+        suffix = industry_id[len("industry:") :]
+    else:
+        suffix = industry_id
+    return f"reference {suffix.replace('_', ' ')} (synthetic)"
+
+
+def _dialogue_id_for(
+    investor_id: str, firm_id: str, as_of_date: str
+) -> str:
+    return f"dialogue:{investor_id}:{firm_id}:{as_of_date}"
+
+
+def _escalation_id_for(
+    investor_id: str, firm_id: str, as_of_date: str
+) -> str:
+    return f"escalation:{investor_id}:{firm_id}:{as_of_date}"
+
+
+def _response_id_for(firm_id: str, as_of_date: str) -> str:
+    return f"response:{firm_id}:{as_of_date}"
+
+
+def _ensure_stewardship_themes(
+    kernel: Any,
+    *,
+    investor_ids: Sequence[str],
+    theme_types: Sequence[str],
+    effective_from: str,
+) -> tuple[str, ...]:
+    """
+    Idempotently register the v1.10.5 default stewardship themes —
+    one per (investor, theme_type). Returns the theme ids in
+    deterministic (investor, theme_type) order. Re-running with the
+    same args is a no-op (the book raises
+    ``DuplicateStewardshipThemeError`` and the helper falls back to
+    :meth:`StewardshipBook.get_theme`).
+    """
+    out: list[str] = []
+    for investor_id in investor_ids:
+        for theme_type in theme_types:
+            theme_id = _theme_id_for(investor_id, theme_type)
+            try:
+                kernel.stewardship.add_theme(
+                    StewardshipThemeRecord(
+                        theme_id=theme_id,
+                        owner_id=investor_id,
+                        owner_type="investor",
+                        theme_type=theme_type,
+                        title=theme_type.replace("_", " ").title(),
+                        target_scope="all_holdings",
+                        priority="medium",
+                        horizon="medium_term",
+                        status="active",
+                        effective_from=effective_from,
+                    )
+                )
+            except DuplicateStewardshipThemeError:
+                kernel.stewardship.get_theme(theme_id)
+            out.append(theme_id)
+    return tuple(out)
 
 
 def _validate_required_string(value: Any, *, name: str) -> str:
@@ -379,55 +580,77 @@ def run_living_reference_world(
     metadata: Mapping[str, Any] | None = None,
     firm_baseline_values: Mapping[str, float] | None = None,
     valuation_baseline_default: float = 1_000_000.0,
+    firm_industry_map: Mapping[str, str] | None = None,
+    industry_demand_states: Mapping[
+        str, tuple[str, float, float]
+    ] | None = None,
+    stewardship_theme_types: Sequence[str] | None = None,
 ) -> LivingReferenceWorldResult:
     """
-    Sweep the v1.8.14 endogenous chain over ``period_dates``.
+    Sweep the v1.8 endogenous chain plus the v1.9.4 / v1.9.5 / v1.9.7
+    review-only mechanisms and the v1.10.1 → v1.10.4 engagement /
+    strategic-response storage layer over ``period_dates``.
 
     The kernel must already be wired (variables / exposures / etc.
-    seeded). v1.9.0 is orchestration over existing helpers; it does
-    **not** seed the world for the caller. Tests build their own
-    kernel; the CLI (`run_living_reference_world.py`) builds a tiny
-    inline fixture.
+    seeded). The orchestrator is composition over existing helpers;
+    it does **not** seed the world for the caller. Tests build their
+    own kernel; the CLI (`run_living_reference_world.py`) builds a
+    tiny inline fixture.
 
     Per-period flow (each phase invokes only existing component
     helpers — no new behavior is introduced):
 
-    1. **Corporate phase** — for each ``firm_id`` in ``firm_ids``,
-       call :func:`run_corporate_quarterly_reporting` for the
-       period's as-of date. One ``RoutineRunRecord`` + one
-       ``corporate_quarterly_report`` ``InformationSignal`` per
-       firm per period.
-    2. **Attention phase** — for each ``investor_id`` and each
-       ``bank_id``, build one ``ObservationMenu`` through the
-       v1.8.11 ``ObservationMenuBuilder`` and one
-       ``SelectedObservationSet`` through
-       :func:`select_observations_for_profile` + the
-       ``AttentionBook.add_selection`` ledger path. Investor and
-       bank selections diverge along the v1.8.12 attention axes.
-    3. **Review phase** — for each investor and each bank, call
-       the matching ``run_*_review`` helper with the period's
-       selection ids. One ``RoutineRunRecord`` + one
-       ``investor_review_note`` / ``bank_review_note``
-       ``InformationSignal`` per actor per period.
+    1. **Corporate phase** (v1.8.7) — one corporate quarterly
+       report per firm.
+    2. **Firm pressure phase** (v1.9.4) — one
+       ``FirmPressureMechanismResult`` signal per firm.
+    3. **Industry demand condition phase** (v1.10.4) — one
+       :class:`IndustryDemandConditionRecord` per unique industry
+       in ``firm_industry_map``. Synthetic context evidence;
+       *not* a forecast.
+    4. **Attention phase** (v1.8.11 + v1.8.12) — one menu + one
+       selection per actor.
+    5. **Valuation phase** (v1.9.5) — one
+       :class:`ValuationRecord` per (investor, firm) pair.
+    6. **Bank credit review phase** (v1.9.7) — one bank credit
+       review note per (bank, firm) pair.
+    7. **Dialogue phase** (v1.10.2) — one
+       :class:`PortfolioCompanyDialogueRecord` per (investor, firm)
+       pair. **Metadata only**: no transcript, no content, no
+       notes, no minutes, no attendees.
+    8. **Investor escalation phase** (v1.10.3, investor side) —
+       one :class:`InvestorEscalationCandidate` per (investor,
+       firm) pair. **Candidate only**: no vote_cast, no
+       proposal_filed, no campaign_executed, no exit_executed,
+       no letter_sent.
+    9. **Corporate strategic response phase** (v1.10.3, corporate
+       side) — one :class:`CorporateStrategicResponseCandidate`
+       per firm. **Candidate only**: no buyback_executed, no
+       dividend_changed, no divestment_executed, no
+       merger_executed, no board_change_executed, no
+       disclosure_filed. Industry-condition cross-references go
+       in ``trigger_industry_condition_ids`` (v1.10.4.1
+       type-correct slot), never ``trigger_signal_ids``.
+    10. **Review phase** — one investor review run + one bank
+        review run.
 
-    Side effects (delegated to component helpers — the harness
-    itself never writes):
+    Setup-time (idempotent, fires once per kernel):
 
-    - ``len(firm_ids) × len(period_dates)`` corporate
-      ``RoutineRunRecord``s + matching ``InformationSignal``s.
-    - ``(len(investor_ids) + len(bank_ids)) × len(period_dates)``
-      ``ObservationMenu``s.
-    - ``(len(investor_ids) + len(bank_ids)) × len(period_dates)``
-      ``SelectedObservationSet``s.
-    - ``(len(investor_ids) + len(bank_ids)) × len(period_dates)``
-      review ``RoutineRunRecord``s + matching review-note
-      ``InformationSignal``s.
-    - The corresponding ledger entries.
+    - **Stewardship themes** (v1.10.1) — one
+      :class:`StewardshipThemeRecord` per (investor, theme_type).
 
-    Anti-scope: no ``valuations`` / ``prices`` / ``ownership`` /
-    ``contracts`` / ``constraints`` / ``institutions`` /
-    ``external_processes`` / ``relationships`` book is mutated.
-    No scheduler hook, no auto-firing from ``tick()`` / ``run()``.
+    Anti-scope (v1.10.5 carries forward verbatim from v1.9.x):
+    no ``prices`` / ``ownership`` / ``contracts`` /
+    ``constraints`` / ``institutions`` / ``external_processes`` /
+    ``relationships`` book is mutated. No corporate-action
+    execution, no voting execution, no proxy filing, no
+    public-campaign execution, no disclosure-filing execution, no
+    investment recommendation, no trading, no price formation, no
+    lending decisions, no firm financial-statement updates, no
+    demand / sales / revenue forecasting, no Japan calibration,
+    no real-data ingestion, no jurisdiction-specific stewardship
+    codes, no calibrated behavior probabilities. No scheduler
+    hook, no auto-firing from ``tick()`` / ``run()``.
     """
     if kernel is None:
         raise ValueError(
@@ -482,6 +705,51 @@ def run_living_reference_world(
             bank_id=bank_id,
         )
         register_bank_review_routine(kernel, bank_id=bank_id)
+
+    # ------------------------------------------------------------------
+    # v1.10.5 — engagement / strategic-response infra setup.
+    # Register stewardship themes once for the run (idempotent).
+    # Resolve the firm → industry mapping and the per-industry
+    # demand-condition state map. These are inputs only; nothing
+    # mechanism-shaped happens here.
+    # ------------------------------------------------------------------
+    theme_types = (
+        tuple(stewardship_theme_types)
+        if stewardship_theme_types is not None
+        else _DEFAULT_STEWARDSHIP_THEME_TYPES
+    )
+    stewardship_theme_ids = _ensure_stewardship_themes(
+        kernel,
+        investor_ids=investors,
+        theme_types=theme_types,
+        effective_from=iso_dates[0],
+    )
+
+    firm_to_industry = _resolve_firm_industry_map(firms, firm_industry_map)
+    # Deduplicated industry id list, sorted for determinism. Used
+    # by the per-period industry-demand phase to emit one condition
+    # per (industry, period). Sorting keeps the canonical view
+    # stable across whatever insertion order the dict happens to
+    # have produced.
+    unique_industry_ids = tuple(
+        sorted({iid for iid in firm_to_industry.values()})
+    )
+
+    industry_demand_state_map: dict[str, tuple[str, float, float]] = {}
+    for industry_id in unique_industry_ids:
+        if (
+            industry_demand_states is not None
+            and industry_id in industry_demand_states
+        ):
+            industry_demand_state_map[industry_id] = tuple(
+                industry_demand_states[industry_id]
+            )  # type: ignore[arg-type]
+        else:
+            industry_demand_state_map[industry_id] = (
+                _INDUSTRY_DEMAND_DEFAULTS.get(
+                    industry_id, _DEFAULT_INDUSTRY_DEMAND_STATE
+                )
+            )
 
     # ------------------------------------------------------------------
     # Per-period sweep
@@ -542,6 +810,45 @@ def run_living_reference_world(
             firm_pressure_signal_ids.append(pressure_result.signal_id)
             firm_pressure_run_ids.append(pressure_result.run_record.run_id)
             pressure_signal_by_firm[firm_id] = pressure_result.signal_id
+
+        # ------------------------------------------------------------------
+        # v1.10.5 — industry demand condition phase (v1.10.4).
+        # For each unique industry, emit one synthetic
+        # ``IndustryDemandConditionRecord``. The (direction,
+        # strength, confidence) triple is small, deterministic, and
+        # explicitly *not* a forecast — values illustrate magnitude
+        # ordering only. ``demand_strength`` and ``confidence`` are
+        # bounded in [0.0, 1.0] inclusive per the v1.10.4 record
+        # contract. The book's no-mutation discipline applies: only
+        # ``IndustryConditionBook`` and the ledger are written to.
+        # ------------------------------------------------------------------
+        industry_condition_ids: list[str] = []
+        condition_id_by_industry: dict[str, str] = {}
+        for industry_id in unique_industry_ids:
+            condition_id = _industry_condition_id_for(industry_id, iso_date)
+            direction, strength, confidence = industry_demand_state_map[
+                industry_id
+            ]
+            try:
+                kernel.industry_conditions.add_condition(
+                    IndustryDemandConditionRecord(
+                        condition_id=condition_id,
+                        industry_id=industry_id,
+                        industry_label=_industry_label_for(industry_id),
+                        as_of_date=iso_date,
+                        condition_type="demand_assessment",
+                        demand_direction=direction,
+                        demand_strength=strength,
+                        time_horizon="medium_term",
+                        confidence=confidence,
+                        status="active",
+                        visibility="internal_only",
+                    )
+                )
+            except DuplicateIndustryConditionError:
+                kernel.industry_conditions.get_condition(condition_id)
+            industry_condition_ids.append(condition_id)
+            condition_id_by_industry[industry_id] = condition_id
 
         # Attention phase. We iterate investors and banks in order so
         # the resulting summary tuples match the input order. Each
@@ -705,6 +1012,189 @@ def run_living_reference_world(
                     review_result.run_record.run_id
                 )
 
+        # ------------------------------------------------------------------
+        # v1.10.5 — dialogue / escalation / response phases (v1.10.2 +
+        # v1.10.3). All three are storage-only, candidate-only,
+        # content-free. None of them executes voting, proxy filing,
+        # public-campaign, exit, AGM/EGM action, corporate-action
+        # execution, disclosure filing, investment recommendation,
+        # trading, or price formation. Cross-references are recorded
+        # as plain ids and not validated against any other book.
+        # ------------------------------------------------------------------
+
+        # v1.10.2 dialogue phase — one record per (investor, firm)
+        # per period. Carries ``dialogue metadata only``: the
+        # initiator, the counterparty, the period, the references to
+        # this period's stewardship themes / corporate signals /
+        # pressure signals / valuations. No transcript, no content,
+        # no notes, no minutes, no attendees.
+        dialogue_ids: list[str] = []
+        dialogue_id_by_pair: dict[tuple[str, str], str] = {}
+        themes_by_investor: dict[str, tuple[str, ...]] = {}
+        for investor_id in investors:
+            themes_by_investor[investor_id] = tuple(
+                _theme_id_for(investor_id, t) for t in theme_types
+            )
+
+        for investor_id in investors:
+            for firm_id in firms:
+                dialogue_id = _dialogue_id_for(investor_id, firm_id, iso_date)
+                investor_theme_ids = themes_by_investor[investor_id]
+                # The investor's per-period valuations on this firm
+                # (filtered by the embedded firm marker). Keeps the
+                # link audit-grade without re-running v1.9.5.
+                related_valuations = tuple(
+                    vid
+                    for vid in valuation_ids
+                    if f":{investor_id}:{firm_id}:" in vid
+                )
+                try:
+                    kernel.engagement.add_dialogue(
+                        PortfolioCompanyDialogueRecord(
+                            dialogue_id=dialogue_id,
+                            initiator_id=investor_id,
+                            counterparty_id=firm_id,
+                            initiator_type="investor",
+                            counterparty_type="firm",
+                            as_of_date=iso_date,
+                            dialogue_type="private_meeting",
+                            status="logged",
+                            outcome_label="acknowledged",
+                            next_step_label="continue_monitoring",
+                            visibility="internal_only",
+                            theme_ids=investor_theme_ids,
+                            related_signal_ids=(
+                                corp_signal_by_firm[firm_id],
+                            ),
+                            related_valuation_ids=related_valuations,
+                            related_pressure_signal_ids=(
+                                pressure_signal_by_firm[firm_id],
+                            ),
+                        )
+                    )
+                except DuplicateDialogueError:
+                    kernel.engagement.get_dialogue(dialogue_id)
+                dialogue_ids.append(dialogue_id)
+                dialogue_id_by_pair[(investor_id, firm_id)] = dialogue_id
+
+        # v1.10.3 investor escalation candidate phase — one
+        # candidate per (investor, firm) per period. The candidate
+        # names the *option*, never the *act*: no vote_cast, no
+        # proposal_filed, no campaign_executed, no exit_executed,
+        # no letter_sent. References this period's themes,
+        # dialogues, corporate signal, pressure signal, and
+        # valuations on this (investor, firm) pair.
+        investor_escalation_candidate_ids: list[str] = []
+        for investor_id in investors:
+            investor_theme_ids = themes_by_investor[investor_id]
+            for firm_id in firms:
+                escalation_id = _escalation_id_for(
+                    investor_id, firm_id, iso_date
+                )
+                related_valuations = tuple(
+                    vid
+                    for vid in valuation_ids
+                    if f":{investor_id}:{firm_id}:" in vid
+                )
+                dialogue_ref = (
+                    dialogue_id_by_pair[(investor_id, firm_id)],
+                )
+                try:
+                    kernel.escalations.add_candidate(
+                        InvestorEscalationCandidate(
+                            escalation_candidate_id=escalation_id,
+                            investor_id=investor_id,
+                            target_company_id=firm_id,
+                            as_of_date=iso_date,
+                            escalation_type="private_letter",
+                            status="draft",
+                            priority="medium",
+                            horizon="medium_term",
+                            rationale_label="no_response",
+                            next_step_label="continue_monitoring",
+                            visibility="internal_only",
+                            theme_ids=investor_theme_ids,
+                            dialogue_ids=dialogue_ref,
+                            related_signal_ids=(
+                                corp_signal_by_firm[firm_id],
+                                pressure_signal_by_firm[firm_id],
+                            ),
+                            related_valuation_ids=related_valuations,
+                        )
+                    )
+                except DuplicateEscalationCandidateError:
+                    kernel.escalations.get_candidate(escalation_id)
+                investor_escalation_candidate_ids.append(escalation_id)
+
+        # v1.10.3 corporate strategic response candidate phase — one
+        # candidate per firm per period. Symmetric to the escalation
+        # candidate, but on the corporate side. The candidate names
+        # the *option*, never the *act*: no buyback_executed, no
+        # dividend_changed, no divestment_executed, no
+        # merger_executed, no board_change_executed, no
+        # disclosure_filed. References this period's themes (every
+        # investor that talked to the firm), dialogues with this
+        # firm, corporate signal, pressure signal, valuations on
+        # this firm, and the firm's industry's demand condition (via
+        # the v1.10.4.1 type-correct ``trigger_industry_condition_ids``
+        # slot — never via ``trigger_signal_ids``).
+        corporate_strategic_response_candidate_ids: list[str] = []
+        for firm_id in firms:
+            response_id = _response_id_for(firm_id, iso_date)
+            firm_dialogues = tuple(
+                dialogue_id_by_pair[(inv, firm_id)]
+                for inv in investors
+            )
+            firm_valuations = tuple(
+                vid for vid in valuation_ids if f":{firm_id}:" in vid
+            )
+            # Themes from every investor (since any investor's
+            # theme could shape a corporate response). Sorted so the
+            # canonical view stays deterministic.
+            firm_theme_refs = tuple(
+                sorted(
+                    {
+                        tid
+                        for inv in investors
+                        for tid in themes_by_investor[inv]
+                    }
+                )
+            )
+            firm_industry_id = firm_to_industry[firm_id]
+            firm_condition_ref: tuple[str, ...] = ()
+            if firm_industry_id in condition_id_by_industry:
+                firm_condition_ref = (
+                    condition_id_by_industry[firm_industry_id],
+                )
+            try:
+                kernel.strategic_responses.add_candidate(
+                    CorporateStrategicResponseCandidate(
+                        response_candidate_id=response_id,
+                        company_id=firm_id,
+                        as_of_date=iso_date,
+                        response_type="capital_allocation_review",
+                        status="draft",
+                        priority="medium",
+                        horizon="medium_term",
+                        expected_effect_label=(
+                            "expected_efficiency_improvement_candidate"
+                        ),
+                        constraint_label="subject_to_internal_review",
+                        visibility="internal_only",
+                        trigger_theme_ids=firm_theme_refs,
+                        trigger_dialogue_ids=firm_dialogues,
+                        trigger_signal_ids=(
+                            corp_signal_by_firm[firm_id],
+                            pressure_signal_by_firm[firm_id],
+                        ),
+                        trigger_valuation_ids=firm_valuations,
+                        trigger_industry_condition_ids=firm_condition_ref,
+                    )
+                )
+            except DuplicateResponseCandidateError:
+                kernel.strategic_responses.get_candidate(response_id)
+            corporate_strategic_response_candidate_ids.append(response_id)
+
         # Review phase. Each review run consumes exactly the actor's
         # period selection.
         investor_review_run_ids: list[str] = []
@@ -759,6 +1249,15 @@ def run_living_reference_world(
                 bank_review_run_ids=tuple(bank_review_run_ids),
                 investor_review_signal_ids=tuple(investor_review_signal_ids),
                 bank_review_signal_ids=tuple(bank_review_signal_ids),
+                industry_condition_ids=tuple(industry_condition_ids),
+                stewardship_theme_ids=stewardship_theme_ids,
+                dialogue_ids=tuple(dialogue_ids),
+                investor_escalation_candidate_ids=tuple(
+                    investor_escalation_candidate_ids
+                ),
+                corporate_strategic_response_candidate_ids=tuple(
+                    corporate_strategic_response_candidate_ids
+                ),
                 record_count_created=period_end_idx - period_start_idx,
                 metadata={
                     "period_index": period_idx,
@@ -783,5 +1282,7 @@ def run_living_reference_world(
         created_record_ids=created_record_ids,
         ledger_record_count_before=ledger_count_before,
         ledger_record_count_after=ledger_count_after,
+        industry_ids=unique_industry_ids,
+        stewardship_theme_ids=stewardship_theme_ids,
         metadata=dict(metadata or {}),
     )

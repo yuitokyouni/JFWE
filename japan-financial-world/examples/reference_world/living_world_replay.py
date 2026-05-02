@@ -75,11 +75,19 @@ from world.reference_living_world import (
 # Must match the verbatim string emitted by the v1.9.1 reporter
 # (`world/living_world_report.py::_BOUNDARY_STATEMENT`). A test
 # in `tests/test_living_world_replay.py` pins the equality so a
-# drift in either copy fails loudly.
+# drift in either copy fails loudly. Updated at v1.10.5 to cover
+# the engagement / strategic-response layer; the v1.9.1 prefix is
+# preserved verbatim.
 LIVING_WORLD_BOUNDARY_STATEMENT: str = (
     "No price formation, no trading, no lending decisions, "
     "no valuation behavior, no Japan calibration, no real data, "
-    "no investment advice."
+    "no investment advice. "
+    "v1.10.5 engagement / strategic-response layer: no voting, "
+    "no proxy filing, no public-campaign execution, no exit "
+    "execution, no AGM/EGM action, no corporate-action execution "
+    "(buyback / dividend / divestment / merger / governance "
+    "change), no disclosure-filing execution, no demand / sales "
+    "/ revenue forecasting, no firm financial-statement updates."
 )
 
 CANONICAL_FORMAT_VERSION: str = "living_world_canonical.v1"
@@ -134,7 +142,14 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
 
     v1.9.6 additive: ``firm_pressure_*`` and ``valuation_*`` id
     tuples are included so the canonical view reflects the
-    integrated pressure + valuation phases. Older
+    integrated pressure + valuation phases.
+
+    v1.10.5 additive: ``industry_condition_ids`` /
+    ``stewardship_theme_ids`` / ``dialogue_ids`` /
+    ``investor_escalation_candidate_ids`` /
+    ``corporate_strategic_response_candidate_ids`` are included
+    so the canonical view reflects the v1.10.x engagement /
+    strategic-response storage phases. Older
     LivingReferencePeriodSummary instances without these fields
     fall through to empty tuples via ``getattr`` defaults.
     """
@@ -168,6 +183,19 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
         "bank_review_run_ids": list(period.bank_review_run_ids),
         "investor_review_signal_ids": list(period.investor_review_signal_ids),
         "bank_review_signal_ids": list(period.bank_review_signal_ids),
+        "industry_condition_ids": list(
+            getattr(period, "industry_condition_ids", ())
+        ),
+        "stewardship_theme_ids": list(
+            getattr(period, "stewardship_theme_ids", ())
+        ),
+        "dialogue_ids": list(getattr(period, "dialogue_ids", ())),
+        "investor_escalation_candidate_ids": list(
+            getattr(period, "investor_escalation_candidate_ids", ())
+        ),
+        "corporate_strategic_response_candidate_ids": list(
+            getattr(period, "corporate_strategic_response_candidate_ids", ())
+        ),
     }
 
 
@@ -361,6 +389,18 @@ def canonicalize_living_world_result(
         "firm_count": len(result.firm_ids),
         "investor_count": len(result.investor_ids),
         "bank_count": len(result.bank_ids),
+        # v1.10.5 additive: setup-level engagement context. Older
+        # result objects without these fields fall through to ``[]``
+        # via ``getattr``, keeping the canonical view backward
+        # compatible.
+        "industry_ids": list(getattr(result, "industry_ids", ())),
+        "industry_count": len(getattr(result, "industry_ids", ())),
+        "stewardship_theme_ids": list(
+            getattr(result, "stewardship_theme_ids", ())
+        ),
+        "stewardship_theme_count": len(
+            getattr(result, "stewardship_theme_ids", ())
+        ),
         "ledger_record_count_before": result.ledger_record_count_before,
         "ledger_record_count_after": result.ledger_record_count_after,
         "created_record_count": result.created_record_count,
