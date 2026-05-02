@@ -90,6 +90,7 @@ class RecordType(str, Enum):
     COLLATERAL_ELIGIBILITY_SIGNAL_RECORDED = (
         "collateral_eligibility_signal_recorded"
     )
+    CORPORATE_FINANCING_NEED_RECORDED = "corporate_financing_need_recorded"
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

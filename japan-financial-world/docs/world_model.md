@@ -8348,3 +8348,35 @@ The test count moves from `2973 / 2973` (v1.13.4) to `2988 / 2988` (v1.13.5) —
 ### 98.4 Anti-claims preserved bit-for-bit
 
 Every v1.9 / v1.10 / v1.11 / v1.12 anti-claim remains binding. v1.13 adds: no real-system mapping, no real balances, no payment execution, no calibrated liquidity model, no monetary-policy decision, no haircut percentage, no margin number, no Japan calibration, and no classifier-rule change at v1.13.5.
+
+## 99. v1.14.1 CorporateFinancingNeedRecord — generic synthetic financing-need-posture storage
+
+§99 ships the first concrete code milestone in the v1.14 corporate-financing-intent sequence (the v1.14.0 design note in [`docs/v1_14_corporate_financing_intent_design.md`](v1_14_corporate_financing_intent_design.md) was docs-only). v1.14.1 ships **storage only**: an append-only `CorporateFinancingNeedBook` that holds immutable `CorporateFinancingNeedRecord` instances naming a firm's financing-need posture at a point in time. There is **no application, no underwriting, no allocation, no rating, no covenant, no contract or constraint mutation, no price / yield / spread / coupon, no calibrated probability of any external action, no real corporate-finance data, no Japan calibration, no investment advice**.
+
+### 99.1 What v1.14.1 ships
+
+A new module `world/corporate_financing.py` containing:
+
+- `CorporateFinancingNeedRecord` (frozen dataclass) — fields: `need_id`, `firm_id`, `as_of_date`, four label fields (`funding_horizon_label` / `funding_purpose_label` / `urgency_label` / `synthetic_size_label`), `status`, `visibility`, `confidence` in `[0.0, 1.0]` (booleans rejected), three `source_*_ids` plain-id tuples (firm financial states, market environment states, corporate signals), `metadata`.
+- `CorporateFinancingNeedBook` (append-only) — `add_need` / `get_need` / `list_needs` / `list_by_firm` / `list_by_date` / `list_by_urgency` / `list_by_purpose` / `get_latest_for_firm` / `snapshot`.
+- New ledger record type `CORPORATE_FINANCING_NEED_RECORDED`, emitted exactly once per `add_need` call.
+- Wired into `WorldKernel.corporate_financing_needs`.
+
+Recommended (but not enforced) label vocabulary:
+
+- `funding_horizon_label` ∈ { `immediate`, `near_term`, `medium_term`, `long_term`, `unknown` }
+- `funding_purpose_label` ∈ { `working_capital`, `refinancing`, `growth_capex`, `acquisition`, `restructuring`, `unknown` }
+- `urgency_label` ∈ { `low`, `moderate`, `elevated`, `critical`, `unknown` }
+- `synthetic_size_label` ∈ { `reference_size_small`, `reference_size_medium`, `reference_size_large`, `unknown` } — **never a real currency value**
+
+### 99.2 Anti-claims
+
+The record carries **no** `amount`, `currency_value`, `loan_amount`, `interest_rate`, `coupon`, `coupon_rate`, `tenor_years`, `coverage_ratio`, `decision_outcome`, `default_probability`, `policy_rate`, `interest`, `order`, `trade`, `recommendation`, `investment_advice`, `forecast_value`, `actual_value`, `real_data_value`, `behavior_probability`, `rating`, `internal_rating`, `pd`, `lgd`, `ead`, `haircut_percentage`, `spread`, or `yield` field. Tests pin the absence on both the dataclass field set and the ledger payload key set. `confidence` is a synthetic ordering in `[0.0, 1.0]`, never a calibrated probability.
+
+The book emits **only** `CORPORATE_FINANCING_NEED_RECORDED` records and refuses to mutate any other source-of-truth book.
+
+### 99.3 Performance boundary
+
+v1.14.1 is storage-only and not yet wired into the orchestrator. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.13.last. The orchestrator integration arrives at v1.14.5.
+
+The test count moves from `2988 / 2988` (v1.13.last) to `3052 / 3052` (v1.14.1) — `+64` tests in the new `tests/test_corporate_financing.py`.
