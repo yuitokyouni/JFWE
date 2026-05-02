@@ -8314,3 +8314,37 @@ v1.13.5 changes the per-period record count from **79** (v1.12.x baseline) to **
 The integration is **citation-only**. The orchestrator **does not** estimate liquidity, schedule reserves, originate loans, run a default model, change the watch-label classifier, change any pre-v1.13.5 payload key, or apply any Japan-specific rule. The placeholder state's labels are fixed strings, never the output of a calibrated model.
 
 The test count moves from `2973 / 2973` (v1.13.4) to `2988 / 2988` (v1.13.5) — `+15` tests in the new `tests/test_v1_13_5_integration.py`.
+
+## 98. v1.13.last — generic central-bank settlement infrastructure freeze
+
+§98 closes the v1.13 sequence. v1.13.last is docs-only on top of the v1.13.1 → v1.13.5 code freezes; the substrate is **storage and labels only**.
+
+### 98.1 What v1.13.last freezes
+
+- The v1.13 jurisdiction-neutral, synthetic, label-only generic central-bank settlement / interbank-liquidity / collateral-eligibility / monetary-authority-operation substrate.
+- Seven new record types, four new books (`settlement_accounts`, `settlement_payments`, `interbank_liquidity`, `central_bank_signals`), six new ledger event types.
+- An additive citation-only slot on `MarketEnvironmentStateRecord`, an additive kwarg on the v1.12.6 attention-conditioned bank-credit-review helper, and a per-bank-per-period interbank-liquidity-state emission in `run_living_reference_world`.
+- See [`docs/v1_13_generic_settlement_infrastructure_summary.md`](v1_13_generic_settlement_infrastructure_summary.md) for the full sequence map and the binding anti-claim list.
+
+### 98.2 Position in the FWE sequence
+
+| Milestone   | Status                                  |
+| ----------- | --------------------------------------- |
+| v1.13.0     | Docs-only design (§87) — Shipped        |
+| v1.13.1     | `SettlementAccountBook` (§93) — Shipped |
+| v1.13.2     | Payment instruction + settlement event (§94) — Shipped |
+| v1.13.3     | `InterbankLiquidityStateBook` (§95) — Shipped |
+| v1.13.4     | Central-bank operation + collateral eligibility (§96) — Shipped |
+| v1.13.5     | MarketEnvironment + BankCreditReview integration (§97) — Shipped |
+| v1.13.last  | Freeze (§98 — this section) — Shipped |
+
+### 98.3 Performance boundary
+
+- Per-period record count (default fixture): **81** (period 0) / **83** (periods 1+).
+- Per-run window (default fixture): **`[324, 372]`** records.
+- Integration-test `living_world_digest`: **`916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379`**.
+- Test count: **2988 / 2988** passing.
+
+### 98.4 Anti-claims preserved bit-for-bit
+
+Every v1.9 / v1.10 / v1.11 / v1.12 anti-claim remains binding. v1.13 adds: no real-system mapping, no real balances, no payment execution, no calibrated liquidity model, no monetary-policy decision, no haircut percentage, no margin number, no Japan calibration, and no classifier-rule change at v1.13.5.

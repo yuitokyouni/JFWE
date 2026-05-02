@@ -22,19 +22,23 @@ Each readiness review records its result here so the next reviewer
 can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
-- **Date:** 2026-05-04
-- **Target:** v1.12.last endogenous attention loop freeze. The
-  v1.9.last public prototype freeze (2026-05-02 snapshot below)
-  and the v1.8.0 public release
-  (`v1.8-public-release` at commit `7fa2c42`) both remain
-  unchanged; v1.12.last freezes the v1.12 endogenous
-  attention-feedback loop as the headline runnable surface on
-  top of those earlier freezes. v1.12.last is docs-only and adds
-  no test count change vs v1.12.9.
+- **Date:** 2026-05-02
+- **Target:** v1.13.last generic central-bank settlement
+  infrastructure freeze. The v1.12.last freeze (2026-05-04
+  snapshot below), the v1.9.last public prototype freeze, and
+  the v1.8.0 public release (`v1.8-public-release` at commit
+  `7fa2c42`) all remain unchanged; v1.13.last freezes the v1.13
+  generic, jurisdiction-neutral, label-only settlement /
+  interbank-liquidity / central-bank-signal substrate, plus the
+  citation-only cross-link to v1.12.x at v1.13.5. v1.13.last
+  itself is docs-only on top of the v1.13.1 → v1.13.5 code
+  freezes. The substrate is **storage and labels only** — no
+  payment execution, no real balances, no calibrated liquidity
+  model, no policy decision, no Japan calibration.
 - **Status:** docs + tests frozen. The freeze is conditional on
   CI being green on the commit being tagged.
-- **Local results (v1.12.last):**
-  - `pytest -q` → 2751 passed
+- **Local results (v1.13.last):**
+  - `pytest -q` → 2988 passed
   - `compileall world spaces tests examples` → clean
   - `ruff check .` (repo root) → clean
   - `python -m examples.reference_world.run_living_reference_world`
@@ -45,9 +49,10 @@ new review is performed.
     report including the v1.12.8 `## Attention feedback`
     section; re-run yields byte-identical output
   - `... --manifest /tmp/lw.json` → writes
-    `living_world_manifest.v1` JSON carrying
-    `living_world_digest`
-    `e508b4bf10df217f7b561b41aea845f841b12215d5bf815587375c52cffcdcb5`;
+    `living_world_manifest.v1` JSON carrying the perf-fixture
+    `living_world_digest`. The integration-test fixture digest
+    moved at v1.13.5 to
+    `916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379`;
     two runs into different paths diff to zero (modulo path)
   - `... --market-regime constructive --markdown`,
     `... --market-regime constrained --markdown`, and

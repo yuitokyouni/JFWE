@@ -46,7 +46,7 @@ This milestone records the loop shapes so that:
 3. Anyone reviewing the v1.9 freeze surface can see, in one
    place, what the engine is and is not doing.
 
-## Current loop shapes (v1.12.last)
+## Current loop shapes (v1.13.last)
 
 The following table describes the loop shape of each phase
 inside `world/reference_living_world.run_living_reference_world`.
@@ -59,7 +59,7 @@ v1.11.1+). The `n_obs` and `n_exposures` factors are bounded by
 the fixture's variable count (currently 4) and per-firm exposure
 count (currently 2–3 each).
 
-| Phase                                                    | Loop shape                                | v1.12.last default     |
+| Phase                                                    | Loop shape                                | v1.13.last default     |
 | -------------------------------------------------------- | ----------------------------------------- | ---------------------- |
 | Corporate quarterly reporting                            | `O(P × F)`                                | 4 × 3 = 12 reports     |
 | Firm pressure assessment (v1.9.4)                        | `O(P × F × n_exposures)`                  | 4 × 3 × ~2.5 = 30 pass |
@@ -72,6 +72,7 @@ count (currently 2–3 each).
 | Observation set selection                                | `O(P × (I+B))`                            | 4 × 4 = 16 selections  |
 | Memory selection (v1.12.8 + v1.12.9 budget)              | `O((P-1) × (I+B))` (period 1+; budgeted)  | 3 × 2 = 6 inv-memory   |
 | Valuation refresh lite (v1.12.7 wires v1.12.5)           | `O(P × I × F)`                            | 4 × 2 × 3 = 24 valns   |
+| Interbank liquidity state (v1.13.5)                      | `O(P × B)`                                | 4 × 2 = 8 states       |
 | Bank credit review lite (v1.12.7 wires v1.12.6)          | `O(P × B × F)`                            | 4 × 2 × 3 = 24 reviews |
 | Portfolio-company dialogue (v1.10.2)                     | `O(P × I × F)`                            | 4 × 2 × 3 = 24 dialog. |
 | Investor escalation candidate (v1.10.3, investor)        | `O(P × I × F)`                            | 4 × 2 × 3 = 24 cands.  |
@@ -81,7 +82,7 @@ count (currently 2–3 each).
 | Attention feedback (v1.12.8)                             | `O(P × (I+B))`                            | 4 × 4 = 16 states+fb×2 |
 | Reporting / replay / manifest                            | `O(R)` over emitted ledger records        | ~340 records           |
 
-Per-period record-count breakdown (default fixture, v1.12.last):
+Per-period record-count breakdown (default fixture, v1.13.last):
 
 ```
 2 × F                  corporate run + corporate signal              =  6
@@ -93,6 +94,7 @@ K                      capital-market readout (v1.11.1)              =  1
 F                      firm financial latent state (v1.12.0)         =  3
 2 × (I + B)            menu + selection                              =  8
 I × F                  valuation                                     =  6
+B                      interbank liquidity state (v1.13.5)           =  2
 B × F                  bank credit review note                       =  6
 I × F                  portfolio-company dialogue (v1.10.2)          =  6
 I × F                  investor escalation candidate (v1.10.3, inv.) =  6
@@ -100,14 +102,23 @@ I × F                  investor intent signal (v1.12.1)              =  6
 F                      corporate strategic response candidate        =  3
 2 × (I + B)            review_run + review_signal                    =  8
 2 × (I + B)            attention state + feedback (v1.12.8)          =  8
-                                                            total   = 79  (period 0)
+                                                            total   = 81  (period 0)
 + (I + B) memory selections from period 1+ (budgeted)             ≈ +2  (period 1+)
-                                                            total   = 81  (period 1+)
-× 4 periods (period 0: 79; periods 1–3: 81)                        = 322
+                                                            total   = 83  (period 1+)
+× 4 periods (period 0: 81; periods 1–3: 83)                        = 330
 + ~14 one-off setup (interactions, routines, profiles)
 +   4 one-off setup (stewardship themes, v1.10.5)
-                                                          ≈ ~340 records
+                                                          ≈ ~348 records
 ```
+
+The v1.13 generic settlement substrate (v1.13.1 settlement
+accounts, v1.13.2 payment instructions + settlement events,
+v1.13.3 interbank-liquidity state, v1.13.4 central-bank
+operation + collateral-eligibility signals) is **storage-only**;
+v1.13.1, v1.13.2, and v1.13.4 are not yet wired into the
+default living-reference-world per-period sweep. Only the
+v1.13.5 `interbank_liquidity_state` is on the per-period path
+(one record per bank per period).
 
 Of the loops above:
 
