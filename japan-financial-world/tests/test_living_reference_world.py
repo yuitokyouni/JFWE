@@ -947,6 +947,8 @@ def test_cli_smoke_prints_per_period_trace():
     assert "no clearing" in out
     assert "no quote dissemination" in out
     assert "no security recommendation" in out
+    # v1.11.1 — capital-market readout column.
+    assert "market_readouts=" in out
 
 
 # ===========================================================================
@@ -1413,3 +1415,156 @@ def test_v1_11_0_canonical_view_carries_market_id_tuples():
     for ps in can["per_period_summaries"]:
         assert "market_condition_ids" in ps
         assert len(ps["market_condition_ids"]) == 5
+
+
+# ===========================================================================
+# v1.11.1 — capital-market readout integration
+# ===========================================================================
+
+
+def test_v1_11_1_one_capital_market_readout_per_period():
+    """The v1.11.1 readout phase fires once per period; each
+    period summary carries exactly one readout id."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        assert len(ps.capital_market_readout_ids) == 1
+
+
+def test_v1_11_1_readouts_resolve_and_carry_default_labels():
+    """Each readout must resolve to a stored record whose
+    overall_market_access_label sits in the documented enum and
+    whose per-market tones come from the period's market
+    conditions."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    allowed_overall = {
+        "open_or_constructive",
+        "selective_or_constrained",
+        "mixed",
+    }
+    for ps in r.per_period_summaries:
+        rec = k.capital_market_readouts.get_readout(
+            ps.capital_market_readout_ids[0]
+        )
+        assert rec.overall_market_access_label in allowed_overall
+        # The cited market_condition_ids must equal the period's
+        # market_condition_ids.
+        assert (
+            tuple(rec.market_condition_ids) == ps.market_condition_ids
+        )
+        # The default fixture has rates / credit / equity /
+        # funding / liquidity but no volatility market — the
+        # builder should default volatility_tone to "unknown".
+        assert rec.volatility_tone == "unknown"
+
+
+def test_v1_11_1_default_overall_label_is_open_or_constructive():
+    """The default fixture's market conditions (funding
+    supportive, credit stable) are designed to land on
+    open_or_constructive every period."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        rec = k.capital_market_readouts.get_readout(
+            ps.capital_market_readout_ids[0]
+        )
+        assert rec.overall_market_access_label == "open_or_constructive"
+        assert (
+            rec.banker_summary_label
+            == "constructive_market_access_synthetic"
+        )
+
+
+def test_v1_11_1_no_price_or_advice_payload_keys_in_ledger():
+    """No v1.11.1 record's ledger payload may carry any of the
+    forbidden price / forecast / recommendation / deal-advice
+    keys — the readout layer is labels only."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    forbidden_keys = {
+        "price",
+        "target_price",
+        "yield_value",
+        "spread_bps",
+        "forecast_value",
+        "expected_return",
+        "recommendation",
+        "deal_advice",
+        "market_size",
+        "real_data_value",
+    }
+    for rec in k.ledger.records[
+        r.ledger_record_count_before : r.ledger_record_count_after
+    ]:
+        leaked = set(rec.payload.keys()) & forbidden_keys
+        assert not leaked, (
+            f"v1.11.1 demo record {rec.object_id!r} leaks forbidden "
+            f"payload keys: {sorted(leaked)}"
+        )
+
+
+def test_v1_11_1_two_runs_produce_byte_identical_canonical_view():
+    """v1.11.1's additive readout id tuple must keep the canonical
+    view byte-identical across two fresh runs."""
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+        living_world_digest,
+    )
+
+    k1 = _seed_kernel()
+    r1 = _run_default(k1)
+    k2 = _seed_kernel()
+    r2 = _run_default(k2)
+    can1 = canonicalize_living_world_result(k1, r1)
+    can2 = canonicalize_living_world_result(k2, r2)
+    assert can1 == can2
+    assert living_world_digest(k1, r1) == living_world_digest(k2, r2)
+
+
+def test_v1_11_1_canonical_view_carries_readout_id_tuples():
+    """The canonical view must surface the v1.11.1 readout id
+    tuple per period."""
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+    )
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    can = canonicalize_living_world_result(k, r)
+    for ps in can["per_period_summaries"]:
+        assert "capital_market_readout_ids" in ps
+        assert len(ps["capital_market_readout_ids"]) == 1
+
+
+def test_v1_11_1_markdown_report_includes_capital_market_surface_section():
+    """The v1.11.1 Markdown report must include a "Capital market
+    surface" section with the per-market tone columns + the
+    overall column."""
+    from world.living_world_report import (
+        build_living_world_trace_report,
+        render_living_world_markdown,
+    )
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    report = build_living_world_trace_report(k, r)
+    md = render_living_world_markdown(report)
+    assert "## Capital market surface" in md
+    assert "rates" in md
+    assert "credit" in md
+    assert "equity" in md
+    assert "funding window" in md
+    assert "liquidity" in md
+    assert "volatility" in md
+    assert "overall" in md
+    assert "open_or_constructive" in md
+    # v1.11.1 boundary phrasing must be present somewhere in the
+    # rendered report — either inline under "## Capital market
+    # surface" or in the "## Boundaries" footer.
+    md_lower = md.lower()
+    assert (
+        "deal advice" in md_lower
+        or "deal_advice" in md_lower
+        or "spread calibration" in md_lower
+    )

@@ -74,6 +74,7 @@ class RecordType(str, Enum):
     )
     INDUSTRY_DEMAND_CONDITION_ADDED = "industry_demand_condition_added"
     MARKET_CONDITION_ADDED = "market_condition_added"
+    CAPITAL_MARKET_READOUT_ADDED = "capital_market_readout_added"
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

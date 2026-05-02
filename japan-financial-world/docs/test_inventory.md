@@ -1,14 +1,15 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.11.0** (`Capital-market
-surface` — adds a jurisdiction-neutral capital-market context
-layer to public FWE: rates / credit spreads / equity valuation
-environment / funding window / liquidity & volatility regime,
-all signal-only and price-formation-free; per-run record window
-widens from `[220, 252]` to `[240, 272]`; `living_world_digest`
-value differs from v1.10.5 by design):
-`2043 / 2043 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1411 post-v1.7 additions covering reference demo, replay, manifest,
+Snapshot of the test suite at **v1.11.1** (`Capital-market
+readout` — adds a banker-readable readout layer on top of v1.11.0's
+capital-market surface: per-market tone tags + overall
+market-access label; deterministic builder; readout / report only,
+no pricing / forecasting / DCM / ECM execution / investment
+recommendation; per-run record window widens from `[240, 272]` to
+`[244, 276]`; `living_world_digest` value differs from v1.11.0 by
+design):
+`2122 / 2122 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1490 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -41,6 +42,12 @@ v1.11.0 ``trigger_market_condition_ids`` type-correct slot on
 capital-market phase in the living reference world demo
 exercised in the new `tests/test_market_conditions.py` and
 extended in `tests/test_strategic_response.py` and
+`tests/test_living_reference_world.py`, and the v1.11.1
+capital-market readout — `CapitalMarketReadoutRecord` /
+`CapitalMarketReadoutBook` / `build_capital_market_readout` in
+`world/market_surface_readout.py` plus the per-period readout
+phase in the living reference world demo exercised in the new
+`tests/test_market_surface_readout.py` and extended in
 `tests/test_living_reference_world.py`).
 
 This inventory is grouped by what each component verifies. The numbers in
@@ -1138,8 +1145,9 @@ no-mutation guarantee.
 | Corporate strategic response candidate (v1.10.3) + v1.10.4.1 type-correct industry-condition cross-reference slot + v1.11.0 type-correct market-condition cross-reference slot (added to test_strategic_response.py) | 1 | 63    |
 | Industry demand condition signal (v1.10.4) | 1 | 84    |
 | Capital-market condition (v1.11.0) | 1 | 84 |
-| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 additive in test_living_reference_world.py — 15 of these are v1.10.5-specific and 8 are v1.11.0-specific integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 in test_living_reference_world.py) |
-| **post-v1.7 subtotal**                  | **34**| **1411** |
+| Capital-market readout (v1.11.1) | 1 | 72 |
+| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 additive in test_living_reference_world.py — 15 of these are v1.10.5-specific, 8 are v1.11.0-specific, and 7 are v1.11.1-specific integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 in test_living_reference_world.py) |
+| **post-v1.7 subtotal**                  | **35**| **1490** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1147,8 +1155,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0) | 34 | 1411 |
-| **Total**                        | **76**| **2043** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1) | 35 | 1490 |
+| **Total**                        | **77**| **2122** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

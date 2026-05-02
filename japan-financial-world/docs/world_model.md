@@ -6141,7 +6141,8 @@ A `StewardshipThemeRecord` and the `StewardshipBook` storing it are jurisdiction
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
 | v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
-| **v1.11.0 Capital-market surface** | Code (§77). | **Shipped** |
+| v1.11.0 Capital-market surface | Code (§77). | Shipped |
+| **v1.11.1 Capital-market readout** | Code (§78). Additive readout layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6224,7 +6225,8 @@ A `PortfolioCompanyDialogueRecord` and the `DialogueBook` storing it are jurisdi
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
 | v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
-| **v1.11.0 Capital-market surface** | Code (§77). | **Shipped** |
+| v1.11.0 Capital-market surface | Code (§77). | Shipped |
+| **v1.11.1 Capital-market readout** | Code (§78). Additive readout layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6349,7 +6351,8 @@ The v1.10.3 candidate records and their books are jurisdiction-neutral, signal-o
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
 | v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
-| **v1.11.0 Capital-market surface** | Code (§77). | **Shipped** |
+| v1.11.0 Capital-market surface | Code (§77). | Shipped |
+| **v1.11.1 Capital-market readout** | Code (§78). Additive readout layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6429,7 +6432,8 @@ An `IndustryDemandConditionRecord` and the `IndustryConditionBook` storing it ar
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
 | v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
-| **v1.11.0 Capital-market surface** | Code (§77). | **Shipped** |
+| v1.11.0 Capital-market surface | Code (§77). | Shipped |
+| **v1.11.1 Capital-market readout** | Code (§78). Additive readout layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6646,7 +6650,8 @@ v1.10.5 is **integration only**. It does **not**:
 | v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
 | v1.10.4.1 Type-correct industry-condition cross-reference slot | Code (§75). Additive. | Shipped |
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
-| **v1.11.0 Capital-market surface** | Code (§77). | **Shipped** |
+| v1.11.0 Capital-market surface | Code (§77). | Shipped |
+| **v1.11.1 Capital-market readout** | Code (§78). Additive readout layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6783,8 +6788,122 @@ A `MarketConditionRecord` and the `MarketConditionBook` storing it are jurisdict
 | --- | --- | --- |
 | v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
 | v1.10.0 → v1.10.5 (engagement / strategic-response stack) | Code (§70 → §76). | Shipped |
-| **v1.11.0 Capital-market surface** | Code (§77). | **Shipped** |
+| v1.11.0 Capital-market surface | Code (§77). | Shipped |
+| **v1.11.1 Capital-market readout** | Code (§78). Additive readout layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `1947 / 1947` (v1.10.5) to `2043 / 2043` (v1.11.0) — `+96` tests (`+84` in the new `tests/test_market_conditions.py`, `+4` in `tests/test_strategic_response.py` for the v1.11.0 cross-reference slot, `+8` v1.11.0 integration tests in `tests/test_living_reference_world.py`). The CLI surface, the default fixture *shape*, the per-period flow, and the reproducibility surface all grow additively; the `living_world_digest` value changes (expected — see §77.6) and the per-run record window widens from `[220, 252]` to `[240, 272]` (documented — see §77.5).
+
+## 78. v1.11.1 Capital-market readout — banker-readable surface labels
+
+§78 adds a *readout* layer on top of v1.11.0's capital-market surface: a deterministic, jurisdiction-neutral summary of one period's worth of synthetic `MarketConditionRecord` instances into per-market tone tags + an overall market-access label + a short banker-summary label. The runtime, the v1.9 / v1.10 / v1.11.0 mechanism and book contracts, and every existing record type are unchanged. v1.11.1 is **a readout / report artifact**, not a new economic model and not a decision engine. The v1.10 hard boundary (§70.3) and the meta-abstraction deferral rule (§70.4) continue to hold without modification, and v1.11.1 adds its own anti-claim list to the public-FWE freeze surface.
+
+### 78.1 Why this exists
+
+v1.11.0 made the capital-market surface *visible* by emitting per-period market-condition records. v1.11.1 makes that surface *banker-readable*: instead of forcing a viewer to inspect five condition records and reason about them, the readout gives one labeled summary row per period — rates / credit / equity / funding window / liquidity / volatility tones plus an overall market-access label (`open_or_constructive` / `selective_or_constrained` / `mixed`).
+
+This is a presentation layer. It produces *labels*, not prices, yields, spreads, forecasts, recommendations, target prices, deal advice, market sizes, or real-data values.
+
+### 78.2 What v1.11.1 ships
+
+- `world/market_surface_readout.py` (new):
+  - `CapitalMarketReadoutRecord` (immutable dataclass) with the v1.11.1 anti-fields binding (no `price` / `target_price` / `yield_value` / `spread_bps` / `forecast_value` / `expected_return` / `recommendation` / `deal_advice` / `market_size` / `real_data_value`).
+  - `CapitalMarketReadoutBook` (append-only store) with `add_readout`, `get_readout`, `list_readouts`, `list_by_date`, `list_by_status`, `list_by_overall_market_access_label`, `snapshot`.
+  - `build_capital_market_readout(kernel, *, as_of_date, market_condition_ids, ...)` — deterministic builder reading `MarketConditionRecord` instances and applying the v1.11.1 rule set. Idempotent on `readout_id`.
+  - Errors: `DuplicateCapitalMarketReadoutError`, `UnknownCapitalMarketReadoutError`.
+- `world/ledger.py` — `RecordType.CAPITAL_MARKET_READOUT_ADDED`, emitted exactly once per `add_readout` call.
+- `world/kernel.py` — `capital_market_readouts: CapitalMarketReadoutBook` wired in `WorldKernel.__post_init__`.
+- `world/reference_living_world.py` — new per-period readout phase that fires once per period after the v1.11.0 market-condition phase. `LivingReferencePeriodSummary` grows additively with `capital_market_readout_ids`.
+- `world/living_world_report.py` — `LivingWorldPeriodReport` grows with `capital_market_readout_count` plus the seven label fields (`rates_tone` / `credit_tone` / `equity_tone` / `funding_window_tone` / `liquidity_tone` / `volatility_tone` / `overall_market_access_label`); the Markdown renderer adds a `## Capital market surface` section between `## Capital market conditions` and `## v1.10 engagement / response`. The boundary statement is extended in place to cover the v1.11.1 anti-claims; the v1.9.1 / v1.10.5 / v1.11.0 prefixes are preserved verbatim.
+- `examples/reference_world/living_world_replay.py` — the canonical view echoes `capital_market_readout_ids` per period; the boundary statement constant tracks the reporter's. **Expected digest change**: the v1.11.1 living-world digest is *not* the same as the v1.11.0 digest — the canonical view now includes the new id tuple and the boundary string was extended.
+- `examples/reference_world/living_world_manifest.py` — manifest summary echoes the new `capital_market_readout_total` count.
+- `examples/reference_world/run_living_reference_world.py` — per-period CLI trace line names `market_readouts=`.
+- `tests/test_market_surface_readout.py` (new) — 72 tests covering field validation, bounded `confidence` with bool rejection, anti-fields on dataclass + ledger payload, listings (`list_readouts`, `list_by_date`, `list_by_status`, `list_by_overall_market_access_label`), snapshot determinism, ledger emission, kernel wiring, no-mutation against every other source-of-truth book (including v1.11.0 `MarketConditionBook`), no-action / no-pricing / no-issuance ledger assertion, the builder's deterministic rule set (mapping every v1.11.0 `market_type` to its tone slot, the three `overall_market_access_label` branches, idempotency on `readout_id`, average-confidence math, `volatility_regime` market overriding the `liquidity_market` fallback, "unknown" defaults for missing market types, no-mutation against `MarketConditionBook` during build), and a jurisdiction-neutral identifier scan over both module and test file.
+- `tests/test_living_reference_world.py` — `+7` v1.11.1 integration tests: one readout per period, readouts resolve and carry default labels, default overall is `open_or_constructive`, no forbidden price / advice payload keys end-to-end, two fresh runs produce byte-identical canonical view, canonical view carries the readout id tuples, Markdown report includes the `## Capital market surface` section.
+- `tests/test_living_reference_world_performance_boundary.py` — `count_expected_living_world_records` and the per-run upper-bound test refreshed for the v1.11.1 fixture.
+
+### 78.3 Builder rule set (binding)
+
+The builder reads each cited `MarketConditionRecord` and overlays its `direction` onto the tone slot named by its `market_type`:
+
+| Source `market_type` | Target tone slot |
+| --- | --- |
+| `reference_rates` | `rates_tone` |
+| `credit_spreads` | `credit_tone` |
+| `equity_market` | `equity_tone` |
+| `funding_market` | `funding_window_tone` |
+| `liquidity_market` | `liquidity_tone` |
+| `volatility_regime` | `volatility_tone` |
+
+Tone slots not populated by any condition default to `"unknown"`. Conditions whose `market_type` is not in this map are ignored (no error) so the builder is forward-compatible with caller-defined market types.
+
+The overall classifier:
+
+```
+if funding_window_tone in {"supportive", "easing", "narrowing", "open"}
+   and credit_tone not in {"restrictive", "widening", "tightening"}:
+    overall_market_access_label = "open_or_constructive"
+elif credit_tone in {"restrictive", "widening", "tightening"}
+     and liquidity_tone in {"restrictive", "tightening", "widening"}:
+    overall_market_access_label = "selective_or_constrained"
+else:
+    overall_market_access_label = "mixed"
+```
+
+The banker-summary label is a deterministic 1:1 map:
+
+| `overall_market_access_label` | `banker_summary_label` |
+| --- | --- |
+| `open_or_constructive` | `constructive_market_access_synthetic` |
+| `selective_or_constrained` | `selective_market_access_synthetic` |
+| `mixed` | `mixed_market_access_synthetic` |
+
+`confidence` is the arithmetic mean of the cited conditions' `confidence` values, clamped to `[0.0, 1.0]`. With zero cited conditions it is `0.5` by convention.
+
+The rule set is small, documented, and reproducible. No rule is a recommendation; each branch returns a label, never a market view.
+
+### 78.4 Anti-fields (binding)
+
+The dataclass deliberately has **no** `price`, `target_price`, `yield_value`, `spread_bps`, `forecast_value`, `expected_return`, `recommendation`, `deal_advice`, `market_size`, or `real_data_value` field. The ledger payload likewise carries none of these keys. Two explicit tests (`test_readout_record_has_no_price_or_advice_field`, `test_add_readout_payload_carries_no_price_or_advice_keys`) introspect the dataclass field set and the ledger payload key set respectively. A future v1.11.x or later milestone that introduces such a field would by construction trip these tests.
+
+### 78.5 Performance boundary (binding)
+
+v1.11.1 adds **one** record per period. The per-period formula gains `capital_market_readouts_per_period` (default `1`); the per-run formula moves from 240 to **244** for the default fixture; the per-run window moves from `[240, 272]` to **`[244, 276]`**. The readout phase is `O(P)` (one readout per period) — no actor-count multiplier, no industry-count multiplier, no market-count multiplier (the readout *reads* `M` conditions, but emits one record). The performance boundary discipline of §68 / §76 / §77 carries forward unchanged.
+
+### 78.6 Living-world digest (expected change)
+
+The v1.11.1 living-world digest is **not** equal to the v1.11.0 digest. The canonical view now carries `capital_market_readout_ids` per period and the boundary string was extended. This is **expected** and is part of v1.11.1's freeze surface. Tests assert that two fresh runs of the v1.11.1 default fixture produce *byte-identical* canonical JSON and the same digest. The default-fixture digest at v1.11.1 is `209ff81682d331a9700e5c3c8dfac9aa9ecfa028757db6b060f75590249833ea`.
+
+### 78.7 No-behavior boundary (binding)
+
+A `CapitalMarketReadoutRecord` and the `CapitalMarketReadoutBook` storing it are jurisdiction-neutral, signal-only, label-only, and price-free. v1.11.1 does **not**:
+
+- price, quote, calibrate, or recommend any security, deal, instrument, or market;
+- execute any DCM / ECM action, security issuance, loan origination, trade, order match, or clearing event;
+- mutate any firm financial statement;
+- forecast any market level, return, default probability, or any real-world quantity;
+- emit any spread / yield / index / market-size / real-data value;
+- mutate any other source-of-truth book (the no-mutation test asserts this against ownership, contracts, prices, constraints, signals, valuations, institutions, external_processes, relationships, interactions, routines, attention, variables, exposures, stewardship, engagement, escalations, strategic_responses, industry_conditions, and market_conditions);
+- enforce membership of any tone tag, status tag, visibility tag, or label against any controlled vocabulary — the recommended labels are illustrative;
+- emit any ledger record other than `CAPITAL_MARKET_READOUT_ADDED` from a bare `add_readout` call.
+
+### 78.8 What v1.11.1 does not decide
+
+- The fixture composition for v2.x Japan public-data calibration. The v1.11.1 demo remains 100% synthetic.
+- Whether and how a future v1.12 funding / issuance intent layer will *consume* the readout. v1.11.1 makes the readout citable by plain id; it does not introduce any new consumer. v1.12 may add a `trigger_capital_market_readout_ids` slot on a future intent record, mirroring the v1.10.4.1 / v1.11.0 type-correct cross-reference patterns.
+- The *content* of the rule set beyond the documented v1.11.1 minimum. A future milestone may extend the rule set (e.g., add a "rates_tightening" trigger) without breaking the v1.11.1 freeze surface, as long as the deterministic / no-recommendation discipline is preserved.
+
+### 78.9 Position in the v1.11 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 → v1.10.5 (engagement / strategic-response stack) | Code (§70 → §76). | Shipped |
+| v1.11.0 Capital-market surface | Code (§77). | Shipped |
+| **v1.11.1 Capital-market readout** | Code (§78). Additive readout layer. | **Shipped** |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v1.12 Funding / issuance intent layer (anticipated) | Code. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `2043 / 2043` (v1.11.0) to `2122 / 2122` (v1.11.1) — `+79` tests (`+72` in the new `tests/test_market_surface_readout.py`, `+7` v1.11.1 integration tests in `tests/test_living_reference_world.py`). The CLI surface, the default fixture *shape*, the per-period flow, and the reproducibility surface all grow additively; the `living_world_digest` value changes (expected — see §78.6) and the per-run record window widens from `[240, 272]` to `[244, 276]` (documented — see §78.5).

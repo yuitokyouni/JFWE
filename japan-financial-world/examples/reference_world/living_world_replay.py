@@ -92,7 +92,12 @@ LIVING_WORLD_BOUNDARY_STATEMENT: str = (
     "yield-curve calibration, no order matching, no clearing, no "
     "quote dissemination, no security recommendation, no DCM / "
     "ECM execution, no portfolio-allocation decisions; market "
-    "conditions are synthetic context only."
+    "conditions are synthetic context only. "
+    "v1.11.1 capital-market readout: deterministic banker-"
+    "readable labels derived from v1.11.0 conditions; no spread "
+    "calibration, no yield calibration, no market forecast, no "
+    "deal advice, no transaction recommendation; readout / "
+    "report only."
 )
 
 CANONICAL_FORMAT_VERSION: str = "living_world_canonical.v1"
@@ -207,6 +212,9 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
         ),
         "market_condition_ids": list(
             getattr(period, "market_condition_ids", ())
+        ),
+        "capital_market_readout_ids": list(
+            getattr(period, "capital_market_readout_ids", ())
         ),
     }
 

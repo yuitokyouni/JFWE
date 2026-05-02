@@ -84,6 +84,7 @@ from world.market_conditions import (
     DuplicateMarketConditionError,
     MarketConditionRecord,
 )
+from world.market_surface_readout import build_capital_market_readout
 from world.observation_menu_builder import ObservationMenuBuildRequest
 from world.stewardship import (
     DuplicateStewardshipThemeError,
@@ -196,6 +197,14 @@ class LivingReferencePeriodSummary:
     # entry per (market, period) pair from the orchestrator's
     # default market set (or the caller's override).
     market_condition_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.11.1 additive: one capital-market readout id per period.
+    # The readout summarizes the same period's market_condition_ids
+    # into deterministic per-market tone tags + an overall
+    # market-access label + a banker-summary label. Storage /
+    # report only — never a recommendation, never a forecast.
+    capital_market_readout_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     record_count_created: int = 0
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -223,6 +232,7 @@ class LivingReferencePeriodSummary:
             "investor_escalation_candidate_ids",
             "corporate_strategic_response_candidate_ids",
             "market_condition_ids",
+            "capital_market_readout_ids",
         ):
             value = tuple(getattr(self, tuple_field_name))
             for entry in value:
@@ -1002,6 +1012,26 @@ def run_living_reference_world(
                 kernel.market_conditions.get_condition(mc_id)
             market_condition_ids.append(mc_id)
 
+        # ------------------------------------------------------------------
+        # v1.11.1 — capital-market readout phase.
+        # Deterministic banker-readable summary built from the
+        # period's market_condition_ids. Per-market tone tags +
+        # overall market-access label + banker-summary label.
+        # Read-only over MarketConditionBook; writes only to
+        # CapitalMarketReadoutBook + the kernel ledger. No
+        # recommendation, no forecast, no pricing, no execution.
+        # The builder is idempotent on the readout id; re-running
+        # the orchestrator on the same kernel does not duplicate.
+        # ------------------------------------------------------------------
+        capital_market_readout_ids: list[str] = []
+        if market_condition_ids:
+            readout = build_capital_market_readout(
+                kernel,
+                as_of_date=iso_date,
+                market_condition_ids=tuple(market_condition_ids),
+            )
+            capital_market_readout_ids.append(readout.readout_id)
+
         # Attention phase. We iterate investors and banks in order so
         # the resulting summary tuples match the input order. Each
         # actor's menu picks up *every* firm's corporate signal that
@@ -1421,6 +1451,9 @@ def run_living_reference_world(
                     corporate_strategic_response_candidate_ids
                 ),
                 market_condition_ids=tuple(market_condition_ids),
+                capital_market_readout_ids=tuple(
+                    capital_market_readout_ids
+                ),
                 record_count_created=period_end_idx - period_start_idx,
                 metadata={
                     "period_index": period_idx,

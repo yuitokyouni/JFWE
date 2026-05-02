@@ -141,6 +141,10 @@ def _summary_from_result(result: LivingReferenceWorldResult) -> dict[str, Any]:
         len(getattr(p, "market_condition_ids", ()))
         for p in result.per_period_summaries
     )
+    capital_market_readout_total = sum(
+        len(getattr(p, "capital_market_readout_ids", ()))
+        for p in result.per_period_summaries
+    )
     return {
         "run_id": result.run_id,
         "period_count": result.period_count,
@@ -158,6 +162,7 @@ def _summary_from_result(result: LivingReferenceWorldResult) -> dict[str, Any]:
         "investor_escalation_candidate_total": escalation_total,
         "corporate_strategic_response_candidate_total": response_total,
         "market_condition_total": market_condition_total,
+        "capital_market_readout_total": capital_market_readout_total,
         "created_record_count": result.created_record_count,
     }
 

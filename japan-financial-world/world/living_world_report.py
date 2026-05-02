@@ -122,7 +122,12 @@ _BOUNDARY_STATEMENT: str = (
     "yield-curve calibration, no order matching, no clearing, no "
     "quote dissemination, no security recommendation, no DCM / "
     "ECM execution, no portfolio-allocation decisions; market "
-    "conditions are synthetic context only."
+    "conditions are synthetic context only. "
+    "v1.11.1 capital-market readout: deterministic banker-"
+    "readable labels derived from v1.11.0 conditions; no spread "
+    "calibration, no yield calibration, no market forecast, no "
+    "deal advice, no transaction recommendation; readout / "
+    "report only."
 )
 
 
@@ -176,6 +181,21 @@ class LivingWorldPeriodReport:
     # v1.11.0 additive: capital-market condition surface count.
     # Default 0 for backwards compat with pre-v1.11 result objects.
     market_condition_count: int = 0
+    # v1.11.1 additive: capital-market readout count (one per
+    # period; the period summary carries one readout id per
+    # period when v1.11.1 is wired).
+    capital_market_readout_count: int = 0
+    # v1.11.1 additive: per-period banker-readable labels lifted
+    # from the period's CapitalMarketReadoutRecord (if any). When
+    # the period has no readout, the labels default to empty
+    # strings — the report renderer skips empty values.
+    rates_tone: str = ""
+    credit_tone: str = ""
+    equity_tone: str = ""
+    funding_window_tone: str = ""
+    liquidity_tone: str = ""
+    volatility_tone: str = ""
+    overall_market_access_label: str = ""
     record_type_counts: tuple[tuple[str, int], ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -203,6 +223,7 @@ class LivingWorldPeriodReport:
             "investor_escalation_candidate_count",
             "corporate_strategic_response_candidate_count",
             "market_condition_count",
+            "capital_market_readout_count",
         ):
             value = getattr(self, name)
             if not isinstance(value, int) or value < 0:
@@ -275,6 +296,14 @@ class LivingWorldPeriodReport:
                 self.corporate_strategic_response_candidate_count
             ),
             "market_condition_count": self.market_condition_count,
+            "capital_market_readout_count": self.capital_market_readout_count,
+            "rates_tone": self.rates_tone,
+            "credit_tone": self.credit_tone,
+            "equity_tone": self.equity_tone,
+            "funding_window_tone": self.funding_window_tone,
+            "liquidity_tone": self.liquidity_tone,
+            "volatility_tone": self.volatility_tone,
+            "overall_market_access_label": self.overall_market_access_label,
             "record_type_counts": [
                 [event_type, count]
                 for event_type, count in self.record_type_counts
@@ -802,6 +831,10 @@ def _build_period_report(
             market_condition_count=len(
                 getattr(period, "market_condition_ids", ())
             ),
+            capital_market_readout_count=len(
+                getattr(period, "capital_market_readout_ids", ())
+            ),
+            **_extract_readout_labels(kernel, period),
             record_type_counts=period_record_type_counts,
             warnings=tuple(period_warnings),
             metadata={
@@ -815,6 +848,58 @@ def _build_period_report(
         ),
         period_warnings,
     )
+
+
+def _extract_readout_labels(
+    kernel: Any, period: LivingReferencePeriodSummary
+) -> dict[str, str]:
+    """v1.11.1 — read the period's capital-market readout (if any)
+    and surface the banker-readable labels into the period
+    report. Returns the empty-string defaults when the period has
+    no readout, so the renderer can skip empty rows."""
+    readout_ids = getattr(period, "capital_market_readout_ids", ())
+    if not readout_ids:
+        return {
+            "rates_tone": "",
+            "credit_tone": "",
+            "equity_tone": "",
+            "funding_window_tone": "",
+            "liquidity_tone": "",
+            "volatility_tone": "",
+            "overall_market_access_label": "",
+        }
+    book = getattr(kernel, "capital_market_readouts", None)
+    if book is None:
+        return {
+            "rates_tone": "",
+            "credit_tone": "",
+            "equity_tone": "",
+            "funding_window_tone": "",
+            "liquidity_tone": "",
+            "volatility_tone": "",
+            "overall_market_access_label": "",
+        }
+    try:
+        rec = book.get_readout(readout_ids[0])
+    except Exception:
+        return {
+            "rates_tone": "",
+            "credit_tone": "",
+            "equity_tone": "",
+            "funding_window_tone": "",
+            "liquidity_tone": "",
+            "volatility_tone": "",
+            "overall_market_access_label": "",
+        }
+    return {
+        "rates_tone": rec.rates_tone,
+        "credit_tone": rec.credit_tone,
+        "equity_tone": rec.equity_tone,
+        "funding_window_tone": rec.funding_window_tone,
+        "liquidity_tone": rec.liquidity_tone,
+        "volatility_tone": rec.volatility_tone,
+        "overall_market_access_label": rec.overall_market_access_label,
+    }
 
 
 def _read_selection_refs(
@@ -945,6 +1030,51 @@ def render_living_world_markdown(report: LivingWorldTraceReport) -> str:
             "evidence only — no price formation, no yield-curve "
             "calibration, no order matching, no clearing, no "
             "quote dissemination, no real market data."
+        )
+        lines.append("")
+
+    # v1.11.1 capital-market surface readout section. One row per
+    # period showing the banker-readable per-market tone tags +
+    # the overall market-access label. Sits adjacent to the
+    # v1.11.0 conditions section: §"Capital market conditions"
+    # gives the count, §"Capital market surface" gives the
+    # labels.
+    has_v1111_signal = any(
+        ps.get("capital_market_readout_count", 0) > 0
+        and ps.get("overall_market_access_label", "")
+        for ps in md["period_summaries"]
+    )
+    if has_v1111_signal:
+        lines.append("## Capital market surface")
+        lines.append("")
+        lines.append(
+            "| period | as_of_date | rates | credit | equity | "
+            "funding window | liquidity | volatility | overall |"
+        )
+        lines.append(
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+        )
+        for ps in md["period_summaries"]:
+            if not ps.get("overall_market_access_label", ""):
+                continue
+            lines.append(
+                f"| `{ps['period_id']}` | `{ps['as_of_date']}` | "
+                f"{ps.get('rates_tone', '')} | "
+                f"{ps.get('credit_tone', '')} | "
+                f"{ps.get('equity_tone', '')} | "
+                f"{ps.get('funding_window_tone', '')} | "
+                f"{ps.get('liquidity_tone', '')} | "
+                f"{ps.get('volatility_tone', '')} | "
+                f"{ps.get('overall_market_access_label', '')} |"
+            )
+        lines.append("")
+        lines.append(
+            "> Capital-market surface labels are deterministic "
+            "per-market tone tags + an overall market-access "
+            "label, derived from the v1.11.0 condition records by "
+            "the v1.11.1 rule set. **Not** a market view, **not** "
+            "a forecast, **not** a recommendation, **not** deal "
+            "advice — readout / report only."
         )
         lines.append("")
 

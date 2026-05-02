@@ -30,6 +30,7 @@ from world.state import State
 from world.engagement import DialogueBook, EscalationCandidateBook
 from world.industry import IndustryConditionBook
 from world.market_conditions import MarketConditionBook
+from world.market_surface_readout import CapitalMarketReadoutBook
 from world.stewardship import StewardshipBook
 from world.strategic_response import StrategicResponseCandidateBook
 from world.valuations import ValuationBook, ValuationComparator
@@ -82,6 +83,9 @@ class WorldKernel:
     market_conditions: MarketConditionBook = field(
         default_factory=MarketConditionBook
     )
+    capital_market_readouts: CapitalMarketReadoutBook = field(
+        default_factory=CapitalMarketReadoutBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
 
@@ -107,6 +111,7 @@ class WorldKernel:
             self.strategic_responses,
             self.industry_conditions,
             self.market_conditions,
+            self.capital_market_readouts,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
