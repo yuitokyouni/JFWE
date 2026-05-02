@@ -407,6 +407,125 @@ def test_valuation_run_records_unique_per_period():
             seen.add(rid)
 
 
+# ---------------------------------------------------------------------------
+# v1.9.7 integration: bank credit review lite
+# ---------------------------------------------------------------------------
+
+
+def test_one_credit_review_signal_per_bank_firm_pair_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected = len(_BANK_IDS) * len(_FIRM_IDS)
+    for ps in r.per_period_summaries:
+        assert len(ps.bank_credit_review_signal_ids) == expected
+        assert len(ps.bank_credit_review_mechanism_run_ids) == expected
+
+
+def test_credit_review_signals_resolve_to_stored_records():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for sid in ps.bank_credit_review_signal_ids:
+            sig = k.signals.get_signal(sid)
+            assert sig.signal_type == "bank_credit_review_note"
+            assert sig.subject_id in _FIRM_IDS
+            assert sig.source_id in _BANK_IDS
+
+
+def test_credit_review_metadata_carries_pressure_signal_link():
+    """Each credit review must reference the firm's pressure
+    signal for the same period; this proves v1.9.7 actually
+    consumed v1.9.4's output through the chain."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        pressure_by_firm = {
+            k.signals.get_signal(sid).subject_id: sid
+            for sid in ps.firm_pressure_signal_ids
+        }
+        for sid in ps.bank_credit_review_signal_ids:
+            sig = k.signals.get_signal(sid)
+            firm = sig.subject_id
+            assert (
+                sig.payload["pressure_signal_id"]
+                == pressure_by_firm[firm]
+            )
+
+
+def test_credit_review_related_ids_include_valuations_for_firm():
+    """The v1.9.7 review must thread valuations through
+    related_ids, proving the chain
+    pressure → valuation → credit review is real, not coincidental
+    ordering."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        # Group valuations by firm.
+        valuations_by_firm: dict[str, list[str]] = {}
+        for vid in ps.valuation_ids:
+            v = k.valuations.get_valuation(vid)
+            valuations_by_firm.setdefault(v.subject_id, []).append(vid)
+        for sid in ps.bank_credit_review_signal_ids:
+            sig = k.signals.get_signal(sid)
+            firm = sig.subject_id
+            firm_valuations = set(valuations_by_firm.get(firm, []))
+            related = set(sig.related_ids)
+            # At least one valuation on this firm should be in related_ids.
+            assert firm_valuations & related, (
+                f"credit review {sid} for firm {firm} did not "
+                f"thread any valuation in related_ids"
+            )
+
+
+def test_credit_review_metadata_carries_boundary_flags():
+    """Every committed credit review note stamps the v1.9.7
+    boundary flags."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected_flags = (
+        "no_lending_decision",
+        "no_covenant_enforcement",
+        "no_contract_mutation",
+        "no_constraint_mutation",
+        "no_default_declaration",
+        "no_internal_rating",
+        "no_probability_of_default",
+        "synthetic_only",
+    )
+    for ps in r.per_period_summaries:
+        for sid in ps.bank_credit_review_signal_ids:
+            sig = k.signals.get_signal(sid)
+            for flag in expected_flags:
+                assert sig.metadata[flag] is True, (
+                    f"credit review {sid} missing flag {flag}"
+                )
+
+
+def test_credit_review_run_records_unique_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        seen: set[str] = set()
+        for rid in ps.bank_credit_review_mechanism_run_ids:
+            assert isinstance(rid, str) and rid
+            assert rid not in seen, (
+                f"duplicate credit-review run id {rid} in {ps.period_id}"
+            )
+            seen.add(rid)
+
+
+def test_credit_review_does_not_mutate_contracts_or_constraints():
+    """v1.9.7's hard boundary: credit review must not touch
+    ContractBook or ConstraintBook. Pin it with a snapshot
+    equality across the entire sweep."""
+    k = _seed_kernel()
+    before_contracts = k.contracts.snapshot()
+    before_constraints = k.constraints.snapshot()
+    _run_default(k)
+    assert k.contracts.snapshot() == before_contracts
+    assert k.constraints.snapshot() == before_constraints
+
+
 def test_period_record_counts_are_positive():
     k = _seed_kernel()
     r = _run_default(k)
@@ -702,26 +821,27 @@ def test_kernel_run_does_not_run_living_world():
 
 
 def test_living_world_stays_within_record_budget():
-    """Sanity-check that the v1.9.6 sweep does not inadvertently
+    """Sanity-check that the v1.9.7 sweep does not inadvertently
     enumerate firms × investors × banks × periods. With the
     default fixture (3 firms / 2 investors / 2 banks / 4 periods)
     we expect roughly:
 
       per period:
-        2 × firms                 (corp_run + corp_signal)         =  6
-        firms                     (pressure_signal — v1.9.6)       =  3
-        2 × (investors + banks)   (menu + selection)               =  8
-        investors × firms         (valuation — v1.9.6)             =  6
-        2 × (investors + banks)   (review_run + review_signal)     =  8
-                                                            total  = 31
+        2 × firms                 (corp_run + corp_signal)            =  6
+        firms                     (pressure_signal — v1.9.6)          =  3
+        2 × (investors + banks)   (menu + selection)                  =  8
+        investors × firms         (valuation — v1.9.6)                =  6
+        banks × firms             (credit_review_signal — v1.9.7)     =  6
+        2 × (investors + banks)   (review_run + review_signal)        =  8
+                                                               total  = 37
 
-      × 4 periods                                                  = 124
+      × 4 periods                                                     = 148
 
       + a small constant amount of one-off setup records
         (interactions, routines, profiles registered on the first
         period — currently ~14).
 
-    Lower bound 124 (per-period work × 4); upper bound 250
+    Lower bound 148 (per-period work × 4); upper bound 280
     catches accidental quadratic loops while leaving headroom
     for harmless infra adjustments.
     """
@@ -732,11 +852,12 @@ def test_living_world_stays_within_record_budget():
         + len(_FIRM_IDS)  # pressure signal (v1.9.6)
         + 2 * (len(_INVESTOR_IDS) + len(_BANK_IDS))  # menu + selection
         + len(_INVESTOR_IDS) * len(_FIRM_IDS)  # valuation (v1.9.6)
+        + len(_BANK_IDS) * len(_FIRM_IDS)  # credit review (v1.9.7)
         + 2 * (len(_INVESTOR_IDS) + len(_BANK_IDS))  # review_run + signal
-    )  # = 4 * (6 + 3 + 8 + 6 + 8) = 124
+    )  # = 4 * (6 + 3 + 8 + 6 + 6 + 8) = 148
     assert r.created_record_count >= minimum_expected
-    # Loose upper bound: 250 is well below dense product space.
-    assert r.created_record_count <= 250
+    # Loose upper bound: 280 is well below dense product space.
+    assert r.created_record_count <= 280
 
 
 # ---------------------------------------------------------------------------
@@ -790,10 +911,13 @@ def test_cli_smoke_prints_per_period_trace():
     assert "[period 1]" in out
     assert "[period 4]" in out
     assert "[ledger]" in out
-    # v1.9.6: pressure + valuation now appear in every period's
-    # trace line; the summary line names the integrated chain and
-    # the "no investment advice" boundary.
+    # v1.9.6 / v1.9.7: pressure + valuation + credit_reviews now
+    # appear in every period's trace line; the summary line names
+    # the integrated chain and the boundary statement.
     assert "pressures=" in out
     assert "valuations=" in out
+    assert "credit_reviews=" in out
+    assert "bank credit review lite" in out
     assert "no canonical-truth valuation" in out
     assert "no investment advice" in out
+    assert "no lending decisions" in out

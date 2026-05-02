@@ -409,6 +409,74 @@ The full suite passes 1580 tests (1571 prior + 9 integration).
 shifts to v1.9.7; Performance Boundary to v1.9.8; v1.9.last
 remains the public prototype freeze.
 
+## v1.9.7 — what shipped
+
+The **third concrete mechanism** + its integration into the
+multi-period sweep. Bank Credit Review Lite is a synthetic
+diagnostic note generator — **not a lending decision model**, not
+a default detector, not a covenant enforcer. Every produced
+signal is a recordable note about *what the bank looked at* and
+*how that evidence aggregated as a pressure score*; it is not a
+record of *what the bank decided to do*.
+
+- `world/reference_bank_credit_review_lite.py` exports
+  `BANK_CREDIT_REVIEW_MODEL_ID`,
+  `BANK_CREDIT_REVIEW_MODEL_FAMILY = "credit_review_mechanism"`,
+  `BANK_CREDIT_REVIEW_MECHANISM_VERSION = "0.1"`,
+  `BANK_CREDIT_REVIEW_SIGNAL_TYPE = "bank_credit_review_note"`,
+  `BankCreditReviewLiteAdapter` (frozen dataclass implementing
+  `MechanismAdapter`), `BankCreditReviewLiteResult`, and
+  `run_reference_bank_credit_review_lite(kernel, *, bank_id,
+  firm_id, ...)`. Default request_id formula includes both
+  bank_id AND firm_id from the start so multi-bank reviews on
+  the same firm don't alias on the audit lineage.
+
+- Five synthetic [0,1] scores: operating_pressure_score (=
+  pressure.overall_pressure), valuation_pressure_score (=
+  1 - mean(valuation.confidence)), debt_service_attention_score,
+  collateral_attention_score, information_quality_score (a
+  coverage metric). Plus overall_credit_review_pressure (mean
+  of the four pressure-side scores; information_quality is
+  coverage, not pressure, and does not enter the mean).
+
+- `world/reference_living_world.py`:
+  `LivingReferencePeriodSummary` extended additively with
+  `bank_credit_review_signal_ids` and
+  `bank_credit_review_mechanism_run_ids` (one entry per (bank,
+  firm) pair). New phase per period between valuation and
+  reviews.
+
+- CLI / report / replay: `[period N]` trace adds `credit_reviews=`;
+  Markdown table adds `credit_reviews` column;
+  `LivingWorldPeriodReport` adds `credit_review_signal_count`;
+  v1.9.2 canonical view includes the new id tuples.
+
+- 29 standalone tests + 7 integration tests pinning the
+  contract: protocol satisfaction; runs without kernel; missing
+  evidence → degraded with conservative output; scores in [0,1];
+  overall = mean of four; deterministic; request immutable;
+  signal shape with eight boundary flags
+  (`no_lending_decision` / `no_covenant_enforcement` /
+  `no_contract_mutation` / `no_constraint_mutation` /
+  `no_default_declaration` / `no_internal_rating` /
+  `no_probability_of_default` / `synthetic_only`); caller helper
+  commits exactly one signal; lineage preserved; full
+  no-mutation against contracts / constraints / prices /
+  ownership / valuations / etc.; per (bank, firm) per period
+  in living-world; pressure_signal_id link in payload; valuations
+  threaded in related_ids.
+
+**Hard boundary carried forward.** Every committed credit
+review note stamps the eight boundary flags. The mechanism
+produces a *diagnostic note*, not a *decision*. No price
+formation, no trading, no lending decisions, no covenant
+enforcement, no contract or constraint mutation.
+
+The full suite passes 1616 tests (1580 prior + 36 v1.9.7).
+
+**Recommended next path.** Performance Boundary moves to v1.9.8;
+v1.9.last remains the public prototype freeze.
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral

@@ -148,6 +148,9 @@ class LivingWorldPeriodReport:
     # fields) still construct cleanly.
     pressure_signal_count: int = 0
     valuation_count: int = 0
+    # v1.9.7 additive: bank credit review lite. Default 0 for
+    # backwards compat.
+    credit_review_signal_count: int = 0
     record_type_counts: tuple[tuple[str, int], ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -168,6 +171,7 @@ class LivingWorldPeriodReport:
             "bank_review_count",
             "pressure_signal_count",
             "valuation_count",
+            "credit_review_signal_count",
         ):
             value = getattr(self, name)
             if not isinstance(value, int) or value < 0:
@@ -229,6 +233,7 @@ class LivingWorldPeriodReport:
             "bank_review_signal_ids": list(self.bank_review_signal_ids),
             "pressure_signal_count": self.pressure_signal_count,
             "valuation_count": self.valuation_count,
+            "credit_review_signal_count": self.credit_review_signal_count,
             "record_type_counts": [
                 [event_type, count]
                 for event_type, count in self.record_type_counts
@@ -737,6 +742,9 @@ def _build_period_report(
                 getattr(period, "firm_pressure_signal_ids", ())
             ),
             valuation_count=len(getattr(period, "valuation_ids", ())),
+            credit_review_signal_count=len(
+                getattr(period, "bank_credit_review_signal_ids", ())
+            ),
             record_type_counts=period_record_type_counts,
             warnings=tuple(period_warnings),
             metadata={
@@ -824,17 +832,17 @@ def render_living_world_markdown(report: LivingWorldTraceReport) -> str:
     lines.append("## Per-period summary")
     lines.append("")
     if md["period_summaries"]:
-        # v1.9.6: per-period table now carries `pressures` and
-        # `valuations` columns alongside the v1.9.0 baseline. The
-        # column order is fixed for determinism.
+        # v1.9.6 / v1.9.7: per-period table carries `pressures`,
+        # `valuations`, and `credit_reviews` columns alongside the
+        # v1.9.0 baseline. Column order is fixed for determinism.
         lines.append(
             "| period | as_of_date | reports | pressures | "
             "inv_menus | bnk_menus | inv_sel | bnk_sel | valuations | "
-            "inv_rev | bnk_rev | records |"
+            "credit_reviews | inv_rev | bnk_rev | records |"
         )
         lines.append(
             "| --- | --- | --- | --- | --- | --- | --- | --- | "
-            "--- | --- | --- | --- |"
+            "--- | --- | --- | --- | --- |"
         )
         for ps in md["period_summaries"]:
             lines.append(
@@ -846,6 +854,7 @@ def render_living_world_markdown(report: LivingWorldTraceReport) -> str:
                 f"{ps['investor_selection_count']} | "
                 f"{ps['bank_selection_count']} | "
                 f"{ps.get('valuation_count', 0)} | "
+                f"{ps.get('credit_review_signal_count', 0)} | "
                 f"{ps['investor_review_count']} | "
                 f"{ps['bank_review_count']} | "
                 f"{ps['record_count_created']} |"

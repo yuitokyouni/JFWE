@@ -5252,7 +5252,7 @@ These principles apply to v1.9.4+ mechanisms and are pinned in the contract test
 | v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | Shipped |
 | **v1.9.6 Living-world Mechanism Integration** | Code (§66). Wires v1.9.4 + v1.9.5 into `run_living_reference_world`. | **Shipped** |
 | v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
-| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 (now Next). |
 | v1.9.last | First lightweight public prototype. | After v1.9.8 |
 
 ## 64. v1.9.4 Reference Firm Operating Pressure Assessment Mechanism
@@ -5377,7 +5377,7 @@ The proposed signal mapping carries:
 | v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | Shipped |
 | **v1.9.6 Living-world Mechanism Integration** | Code (§66). Wires v1.9.4 + v1.9.5 into `run_living_reference_world`. | **Shipped** |
 | v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
-| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 (now Next). |
 | v1.9.last | First lightweight public prototype. | After v1.9.8 |
 
 
@@ -5528,9 +5528,9 @@ The proposed `ValuationRecord` mapping carries `valuation_id`, `subject_id`, `va
 | v1.9.3 / v1.9.3.1 Mechanism interface + hardening | Docs + contract (§63 / §63.9). | Shipped |
 | v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). | Shipped |
 | v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). Second concrete `MechanismAdapter`. | Shipped |
-| **v1.9.6 Living-world Mechanism Integration** | Code (§66). Wires v1.9.4 + v1.9.5 into the multi-period sweep. | **Shipped** |
-| v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
-| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.6 Living-world Mechanism Integration | Code (§66). Wires v1.9.4 + v1.9.5 into the multi-period sweep. | Shipped |
+| **v1.9.7 Reference Bank Credit Review Lite Mechanism** | Code (§67). Third concrete `MechanismAdapter` (`credit_review_mechanism` family) + integration into the multi-period sweep. | **Shipped** |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | Next |
 | v1.9.last | First lightweight public prototype. | After v1.9.8 |
 
 ## 66. v1.9.6 Living-world Mechanism Integration
@@ -5635,9 +5635,121 @@ The v1.9.4 / v1.9.5 hard boundaries carry through end-to-end: every committed pr
 | --- | --- | --- |
 | v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). | Shipped |
 | v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). | Shipped |
-| **v1.9.6 Living-world Mechanism Integration** | Code (§66). | **Shipped** |
-| v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
-| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.6 Living-world Mechanism Integration | Code (§66). | Shipped |
+| **v1.9.7 Reference Bank Credit Review Lite Mechanism** | Code (§67). | **Shipped** |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 (now Next). |
+| v1.9.last | First lightweight public prototype. | After v1.9.8 |
+
+## 67. v1.9.7 Reference Bank Credit Review Lite Mechanism
+
+§67 (v1.9.7) ships the project's **third concrete mechanism** on the v1.9.3 / v1.9.3.1 hardened interface, plus its integration into the multi-period `run_living_reference_world` sweep. It consumes resolved evidence — firm pressure assessment signals (v1.9.4), opinionated valuation claims (v1.9.5), the bank's own selected observation set, corporate reporting signals, and exposure records — and proposes one synthetic `bank_credit_review_note` signal per (bank, firm) per period.
+
+### 67.1 What this is — and is not
+
+This is **not a lending decision model**. It is a synthetic reference mechanism showing how a bank could review credit-relevant evidence without changing contracts, rates, covenants, or lending status. Every produced signal carries a verbatim boundary statement in metadata so downstream readers cannot mistake the diagnostic note for a decision.
+
+§67 explicitly does **not**:
+
+- approve / reject any loan;
+- enforce or trip any covenant;
+- mutate `ContractBook`, `ConstraintBook`, or any other source-of-truth book beyond the single `SignalBook.add_signal` write;
+- change interest rates or any other contract field;
+- detect or declare default;
+- form, observe, or move any market price;
+- imply that any score is a *probability of default*, an *internal rating*, or any other regulator-recognised credit measure;
+- imply investment advice;
+- ingest real data, calibrate to any real economy, or run a scenario engine.
+
+### 67.2 What lands in v1.9.7
+
+- `world/reference_bank_credit_review_lite.py` — new module with `BANK_CREDIT_REVIEW_MODEL_ID`, `BANK_CREDIT_REVIEW_MODEL_FAMILY = "credit_review_mechanism"`, `BANK_CREDIT_REVIEW_MECHANISM_VERSION = "0.1"`, `BANK_CREDIT_REVIEW_SIGNAL_TYPE = "bank_credit_review_note"`. `BankCreditReviewLiteAdapter` (frozen dataclass implementing `MechanismAdapter`; reads `request.evidence` + `request.parameters` only; no kernel parameter; no book access; no mutation). `BankCreditReviewLiteResult`. `run_reference_bank_credit_review_lite(kernel, *, bank_id, firm_id, as_of_date=None, pressure_signal_ids=..., valuation_ids=..., selected_observation_set_ids=..., corporate_signal_ids=..., exposure_ids=..., variable_observation_ids=..., ...)` caller-side helper. **Default request_id formula includes both bank_id AND firm_id** so multi-bank reviews on the same firm don't alias on the `mechanism_run:` audit id (the v1.9.5 default formula had this collision; v1.9.6 worked around it; v1.9.7 makes it impossible by construction).
+- `world/reference_living_world.py` — integrated into the per-period flow. New phase between valuation refresh and reviews. `LivingReferencePeriodSummary` extended additively with `bank_credit_review_signal_ids` + `bank_credit_review_mechanism_run_ids` (one entry per bank × firm pair).
+- `examples/reference_world/run_living_reference_world.py` — `[period N]` trace adds `credit_reviews=...`; summary line names the bank-credit-review-lite step and the boundary set.
+- `world/living_world_report.py` — `LivingWorldPeriodReport` adds `credit_review_signal_count`; Markdown per-period table grows the `credit_reviews` column.
+- `examples/reference_world/living_world_replay.py` — canonical view includes the new id tuples (digest reflects credit-review activity).
+- `tests/test_reference_bank_credit_review_lite.py` — 29 tests pinning the standalone contract.
+- `tests/test_living_reference_world.py` — 7 new v1.9.7 integration tests; record-count budget updated (per period now ~37 records; ≥ 148, ≤ 280); CLI smoke updated.
+
+### 67.3 Credit review dimensions
+
+Five synthetic dimensions, each a deterministic float in `[0, 1]`:
+
+| Dimension | How it is computed |
+| --- | --- |
+| `operating_pressure_score` | Verbatim copy of the firm's pressure signal `payload.overall_pressure`. |
+| `valuation_pressure_score` | `1 − mean(valuation.confidence)` across all supplied valuations on the firm. High-confidence valuations imply low pressure; low-confidence implies "look harder". |
+| `debt_service_attention_score` | Verbatim copy of the firm pressure signal's `payload.debt_service_pressure`. |
+| `collateral_attention_score` | Verbatim copy of the firm pressure signal's `payload.fx_translation_pressure` (synthetic stand-in; a fuller model would consume the bank's own collateral exposures). |
+| `information_quality_score` | Coverage metric in `[0, 1]`: 0.25 per present evidence channel (pressure / valuation / corporate-report / selection). Maxes at 1.0. |
+
+Plus one summary:
+
+- `overall_credit_review_pressure` — deterministic mean of the **four pressure-side scores** (operating + valuation + debt_service + collateral). `information_quality_score` is a *coverage* metric and does **not** enter the mean.
+
+**This is not a probability of default.** **This is not an internal rating.** **This is not a lending decision.**
+
+### 67.4 Mechanism interface contract
+
+The adapter implements `MechanismAdapter`:
+
+- `apply(request: MechanismRunRequest) -> MechanismOutputBundle`.
+- The adapter is a frozen dataclass; deterministic across two byte-identical requests.
+- The adapter does **not** accept a kernel parameter (defensive test pins this).
+- The adapter does **not** read any book or the ledger (contract test proves it by constructing a request without a kernel).
+- The adapter does **not** mutate the request (the v1.9.3.1 deep-freeze property carries; we re-pin it).
+- The adapter does **not** commit any proposal — the caller helper does it.
+
+The proposed signal mapping carries `signal_id` (deterministic: `signal:bank_credit_review_note:{bank_id}:{firm_id}:{as_of_date}`), `signal_type = "bank_credit_review_note"`, `subject_id` = the firm being reviewed, `source_id` = the reviewing bank, `published_date` / `effective_date` = `as_of_date`, `visibility = "public"`, `payload` (the five scores + overall + evidence_counts + calibration_status + status + pressure_signal_id link), `related_ids` (pressure signal id + every valuation on that firm + corporate signal + selection ids), and `metadata` with eight boundary flags: `no_lending_decision`, `no_covenant_enforcement`, `no_contract_mutation`, `no_constraint_mutation`, `no_default_declaration`, `no_internal_rating`, `no_probability_of_default`, `synthetic_only`, plus the verbatim `boundary` string.
+
+### 67.5 Per-period record-count after integration
+
+With the default fixture (3 firms, 2 investors, 2 banks, 4 periods):
+
+```
+per period:
+    firms × (corp_run + corp_signal)            = 6
+    firms × pressure_signal                      = 3
+    (investors + banks) × (menu + selection)    = 8
+    investors × firms × valuation                = 6
+    banks × firms × credit_review_signal         = 6   ← v1.9.7
+    (investors + banks) × (review_run + signal) = 8
+    -------------------------------------------------
+    total per period                            = 37   (was 31)
+× 4 periods                                     = 148
++ infra prelude (~14 records)                   ≈ 162
+```
+
+The budget guard is now ≥ 148 (per-period × 4) and ≤ 280.
+
+### 67.6 v1.9.7 success criteria
+
+§67 is complete when **all** hold:
+
+1. `world/reference_bank_credit_review_lite.py` exports the constants, `BankCreditReviewLiteAdapter`, `BankCreditReviewLiteResult`, and `run_reference_bank_credit_review_lite`.
+2. The adapter satisfies `MechanismAdapter`; `model_family="credit_review_mechanism"`, `calibration_status="synthetic"`, `stochasticity="deterministic"`.
+3. The adapter runs without a kernel; rejects a kernel argument; does not mutate the request.
+4. Missing pressure + valuation evidence yields `status="degraded"` with zero scores; with only one of the two channels still yields `"completed"`.
+5. The proposed signal carries every required field including the eight boundary flags.
+6. The caller helper commits exactly one `InformationSignal` through `SignalBook.add_signal`; `evidence_refs` lineage preserved verbatim on the `MechanismRunRecord`.
+7. The default request_id formula includes both bank_id and firm_id (no v1.9.5-style collision).
+8. Living-world integration produces one credit review per (bank, firm) per period; `payload.pressure_signal_id` links to the same firm's pressure signal for the same period; `related_ids` thread valuations on that firm.
+9. No mutation of `contracts`, `constraints`, `prices`, `ownership`, `valuations` (after the v1.9.5 phase), `exposures`, `variables`, `institutions`, `external_processes`, `relationships`, `routines`, `attention`, `interactions`.
+10. The full test suite passes (1616 = 1580 prior + 29 standalone + 7 integration).
+11. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+
+### 67.7 Anti-scope
+
+§67 deliberately does **not** add: lending decisions, loan approval / rejection; covenant enforcement, default declaration; interest-rate changes, contract mutation, constraint mutation; price formation, trading, investor decisions; firm financial statement updates; Japan calibration, real data ingestion, scenario engines, automatic scheduler firing.
+
+### 67.8 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). | Shipped |
+| v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). | Shipped |
+| v1.9.6 Living-world Mechanism Integration | Code (§66). | Shipped |
+| **v1.9.7 Reference Bank Credit Review Lite Mechanism** | Code (§67). | **Shipped** |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | Next |
 | v1.9.last | First lightweight public prototype. | After v1.9.8 |
 
 

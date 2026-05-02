@@ -84,6 +84,10 @@ from world.reference_reviews import (
     run_bank_review,
     run_investor_review,
 )
+from world.reference_bank_credit_review_lite import (
+    BankCreditReviewLiteResult,
+    run_reference_bank_credit_review_lite,
+)
 from world.reference_firm_pressure import (
     FirmPressureMechanismResult,
     run_reference_firm_pressure_mechanism,
@@ -130,6 +134,14 @@ class LivingReferencePeriodSummary:
     firm_pressure_run_ids: tuple[str, ...] = field(default_factory=tuple)
     valuation_ids: tuple[str, ...] = field(default_factory=tuple)
     valuation_mechanism_run_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.9.7 additive: bank credit review lite integration.
+    # bank_credit_review_signal_ids and
+    # bank_credit_review_mechanism_run_ids carry one entry per
+    # (bank, firm) pair.
+    bank_credit_review_signal_ids: tuple[str, ...] = field(default_factory=tuple)
+    bank_credit_review_mechanism_run_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     investor_menu_ids: tuple[str, ...] = field(default_factory=tuple)
     bank_menu_ids: tuple[str, ...] = field(default_factory=tuple)
     investor_selection_ids: tuple[str, ...] = field(default_factory=tuple)
@@ -149,6 +161,8 @@ class LivingReferencePeriodSummary:
             "firm_pressure_run_ids",
             "valuation_ids",
             "valuation_mechanism_run_ids",
+            "bank_credit_review_signal_ids",
+            "bank_credit_review_mechanism_run_ids",
             "investor_menu_ids",
             "bank_menu_ids",
             "investor_selection_ids",
@@ -629,6 +643,68 @@ def run_living_reference_world(
                     valuation_result.run_record.run_id
                 )
 
+        # ------------------------------------------------------------------
+        # v1.9.7 — bank credit review lite phase.
+        # For each (bank, firm) pair, the v1.9.7 mechanism produces
+        # one synthetic ``bank_credit_review_note`` signal. Inputs:
+        # the firm's pressure signal + every valuation on that
+        # firm (across all investors) + the firm's corporate
+        # report + the bank's per-period selection. The note is
+        # *one bank's recordable diagnostic*; it does NOT make a
+        # lending decision, NOT enforce a covenant, NOT mutate
+        # any contract or constraint, NOT declare default. The
+        # v1.9.7 metadata flags
+        # `no_lending_decision` / `no_covenant_enforcement` /
+        # `no_contract_mutation` / `no_constraint_mutation` /
+        # `no_default_declaration` / `no_internal_rating` /
+        # `no_probability_of_default` / `synthetic_only` are
+        # stamped on every produced record.
+        #
+        # Complexity note: this phase iterates banks × firms
+        # within each period. With the default fixture (2 banks,
+        # 3 firms, 4 periods) that is 24 reviews — well within
+        # the small-synthetic-demo budget. Larger fixtures should
+        # consider a sparser policy (e.g., the bank only reviews
+        # firms in its declared exposure scope).
+        # ------------------------------------------------------------------
+        bank_credit_review_signal_ids: list[str] = []
+        bank_credit_review_mechanism_run_ids: list[str] = []
+
+        for bank_id, bank_selection_id in zip(banks, bank_selection_ids):
+            for firm_id in firms:
+                # All valuations on this firm in this period.
+                firm_valuation_ids = tuple(
+                    vid
+                    for vid in valuation_ids
+                    # ids embed both investor and firm; filter by
+                    # the firm-suffix marker the v1.9.6 helper
+                    # constructs:
+                    # ``valuation:reference_lite:<inv>:<firm>:<date>``
+                    if f":{firm_id}:" in vid
+                )
+                review_result: BankCreditReviewLiteResult = (
+                    run_reference_bank_credit_review_lite(
+                        kernel,
+                        bank_id=bank_id,
+                        firm_id=firm_id,
+                        as_of_date=iso_date,
+                        pressure_signal_ids=(
+                            pressure_signal_by_firm[firm_id],
+                        ),
+                        valuation_ids=firm_valuation_ids,
+                        corporate_signal_ids=(
+                            corp_signal_by_firm[firm_id],
+                        ),
+                        selected_observation_set_ids=(
+                            bank_selection_id,
+                        ),
+                    )
+                )
+                bank_credit_review_signal_ids.append(review_result.signal_id)
+                bank_credit_review_mechanism_run_ids.append(
+                    review_result.run_record.run_id
+                )
+
         # Review phase. Each review run consumes exactly the actor's
         # period selection.
         investor_review_run_ids: list[str] = []
@@ -669,6 +745,12 @@ def run_living_reference_world(
                 firm_pressure_run_ids=tuple(firm_pressure_run_ids),
                 valuation_ids=tuple(valuation_ids),
                 valuation_mechanism_run_ids=tuple(valuation_mechanism_run_ids),
+                bank_credit_review_signal_ids=tuple(
+                    bank_credit_review_signal_ids
+                ),
+                bank_credit_review_mechanism_run_ids=tuple(
+                    bank_credit_review_mechanism_run_ids
+                ),
                 investor_menu_ids=tuple(investor_menu_ids),
                 bank_menu_ids=tuple(bank_menu_ids),
                 investor_selection_ids=tuple(investor_selection_ids),

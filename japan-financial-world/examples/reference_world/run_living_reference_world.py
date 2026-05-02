@@ -247,6 +247,7 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
             f"menus={len(ps.investor_menu_ids) + len(ps.bank_menu_ids)} "
             f"selections={len(ps.investor_selection_ids) + len(ps.bank_selection_ids)} "
             f"valuations={len(ps.valuation_ids)} "
+            f"credit_reviews={len(ps.bank_credit_review_signal_ids)} "
             f"reviews={len(ps.investor_review_run_ids) + len(ps.bank_review_run_ids)} "
             f"records={ps.record_count_created}"
         )
@@ -258,9 +259,11 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
     print(
         "[summary] integrated chain: corporate reporting -> firm "
         "pressure assessment -> heterogeneous attention -> valuation "
-        "refresh lite -> review. No price formation, no trading, no "
-        "lending decisions, no firm financial statement updates, "
-        "no canonical-truth valuation, no investment advice."
+        "refresh lite -> bank credit review lite -> review. No "
+        "price formation, no trading, no lending decisions, no "
+        "covenant enforcement, no contract or constraint mutation, "
+        "no firm financial statement updates, no canonical-truth "
+        "valuation, no investment advice."
     )
 
 

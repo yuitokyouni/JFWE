@@ -154,6 +154,12 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
         "valuation_mechanism_run_ids": list(
             getattr(period, "valuation_mechanism_run_ids", ())
         ),
+        "bank_credit_review_signal_ids": list(
+            getattr(period, "bank_credit_review_signal_ids", ())
+        ),
+        "bank_credit_review_mechanism_run_ids": list(
+            getattr(period, "bank_credit_review_mechanism_run_ids", ())
+        ),
         "investor_menu_ids": list(period.investor_menu_ids),
         "bank_menu_ids": list(period.bank_menu_ids),
         "investor_selection_ids": list(period.investor_selection_ids),

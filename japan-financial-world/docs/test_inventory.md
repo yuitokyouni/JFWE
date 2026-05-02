@@ -1,8 +1,8 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.6** (`Living-world
-Mechanism Integration` — wires v1.9.4 + v1.9.5 into
-`run_living_reference_world`): `1580 / 1580 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
+Snapshot of the test suite at **v1.9.7** (`Reference Bank Credit
+Review Lite Mechanism` — third concrete mechanism + integration
+into the multi-period sweep): `1616 / 1616 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the
@@ -284,30 +284,84 @@ no-mutation guarantee.
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
 
-## Living-world mechanism integration (v1.9.6)
+## Reference bank credit review lite (v1.9.7)
 
-- `test_living_reference_world.py` (+9 v1.9.6 tests, total 36) —
-  v1.9.6 wires v1.9.4 firm-pressure-assessment and v1.9.5
-  valuation-refresh-lite into the multi-period sweep. New tests
-  pin: one pressure signal per firm per period; pressure signals
-  resolve to stored `firm_operating_pressure_assessment` signals;
-  one valuation per (investor × firm) per period; valuations
-  resolve to stored `synthetic_lite_pressure_adjusted` records;
+- `test_reference_bank_credit_review_lite.py` (29) — adapter
+  satisfies `MechanismAdapter`; `MechanismSpec` carries the right
+  vocabulary (`model_id == BANK_CREDIT_REVIEW_MODEL_ID`,
+  `model_family == "credit_review_mechanism"`, `version == "0.1"`,
+  `calibration_status == "synthetic"`,
+  `stochasticity == "deterministic"`); adapter rejects a kernel
+  argument; runs without a kernel (proves it reads
+  `request.evidence` only); missing-evidence cases yield
+  `status="degraded"` with conservative midpoint scores; all five
+  scores in [0,1]; `operating_pressure_score` ==
+  `pressure.overall_pressure`; `valuation_pressure_score` == 1 −
+  mean(valuation.confidence); `information_quality_score` is a
+  coverage metric (0.25 per channel); `overall_credit_review_pressure`
+  == arithmetic mean of the four pressure-side scores
+  (information_quality NOT in mean); deterministic across two
+  fresh kernels; request not mutated; proposed signal carries
+  every required field; `signal_type` label is verbatim
+  `"bank_credit_review_note"`; metadata carries the eight boundary
+  flags (`no_lending_decision`, `no_covenant_enforcement`,
+  `no_contract_mutation`, `no_constraint_mutation`,
+  `no_default_declaration`, `no_internal_rating`,
+  `no_probability_of_default`, `synthetic_only`) and the
+  `pressure_signal_id` / valuation lineage links; `related_ids`
+  include the pressure signal and every consulted valuation on
+  the firm; caller helper commits exactly one
+  `InformationSignal` through `InformationBook.add_signal`;
+  `evidence_refs` preserved verbatim on the `MechanismRunRecord`;
+  `as_of_date` defaults to `kernel.clock.current_date`; full
+  no-mutation guarantee against contracts / constraints / prices
+  / ownership / valuations / corporate signals / pressure signals
+  / observations / selected observation sets / exposures (the
+  mechanism only *adds* one new credit review note plus its
+  audit `mechanism_run`).
+
+## Living-world mechanism integration (v1.9.6 + v1.9.7)
+
+- `test_living_reference_world.py` (+9 v1.9.6 tests, +7 v1.9.7
+  tests, total 43) — v1.9.6 wires v1.9.4 firm-pressure-assessment
+  and v1.9.5 valuation-refresh-lite into the multi-period sweep;
+  v1.9.7 adds a third phase between valuation and reviews that
+  runs `BankCreditReviewLiteAdapter` once per (bank, firm) per
+  period. New tests pin: one pressure signal per firm per period;
+  pressure signals resolve to stored
+  `firm_operating_pressure_assessment` signals; one valuation per
+  (investor × firm) per period; valuations resolve to stored
+  `synthetic_lite_pressure_adjusted` records;
   `valuation.metadata["pressure_signal_id"]` points to the same
   firm's pressure signal for the same period (proves v1.9.5
   actually consumed v1.9.4's output, not coincidental ordering);
   `valuation.metadata` carries the four boundary flags
   (`no_price_movement` / `no_investment_advice` / `synthetic_only`);
-  pressure / valuation `mechanism_run` ids are unique per
-  (investor, firm, period); no-mutation guarantee narrowed to
-  exclude `valuations` (now expected to grow) plus a separate
-  `test_valuation_count_grows_by_expected_amount` pinning the
-  exact growth (`investors × firms × periods`); record-count
-  budget updated (per period now ~31 records; ≥ 124, ≤ 250);
-  CLI smoke now expects `pressures=...` / `valuations=...` in
-  the trace and the integrated-chain summary line. The fixture
-  is extended with firm exposures so the v1.9.4 mechanism
-  produces non-zero output during the sweep.
+  one credit review note per (bank × firm) per period; credit
+  review signals resolve to stored `bank_credit_review_note`
+  signals; `payload["pressure_signal_id"]` points to the firm's
+  pressure signal for the same period; `related_ids` thread every
+  valuation on the firm; the eight boundary flags are present
+  verbatim in metadata
+  (`no_lending_decision`, `no_covenant_enforcement`,
+  `no_contract_mutation`, `no_constraint_mutation`,
+  `no_default_declaration`, `no_internal_rating`,
+  `no_probability_of_default`, `synthetic_only`); pressure /
+  valuation / credit-review `mechanism_run` ids are unique per
+  (subject, period); no-mutation guarantee narrowed to exclude
+  `valuations` and `information_signals` (both now expected to
+  grow) plus separate count-growth tests pinning exact growth
+  (`investors × firms × periods` for valuations,
+  `(investors+banks) × 2 + banks × firms` per period for
+  signals); record-count budget updated (per period now ~37
+  records; ≥ 148, ≤ 280); CLI smoke now expects
+  `pressures=...` / `valuations=...` / `credit_reviews=...` in
+  the trace, the integrated-chain summary line including
+  "bank credit review lite" and the eight-flag boundary
+  summary. The fixture is extended with firm exposures so the
+  v1.9.4 mechanism produces non-zero output during the sweep,
+  and the bank's selected observation sets are routed into the
+  v1.9.7 evidence.
 
 ## Reference valuation refresh lite (v1.9.5)
 
@@ -982,7 +1036,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -1014,7 +1068,9 @@ no-mutation guarantee.
 | Reference firm operating pressure (v1.9.4) | 1  | 28    |
 | Reference valuation refresh lite (v1.9.5) | 1  | 28    |
 | Living-world integration (v1.9.6 — added in test_living_reference_world.py) | 0 | 9 |
-| **post-v1.7 subtotal**                  | **27**| **948** |
+| Reference bank credit review lite (v1.9.7) | 1 | 29    |
+| Living-world integration (v1.9.7 — added in test_living_reference_world.py) | 0 | 7 |
+| **post-v1.7 subtotal**                  | **28**| **984** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1022,8 +1078,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6) | 27 | 948 |
-| **Total**                        | **69**| **1580** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7) | 28 | 984 |
+| **Total**                        | **70**| **1616** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

@@ -163,8 +163,9 @@ v1.9.2. The path therefore renumbers:
 | v1.9.3.1 | Mechanism Interface Hardening (deep-freeze + rename + ordering clarification). | Shipped (§63.9). |
 | v1.9.4 | Reference Firm Operating Pressure Assessment Mechanism (corrected framing — see note below). | Shipped (§64). |
 | v1.9.5 | Reference Valuation Refresh Lite Mechanism (Option B). Synthetic linear pressure-haircut on a caller-supplied baseline value; proposes one `ValuationRecord` per call. | Shipped (§65). |
-| **v1.9.6** | **Living-world Mechanism Integration.** Wires v1.9.4 + v1.9.5 into `run_living_reference_world`'s per-period flow. Per period: corporate reporting → pressure assessment → menus + selections → valuation refresh lite → reviews. | **Shipped (§66).** |
-| v1.9.7 | Bank Credit Review Lite (Option C). | Next |
+| v1.9.6 | Living-world Mechanism Integration. Wires v1.9.4 + v1.9.5 into `run_living_reference_world`'s per-period flow. Per period: corporate reporting → pressure assessment → menus + selections → valuation refresh lite → reviews. | Shipped (§66). |
+| **v1.9.7** | **Reference Bank Credit Review Lite Mechanism (Option C).** Synthetic credit review note generator; `credit_review_mechanism` family. Consumes pressure + valuation + selection + corporate report; produces one diagnostic signal per (bank, firm). NOT a lending decision. NOT a default detector. NOT a covenant enforcer. Integrated into the multi-period sweep. | **Shipped (§67).** |
+| v1.9.8 | Performance Boundary (sparse-iteration / complexity-budget hardening). | Next |
 | v1.9.7 | Performance Boundary (sparse-iteration / complexity-budget hardening). | After v1.9.6 |
 | v1.9.last | First lightweight public prototype. | After v1.9.7 |
 
