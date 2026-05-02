@@ -5249,10 +5249,11 @@ These principles apply to v1.9.4+ mechanisms and are pinned in the contract test
 | v1.9.3 Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Docs + interface contract (§63). | Shipped |
 | v1.9.3.1 Mechanism Interface Hardening | Code (§63.9). Deep-freeze + rename + ordering clarification. | Shipped |
 | v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). First concrete `MechanismAdapter`. | Shipped |
-| **v1.9.5 Reference Valuation Refresh Lite Mechanism** | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | **Shipped** |
-| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
-| v1.9.7 Performance Boundary | Sparse-iteration hardening. | After v1.9.6 |
-| v1.9.last | First lightweight public prototype. | After v1.9.7 |
+| v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | Shipped |
+| **v1.9.6 Living-world Mechanism Integration** | Code (§66). Wires v1.9.4 + v1.9.5 into `run_living_reference_world`. | **Shipped** |
+| v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.last | First lightweight public prototype. | After v1.9.8 |
 
 ## 64. v1.9.4 Reference Firm Operating Pressure Assessment Mechanism
 
@@ -5373,10 +5374,11 @@ The proposed signal mapping carries:
 | v1.9.3 Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Docs + interface contract (§63). | Shipped |
 | v1.9.3.1 Mechanism Interface Hardening | Code (§63.9). | Shipped |
 | v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). First concrete `MechanismAdapter`. | Shipped |
-| **v1.9.5 Reference Valuation Refresh Lite Mechanism** | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | **Shipped** |
-| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
-| v1.9.7 Performance Boundary | Sparse-iteration hardening. | After v1.9.6 |
-| v1.9.last | First lightweight public prototype. | After v1.9.7 |
+| v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). Second concrete `MechanismAdapter` (`valuation_mechanism` family). | Shipped |
+| **v1.9.6 Living-world Mechanism Integration** | Code (§66). Wires v1.9.4 + v1.9.5 into `run_living_reference_world`. | **Shipped** |
+| v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.last | First lightweight public prototype. | After v1.9.8 |
 
 
 ### 63.9 v1.9.3.1 Mechanism Interface Hardening
@@ -5525,10 +5527,118 @@ The proposed `ValuationRecord` mapping carries `valuation_id`, `subject_id`, `va
 | --- | --- | --- |
 | v1.9.3 / v1.9.3.1 Mechanism interface + hardening | Docs + contract (§63 / §63.9). | Shipped |
 | v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). | Shipped |
-| **v1.9.5 Reference Valuation Refresh Lite Mechanism** | Code (§65). Second concrete `MechanismAdapter`. | **Shipped** |
-| v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
-| v1.9.7 Performance Boundary | Sparse-iteration hardening. | After v1.9.6 |
-| v1.9.last | First lightweight public prototype. | After v1.9.7 |
+| v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). Second concrete `MechanismAdapter`. | Shipped |
+| **v1.9.6 Living-world Mechanism Integration** | Code (§66). Wires v1.9.4 + v1.9.5 into the multi-period sweep. | **Shipped** |
+| v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.last | First lightweight public prototype. | After v1.9.8 |
+
+## 66. v1.9.6 Living-world Mechanism Integration
+
+§66 (v1.9.6) wires the v1.9.4 firm-pressure-assessment and v1.9.5 valuation-refresh-lite mechanisms into the multi-period `run_living_reference_world` sweep. Until v1.9.6, both mechanisms shipped as **standalone** caller helpers — they were tested in isolation but the living-world demo did not exercise them per period. The user-visible result was that the `run_living_reference_world()` trace did not show the chain the v1.9.x mechanisms were supposed to populate. v1.9.6 closes that integration gap.
+
+The integrated per-period flow is now:
+
+```
+corporate quarterly reporting           (v1.8.7 — per firm)
+    →
+firm operating pressure assessment      (v1.9.4 — per firm)
+    →
+heterogeneous attention                 (v1.8.5 / v1.8.11 / v1.8.12 — per actor)
+    →
+valuation refresh lite                  (v1.9.5 — per investor × firm)
+    →
+investor / bank review                  (v1.8.13 — per actor)
+```
+
+§66 introduces **no new mechanism** and **no new ledger record type**. It is pure integration plus the additive period-summary fields needed to expose the new ids. Bank-side valuation is intentionally out of scope for v1.9.6 — a future stakeholder-pressure milestone may extend it.
+
+### 66.1 What lands in v1.9.6
+
+- `world/reference_living_world.py`:
+  - `LivingReferencePeriodSummary` extended additively with four tuples: `firm_pressure_signal_ids`, `firm_pressure_run_ids` (one entry per firm), `valuation_ids`, `valuation_mechanism_run_ids` (one entry per investor × firm pair). Default empty tuples preserve compatibility for any caller building a summary by hand.
+  - `run_living_reference_world` extended with a new pressure phase between corporate reporting and the attention phase, and a new valuation phase between selections and reviews. Per period: each firm runs `run_reference_firm_pressure_mechanism` with all visible variable observations + the firm's own `ExposureBook` rows + the firm's corporate signal as evidence. After selections, each (investor, firm) pair runs `run_reference_valuation_refresh_lite` with the firm's pressure signal + the firm's corporate signal + the investor's selection + a caller-supplied baseline (default `1_000_000.0` per firm, overridable via `firm_baseline_values` mapping).
+  - Two new keyword-only parameters: `firm_baseline_values: Mapping[str, float] | None = None` and `valuation_baseline_default: float = 1_000_000.0`.
+  - The valuation request_id is built per (investor, firm, period) so multi-investor valuations on the same firm/period don't collide on the audit lineage (the v1.9.5 default request_id formula did not include the valuer; v1.9.6 supplies an explicit one).
+- `examples/reference_world/run_living_reference_world.py`:
+  - Synthetic firm exposures added to the seed fixture (`firm:reference_manufacturer_a` → fx + rates + energy; `firm:reference_retailer_b` → fx + rates; `firm:reference_utility_c` → energy + rates) so the v1.9.4 mechanism produces non-zero output during the sweep.
+  - The compact `[period N]` trace line now includes `pressures=...` and `valuations=...` columns.
+  - The `[summary]` line names the integrated chain and the boundary statement: *"No price formation, no trading, no lending decisions, no firm financial statement updates, no canonical-truth valuation, no investment advice."*
+- `world/living_world_report.py`:
+  - `LivingWorldPeriodReport` extended additively with `pressure_signal_count` + `valuation_count` (default 0).
+  - The Markdown per-period table grows two columns (`pressures`, `valuations`).
+- `examples/reference_world/living_world_replay.py`:
+  - `_canonicalize_period` includes the four new id tuples so the deterministic SHA-256 living-world digest reflects pressure / valuation activity.
+- `tests/test_living_reference_world.py`:
+  - Fixture `_seed_exposures` adds the same firm exposures as the CLI.
+  - Record-count budget updated: per period now produces ~31 records (previously ~22); the lower-bound formula and the upper bound (≤ 250) are both pinned.
+  - **Nine new tests** for v1.9.6 integration: one pressure signal per firm per period; pressure signals resolve to stored `firm_operating_pressure_assessment` signals; one valuation per (investor, firm) per period; valuations resolve to stored `synthetic_lite_pressure_adjusted` records; valuation metadata carries the `pressure_signal_id` link to the correct firm's pressure signal (proves v1.9.5 actually consumed v1.9.4's output); valuation metadata carries the four boundary flags; pressure / valuation run-record ids are unique per period.
+  - The no-mutation guarantee is *narrowed*: `valuations` is now expected to grow (one new record per investor × firm × period), so it is removed from the byte-equality snapshot. A separate `test_valuation_count_grows_by_expected_amount` pins the exact growth.
+
+### 66.2 Algorithm-side details
+
+- **Pressure inputs.** The v1.9.6 helper passes *all visible variable observations* on the as-of date as evidence, plus the firm's exposures (filtered via `kernel.exposures.list_by_subject(firm_id)`), plus the firm's corporate signal as optional auxiliary evidence. The v1.9.4 mechanism filters the observations / exposures by its own pressure-dimension definitions; the helper's job is just to surface candidate evidence.
+- **Pressure signal visibility for selection.** v1.9.4 emits the pressure signal with `visibility="public"`, so it would show up in any future menu builder query. v1.9.6 deliberately does **not** extend `AttentionProfile.watched_signal_types` to include `firm_operating_pressure_assessment` — selecting pressure signals via attention is a separate v1.9.x concern. Instead, v1.9.6 surfaces the pressure signal to the valuation mechanism by direct id-passing, which is the cleanest separation of *availability* from *selection*.
+- **Valuation request_id formula.** Default v1.9.5 request_id is `req:valuation_refresh_lite:{firm}:{date}`, which would collide when multiple investors value the same firm on the same date. v1.9.6 overrides it with `req:valuation_refresh_lite:{investor}:{firm}:{date}` so each `mechanism_run:` audit id is unique.
+- **Bank-side valuation.** Out of scope for v1.9.6. Banks still build menus, selections, and review notes — they just don't issue valuations. A stakeholder-pressure mechanism family (later milestone) may consume bank attention as separate input.
+
+### 66.3 Per-period record-count after integration
+
+With the default fixture (3 firms, 2 investors, 2 banks, 4 periods):
+
+```
+per period:
+    firms × (corp_run + corp_signal)            = 6
+    firms × pressure_signal                      = 3
+    (investors + banks) × (menu + selection)    = 8
+    investors × firms × valuation                = 6
+    (investors + banks) × (review_run + signal) = 8
+    -------------------------------------------------
+    total per period                            = 31
+× 4 periods                                     = 124
++ infra prelude (~14 records)                   ≈ 138
+```
+
+The budget guard (`test_living_world_stays_within_record_budget`) was tightened to require ≥ 124 (per-period work × 4) and ≤ 250 — well below the dense product space, so accidental quadratic loops fail the test loudly.
+
+### 66.4 Anti-scope (carried forward)
+
+§66 is integration only. v1.9.6 deliberately does **not** add:
+
+- bank credit review lite (v1.9.7);
+- lending decisions, trading, price formation, portfolio decisions, covenant enforcement;
+- firm financial statement updates;
+- canonical-truth valuation claims;
+- Japan calibration, real data ingestion, scenario engines, automatic scheduler firing.
+
+The v1.9.4 / v1.9.5 hard boundaries carry through end-to-end: every committed pressure signal still stamps `pressure_assessment_signal_only` in metadata; every committed valuation still stamps `no_price_movement` / `no_investment_advice` / `synthetic_only`.
+
+### 66.5 v1.9.6 success criteria
+
+§66 is complete when **all** hold:
+
+1. `run_living_reference_world` invokes `run_reference_firm_pressure_mechanism` once per firm per period and `run_reference_valuation_refresh_lite` once per (investor × firm) per period.
+2. `LivingReferencePeriodSummary` exposes `firm_pressure_signal_ids` / `firm_pressure_run_ids` / `valuation_ids` / `valuation_mechanism_run_ids`.
+3. The CLI trace shows `pressures=...` and `valuations=...` columns; the summary line names the integrated chain.
+4. The v1.9.1 Markdown report includes `pressures` and `valuations` columns in the per-period table.
+5. The v1.9.2 canonical view (and therefore the SHA-256 digest) reflects pressure / valuation activity.
+6. The v1.9.0 record-count budget is updated (≥ 124, ≤ 250); the no-mutation test allows valuations to grow but pins the exact count via a separate test.
+7. Every committed valuation's `pressure_signal_id` points to *the same period's pressure signal for the same firm* (proving v1.9.5 actually consumed v1.9.4's output).
+8. Mechanism run ids are unique per (investor, firm, period) — the v1.9.5 default request_id formula is overridden in the helper.
+9. The full test suite passes (1580 = 1571 prior + 9 v1.9.6 integration).
+10. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+11. v1.9.0 / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.4 / v1.9.5 standalone semantics are unchanged (additive extension throughout).
+
+### 66.6 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.4 Reference Firm Operating Pressure Assessment Mechanism | Code (§64). | Shipped |
+| v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). | Shipped |
+| **v1.9.6 Living-world Mechanism Integration** | Code (§66). | **Shipped** |
+| v1.9.7 Bank Credit Review Lite | `credit_review_mechanism` adapter. | Next |
+| v1.9.8 Performance Boundary | Sparse-iteration hardening. | After v1.9.7 |
+| v1.9.last | First lightweight public prototype. | After v1.9.8 |
 
 
 

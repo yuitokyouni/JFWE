@@ -84,11 +84,19 @@ from world.reference_reviews import (
     run_bank_review,
     run_investor_review,
 )
+from world.reference_firm_pressure import (
+    FirmPressureMechanismResult,
+    run_reference_firm_pressure_mechanism,
+)
 from world.reference_routines import (
     CorporateReportingResult,
     register_corporate_quarterly_reporting_routine,
     register_corporate_reporting_interaction,
     run_corporate_quarterly_reporting,
+)
+from world.reference_valuation_refresh_lite import (
+    ValuationRefreshLiteResult,
+    run_reference_valuation_refresh_lite,
 )
 
 
@@ -114,6 +122,14 @@ class LivingReferencePeriodSummary:
     as_of_date: str
     corporate_signal_ids: tuple[str, ...] = field(default_factory=tuple)
     corporate_run_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.9.6 additive: pressure assessment + valuation refresh integration.
+    # firm_pressure_signal_ids and firm_pressure_run_ids carry one entry
+    # per firm; valuation_ids and valuation_mechanism_run_ids carry one
+    # entry per (investor, firm) pair.
+    firm_pressure_signal_ids: tuple[str, ...] = field(default_factory=tuple)
+    firm_pressure_run_ids: tuple[str, ...] = field(default_factory=tuple)
+    valuation_ids: tuple[str, ...] = field(default_factory=tuple)
+    valuation_mechanism_run_ids: tuple[str, ...] = field(default_factory=tuple)
     investor_menu_ids: tuple[str, ...] = field(default_factory=tuple)
     bank_menu_ids: tuple[str, ...] = field(default_factory=tuple)
     investor_selection_ids: tuple[str, ...] = field(default_factory=tuple)
@@ -129,6 +145,10 @@ class LivingReferencePeriodSummary:
         for tuple_field_name in (
             "corporate_signal_ids",
             "corporate_run_ids",
+            "firm_pressure_signal_ids",
+            "firm_pressure_run_ids",
+            "valuation_ids",
+            "valuation_mechanism_run_ids",
             "investor_menu_ids",
             "bank_menu_ids",
             "investor_selection_ids",
@@ -343,6 +363,8 @@ def run_living_reference_world(
     phase_id: str | None = None,
     run_id: str | None = None,
     metadata: Mapping[str, Any] | None = None,
+    firm_baseline_values: Mapping[str, float] | None = None,
+    valuation_baseline_default: float = 1_000_000.0,
 ) -> LivingReferenceWorldResult:
     """
     Sweep the v1.8.14 endogenous chain over ``period_dates``.
@@ -458,6 +480,9 @@ def run_living_reference_world(
 
         corporate_run_ids: list[str] = []
         corporate_signal_ids: list[str] = []
+        # Map firm_id -> corp signal id so the v1.9.6 pressure +
+        # valuation phases can correlate per-firm evidence.
+        corp_signal_by_firm: dict[str, str] = {}
 
         for firm_id in firms:
             result: CorporateReportingResult = run_corporate_quarterly_reporting(
@@ -465,6 +490,44 @@ def run_living_reference_world(
             )
             corporate_run_ids.append(result.run_id)
             corporate_signal_ids.append(result.signal_id)
+            corp_signal_by_firm[firm_id] = result.signal_id
+
+        # ------------------------------------------------------------------
+        # v1.9.6 — firm operating pressure assessment phase.
+        # For each firm, resolve the firm's exposures from
+        # ExposureBook, the visible variable observations from
+        # WorldVariableBook, and pass the corporate signal as
+        # optional auxiliary evidence. The mechanism is read-only
+        # against the kernel; we resolve evidence ids for it.
+        # ------------------------------------------------------------------
+        visible_observations = (
+            kernel.variables.list_observations_visible_as_of(iso_date)
+        )
+        visible_observation_ids = tuple(
+            obs.observation_id for obs in visible_observations
+        )
+
+        firm_pressure_signal_ids: list[str] = []
+        firm_pressure_run_ids: list[str] = []
+        # Map firm_id -> pressure signal id for downstream valuation.
+        pressure_signal_by_firm: dict[str, str] = {}
+
+        for firm_id in firms:
+            firm_exposures = kernel.exposures.list_by_subject(firm_id)
+            firm_exposure_ids = tuple(e.exposure_id for e in firm_exposures)
+            pressure_result: FirmPressureMechanismResult = (
+                run_reference_firm_pressure_mechanism(
+                    kernel,
+                    firm_id=firm_id,
+                    as_of_date=iso_date,
+                    variable_observation_ids=visible_observation_ids,
+                    exposure_ids=firm_exposure_ids,
+                    corporate_signal_ids=(corp_signal_by_firm[firm_id],),
+                )
+            )
+            firm_pressure_signal_ids.append(pressure_result.signal_id)
+            firm_pressure_run_ids.append(pressure_result.run_record.run_id)
+            pressure_signal_by_firm[firm_id] = pressure_result.signal_id
 
         # Attention phase. We iterate investors and banks in order so
         # the resulting summary tuples match the input order. Each
@@ -472,7 +535,14 @@ def run_living_reference_world(
         # is visible on `iso_date` because the v1.8.12 selection rule
         # filters by signal_type, not by signal_id, and the
         # corporate-quarterly-report signal_type matches both the
-        # default investor and the default bank profile.
+        # default investor and the default bank profile. The v1.9.4
+        # firm-pressure-assessment signals are emitted with
+        # ``visibility="public"`` and so are also visible in any
+        # downstream menu query; v1.9.6 surfaces them to the
+        # valuation mechanism by direct id-passing rather than via
+        # selection (selection of pressure signals would require a
+        # v1.9.x AttentionProfile vocabulary extension; we stay
+        # additive here).
         investor_menu_ids: list[str] = []
         investor_selection_ids: list[str] = []
         for investor_id in investors:
@@ -500,6 +570,64 @@ def run_living_reference_world(
             )
             bank_menu_ids.append(menu_id)
             bank_selection_ids.append(selection_id)
+
+        # ------------------------------------------------------------------
+        # v1.9.6 — valuation refresh lite phase.
+        # For each (investor, firm) pair, the v1.9.5 valuation
+        # mechanism produces one opinionated synthetic
+        # `ValuationRecord`. Inputs: the firm's pressure signal,
+        # the firm's corporate report, and the investor's per-period
+        # selection. The valuation is *one valuer's claim under
+        # synthetic assumptions*; it does NOT move any price, NOT
+        # make a decision, NOT update any firm financial statement.
+        # The v1.9.5 metadata flags `no_price_movement` /
+        # `no_investment_advice` / `synthetic_only` are stamped on
+        # every produced record. Bank-side valuation is intentionally
+        # out of scope for v1.9.6 (a future stakeholder-pressure
+        # milestone may extend it).
+        # ------------------------------------------------------------------
+        valuation_ids: list[str] = []
+        valuation_mechanism_run_ids: list[str] = []
+        baselines = dict(firm_baseline_values or {})
+
+        for investor_id, investor_selection_id in zip(
+            investors, investor_selection_ids
+        ):
+            for firm_id in firms:
+                baseline = baselines.get(firm_id, valuation_baseline_default)
+                valuation_id = (
+                    f"valuation:reference_lite:{investor_id}:{firm_id}:{iso_date}"
+                )
+                # The v1.9.5 default request_id formula
+                # ``req:valuation_refresh_lite:{firm}:{date}``
+                # collides when multiple investors value the same
+                # firm on the same date — the resulting
+                # ``mechanism_run:`` ids would alias. v1.9.6 passes
+                # an explicit request_id that includes the valuer
+                # so each (investor, firm, period) gets a unique
+                # audit lineage.
+                valuation_request_id = (
+                    f"req:valuation_refresh_lite:{investor_id}:"
+                    f"{firm_id}:{iso_date}"
+                )
+                valuation_result: ValuationRefreshLiteResult = (
+                    run_reference_valuation_refresh_lite(
+                        kernel,
+                        firm_id=firm_id,
+                        valuer_id=investor_id,
+                        as_of_date=iso_date,
+                        pressure_signal_ids=(pressure_signal_by_firm[firm_id],),
+                        corporate_signal_ids=(corp_signal_by_firm[firm_id],),
+                        selected_observation_set_ids=(investor_selection_id,),
+                        baseline_value=baseline,
+                        valuation_id=valuation_id,
+                        request_id=valuation_request_id,
+                    )
+                )
+                valuation_ids.append(valuation_result.valuation_id)
+                valuation_mechanism_run_ids.append(
+                    valuation_result.run_record.run_id
+                )
 
         # Review phase. Each review run consumes exactly the actor's
         # period selection.
@@ -537,6 +665,10 @@ def run_living_reference_world(
                 as_of_date=iso_date,
                 corporate_signal_ids=tuple(corporate_signal_ids),
                 corporate_run_ids=tuple(corporate_run_ids),
+                firm_pressure_signal_ids=tuple(firm_pressure_signal_ids),
+                firm_pressure_run_ids=tuple(firm_pressure_run_ids),
+                valuation_ids=tuple(valuation_ids),
+                valuation_mechanism_run_ids=tuple(valuation_mechanism_run_ids),
                 investor_menu_ids=tuple(investor_menu_ids),
                 bank_menu_ids=tuple(bank_menu_ids),
                 investor_selection_ids=tuple(investor_selection_ids),

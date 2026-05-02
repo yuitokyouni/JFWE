@@ -91,6 +91,44 @@ _QUARTER_OBSERVATION_DATES: tuple[str, ...] = (
 
 def _seed_exposures() -> tuple[ExposureRecord, ...]:
     out: list[ExposureRecord] = []
+    # v1.9.6 — firm exposures so the v1.9.4 firm-pressure-assessment
+    # mechanism produces non-zero output. Each firm has a distinct
+    # exposure profile so per-period pressure assessments differ across
+    # firms (input_cost / energy_power / debt_service / fx_translation
+    # / logistics dimensions).
+    firm_exposure_specs: tuple[tuple[str, str, str, float], ...] = (
+        # firm a — diversified manufacturer-style: rates + fx + energy
+        ("firm:reference_manufacturer_a", "variable:reference_long_rate_10y", "funding_cost", 0.3),
+        ("firm:reference_manufacturer_a", "variable:reference_fx_pair_a", "translation", 0.2),
+        ("firm:reference_manufacturer_a", "variable:reference_electricity_price_a", "input_cost", 0.4),
+        # firm b — retailer-style: fx + logistics-leaning rates
+        ("firm:reference_retailer_b", "variable:reference_fx_pair_a", "translation", 0.3),
+        ("firm:reference_retailer_b", "variable:reference_long_rate_10y", "funding_cost", 0.2),
+        # firm c — utility-style: energy heavy + rates
+        ("firm:reference_utility_c", "variable:reference_electricity_price_a", "input_cost", 0.5),
+        ("firm:reference_utility_c", "variable:reference_long_rate_10y", "funding_cost", 0.4),
+    )
+    for firm_id, var_id, exp_type, mag in firm_exposure_specs:
+        metric = (
+            "operating_cost_pressure"
+            if exp_type == "input_cost"
+            else "debt_service_burden"
+            if exp_type == "funding_cost"
+            else "fx_translation_pressure"
+        )
+        out.append(
+            ExposureRecord(
+                exposure_id=f"exposure:{firm_id}:{var_id}",
+                subject_id=firm_id,
+                subject_type="firm",
+                variable_id=var_id,
+                exposure_type=exp_type,
+                metric=metric,
+                direction="positive",
+                magnitude=mag,
+            )
+        )
+
     for inv in _INVESTOR_IDS:
         out.append(
             ExposureRecord(
@@ -205,8 +243,10 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
         print(
             f"[period {idx}] as_of={ps.as_of_date} "
             f"reports={len(ps.corporate_signal_ids)} "
+            f"pressures={len(ps.firm_pressure_signal_ids)} "
             f"menus={len(ps.investor_menu_ids) + len(ps.bank_menu_ids)} "
             f"selections={len(ps.investor_selection_ids) + len(ps.bank_selection_ids)} "
+            f"valuations={len(ps.valuation_ids)} "
             f"reviews={len(ps.investor_review_run_ids) + len(ps.bank_review_run_ids)} "
             f"records={ps.record_count_created}"
         )
@@ -216,8 +256,11 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
         f"{result.ledger_record_count_after})"
     )
     print(
-        "[summary] no price / trading / lending / valuation behavior "
-        "executed; chain is endogenous and routine-driven only."
+        "[summary] integrated chain: corporate reporting -> firm "
+        "pressure assessment -> heterogeneous attention -> valuation "
+        "refresh lite -> review. No price formation, no trading, no "
+        "lending decisions, no firm financial statement updates, "
+        "no canonical-truth valuation, no investment advice."
     )
 
 

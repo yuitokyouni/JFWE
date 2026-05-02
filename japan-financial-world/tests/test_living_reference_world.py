@@ -103,6 +103,37 @@ _PERIOD_DATES: tuple[str, ...] = (
 
 def _seed_exposures() -> tuple[ExposureRecord, ...]:
     out: list[ExposureRecord] = []
+    # v1.9.6 — firm exposures so the v1.9.4 firm-pressure-assessment
+    # mechanism produces non-zero output during the multi-period sweep.
+    firm_exposure_specs: tuple[tuple[str, str, str, float], ...] = (
+        ("firm:reference_manufacturer_a", "variable:reference_long_rate_10y", "funding_cost", 0.3),
+        ("firm:reference_manufacturer_a", "variable:reference_fx_pair_a", "translation", 0.2),
+        ("firm:reference_manufacturer_a", "variable:reference_electricity_price_a", "input_cost", 0.4),
+        ("firm:reference_retailer_b", "variable:reference_fx_pair_a", "translation", 0.3),
+        ("firm:reference_retailer_b", "variable:reference_long_rate_10y", "funding_cost", 0.2),
+        ("firm:reference_utility_c", "variable:reference_electricity_price_a", "input_cost", 0.5),
+        ("firm:reference_utility_c", "variable:reference_long_rate_10y", "funding_cost", 0.4),
+    )
+    for firm_id, var_id, exp_type, mag in firm_exposure_specs:
+        metric = (
+            "operating_cost_pressure"
+            if exp_type == "input_cost"
+            else "debt_service_burden"
+            if exp_type == "funding_cost"
+            else "fx_translation_pressure"
+        )
+        out.append(
+            ExposureRecord(
+                exposure_id=f"exposure:{firm_id}:{var_id}",
+                subject_id=firm_id,
+                subject_type="firm",
+                variable_id=var_id,
+                exposure_type=exp_type,
+                metric=metric,
+                direction="positive",
+                magnitude=mag,
+            )
+        )
     for inv in _INVESTOR_IDS:
         out.append(
             ExposureRecord(
@@ -271,6 +302,109 @@ def test_one_review_run_and_signal_per_actor_per_period():
         assert len(ps.bank_review_run_ids) == len(_BANK_IDS)
         assert len(ps.investor_review_signal_ids) == len(_INVESTOR_IDS)
         assert len(ps.bank_review_signal_ids) == len(_BANK_IDS)
+
+
+# ---------------------------------------------------------------------------
+# v1.9.6 integration: firm pressure assessment + valuation refresh lite
+# ---------------------------------------------------------------------------
+
+
+def test_one_pressure_signal_per_firm_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        assert len(ps.firm_pressure_signal_ids) == len(_FIRM_IDS)
+        assert len(ps.firm_pressure_run_ids) == len(_FIRM_IDS)
+
+
+def test_pressure_signals_resolve_to_stored_signals():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for sid in ps.firm_pressure_signal_ids:
+            sig = k.signals.get_signal(sid)
+            assert sig.signal_type == "firm_operating_pressure_assessment"
+            assert sig.subject_id in _FIRM_IDS
+
+
+def test_one_valuation_per_investor_firm_pair_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected = len(_INVESTOR_IDS) * len(_FIRM_IDS)
+    for ps in r.per_period_summaries:
+        assert len(ps.valuation_ids) == expected
+        assert len(ps.valuation_mechanism_run_ids) == expected
+
+
+def test_valuations_resolve_to_stored_records():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for vid in ps.valuation_ids:
+            record = k.valuations.get_valuation(vid)
+            assert record.method == "synthetic_lite_pressure_adjusted"
+            assert record.subject_id in _FIRM_IDS
+            assert record.valuer_id in _INVESTOR_IDS
+
+
+def test_valuation_metadata_carries_pressure_signal_link():
+    """Each valuation must reference the firm's pressure signal
+    for the same period; this proves v1.9.5 actually consumed
+    v1.9.4's output (not a coincidence of ordering)."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        pressure_by_firm = {
+            k.signals.get_signal(sid).subject_id: sid
+            for sid in ps.firm_pressure_signal_ids
+        }
+        for vid in ps.valuation_ids:
+            record = k.valuations.get_valuation(vid)
+            firm = record.subject_id
+            assert (
+                record.metadata["pressure_signal_id"]
+                == pressure_by_firm[firm]
+            )
+
+
+def test_valuation_metadata_carries_boundary_flags():
+    """Every committed ValuationRecord stamps the v1.9.5 boundary
+    flags so a downstream reader can never mistake the synthetic
+    claim for canonical truth."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for vid in ps.valuation_ids:
+            record = k.valuations.get_valuation(vid)
+            assert record.metadata["no_price_movement"] is True
+            assert record.metadata["no_investment_advice"] is True
+            assert record.metadata["synthetic_only"] is True
+
+
+def test_pressure_run_records_resolve_via_caller_audit_path():
+    """v1.9.4 returns MechanismRunRecord as caller-side audit
+    data; v1.9.6 records the pressure run ids on the period
+    summary. Verify each id is non-empty and unique within the
+    period (lineage hygiene)."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        seen: set[str] = set()
+        for rid in ps.firm_pressure_run_ids:
+            assert isinstance(rid, str) and rid
+            assert rid not in seen
+            seen.add(rid)
+
+
+def test_valuation_run_records_unique_per_period():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        seen: set[str] = set()
+        for rid in ps.valuation_mechanism_run_ids:
+            assert isinstance(rid, str) and rid
+            assert rid not in seen
+            seen.add(rid)
 
 
 def test_period_record_counts_are_positive():
@@ -481,8 +615,17 @@ def test_chain_rejects_invalid_inputs(kwargs):
 
 
 def _capture_economic_state(k: WorldKernel) -> dict[str, Any]:
+    """Snapshot the economic books that v1.9.6 must NOT mutate.
+
+    Note: ``valuations`` is excluded from this snapshot because
+    v1.9.6 deliberately commits one synthetic ValuationRecord per
+    (investor, firm) pair per period via the v1.9.5
+    valuation_mechanism. That growth is *expected*; the
+    ``test_valuation_count_grows_by_expected_amount`` test pins
+    the exact count instead. Every other book listed below stays
+    byte-identical across the sweep.
+    """
     return {
-        "valuations": k.valuations.snapshot(),
         "prices": k.prices.snapshot(),
         "ownership": k.ownership.snapshot(),
         "contracts": k.contracts.snapshot(),
@@ -499,6 +642,26 @@ def test_chain_does_not_mutate_economic_books():
     _run_default(k)
     after = _capture_economic_state(k)
     assert before == after
+
+
+def test_valuation_count_grows_by_expected_amount():
+    """v1.9.6 commits one ValuationRecord per (investor, firm) per
+    period through the v1.9.5 valuation_mechanism. Pin the exact
+    growth so a future change cannot quietly multiply this."""
+    k = _seed_kernel()
+    before = len(k.valuations.all_valuations())
+    r = _run_default(k)
+    after = len(k.valuations.all_valuations())
+    expected = (
+        len(r.investor_ids) * len(r.firm_ids) * r.period_count
+    )
+    assert after - before == expected
+    # Per-period total also matches.
+    for ps in r.per_period_summaries:
+        assert (
+            len(ps.valuation_ids)
+            == len(r.investor_ids) * len(r.firm_ids)
+        )
 
 
 def test_chain_does_not_mutate_exposures_or_variables_after_setup():
@@ -539,36 +702,41 @@ def test_kernel_run_does_not_run_living_world():
 
 
 def test_living_world_stays_within_record_budget():
-    """Sanity-check that the v1.9.0 sweep does not inadvertently
+    """Sanity-check that the v1.9.6 sweep does not inadvertently
     enumerate firms × investors × banks × periods. With the
     default fixture (3 firms / 2 investors / 2 banks / 4 periods)
     we expect roughly:
 
-      4 periods × (3 corp_run + 3 corp_signal
-                   + 4 menus + 4 selections
-                   + 4 review_run + 4 review_signal)
-      = 88 records
+      per period:
+        2 × firms                 (corp_run + corp_signal)         =  6
+        firms                     (pressure_signal — v1.9.6)       =  3
+        2 × (investors + banks)   (menu + selection)               =  8
+        investors × firms         (valuation — v1.9.6)             =  6
+        2 × (investors + banks)   (review_run + review_signal)     =  8
+                                                            total  = 31
+
+      × 4 periods                                                  = 124
 
       + a small constant amount of one-off setup records
         (interactions, routines, profiles registered on the first
-        period).
+        period — currently ~14).
 
-    A budget of 200 catches accidental quadratic loops while
-    leaving headroom for harmless infra adjustments.
+    Lower bound 124 (per-period work × 4); upper bound 250
+    catches accidental quadratic loops while leaving headroom
+    for harmless infra adjustments.
     """
     k = _seed_kernel()
     r = _run_default(k)
-    # Tight lower bound: the chain must produce at least the
-    # per-period work multiplied by 4.
     minimum_expected = 4 * (
-        2 * len(_FIRM_IDS)
-        + 2 * (len(_INVESTOR_IDS) + len(_BANK_IDS))
-        + 2 * (len(_INVESTOR_IDS) + len(_BANK_IDS))
-    )  # = 4 * (6 + 8 + 8) = 88
+        2 * len(_FIRM_IDS)  # corp_run + corp_signal
+        + len(_FIRM_IDS)  # pressure signal (v1.9.6)
+        + 2 * (len(_INVESTOR_IDS) + len(_BANK_IDS))  # menu + selection
+        + len(_INVESTOR_IDS) * len(_FIRM_IDS)  # valuation (v1.9.6)
+        + 2 * (len(_INVESTOR_IDS) + len(_BANK_IDS))  # review_run + signal
+    )  # = 4 * (6 + 3 + 8 + 6 + 8) = 124
     assert r.created_record_count >= minimum_expected
-    # Loose upper bound: 200 is well below the 4×3×2×2×... product
-    # space (180+ if the loop were dense), so it flags drift early.
-    assert r.created_record_count <= 200
+    # Loose upper bound: 250 is well below dense product space.
+    assert r.created_record_count <= 250
 
 
 # ---------------------------------------------------------------------------
@@ -622,4 +790,10 @@ def test_cli_smoke_prints_per_period_trace():
     assert "[period 1]" in out
     assert "[period 4]" in out
     assert "[ledger]" in out
-    assert "no price / trading / lending" in out
+    # v1.9.6: pressure + valuation now appear in every period's
+    # trace line; the summary line names the integrated chain and
+    # the "no investment advice" boundary.
+    assert "pressures=" in out
+    assert "valuations=" in out
+    assert "no canonical-truth valuation" in out
+    assert "no investment advice" in out

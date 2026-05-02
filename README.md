@@ -160,8 +160,9 @@ in well under a second, and are deterministic across invocations.
 | v1.9.3        | Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Shipped |
 | v1.9.3.1      | Mechanism Interface Hardening (deep-freeze + rename + ordering clarification) | Shipped |
 | v1.9.4        | Reference Firm Operating Pressure Assessment Mechanism (first concrete `MechanismAdapter`) | Shipped |
-| **v1.9.5**    | **Reference Valuation Refresh Lite Mechanism** (`valuation_mechanism` adapter) | **Shipped** |
-| v1.9.6        | Bank Credit Review Lite                                   | Next |
+| v1.9.5        | Reference Valuation Refresh Lite Mechanism (`valuation_mechanism` adapter) | Shipped |
+| **v1.9.6**    | **Living-world Mechanism Integration** (wires v1.9.4 + v1.9.5 into the multi-period sweep) | **Shipped** |
+| v1.9.7        | Bank Credit Review Lite                                   | Next |
 | v1.9.5        | Valuation Refresh Lite                                    | Planned |
 | v1.9.6        | Bank Credit Review Lite                                   | Planned |
 | v1.9.7        | Performance Boundary                                      | Planned |
@@ -468,8 +469,8 @@ From the `japan-financial-world` directory:
 python -m pytest -q
 ```
 
-Expected: `1571 passed` at the latest commit (444 v0 + 188 v1
-frozen reference + 939 post-v1.7 additions covering the reference
+Expected: `1580 passed` at the latest commit (444 v0 + 188 v1
+frozen reference + 948 post-v1.7 additions covering the reference
 demo, replay, manifest, catalog-shape, experiment harness, the
 v1.8.x endogenous-activity stack — interactions, routines,
 attention, variable / exposure layers, the menu builder, the
@@ -478,8 +479,9 @@ harness, and the ledger trace report — plus the v1.9.x living
 reference world, its trace report, the replay / manifest helpers,
 the v1.9.3 / v1.9.3.1 mechanism interface contract + hardening,
 the CLI argv-isolation pin, the v1.9.4 reference firm operating
-pressure assessment mechanism, and the v1.9.5 reference valuation
-refresh lite mechanism).
+pressure assessment mechanism, the v1.9.5 reference valuation
+refresh lite mechanism, and the v1.9.6 integration of those two
+mechanisms into the multi-period sweep).
 
 To run only v0 tests, exclude the v1 test files; to run only v1 tests:
 

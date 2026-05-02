@@ -143,6 +143,11 @@ class LivingWorldPeriodReport:
     bank_review_count: int
     investor_review_signal_ids: tuple[str, ...]
     bank_review_signal_ids: tuple[str, ...]
+    # v1.9.6 additive: pressure assessment + valuation refresh.
+    # Default 0 so older v1.9.0 result objects (without these
+    # fields) still construct cleanly.
+    pressure_signal_count: int = 0
+    valuation_count: int = 0
     record_type_counts: tuple[tuple[str, int], ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -161,6 +166,8 @@ class LivingWorldPeriodReport:
             "bank_selection_count",
             "investor_review_count",
             "bank_review_count",
+            "pressure_signal_count",
+            "valuation_count",
         ):
             value = getattr(self, name)
             if not isinstance(value, int) or value < 0:
@@ -220,6 +227,8 @@ class LivingWorldPeriodReport:
             "bank_review_count": self.bank_review_count,
             "investor_review_signal_ids": list(self.investor_review_signal_ids),
             "bank_review_signal_ids": list(self.bank_review_signal_ids),
+            "pressure_signal_count": self.pressure_signal_count,
+            "valuation_count": self.valuation_count,
             "record_type_counts": [
                 [event_type, count]
                 for event_type, count in self.record_type_counts
@@ -724,6 +733,10 @@ def _build_period_report(
             bank_review_count=len(period.bank_review_run_ids),
             investor_review_signal_ids=period.investor_review_signal_ids,
             bank_review_signal_ids=period.bank_review_signal_ids,
+            pressure_signal_count=len(
+                getattr(period, "firm_pressure_signal_ids", ())
+            ),
+            valuation_count=len(getattr(period, "valuation_ids", ())),
             record_type_counts=period_record_type_counts,
             warnings=tuple(period_warnings),
             metadata={
@@ -811,21 +824,28 @@ def render_living_world_markdown(report: LivingWorldTraceReport) -> str:
     lines.append("## Per-period summary")
     lines.append("")
     if md["period_summaries"]:
+        # v1.9.6: per-period table now carries `pressures` and
+        # `valuations` columns alongside the v1.9.0 baseline. The
+        # column order is fixed for determinism.
         lines.append(
-            "| period | as_of_date | reports | inv_menus | bnk_menus | "
-            "inv_sel | bnk_sel | inv_rev | bnk_rev | records |"
+            "| period | as_of_date | reports | pressures | "
+            "inv_menus | bnk_menus | inv_sel | bnk_sel | valuations | "
+            "inv_rev | bnk_rev | records |"
         )
         lines.append(
-            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+            "| --- | --- | --- | --- | --- | --- | --- | --- | "
+            "--- | --- | --- | --- |"
         )
         for ps in md["period_summaries"]:
             lines.append(
                 f"| `{ps['period_id']}` | `{ps['as_of_date']}` | "
                 f"{ps['corporate_report_count']} | "
+                f"{ps.get('pressure_signal_count', 0)} | "
                 f"{ps['investor_menu_count']} | "
                 f"{ps['bank_menu_count']} | "
                 f"{ps['investor_selection_count']} | "
                 f"{ps['bank_selection_count']} | "
+                f"{ps.get('valuation_count', 0)} | "
                 f"{ps['investor_review_count']} | "
                 f"{ps['bank_review_count']} | "
                 f"{ps['record_count_created']} |"

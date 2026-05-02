@@ -130,13 +130,30 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
     metadata fields (`ledger_record_count_before` / `_after` are
     not deterministic across kernels with different starting
     ledger sizes; those go on the aggregate result, not the
-    period). Preserves every id tuple in ledger order."""
+    period). Preserves every id tuple in ledger order.
+
+    v1.9.6 additive: ``firm_pressure_*`` and ``valuation_*`` id
+    tuples are included so the canonical view reflects the
+    integrated pressure + valuation phases. Older
+    LivingReferencePeriodSummary instances without these fields
+    fall through to empty tuples via ``getattr`` defaults.
+    """
     return {
         "period_id": period.period_id,
         "as_of_date": period.as_of_date,
         "record_count_created": period.record_count_created,
         "corporate_signal_ids": list(period.corporate_signal_ids),
         "corporate_run_ids": list(period.corporate_run_ids),
+        "firm_pressure_signal_ids": list(
+            getattr(period, "firm_pressure_signal_ids", ())
+        ),
+        "firm_pressure_run_ids": list(
+            getattr(period, "firm_pressure_run_ids", ())
+        ),
+        "valuation_ids": list(getattr(period, "valuation_ids", ())),
+        "valuation_mechanism_run_ids": list(
+            getattr(period, "valuation_mechanism_run_ids", ())
+        ),
         "investor_menu_ids": list(period.investor_menu_ids),
         "bank_menu_ids": list(period.bank_menu_ids),
         "investor_selection_ids": list(period.investor_selection_ids),

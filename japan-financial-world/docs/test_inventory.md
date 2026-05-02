@@ -1,8 +1,8 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.5** (`Reference Valuation
-Refresh Lite Mechanism` — second concrete mechanism on the
-hardened v1.9.3.1 interface): `1571 / 1571 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
+Snapshot of the test suite at **v1.9.6** (`Living-world
+Mechanism Integration` — wires v1.9.4 + v1.9.5 into
+`run_living_reference_world`): `1580 / 1580 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the
@@ -283,6 +283,31 @@ no-mutation guarantee.
   determinism; snapshot determinism; ledger emission of
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
+
+## Living-world mechanism integration (v1.9.6)
+
+- `test_living_reference_world.py` (+9 v1.9.6 tests, total 36) —
+  v1.9.6 wires v1.9.4 firm-pressure-assessment and v1.9.5
+  valuation-refresh-lite into the multi-period sweep. New tests
+  pin: one pressure signal per firm per period; pressure signals
+  resolve to stored `firm_operating_pressure_assessment` signals;
+  one valuation per (investor × firm) per period; valuations
+  resolve to stored `synthetic_lite_pressure_adjusted` records;
+  `valuation.metadata["pressure_signal_id"]` points to the same
+  firm's pressure signal for the same period (proves v1.9.5
+  actually consumed v1.9.4's output, not coincidental ordering);
+  `valuation.metadata` carries the four boundary flags
+  (`no_price_movement` / `no_investment_advice` / `synthetic_only`);
+  pressure / valuation `mechanism_run` ids are unique per
+  (investor, firm, period); no-mutation guarantee narrowed to
+  exclude `valuations` (now expected to grow) plus a separate
+  `test_valuation_count_grows_by_expected_amount` pinning the
+  exact growth (`investors × firms × periods`); record-count
+  budget updated (per period now ~31 records; ≥ 124, ≤ 250);
+  CLI smoke now expects `pressures=...` / `valuations=...` in
+  the trace and the integrated-chain summary line. The fixture
+  is extended with firm exposures so the v1.9.4 mechanism
+  produces non-zero output during the sweep.
 
 ## Reference valuation refresh lite (v1.9.5)
 
@@ -957,7 +982,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -988,7 +1013,8 @@ no-mutation guarantee.
 | CLI argv-isolation pin                  | 1     | 8     |
 | Reference firm operating pressure (v1.9.4) | 1  | 28    |
 | Reference valuation refresh lite (v1.9.5) | 1  | 28    |
-| **post-v1.7 subtotal**                  | **27**| **939** |
+| Living-world integration (v1.9.6 — added in test_living_reference_world.py) | 0 | 9 |
+| **post-v1.7 subtotal**                  | **27**| **948** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -996,8 +1022,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5) | 27 | 939 |
-| **Total**                        | **69**| **1571** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6) | 27 | 948 |
+| **Total**                        | **69**| **1580** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

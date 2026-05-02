@@ -343,6 +343,72 @@ check).
 
 The full suite passes 1571 tests (1543 prior + 28 valuation).
 
+## v1.9.6 — what shipped
+
+The **integration milestone** that wires v1.9.4 firm-pressure-
+assessment and v1.9.5 valuation-refresh-lite into the multi-period
+sweep. Until v1.9.6, both mechanisms were standalone caller helpers
+tested in isolation; `run_living_reference_world` did not exercise
+them per period. v1.9.6 closes that gap.
+
+The integrated per-period flow:
+
+```
+corporate quarterly reporting       (per firm)
+    -> firm operating pressure assessment   (per firm)
+    -> heterogeneous attention              (per actor)
+    -> valuation refresh lite               (per investor × firm)
+    -> investor / bank review               (per actor)
+```
+
+Changes:
+
+- `world/reference_living_world.py`: `LivingReferencePeriodSummary`
+  extended additively with `firm_pressure_signal_ids`,
+  `firm_pressure_run_ids`, `valuation_ids`,
+  `valuation_mechanism_run_ids`. New phases inserted in
+  `run_living_reference_world`. New parameters
+  `firm_baseline_values` and `valuation_baseline_default`.
+- `examples/reference_world/run_living_reference_world.py`: firm
+  exposures added to the seed fixture so the v1.9.4 mechanism
+  produces non-zero output. The `[period N]` trace line now
+  includes `pressures=...` and `valuations=...` columns.
+- `world/living_world_report.py`: per-period table extended with
+  `pressures` and `valuations` columns; `LivingWorldPeriodReport`
+  gains `pressure_signal_count` and `valuation_count` fields.
+- `examples/reference_world/living_world_replay.py`: the v1.9.2
+  canonical view includes the four new id tuples so the
+  deterministic SHA-256 digest reflects pressure / valuation
+  activity.
+- `tests/test_living_reference_world.py`: fixture extended with
+  firm exposures; record-count budget updated (per period now
+  ~31 records; lower bound 124, upper bound 250); 9 new tests
+  pinning per-period pressure / valuation counts, the
+  `valuation.metadata["pressure_signal_id"]` link to the same
+  firm's pressure signal (proves v1.9.5 actually consumed v1.9.4's
+  output), and the boundary flags on every committed valuation.
+  No-mutation test narrowed: `valuations` now expected to grow,
+  pinned by a separate exact-count test.
+
+The valuation `request_id` is built per (investor, firm, period)
+in the v1.9.6 helper (the v1.9.5 default formula didn't include
+the valuer, which would have aliased multi-investor mechanism run
+ids on the same firm/date).
+
+**Hard boundary carried forward.** Every committed pressure
+signal still stamps `pressure_assessment_signal_only` in
+metadata; every committed valuation still stamps
+`no_price_movement` / `no_investment_advice` / `synthetic_only`.
+No price formation, no trading, no lending decisions, no firm
+financial statement updates, no canonical-truth valuation, no
+investment advice.
+
+The full suite passes 1580 tests (1571 prior + 9 integration).
+
+**Recommended next path (renumbered).** Bank Credit Review Lite
+shifts to v1.9.7; Performance Boundary to v1.9.8; v1.9.last
+remains the public prototype freeze.
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral

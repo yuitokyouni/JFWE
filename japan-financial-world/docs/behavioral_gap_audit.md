@@ -162,8 +162,9 @@ v1.9.2. The path therefore renumbers:
 | v1.9.3 | Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface. | Shipped (§63). |
 | v1.9.3.1 | Mechanism Interface Hardening (deep-freeze + rename + ordering clarification). | Shipped (§63.9). |
 | v1.9.4 | Reference Firm Operating Pressure Assessment Mechanism (corrected framing — see note below). | Shipped (§64). |
-| **v1.9.5** | **Reference Valuation Refresh Lite Mechanism (Option B).** Synthetic linear pressure-haircut on a caller-supplied baseline value; proposes one `ValuationRecord` per call. | **Shipped (§65).** |
-| v1.9.6 | Bank Credit Review Lite (Option C). | Next |
+| v1.9.5 | Reference Valuation Refresh Lite Mechanism (Option B). Synthetic linear pressure-haircut on a caller-supplied baseline value; proposes one `ValuationRecord` per call. | Shipped (§65). |
+| **v1.9.6** | **Living-world Mechanism Integration.** Wires v1.9.4 + v1.9.5 into `run_living_reference_world`'s per-period flow. Per period: corporate reporting → pressure assessment → menus + selections → valuation refresh lite → reviews. | **Shipped (§66).** |
+| v1.9.7 | Bank Credit Review Lite (Option C). | Next |
 | v1.9.7 | Performance Boundary (sparse-iteration / complexity-budget hardening). | After v1.9.6 |
 | v1.9.last | First lightweight public prototype. | After v1.9.7 |
 
