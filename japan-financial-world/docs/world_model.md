@@ -7642,8 +7642,74 @@ Until that sub-milestone, the v1.9.6 valuation phase remains on the v1.9.5 evide
 | v1.x Valuation Protocol — Comps Purpose Separation | Docs-only (§84). Advanced-actor-only. | Shipped |
 | v1.12.4 Attention-conditioned investor intent | Code (§85). First mechanism-level use of attention. | Shipped |
 | **v1.12.5 Attention-conditioned valuation lite** | Code (§86). Helper-level + tests. Orchestrator deferred. | **Shipped** |
+| v1.13.0 Generic central bank settlement infrastructure design | Docs-only (§87). Jurisdiction-neutral substrate vocabulary. | Shipped |
 | v1.12.6 Attention-conditioned bank credit review (anticipated) | Code. | Planned |
 | v1.12.7 Next-period attention feedback (anticipated) | Code. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `2563 / 2563` (v1.12.4) to `2580 / 2580` (v1.12.5) — `+17` tests, all in `tests/test_reference_valuation_refresh_lite.py`. The per-period record count, per-run window, and `living_world_digest` are unchanged from v1.12.4 because the orchestrator continues to call the pre-existing helper (the new helper is exercised by tests only).
+
+## 87. v1.13.0 Generic Central Bank Settlement Infrastructure (docs-only design note)
+
+§87 is a **docs-only design note** for a generic, jurisdiction-neutral central-bank settlement and interbank-liquidity vocabulary that public FWE will adopt across the v1.13.x sequence. No code, no records, no books, no calculation, no decision lives behind this section. The full design lives in [`v1_13_generic_central_bank_settlement_design.md`](v1_13_generic_central_bank_settlement_design.md); §87 is the cross-reference and the binding-scope summary inside `world_model.md` so a reader of the model document can see the design's place in the v1 sequence without leaving this file.
+
+### 87.1 Why this exists
+
+A common silent error in financial-world simulation is treating the **central-bank settlement substrate** as if it were either (a) a black box that produces "interest rates" and nothing else, or (b) a Japan-specific real-system mapping (BOJ-NET, BOJ current accounts, JGB DvP) bolted onto the public engine. Both shapes are wrong for public FWE. The substrate that actually matters is *generic and label-shaped*: settlement accounts at a central-bank-shaped entity, payment instructions routed across them, settlement events emitted on status changes, an interbank liquidity tone label, collateral-eligibility labels, and central-bank operation labels. §87 records the discipline that the public engine carries this substrate as **vocabulary** — labels, ids, and statuses — never as balances, amounts, rates, or policy decisions. Japan-shaped calibration is private JFWE (v2 / v3), never public.
+
+### 87.2 What the design records (vocabulary, no calculation)
+
+The design is a vocabulary-and-discipline specification. It defines eight items:
+
+- **`CentralBankSettlementSystem`** — abstract substrate name (placeholder for a future v1.13.1 record / book).
+- **`SettlementAccountRecord`** — one account at the substrate. Suggested labels: `account_id`, `holder_id`, `holder_type` (e.g., `participant_bank`, `clearing_member`), `account_type` (e.g., `reserve_account`, `settlement_account`, `restricted_account`), `status` (e.g., `active`, `frozen`, `closed`), `as_of_date`, `metadata`. Anti-fields: no `balance`, no `available_credit`, no `pending_settlement_amount`, no `interest_accrued`, no real number on the record.
+- **`SettlementAccountBook`** / **`ReserveAccountBook`** — append-only storage placeholder; vocabulary only at v1.13.0.
+- **`PaymentInstructionRecord`** — one payment instruction. Suggested labels: `instruction_id`, `from_account_id`, `to_account_id`, `as_of_date`, `instruction_type` (e.g., `interbank_transfer`, `securities_settlement_leg`, `repo_leg`, `liquidity_provision_leg`), `priority` (e.g., `urgent`, `normal`, `bulk`), `status` (e.g., `queued`, `pending`, `settled`, `rejected`), `time_horizon` (e.g., `intraday`, `same_day`, `next_day`). Anti-fields: no `amount`, no `currency_value`, no `fx_rate`, no real number.
+- **`SettlementEvent`** — emission of a settlement-status change. Suggested labels: `event_id`, `instruction_id`, `as_of_date`, `event_type` (e.g., `settlement_queued`, `settlement_completed`, `settlement_failed`, `settlement_partial`), `cause_label` (e.g., `liquidity_shortfall`, `collateral_shortfall`, `cutoff_breach`, `routine`).
+- **`InterbankLiquidityState`** — synthetic compact regime label about interbank liquidity. Suggested labels: `liquidity_state_id`, `as_of_date`, `tone_label` (e.g., `abundant`, `normal`, `tight`, `stressed`), `funding_pressure_label` (e.g., `low`, `medium`, `high`), `cb_intervention_label` (e.g., `none`, `routine_ops`, `emergency_facility`). Cross-references the v1.12.2 `MarketEnvironmentStateRecord` (§82) and the v1.12.0 `FirmFinancialStateRecord` (§80) via plain-id slots planned for v1.13.5.
+- **`CollateralEligibilitySignal`** — synthetic *signal* labeling whether a class of asset is eligible to serve as central-bank collateral, plus a haircut tier label. Suggested labels: `signal_id`, `as_of_date`, `eligibility_label` (e.g., `eligible`, `eligible_with_haircut`, `restricted`, `ineligible`), `haircut_tier_label` (e.g., `tier_a`, `tier_b`, `tier_c`, `tier_special`). Anti-fields: no haircut percentage, no margin number.
+- **`CentralBankOperationSignal`** — synthetic *signal* labeling a central-bank market operation. Suggested labels: `signal_id`, `as_of_date`, `operation_label` (e.g., `liquidity_provision`, `liquidity_absorption`, `outright_purchase_synthetic`, `outright_sale_synthetic`, `lending_facility_synthetic`, `deposit_facility_synthetic`), `direction_label` (e.g., `provision`, `absorption`, `neutral`), `time_horizon`. Anti-fields: no operation amount, no policy rate, no monetary-policy stance numeric.
+
+### 87.3 Public / private boundary (binding)
+
+The v1.13.x sequence sits inside the three-layer split already pinned by [`public_private_boundary.md`](public_private_boundary.md):
+
+- **Public FWE (v1.13.x)** — generic synthetic abstraction; the vocabulary lives here. Jurisdiction-neutral; no real-system mapping; no real central-bank data; no Japan calibration.
+- **Private JFWE (v2)** — BOJ-NET / BOJ current accounts / JGB settlement / Japan-specific calibration. v2 maps the public abstraction onto Japanese reality (BOJ-current-account-holder taxonomy, BOJ-NET message taxonomy, BOJ market-operation menu, BOJ collateral framework). v2 is the only layer where a real central-bank-system identifier may appear.
+- **Proprietary JFWE (v3)** — proprietary liquidity assumptions, non-public settlement behaviour, expert-data extensions. Never public.
+
+The binding rule is that **every Japan-shaped concept is private**. If a contributor is tempted to add `boj_net`, `boj_current_account`, `jgb`, `tonar`, `mutan`, `complementary_deposit_facility`, or any other real-system identifier to the public vocabulary, that addition does not belong in v1.13.x — it belongs in v2.
+
+### 87.4 Boundary (binding)
+
+The v1.13.x sequence records central-bank settlement substrate discipline. It does **not** introduce or recommend BOJ-NET / BOJ current accounts / JGB settlement / JSCC / JASDEC / TARGET2 / Fedwire / CHAPS / EBA STEP2 or any other real-system mapping; **does not** execute payments, RTGS settlement mechanics, or intraday-credit lending; **does not** compute central-bank accounting, balance-sheet identities, consolidated-reserve totals, monetary-base aggregates, or seigniorage; **does not** execute securities settlement, DvP / PvP delivery, or repo legs; **does not** compute collateral valuation, haircut percentages, margin requirements, or concentration limits; **does not** decide monetary policy — rate setting, reserve-requirement changes, QE / QT execution, forward guidance, or any policy-stance number; **does not** ingest real central-bank data; **does not** apply Japan-specific calibration; **does not** dispatch any payment / event / signal to an LLM agent or any external solver; **does not** emit any ledger record, mutate any source-of-truth book, or cross the v1.9.last public-prototype-freeze surface (§69) at v1.13.0; **does not** attach any behaviour probability.
+
+The substrate stores labels, ids, and status; it does not produce balances, amounts, rates, or policy decisions.
+
+### 87.5 Future integration (planned)
+
+The substrate is designed to compose with the v1.12.3 `EvidenceResolver` (§83) via plain-id cross-references — a future v1.13.x milestone will extend the prefix-dispatch table for the new prefixes (e.g., `cb_account:`, `payment_instr:`, `settle_evt:`, `liq_state:`, `collat_elig:`, `cb_op:`). v1.13.5 will wire **type-correct additive cross-link slots** between the v1.13.x substrate and the v1.12.x environment substrate — `evidence_market_environment_state_ids` on `InterbankLiquidityState`, `evidence_firm_financial_state_ids` on `InterbankLiquidityState`, and an additive deferred slot on `MarketEnvironmentStateRecord` for liquidity-state ids. The cross-link is **citation-only**: every slot is a plain-id list; v1.13.x records never read a market-environment record's content; the market-environment record never reads a v1.13.x record's content.
+
+### 87.6 Default living-world adoption (binding)
+
+The default v1.9 living reference world's investor / bank profiles must continue to work without the v1.13.x substrate. Adding the substrate to the default per-period sweep is explicitly out of scope for v1.13.0: the default living-world fixture has no central-bank-shaped entity, no settlement accounts, and no payment instructions, by design — the public-prototype-freeze surface (§69) does not include settlement infrastructure. Adding the substrate to the default sweep would change the per-period record count, the per-run record window, and the `living_world_digest`, which the public-prototype freeze pins bit-for-bit. A future opt-in living-world variant (e.g., `run_living_reference_world_with_settlement_substrate`) gated by an opt-in fixture flag would be the adoption path; v1.13.0 does not ship that opt-in path; v1.13.5 will revisit it.
+
+### 87.7 Position in the v1.13 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.12.0 → v1.12.2 (firm state / investor intent / market environment) | Code (§80 → §82). | Shipped |
+| v1.12.3 EvidenceResolver / ActorContextFrame | Code (§83). | Shipped |
+| v1.x Valuation Protocol — Comps Purpose Separation | Docs-only (§84). Advanced-actor-only. | Shipped |
+| v1.12.4 Attention-conditioned investor intent | Code (§85). | Shipped |
+| v1.12.5 Attention-conditioned valuation lite | Code (§86). Helper-level + tests. | Shipped |
+| **v1.13.0 Generic central bank settlement infrastructure design** | **Docs-only (§87). Jurisdiction-neutral substrate vocabulary.** | **Shipped (this section)** |
+| v1.13.1 `SettlementAccountBook` / `ReserveAccountBook` storage | Code. | Planned |
+| v1.13.2 `PaymentInstructionRecord` + `SettlementEvent` storage | Code. | Planned |
+| v1.13.3 `InterbankLiquidityState` storage + classifier | Code. | Planned |
+| v1.13.4 `CentralBankOperationSignal` / `CollateralEligibilitySignal` storage | Code. | Planned |
+| v1.13.5 `MarketEnvironment` integration (v1.12.2 ↔ v1.13.x cross-link) | Code. | Planned |
+| v1.13.last Freeze | Docs. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count, per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.12.5 — §87 is docs-only and ships no code, no record, no test, no fixture.
