@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FWE Analyst Workbench — HTML UI Template</title>
+  <style>
+    :root {
+      --blue: #034694;
+      --blue-2: #022c5c;
+      --blue-3: #e8eef8;
+      --lilac: #b7bfdb;
+      --paper: #ffffff;
+      --sheet: #f7f7f5;
+      --grid: #d9d9d9;
+      --line: #b8b8b8;
+      --ink: #111111;
+      --muted: #6b7280;
+      --danger: #7c1d2c;
+      --amber: #8a5a00;
+      --ok: #166534;
+      --tab-h: 38px;
+      --ribbon-h: 42px;
+      --font-ui: "Gill Sans MT", "Gill Sans", "Segoe UI", Arial, Helvetica, sans-serif;
+      --font-title: "Palace Script MT", "Brush Script MT", "Segoe Script", cursive;
+      --font-serif: Garamond, "Cormorant Garamond", Georgia, serif;
+      --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--font-ui);
+      color: var(--ink);
+      background: #e7e7e7;
+      overflow: hidden;
+    }
+
+    .workbook {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: var(--ribbon-h) 1fr var(--tab-h);
+      background: var(--paper);
+    }
+
+    .top-ribbon {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      border-bottom: 1px solid #c7c7c7;
+      background: #f5f5f5;
+      font-size: 12px;
+      color: #2d2d2d;
+      white-space: nowrap;
+    }
+    .brand-chip {
+      background: var(--blue);
+      color: #fff;
+      height: 26px;
+      padding: 5px 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+    }
+    .ribbon-group {
+      border-left: 1px solid #c7c7c7;
+      padding-left: 10px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .ribbon-btn {
+      border: 1px solid #c9c9c9;
+      background: #fff;
+      min-height: 24px;
+      padding: 3px 8px;
+      font-size: 12px;
+      color: #222;
+    }
+    .ribbon-spacer { flex: 1; }
+    .digest { font-family: var(--font-mono); color: var(--muted); }
+
+    .sheet-stage {
+      position: relative;
+      overflow: auto;
+      background:
+        linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.045) 1px, transparent 1px),
+        var(--paper);
+      background-size: 64px 24px;
+    }
+
+    .sheet {
+      display: none;
+      min-height: calc(100vh - var(--ribbon-h) - var(--tab-h));
+      padding: 22px 28px 30px;
+    }
+    .sheet.active { display: block; }
+
+    .sheet-inner {
+      max-width: 1500px;
+      margin: 0 auto;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid #d1d1d1;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.06);
+    }
+
+    .bottom-tabs {
+      display: flex;
+      align-items: flex-end;
+      gap: 1px;
+      border-top: 1px solid #a8a8a8;
+      background: #e5e5e5;
+      padding: 3px 8px 0;
+      overflow-x: auto;
+    }
+    .sheet-tab {
+      min-width: 104px;
+      max-width: 190px;
+      height: 32px;
+      padding: 7px 14px;
+      border: 1px solid #aeb4bc;
+      border-bottom: none;
+      border-radius: 5px 5px 0 0;
+      background: #f7f7f7;
+      color: #333;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sheet-tab.active {
+      background: #fff;
+      color: var(--blue);
+      font-weight: 700;
+      border-top: 3px solid var(--blue);
+      padding-top: 5px;
+    }
+
+    .cover-page {
+      position: relative;
+      min-height: 720px;
+      background: #fff;
+      padding: 88px 84px 72px;
+      overflow: hidden;
+    }
+    .cover-grid {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
+      background-size: 64px 24px;
+      pointer-events: none;
+      opacity: 0.35;
+    }
+    .cover-title {
+      position: relative;
+      margin-top: 70px;
+      text-align: center;
+      font-family: var(--font-title);
+      font-size: 102px;
+      font-weight: 700;
+      line-height: 0.95;
+      letter-spacing: 0.01em;
+      color: #000;
+    }
+    .cover-subtitle {
+      position: relative;
+      margin-top: 20px;
+      text-align: center;
+      font-family: var(--font-ui);
+      font-style: italic;
+      font-size: 24px;
+      color: #050505;
+    }
+    .cover-author {
+      position: absolute;
+      left: 90px;
+      bottom: 70px;
+      font-family: var(--font-serif);
+      font-size: 22px;
+      color: #111;
+      letter-spacing: 0.04em;
+    }
+    .cover-build {
+      position: absolute;
+      right: 68px;
+      top: 42px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .band {
+      background: var(--blue);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .band h1, .band h2 {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .band .chapter {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 13px;
+      opacity: 0.75;
+      margin-bottom: 2px;
+    }
+    .subband {
+      background: var(--lilac);
+      color: var(--blue-2);
+      padding: 8px 24px;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 14px;
+    }
+    .panel-body { padding: 22px 24px 26px; background: var(--sheet); }
+    .grid { display: grid; gap: 18px; }
+    .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .grid.cols-3 { grid-template-columns: 1fr 1.12fr 1fr; }
+    .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .card {
+      background: #fff;
+      border: 1px solid #d4d4d4;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+      padding: 14px;
+      min-width: 0;
+    }
+    .card-title {
+      margin: 0 0 10px;
+      color: var(--blue-2);
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+    }
+    .section-rule { height: 4px; background: var(--blue); margin-bottom: 10px; }
+    .muted { color: var(--muted); }
+    .mono { font-family: var(--font-mono); }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border: 1px solid #c6c6c6;
+      background: #f8f8f8;
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+    .tag.blue { border-color: var(--blue); color: var(--blue); background: #eef4ff; }
+    .tag.red { border-color: var(--danger); color: var(--danger); background: #fff6f7; }
+    .tag.green { border-color: var(--ok); color: var(--ok); background: #f2fbf5; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      text-align: left;
+      color: var(--blue-2);
+      font-weight: 700;
+      border-bottom: 1px solid var(--blue);
+      padding: 6px 7px;
+      white-space: nowrap;
+    }
+    td {
+      border-bottom: 1px solid #e0e0e0;
+      padding: 6px 7px;
+      vertical-align: top;
+    }
+    td.num, th.num { text-align: right; font-family: var(--font-mono); }
+    .input-cell {
+      font-family: var(--font-mono);
+      color: var(--blue);
+      font-weight: 700;
+      background: #f3f7ff;
+    }
+    .status-cell { font-family: var(--font-mono); }
+
+    .index-wrap { background: #fff; border: 1px solid #d4d4d4; padding: 14px; }
+    .index-chart { width: 100%; height: auto; display: block; background: #fbfbfa; }
+    .event-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 9px;
+      font-size: 11px;
+    }
+    .event-chip {
+      border-left: 3px solid var(--danger);
+      background: #fff8f8;
+      padding: 7px 8px;
+      min-height: 44px;
+    }
+    .event-chip.blue { border-left-color: var(--blue); background: #f4f7ff; }
+    .event-date { font-family: var(--font-mono); color: #555; margin-bottom: 2px; }
+
+    .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .kpi {
+      background: #fff;
+      border-top: 3px solid var(--blue);
+      border-left: 1px solid #ddd;
+      border-right: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
+      padding: 10px;
+    }
+    .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .kpi .value { color: var(--blue); font-size: 20px; font-family: var(--font-mono); font-weight: 700; margin-top: 4px; }
+    .kpi .note { color: var(--muted); font-size: 10px; margin-top: 2px; }
+
+    .two-column-output { display: grid; grid-template-columns: 1.6fr 0.75fr; gap: 18px; }
+    .causal-table td:nth-child(3) { font-family: var(--font-mono); }
+    .mini-chart { width: 100%; height: auto; background: #fbfbfa; border: 1px solid #e1e1e1; }
+
+    .boundary-box {
+      border-left: 4px solid var(--danger);
+      background: #fff7f8;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .note-box {
+      border-left: 4px solid var(--blue);
+      background: #f5f8ff;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 980px) {
+      body { overflow: auto; }
+      .workbook { height: auto; min-height: 100vh; }
+      .sheet-stage { overflow: visible; }
+      .grid.cols-2, .grid.cols-3, .grid.cols-4, .two-column-output, .kpi-row, .event-row { grid-template-columns: 1fr; }
+      .cover-title { font-size: 64px; }
+      .cover-subtitle { font-size: 18px; }
+      .bottom-tabs { position: sticky; bottom: 0; z-index: 5; }
+    }
+  </style>
+</head>
+<body>
+  <main class="workbook" aria-label="FWE workbook style dashboard">
+    <header class="top-ribbon">
+      <div class="brand-chip">FWE</div>
+      <div class="ribbon-group">
+        <button class="ribbon-btn">Run</button>
+        <button class="ribbon-btn">Validate</button>
+        <button class="ribbon-btn">Compare Regimes</button>
+        <button class="ribbon-btn">Export HTML</button>
+      </div>
+      <div class="ribbon-group">
+        <span class="muted">Mode</span>
+        <span class="tag blue">Synthetic · no real data</span>
+        <span class="tag">v1.12.last</span>
+      </div>
+      <div class="ribbon-spacer"></div>
+      <div class="digest">digest · e508b4bf…</div>
+    </header>
+
+    <section class="sheet-stage">
+      <!-- COVER -->
+      <article id="sheet-cover" class="sheet active">
+        <div class="sheet-inner cover-page">
+          <div class="cover-grid"></div>
+          <div class="cover-build">build · public prototype · 2026</div>
+          <div class="cover-title">Fin World Engine v1.12</div>
+          <div class="cover-subtitle">An Inter-Space Agent-Based Simulation Model</div>
+          <div class="cover-author">Y. H.</div>
+        </div>
+      </article>
+
+      <!-- SETTINGS -->
+      <article id="sheet-settings" class="sheet">
+        <div class="sheet-inner">
+          <div class="band">
+            <div>
+              <div class="chapter">Sheet I</div>
+              <h1>Settings & Model Modules</h1>
+            </div>
+            <div class="mono">run · 2026-05-04 · seed 42</div>
+          </div>
+          <div class="subband">Configure the reference world. Tabs are separated like a spreadsheet; no cover/content stacking.</div>
+          <div class="panel-body">
+            <div class="grid cols-3">
+              <section class="card">
+                <div class="section-rule"></div>
+                <h3 class="card-title">Run control</h3>
+                <table>
+                  <tr><td>Market regime</td><td class="input-cell">constrained</td></tr>
+                  <tr><td>Start date</td><td class="input-cell">2026-03-31</td></tr>
+                  <tr><td>Periods</td><td class="input-cell">4 quarters</td></tr>
+                  <tr><td>Firms</td><td class="input-cell">3</td></tr>
+                  <tr><td>Investors</td><td class="input-cell">2</td></tr>
+                  <tr><td>Banks</td><td class="input-cell">2</td></tr>
+                  <tr><td>Digest policy</td><td class="input-cell">canonical SHA-256</td></tr>
+                </table>
+              </section>
+              <section class="card">
+                <div class="section-rule"></div>
+                <h3 class="card-title">Strategy / behavior modules <span class="tag">selector</span></h3>
+                <table>
+                  <thead><tr><th>Module</th><th>Status</th><th>Role</th></tr></thead>
+                  <tbody>
+                    <tr><td>Brock-Hommes</td><td class="status-cell">optional</td><td>strategy switching archetype</td></tr>
+                    <tr><td>Lux-Marchesi</td><td class="status-cell">candidate</td><td>chartist/fundamentalist switching</td></tr>
+                    <tr><td>Minority Game</td><td class="status-cell">candidate</td><td>crowded adaptive signal use</td></tr>
+                    <tr><td>Speculation Game</td><td class="status-cell">candidate</td><td>round-trip cognition / wealth dynamics</td></tr>
+                    <tr><td>FCN / LOB</td><td class="status-cell">deferred</td><td>market mechanism seam, not active trading</td></tr>
+                  </tbody>
+                </table>
+                <div class="note-box" style="margin-top:12px;">Switching modules are not claims that every actor uses the same model. They are interchangeable experimental mechanisms.</div>
+              </section>
+              <section class="card">
+                <div class="section-rule"></div>
+                <h3 class="card-title">Boundary flags</h3>
+                <table>
+                  <tr><td>Price formation</td><td class="status-cell">OFF</td></tr>
+                  <tr><td>Trading / orders</td><td class="status-cell">OFF</td></tr>
+                  <tr><td>Lending decisions</td><td class="status-cell">OFF</td></tr>
+                  <tr><td>Real data</td><td class="status-cell">OFF</td></tr>
+                  <tr><td>Japan calibration</td><td class="status-cell">OFF</td></tr>
+                  <tr><td>Investment advice</td><td class="status-cell">OFF</td></tr>
+                  <tr><td>LLM execution</td><td class="status-cell">OFF</td></tr>
+                </table>
+              </section>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- MARKET -->
+      <article id="sheet-market" class="sheet">
+        <div class="sheet-inner">
+          <div class="band">
+            <div><div class="chapter">Sheet II</div><h1>Market Environment State</h1></div>
+            <div class="mono">context regime · label-based</div>
+          </div>
+          <div class="subband">Market state is context, not price formation. Labels are designed for future agent and LLM context frames.</div>
+          <div class="panel-body">
+            <div class="grid cols-4">
+              <section class="card"><h3 class="card-title">Liquidity</h3><div class="kpi"><div class="label">regime</div><div class="value">tight</div><div class="note">from liquidity market + readout</div></div></section>
+              <section class="card"><h3 class="card-title">Credit</h3><div class="kpi"><div class="label">regime</div><div class="value">tightening</div><div class="note">spread environment</div></div></section>
+              <section class="card"><h3 class="card-title">Funding</h3><div class="kpi"><div class="label">window</div><div class="value">selective</div><div class="note">not DCM execution</div></div></section>
+              <section class="card"><h3 class="card-title">Risk appetite</h3><div class="kpi"><div class="label">regime</div><div class="value">risk_off</div><div class="note">synthetic label</div></div></section>
+            </div>
+            <div class="grid cols-2" style="margin-top:18px;">
+              <section class="card">
+                <h3 class="card-title">Quarterly market environment table</h3>
+                <table>
+                  <thead><tr><th>Period</th><th>Rates</th><th>Credit</th><th>Funding</th><th>Liquidity</th><th>Volatility</th><th>Overall</th></tr></thead>
+                  <tbody>
+                    <tr><td>2026-Q1</td><td>rising</td><td>tightening</td><td>selective</td><td>normal</td><td>elevated</td><td>mixed</td></tr>
+                    <tr><td>2026-Q2</td><td>rising</td><td>tightening</td><td>selective</td><td>tight</td><td>elevated</td><td>selective</td></tr>
+                    <tr><td>2026-Q3</td><td>high</td><td>stressed</td><td>closed</td><td>tight</td><td>stressed</td><td>constrained</td></tr>
+                    <tr><td>2026-Q4</td><td>high</td><td>tightening</td><td>selective</td><td>tight</td><td>elevated</td><td>selective</td></tr>
+                  </tbody>
+                </table>
+              </section>
+              <section class="card">
+                <h3 class="card-title">State lineage</h3>
+                <table>
+                  <thead><tr><th>Record</th><th>Reads</th><th>Consumed by</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono">env:2026Q1</td><td>market conditions, readout</td><td>firm state, investor intent, response candidates</td></tr>
+                    <tr><td class="mono">readout:Q1</td><td>rates, credit, equity, funding, liquidity</td><td>market environment state</td></tr>
+                    <tr><td class="mono">condition:credit</td><td>synthetic spread tone</td><td>readout + evidence resolver</td></tr>
+                  </tbody>
+                </table>
+              </section>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ATTENTION -->
+      <article id="sheet-attention" class="sheet">
+        <div class="sheet-inner">
+          <div class="band">
+            <div><div class="chapter">Sheet III</div><h1>Attention & Endogenous Feedback</h1></div>
+            <div class="mono">selected evidence · budgeted memory</div>
+          </div>
+          <div class="subband">What an actor saw in period N changes what it attends to in period N+1.</div>
+          <div class="panel-body">
+            <div class="grid cols-3">
+              <section class="card">
+                <h3 class="card-title">Investor A · context frame</h3>
+                <table>
+                  <tr><td>Selected evidence</td><td class="input-cell">market env, firm state</td></tr>
+                  <tr><td>Intent</td><td class="status-cell">risk_flag_watch</td></tr>
+                  <tr><td>Next focus</td><td class="status-cell">market_access, liquidity</td></tr>
+                  <tr><td>Budget</td><td class="mono">max 12 / dim 3</td></tr>
+                </table>
+              </section>
+              <section class="card">
+                <h3 class="card-title">Investor B · context frame</h3>
+                <table>
+                  <tr><td>Selected evidence</td><td class="input-cell">dialogue, stewardship</td></tr>
+                  <tr><td>Intent</td><td class="status-cell">engagement_watch</td></tr>
+                  <tr><td>Next focus</td><td class="status-cell">dialogue, escalation</td></tr>
+                  <tr><td>Budget</td><td class="mono">max 12 / dim 3</td></tr>
+                </table>
+              </section>
+              <section class="card">
+                <h3 class="card-title">Bank C · context frame</h3>
+                <table>
+                  <tr><td>Selected evidence</td><td class="input-cell">liquidity, firm state</td></tr>
+                  <tr><td>Credit watch</td><td class="status-cell">refinancing_watch</td></tr>
+                  <tr><td>Next focus</td><td class="status-cell">funding, market environment</td></tr>
+                  <tr><td>Budget</td><td class="mono">max 12 / dim 3</td></tr>
+                </table>
+              </section>
+            </div>
+            <section class="card" style="margin-top:18px;">
+              <h3 class="card-title">Attention feedback loop</h3>
+              <svg class="mini-chart" viewBox="0 0 1100 170" xmlns="http://www.w3.org/2000/svg">
+                <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#034694"/></marker></defs>
+                <rect x="30" y="55" width="150" height="50" fill="#e8eef8" stroke="#034694"/><text x="105" y="85" text-anchor="middle" font-size="13" font-family="Arial">Market Environment</text>
+                <rect x="230" y="55" width="150" height="50" fill="#fff" stroke="#034694"/><text x="305" y="85" text-anchor="middle" font-size="13" font-family="Arial">Firm Latent State</text>
+                <rect x="430" y="55" width="150" height="50" fill="#fff" stroke="#034694"/><text x="505" y="78" text-anchor="middle" font-size="13" font-family="Arial">Selected Evidence</text><text x="505" y="94" text-anchor="middle" font-size="11" font-family="Arial" fill="#6b7280">bounded</text>
+                <rect x="630" y="55" width="150" height="50" fill="#fff" stroke="#034694"/><text x="705" y="78" text-anchor="middle" font-size="13" font-family="Arial">Intent / Review</text><text x="705" y="94" text-anchor="middle" font-size="11" font-family="Arial" fill="#6b7280">non-binding</text>
+                <rect x="830" y="55" width="180" height="50" fill="#fff" stroke="#034694"/><text x="920" y="78" text-anchor="middle" font-size="13" font-family="Arial">Attention Feedback</text><text x="920" y="94" text-anchor="middle" font-size="11" font-family="Arial" fill="#6b7280">decay + crowding</text>
+                <line x1="180" y1="80" x2="230" y2="80" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow)"/><line x1="380" y1="80" x2="430" y2="80" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow)"/><line x1="580" y1="80" x2="630" y2="80" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow)"/><line x1="780" y1="80" x2="830" y2="80" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow)"/>
+                <path d="M 920 105 C 920 145, 505 145, 505 107" fill="none" stroke="#7c1d2c" stroke-width="1.2" marker-end="url(#arrow)"/><text x="705" y="153" text-anchor="middle" font-size="12" font-family="Arial" fill="#7c1d2c">next-period memory selection changes</text>
+              </svg>
+            </section>
+          </div>
+        </div>
+      </article>
+
+      <!-- OUTPUTS -->
+      <article id="sheet-outputs" class="sheet">
+        <div class="sheet-inner">
+          <div class="band">
+            <div><div class="chapter">Sheet IV</div><h1>Outputs · Index, Events, Causal Tables</h1></div>
+            <div class="mono">regime comparison · constrained</div>
+          </div>
+          <div class="subband">The main output is not only stylized facts. It is the time path, event trace, actor response, and causal evidence chain.</div>
+          <div class="panel-body">
+            <div class="index-wrap">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                <h3 class="card-title" style="margin:0;">Reference index path · one-year window</h3>
+                <span class="mono muted">2026-01-01 → 2026-12-31</span>
+              </div>
+              <svg class="index-chart" viewBox="0 0 1280 380" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="1280" height="380" fill="#fbfbfa"/>
+                <g stroke="#d4d4d4" stroke-width="0.7">
+                  <line x1="70" y1="60" x2="1240" y2="60"/><line x1="70" y1="120" x2="1240" y2="120"/><line x1="70" y1="180" x2="1240" y2="180"/><line x1="70" y1="240" x2="1240" y2="240"/><line x1="70" y1="300" x2="1240" y2="300"/>
+                  <line x1="70" y1="40" x2="70" y2="320"/><line x1="360" y1="40" x2="360" y2="320"/><line x1="650" y1="40" x2="650" y2="320"/><line x1="940" y1="40" x2="940" y2="320"/><line x1="1240" y1="40" x2="1240" y2="320"/>
+                </g>
+                <text x="70" y="348" font-family="Consolas" font-size="12" fill="#6b7280">Jan</text><text x="360" y="348" font-family="Consolas" font-size="12" fill="#6b7280">Apr</text><text x="650" y="348" font-family="Consolas" font-size="12" fill="#6b7280">Jul</text><text x="940" y="348" font-family="Consolas" font-size="12" fill="#6b7280">Oct</text><text x="1230" y="348" font-family="Consolas" font-size="12" fill="#6b7280" text-anchor="end">Dec</text>
+                <path d="M70 230 C120 214, 160 226, 210 205 S310 183, 360 170 S455 155, 505 178 S605 210, 650 238 S760 272, 820 244 S900 210, 940 225 S1045 188, 1100 174 S1190 162, 1240 172" fill="none" stroke="#034694" stroke-width="3"/>
+                <path d="M70 240 C160 230, 260 210, 360 195 S560 205, 650 230 S820 250, 940 235 S1110 205, 1240 198" fill="none" stroke="#b7bfdb" stroke-width="2" stroke-dasharray="7 5"/>
+                <g font-family="Arial" font-size="12">
+                  <line x1="360" y1="40" x2="360" y2="322" stroke="#7c1d2c" stroke-width="1.2" stroke-dasharray="4 3"/><text x="365" y="36" fill="#7c1d2c">↑ 2026-04-01 rate repricing</text>
+                  <line x1="650" y1="40" x2="650" y2="322" stroke="#7c1d2c" stroke-width="1.2" stroke-dasharray="4 3"/><text x="655" y="36" fill="#7c1d2c">↑ 2026-08-01 Great Dread Event arrives</text>
+                  <line x1="940" y1="40" x2="940" y2="322" stroke="#034694" stroke-width="1.2" stroke-dasharray="4 3"/><text x="945" y="36" fill="#034694">↑ 2026-10-15 funding window reopens</text>
+                </g>
+                <line x1="70" y1="320" x2="1240" y2="320" stroke="#6b7280"/><line x1="70" y1="40" x2="70" y2="320" stroke="#6b7280"/>
+                <text x="90" y="56" font-family="Arial" font-size="12" fill="#034694">index</text><text x="142" y="56" font-family="Arial" font-size="12" fill="#6b7280">fundamental/context baseline</text>
+              </svg>
+              <div class="event-row">
+                <div class="event-chip"><div class="event-date">2026-04-01</div><strong>Rate repricing</strong><br/>market environment shifts to rising-rate context</div>
+                <div class="event-chip"><div class="event-date">2026-08-01</div><strong>Great Dread Event</strong><br/>risk appetite turns risk-off; attention budget reallocates</div>
+                <div class="event-chip blue"><div class="event-date">2026-10-15</div><strong>Funding window</strong><br/>selective reopening; credit review stays cautious</div>
+                <div class="event-chip blue"><div class="event-date">2026-12-31</div><strong>Year-end digest</strong><br/>canonical replay pinned for audit</div>
+              </div>
+            </div>
+
+            <div class="kpi-row" style="margin-top:14px;">
+              <div class="kpi"><div class="label">final index</div><div class="value">103.8</div><div class="note">synthetic</div></div>
+              <div class="kpi"><div class="label">risk intents</div><div class="value">14</div><div class="note">non-binding</div></div>
+              <div class="kpi"><div class="label">credit watches</div><div class="value">8</div><div class="note">no lending decision</div></div>
+              <div class="kpi"><div class="label">attention shifts</div><div class="value">22</div><div class="note">budgeted</div></div>
+              <div class="kpi"><div class="label">unresolved refs</div><div class="value">0</div><div class="note">context frame</div></div>
+              <div class="kpi"><div class="label">digest</div><div class="value" style="font-size:15px;">e508…dcb5</div><div class="note">canonical</div></div>
+            </div>
+
+            <div class="two-column-output" style="margin-top:18px;">
+              <section class="card">
+                <h3 class="card-title">LLM-ready causal summary table <span class="tag">placeholder</span></h3>
+                <table class="causal-table">
+                  <thead><tr><th>Date</th><th>Event / state</th><th>Evidence</th><th>Actor response</th><th>Downstream trace</th></tr></thead>
+                  <tbody>
+                    <tr><td>2026-04-01</td><td>Rate environment turns rising</td><td>env:rates:rising</td><td>Bank C → refinancing_watch</td><td>credit review note → attention focus funding</td></tr>
+                    <tr><td>2026-08-01</td><td>Risk appetite regime moves risk_off</td><td>env:risk_off + firm_state:liquidity</td><td>Investor A → deepen_due_diligence</td><td>intent → next-period market_access focus</td></tr>
+                    <tr><td>2026-10-15</td><td>Funding window selective</td><td>readout:selective</td><td>Firm 2 → response candidate</td><td>corporate response → valuation context</td></tr>
+                  </tbody>
+                </table>
+              </section>
+              <section class="card">
+                <h3 class="card-title">Stylized facts · secondary</h3>
+                <table>
+                  <tr><td>Fat tails α</td><td class="num">3.42</td><td><span class="tag green">ok</span></td></tr>
+                  <tr><td>Vol clustering</td><td class="num">0.31</td><td><span class="tag green">ok</span></td></tr>
+                  <tr><td>Return autocorr</td><td class="num">0.02</td><td><span class="tag green">ok</span></td></tr>
+                  <tr><td>Leverage effect</td><td class="num">+0.04</td><td><span class="tag red">open</span></td></tr>
+                </table>
+                <div class="boundary-box" style="margin-top:12px;">Stylized facts are diagnostic, not the whole output. The core surface is the causal, actor-specific ledger trace.</div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- LEDGER -->
+      <article id="sheet-ledger" class="sheet">
+        <div class="sheet-inner">
+          <div class="band"><div><div class="chapter">Sheet V</div><h1>Ledger & Causal Inspector</h1></div><div class="mono">parent evidence · downstream records</div></div>
+          <div class="subband">Click-target template: each record should reveal source evidence, actor context frame, and downstream effects.</div>
+          <div class="panel-body">
+            <div class="grid cols-2">
+              <section class="card">
+                <h3 class="card-title">Record stream</h3>
+                <table>
+                  <thead><tr><th>Seq</th><th>Type</th><th>Source</th><th>Target</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr><td class="num">188</td><td>market_environment_state_added</td><td>market</td><td>world</td><td>completed</td></tr>
+                    <tr><td class="num">201</td><td>firm_latent_state_updated</td><td>firm:2</td><td>world</td><td>completed</td></tr>
+                    <tr><td class="num">215</td><td>investor_intent_signal_added</td><td>investor:a</td><td>firm:2</td><td>completed</td></tr>
+                    <tr><td class="num">227</td><td>bank_credit_review_signal_added</td><td>bank:c</td><td>firm:2</td><td>completed</td></tr>
+                    <tr><td class="num">240</td><td>attention_feedback_recorded</td><td>investor:a</td><td>period+1</td><td>completed</td></tr>
+                  </tbody>
+                </table>
+              </section>
+              <section class="card">
+                <h3 class="card-title">Selected record inspector</h3>
+                <table>
+                  <tr><td>Record ID</td><td class="mono">intent:investor_a:firm_2:2026Q3</td></tr>
+                  <tr><td>Actor context</td><td class="mono">ctx:investor_a:2026Q3</td></tr>
+                  <tr><td>Resolved buckets</td><td>market_environment, firm_state, dialogue</td></tr>
+                  <tr><td>Intent label</td><td>deepen_due_diligence</td></tr>
+                  <tr><td>Boundary</td><td>not an order, not a recommendation</td></tr>
+                </table>
+                <div class="note-box" style="margin-top:12px;">Future: this panel can be backed by a record graph API. Current file is a visual HTML template.</div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- APPENDIX -->
+      <article id="sheet-appendix" class="sheet">
+        <div class="sheet-inner">
+          <div class="band"><div><div class="chapter">Sheet VI</div><h1>Appendix · Public Boundary</h1></div><div class="mono">v1.x public prototype</div></div>
+          <div class="subband">Public FWE keeps universal abstraction. Japan calibration and proprietary assumptions remain out of this template.</div>
+          <div class="panel-body">
+            <div class="grid cols-2">
+              <section class="card">
+                <h3 class="card-title">Version boundary</h3>
+                <table>
+                  <thead><tr><th>Line</th><th>Scope</th><th>Public?</th></tr></thead>
+                  <tbody>
+                    <tr><td>v0.xx</td><td>country-neutral world kernel</td><td>yes</td></tr>
+                    <tr><td>v1.xx</td><td>country-neutral reference financial system</td><td>yes</td></tr>
+                    <tr><td>v2.xx</td><td>Japan public calibration</td><td>conditional</td></tr>
+                    <tr><td>v3.xx</td><td>Japan proprietary calibration</td><td>no</td></tr>
+                  </tbody>
+                </table>
+              </section>
+              <section class="card">
+                <h3 class="card-title">Hard boundary</h3>
+                <div class="boundary-box">No price formation, no trading, no lending decisions, no portfolio allocation, no investment advice, no real data, no Japan calibration, no LLM execution, no behavior probabilities.</div>
+                <div class="note-box" style="margin-top:12px;">Purpose: show how information conditions propagate into actor-specific attention, review posture, valuation claims, credit review notes, and next-period attention.</div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <nav class="bottom-tabs" aria-label="Workbook sheets">
+      <button class="sheet-tab active" data-sheet="cover">Cover</button>
+      <button class="sheet-tab" data-sheet="settings">Settings</button>
+      <button class="sheet-tab" data-sheet="market">Market State</button>
+      <button class="sheet-tab" data-sheet="attention">Attention</button>
+      <button class="sheet-tab" data-sheet="outputs">Outputs</button>
+      <button class="sheet-tab" data-sheet="ledger">Ledger</button>
+      <button class="sheet-tab" data-sheet="appendix">Appendix</button>
+    </nav>
+  </main>
+  <script>
+    const tabs = Array.from(document.querySelectorAll('.sheet-tab'));
+    const sheets = Array.from(document.querySelectorAll('.sheet'));
+    function activateSheet(name) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.sheet === name));
+      sheets.forEach(s => s.classList.toggle('active', s.id === 'sheet-' + name));
+      location.hash = name;
+    }
+    tabs.forEach(tab => tab.addEventListener('click', () => activateSheet(tab.dataset.sheet)));
+    const initial = location.hash.replace('#','');
+    if (initial && document.getElementById('sheet-' + initial)) activateSheet(initial);
+  </script>
+</body>
+</html>
