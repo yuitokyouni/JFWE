@@ -195,7 +195,7 @@ def test_living_world_emits_one_interbank_liquidity_state_per_bank_per_period():
     """v1.13.5: the orchestrator emits one
     InterbankLiquidityStateRecord per bank per period in the
     default fixture (2 banks × 4 periods = 8 records)."""
-    from tests.test_living_reference_world_performance_boundary import (
+    from test_living_reference_world_performance_boundary import (
         _BANK_IDS,
         _FIRM_IDS,
         _INVESTOR_IDS,
@@ -219,7 +219,7 @@ def test_living_world_emits_one_interbank_liquidity_state_per_bank_per_period():
 def test_living_world_interbank_liquidity_records_are_per_bank_per_period():
     """Each ``(bank_id, period)`` pair is unique among the
     emitted interbank-liquidity states."""
-    from tests.test_living_reference_world_performance_boundary import (
+    from test_living_reference_world_performance_boundary import (
         _BANK_IDS,
         _FIRM_IDS,
         _INVESTOR_IDS,
@@ -251,7 +251,7 @@ def test_living_world_interbank_liquidity_records_are_per_bank_per_period():
 def test_living_world_interbank_liquidity_ids_appear_on_credit_review_metadata():
     """v1.13.5: each ``bank_credit_review_note`` signal stamps
     the cited interbank-liquidity-state id on its metadata."""
-    from tests.test_living_reference_world_performance_boundary import (
+    from test_living_reference_world_performance_boundary import (
         _BANK_IDS,
         _FIRM_IDS,
         _INVESTOR_IDS,
@@ -285,7 +285,7 @@ def test_living_world_interbank_liquidity_ids_appear_on_credit_review_metadata()
 def test_living_world_interbank_liquidity_ids_appear_on_credit_review_payload():
     """v1.13.5: the resolved interbank-liquidity-state ids are
     also stamped on the credit-review payload."""
-    from tests.test_living_reference_world_performance_boundary import (
+    from test_living_reference_world_performance_boundary import (
         _BANK_IDS,
         _FIRM_IDS,
         _INVESTOR_IDS,
@@ -321,7 +321,7 @@ def test_living_world_interbank_liquidity_states_have_expected_label_set():
     ``available`` / ``low`` labels and confidence ``0.5``. This
     is a regression pin: changing the placeholder shifts the
     digest and must update both the test pin and the docs."""
-    from tests.test_living_reference_world_performance_boundary import (
+    from test_living_reference_world_performance_boundary import (
         _BANK_IDS,
         _FIRM_IDS,
         _INVESTOR_IDS,

@@ -1,0 +1,1392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FWE Analyst Workbench — Static UI Prototype</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /* Design tokens                                                      */
+  /* ------------------------------------------------------------------ */
+  :root {
+    /* palette */
+    --blue:        #034694;
+    --blue-2:      #022c5c;
+    --blue-tint:   #e8eef8;
+    --lilac:       #b7bfdb;
+    --paper:       #ffffff;
+    --ivory:       #f7f6f1;
+    --sheet:       #faf9f4;
+    --grid:        #d9d9d9;
+    --line:        #b8b8b8;
+    --ink:         #111111;
+    --muted:       #6b7280;
+    --soft:        #9aa3ad;
+    --danger:      #7c1d2c;
+    --amber:       #8a5a00;
+    --ok:          #166534;
+
+    /* dimensions */
+    --tab-h:       36px;
+    --ribbon-h:    40px;
+
+    /* type */
+    --font-ui:     "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-serif:  "Cormorant Garamond", Garamond, Georgia, "Times New Roman", serif;
+    --font-mono:   "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Reset / base                                                       */
+  /* ------------------------------------------------------------------ */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font-ui);
+    color: var(--ink);
+    background: #ececea;
+    overflow: hidden;
+  }
+
+  .workbook {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: var(--ribbon-h) 1fr var(--tab-h);
+    background: var(--paper);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Top ribbon                                                         */
+  /* ------------------------------------------------------------------ */
+  .top-ribbon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    border-bottom: 1px solid #c7c7c7;
+    background: #f3f2ee;
+    font-size: 12px;
+    color: #2d2d2d;
+    white-space: nowrap;
+  }
+  .brand-chip {
+    background: var(--blue);
+    color: #fff;
+    height: 24px;
+    padding: 0 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+  }
+  .ribbon-group {
+    border-left: 1px solid #c7c7c7;
+    padding-left: 10px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .ribbon-btn {
+    border: 1px solid #c9c9c9;
+    background: #fff;
+    height: 24px;
+    padding: 0 9px;
+    font: inherit;
+    font-size: 12px;
+    color: #222;
+    cursor: pointer;
+  }
+  .ribbon-btn:hover { background: #f7f7f5; }
+  .ribbon-spacer { flex: 1; }
+  .digest { font-family: var(--font-mono); color: var(--muted); }
+
+  /* ------------------------------------------------------------------ */
+  /* Sheet stage and sheets                                             */
+  /* ------------------------------------------------------------------ */
+  .sheet-stage {
+    position: relative;
+    overflow: auto;
+    background:
+      linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,0.035) 1px, transparent 1px),
+      var(--ivory);
+    background-size: 64px 24px;
+  }
+  .sheet {
+    display: none;
+    min-height: calc(100vh - var(--ribbon-h) - var(--tab-h));
+    padding: 18px 24px 28px;
+  }
+  .sheet.active { display: block; }
+  .sheet-inner {
+    max-width: 1500px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.98);
+    border: 1px solid #d6d4cd;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Bottom tabs                                                        */
+  /* ------------------------------------------------------------------ */
+  .bottom-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    border-top: 1px solid #a8a8a8;
+    background: #e3e2dd;
+    padding: 3px 8px 0;
+    overflow-x: auto;
+  }
+  .sheet-tab {
+    min-width: 96px;
+    max-width: 180px;
+    height: 30px;
+    padding: 6px 12px;
+    border: 1px solid #aeb4bc;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    background: #f5f4ef;
+    color: #333;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .sheet-tab:hover { background: #fafaf6; }
+  .sheet-tab.active {
+    background: #fff;
+    color: var(--blue);
+    font-weight: 700;
+    border-top: 3px solid var(--blue);
+    padding-top: 3px;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Cover                                                              */
+  /* ------------------------------------------------------------------ */
+  .cover-page {
+    position: relative;
+    min-height: 680px;
+    background: #fff;
+    padding: 80px 80px 64px;
+    overflow: hidden;
+  }
+  .cover-grid {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,0.045) 1px, transparent 1px);
+    background-size: 64px 24px;
+    pointer-events: none;
+    opacity: 0.32;
+  }
+  .cover-rule {
+    position: relative;
+    height: 4px;
+    width: 80px;
+    background: var(--blue);
+    margin: 0 auto;
+  }
+  .cover-title {
+    position: relative;
+    margin-top: 130px;
+    text-align: center;
+    font-family: var(--font-serif);
+    font-size: 84px;
+    font-weight: 600;
+    line-height: 1.0;
+    letter-spacing: 0.005em;
+    color: #050505;
+  }
+  .cover-subtitle {
+    position: relative;
+    margin-top: 16px;
+    text-align: center;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 22px;
+    color: #2c2c2c;
+  }
+  .cover-tagline {
+    position: relative;
+    margin: 36px auto 0;
+    max-width: 720px;
+    text-align: center;
+    font-size: 14px;
+    color: #444;
+    line-height: 1.5;
+  }
+  .cover-author {
+    position: absolute;
+    left: 80px;
+    bottom: 60px;
+    font-family: var(--font-serif);
+    font-size: 22px;
+    color: #111;
+    letter-spacing: 0.04em;
+  }
+  .cover-build {
+    position: absolute;
+    right: 64px;
+    top: 36px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .cover-foot {
+    position: absolute;
+    left: 80px;
+    right: 80px;
+    bottom: 24px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--soft);
+    border-top: 1px solid #e3e0d8;
+    padding-top: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Sheet header bands                                                 */
+  /* ------------------------------------------------------------------ */
+  .band {
+    background: var(--blue);
+    color: #fff;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .band h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .band .chapter {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12px;
+    opacity: 0.78;
+    margin-bottom: 2px;
+  }
+  .subband {
+    background: var(--lilac);
+    color: var(--blue-2);
+    padding: 7px 22px;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 13px;
+  }
+  .panel-body { padding: 18px 22px 22px; background: var(--sheet); }
+
+  /* ------------------------------------------------------------------ */
+  /* Layout primitives                                                  */
+  /* ------------------------------------------------------------------ */
+  .grid { display: grid; gap: 14px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: 1fr 1.1fr 1fr; }
+  .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid.cols-12-3 { grid-template-columns: 1.6fr 0.8fr; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #d4d2cb;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .card-title {
+    margin: 0 0 8px;
+    color: var(--blue-2);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 16px;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+  }
+  .section-rule { height: 3px; background: var(--blue); margin-bottom: 8px; }
+
+  /* ------------------------------------------------------------------ */
+  /* Inline atoms                                                       */
+  /* ------------------------------------------------------------------ */
+  .muted { color: var(--muted); }
+  .mono  { font-family: var(--font-mono); }
+  .small { font-size: 11px; }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 7px;
+    border: 1px solid #c6c6c6;
+    background: #f6f5f0;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    border-radius: 2px;
+  }
+  .tag.blue   { border-color: var(--blue);   color: var(--blue);   background: #eef4ff; }
+  .tag.red    { border-color: var(--danger); color: var(--danger); background: #fff6f7; }
+  .tag.green  { border-color: var(--ok);     color: var(--ok);     background: #f2fbf5; }
+  .tag.amber  { border-color: var(--amber);  color: var(--amber);  background: #fff8eb; }
+
+  /* ------------------------------------------------------------------ */
+  /* Tables                                                             */
+  /* ------------------------------------------------------------------ */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left;
+    color: var(--blue-2);
+    font-weight: 700;
+    border-bottom: 1px solid var(--blue);
+    padding: 5px 7px;
+    white-space: nowrap;
+  }
+  td {
+    border-bottom: 1px solid #ebe9e2;
+    padding: 5px 7px;
+    vertical-align: top;
+  }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); }
+  .input-cell    { font-family: var(--font-mono); color: var(--blue); font-weight: 700; background: #f3f7ff; }
+  .status-cell   { font-family: var(--font-mono); }
+
+  /* ------------------------------------------------------------------ */
+  /* Output / chart blocks                                              */
+  /* ------------------------------------------------------------------ */
+  .index-wrap   { background: #fff; border: 1px solid #d4d2cb; padding: 14px; }
+  .index-chart  { width: 100%; height: auto; display: block; background: #fbfbfa; }
+  .event-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 9px;
+    font-size: 11px;
+  }
+  .event-chip {
+    border-left: 3px solid var(--danger);
+    background: #fff8f8;
+    padding: 6px 8px;
+    min-height: 42px;
+  }
+  .event-chip.blue { border-left-color: var(--blue); background: #f4f7ff; }
+  .event-date { font-family: var(--font-mono); color: #555; margin-bottom: 2px; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .kpi {
+    background: #fff;
+    border-top: 3px solid var(--blue);
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    padding: 9px 10px;
+  }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .kpi .value { color: var(--blue); font-size: 19px; font-family: var(--font-mono); font-weight: 700; margin-top: 3px; }
+  .kpi .note  { color: var(--muted); font-size: 10px; margin-top: 2px; }
+
+  .mini-chart { width: 100%; height: auto; background: #fbfbfa; border: 1px solid #e1e1e1; }
+
+  .boundary-box {
+    border-left: 4px solid var(--danger);
+    background: #fff7f8;
+    padding: 11px 13px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .note-box {
+    border-left: 4px solid var(--blue);
+    background: #f5f8ff;
+    padding: 11px 13px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Settings — regime selector                                         */
+  /* ------------------------------------------------------------------ */
+  .regime-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .regime-pill {
+    border: 1px solid #c9c9c9;
+    background: #fff;
+    color: #333;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .regime-pill:hover { background: #fafaf6; }
+  .regime-pill.active {
+    border-color: var(--blue);
+    background: var(--blue-tint);
+    color: var(--blue-2);
+    font-weight: 700;
+  }
+  .regime-pill .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: block; margin-bottom: 2px; }
+  .regime-pill.active .label { color: var(--blue); }
+
+  /* ------------------------------------------------------------------ */
+  /* Responsive fallback                                                */
+  /* ------------------------------------------------------------------ */
+  @media (max-width: 980px) {
+    body { overflow: auto; }
+    .workbook { height: auto; min-height: 100vh; }
+    .sheet-stage { overflow: visible; }
+    .grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.cols-12-3,
+    .kpi-row, .event-row, .regime-selector { grid-template-columns: 1fr; }
+    .cover-title { font-size: 56px; }
+    .cover-subtitle { font-size: 17px; }
+    .bottom-tabs { position: sticky; bottom: 0; z-index: 5; }
+  }
+</style>
+</head>
+<body>
+<main class="workbook" aria-label="FWE workbook style dashboard">
+  <!-- ============================================================== -->
+  <!-- Top ribbon                                                     -->
+  <!-- ============================================================== -->
+  <header class="top-ribbon">
+    <div class="brand-chip">FWE</div>
+    <div class="ribbon-group">
+      <button class="ribbon-btn" type="button">Run</button>
+      <button class="ribbon-btn" type="button">Validate</button>
+      <button class="ribbon-btn" type="button">Compare Regimes</button>
+      <button class="ribbon-btn" type="button">Export HTML</button>
+    </div>
+    <div class="ribbon-group">
+      <span class="muted">Mode</span>
+      <span class="tag blue">Synthetic · no real data</span>
+      <span class="tag">v1.14.1</span>
+    </div>
+    <div class="ribbon-spacer"></div>
+    <div class="digest">digest · 916e410d…</div>
+  </header>
+
+  <!-- ============================================================== -->
+  <!-- Sheet stage                                                    -->
+  <!-- ============================================================== -->
+  <section class="sheet-stage">
+
+    <!-- COVER -->
+    <article id="sheet-cover" class="sheet active">
+      <div class="sheet-inner cover-page">
+        <div class="cover-grid"></div>
+        <div class="cover-build">build · public prototype<br/>v1.14.1 · synthetic only</div>
+        <div class="cover-rule"></div>
+        <h1 class="cover-title">Fin World Engine</h1>
+        <div class="cover-subtitle">An inter-space agent-based simulation substrate</div>
+        <p class="cover-tagline">
+          A deterministic, label-only, jurisdiction-neutral substrate for
+          simulating how information conditions propagate into actor
+          attention, review posture, and recorded intent — never into
+          binding actions, prices, or recommendations.
+        </p>
+        <div class="cover-author">Y. H.</div>
+        <div class="cover-foot">
+          <span>analyst workbench · static UI prototype</span>
+          <span>no price formation · no real data · no Japan calibration</span>
+        </div>
+      </div>
+    </article>
+
+    <!-- SETTINGS -->
+    <article id="sheet-settings" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet I</div><h1>Settings &amp; Model Modules</h1></div>
+          <div class="mono">run · 2026-05-04 · seed 42</div>
+        </div>
+        <div class="subband">Configure the reference world. Tabs are separated like a spreadsheet — no cover/content stacking.</div>
+        <div class="panel-body">
+
+          <div class="grid cols-3">
+            <section class="card">
+              <div class="section-rule"></div>
+              <h3 class="card-title">Run control</h3>
+              <table>
+                <tr><td>Run digest</td><td class="mono">916e410d829b…beb379</td></tr>
+                <tr><td>Seed</td><td class="input-cell">42</td></tr>
+                <tr><td>Start date</td><td class="input-cell">2026-03-31</td></tr>
+                <tr><td>Periods</td><td class="input-cell">4 quarters</td></tr>
+                <tr><td>Firms</td><td class="input-cell">3</td></tr>
+                <tr><td>Investors</td><td class="input-cell">2</td></tr>
+                <tr><td>Banks</td><td class="input-cell">2</td></tr>
+                <tr><td>Digest policy</td><td class="input-cell">canonical SHA-256</td></tr>
+                <tr><td>Per-period records</td><td class="mono">81 / 83</td></tr>
+                <tr><td>Per-run window</td><td class="mono">[324, 372]</td></tr>
+              </table>
+            </section>
+
+            <section class="card">
+              <div class="section-rule"></div>
+              <h3 class="card-title">Market regime <span class="tag">selector mock</span></h3>
+              <div class="regime-selector" role="radiogroup" aria-label="Market regime">
+                <button class="regime-pill" data-regime="constructive" type="button" role="radio" aria-checked="false">
+                  <span class="label">regime</span>constructive
+                </button>
+                <button class="regime-pill" data-regime="mixed" type="button" role="radio" aria-checked="false">
+                  <span class="label">regime</span>mixed
+                </button>
+                <button class="regime-pill active" data-regime="constrained" type="button" role="radio" aria-checked="true">
+                  <span class="label">regime</span>constrained
+                </button>
+                <button class="regime-pill" data-regime="tightening" type="button" role="radio" aria-checked="false">
+                  <span class="label">regime</span>tightening
+                </button>
+              </div>
+              <div class="note-box" style="margin-top:12px;">
+                Regime is a label-based context preset — it shapes the
+                synthetic readout each period drives. It does not set
+                rates, prices, or any calibrated parameter.
+              </div>
+              <table style="margin-top:10px;">
+                <tr><td>Active</td><td class="status-cell" id="regime-active">constrained</td></tr>
+                <tr><td>Visibility</td><td class="status-cell">internal_only</td></tr>
+              </table>
+            </section>
+
+            <section class="card">
+              <div class="section-rule"></div>
+              <h3 class="card-title">Boundary flags</h3>
+              <table>
+                <tr><td>Price formation</td><td class="status-cell">OFF</td></tr>
+                <tr><td>Trading / orders</td><td class="status-cell">OFF</td></tr>
+                <tr><td>Lending decisions</td><td class="status-cell">OFF</td></tr>
+                <tr><td>Real data</td><td class="status-cell">OFF</td></tr>
+                <tr><td>Japan calibration</td><td class="status-cell">OFF</td></tr>
+                <tr><td>Investment advice</td><td class="status-cell">OFF</td></tr>
+                <tr><td>LLM execution</td><td class="status-cell">OFF</td></tr>
+                <tr><td>Probability claims</td><td class="status-cell">OFF</td></tr>
+              </table>
+            </section>
+          </div>
+
+          <section class="card" style="margin-top:14px;">
+            <div class="section-rule"></div>
+            <h3 class="card-title">
+              Strategy / behavior modules
+              <span class="tag">interchangeable · not all active at once</span>
+            </h3>
+            <table>
+              <thead>
+                <tr><th>Module</th><th>Status</th><th>Role</th><th>Layer</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Brock-Hommes</td>
+                  <td class="status-cell">candidate</td>
+                  <td>strategy switching archetype</td>
+                  <td>actor strategy</td>
+                </tr>
+                <tr>
+                  <td>Lux-Marchesi</td>
+                  <td class="status-cell">candidate</td>
+                  <td>chartist / fundamentalist switching</td>
+                  <td>actor strategy</td>
+                </tr>
+                <tr>
+                  <td>Minority Game</td>
+                  <td class="status-cell">candidate</td>
+                  <td>crowded adaptive signal use</td>
+                  <td>actor strategy</td>
+                </tr>
+                <tr>
+                  <td>Speculation Game</td>
+                  <td class="status-cell">candidate</td>
+                  <td>round-trip cognition / wealth dynamics</td>
+                  <td>actor strategy</td>
+                </tr>
+                <tr>
+                  <td>FCN / LOB adapter</td>
+                  <td class="status-cell">deferred</td>
+                  <td>placeholder market mechanism seam, not active trading</td>
+                  <td>market mechanism</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="note-box" style="margin-top:10px;">
+              These are interchangeable experimental adapters for future
+              v2.x / v3.x research. None ships as live behavior in the
+              current public prototype. Selecting one would not enable
+              trading, ordering, or price formation.
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- MARKET STATE -->
+    <article id="sheet-market" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet II</div><h1>Market Environment State</h1></div>
+          <div class="mono">context regime · label-based</div>
+        </div>
+        <div class="subband">Market state is recorded context, not price formation. Labels are designed for actor attention frames.</div>
+        <div class="panel-body">
+
+          <div class="grid cols-4">
+            <section class="card">
+              <h3 class="card-title">Liquidity</h3>
+              <div class="kpi"><div class="label">regime</div><div class="value">tight</div><div class="note">from liquidity market + readout</div></div>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Credit</h3>
+              <div class="kpi"><div class="label">regime</div><div class="value">tightening</div><div class="note">spread environment</div></div>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Funding</h3>
+              <div class="kpi"><div class="label">window</div><div class="value">selective</div><div class="note">no DCM execution</div></div>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Risk appetite</h3>
+              <div class="kpi"><div class="label">regime</div><div class="value">risk_off</div><div class="note">synthetic label</div></div>
+            </section>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:14px;">
+            <section class="card">
+              <h3 class="card-title">Quarterly market environment</h3>
+              <table>
+                <thead>
+                  <tr><th>Period</th><th>Rates</th><th>Credit</th><th>Funding</th><th>Liquidity</th><th>Volatility</th><th>Overall</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>2026-Q1</td><td>rising</td><td>tightening</td><td>selective</td><td>normal</td><td>elevated</td><td>mixed</td></tr>
+                  <tr><td>2026-Q2</td><td>rising</td><td>tightening</td><td>selective</td><td>tight</td><td>elevated</td><td>selective</td></tr>
+                  <tr><td>2026-Q3</td><td>high</td><td>stressed</td><td>closed</td><td>tight</td><td>stressed</td><td>constrained</td></tr>
+                  <tr><td>2026-Q4</td><td>high</td><td>tightening</td><td>selective</td><td>tight</td><td>elevated</td><td>selective</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section class="card">
+              <h3 class="card-title">State lineage</h3>
+              <table>
+                <thead><tr><th>Record</th><th>Reads</th><th>Consumed by</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono">env:2026Q1</td><td>market conditions, readout</td><td>firm state, investor intent</td></tr>
+                  <tr><td class="mono">readout:Q1</td><td>rates, credit, equity, funding, liquidity</td><td>market environment state</td></tr>
+                  <tr><td class="mono">cond:credit</td><td>synthetic spread tone</td><td>readout + evidence resolver</td></tr>
+                  <tr><td class="mono">env:2026Q1</td><td>+ interbank liquidity (v1.13.5)</td><td>bank credit review citation</td></tr>
+                </tbody>
+              </table>
+            </section>
+          </div>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- ATTENTION -->
+    <article id="sheet-attention" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet III</div><h1>Attention &amp; Endogenous Feedback</h1></div>
+          <div class="mono">selected evidence · budgeted memory</div>
+        </div>
+        <div class="subband">What an actor saw in period N changes what it attends to in period N+1.</div>
+        <div class="panel-body">
+
+          <div class="grid cols-3">
+            <section class="card">
+              <h3 class="card-title">Investor A · ActorAttentionState</h3>
+              <table>
+                <tr><td>Selected evidence</td><td class="input-cell">market env, firm state</td></tr>
+                <tr><td>Memory selection</td><td class="mono">mem:investor_a:Q3 (5 refs)</td></tr>
+                <tr><td>Intent</td><td class="status-cell">deepen_due_diligence</td></tr>
+                <tr><td>Next focus</td><td class="status-cell">market_access, liquidity</td></tr>
+                <tr><td>Budget / dim cap</td><td class="mono">12 / 3</td></tr>
+              </table>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Investor B · ActorAttentionState</h3>
+              <table>
+                <tr><td>Selected evidence</td><td class="input-cell">dialogue, stewardship</td></tr>
+                <tr><td>Memory selection</td><td class="mono">mem:investor_b:Q3 (4 refs)</td></tr>
+                <tr><td>Intent</td><td class="status-cell">engagement_watch</td></tr>
+                <tr><td>Next focus</td><td class="status-cell">dialogue, escalation</td></tr>
+                <tr><td>Budget / dim cap</td><td class="mono">12 / 3</td></tr>
+              </table>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Bank C · ActorAttentionState</h3>
+              <table>
+                <tr><td>Selected evidence</td><td class="input-cell">liquidity, firm state</td></tr>
+                <tr><td>Memory selection</td><td class="mono">mem:bank_c:Q3 (6 refs)</td></tr>
+                <tr><td>Watch label</td><td class="status-cell">refinancing_watch</td></tr>
+                <tr><td>Next focus</td><td class="status-cell">funding, market environment</td></tr>
+                <tr><td>Budget / dim cap</td><td class="mono">12 / 3</td></tr>
+              </table>
+            </section>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:14px;">
+            <section class="card">
+              <h3 class="card-title">Budget · decay · crowding · saturation</h3>
+              <table>
+                <thead><tr><th>Discipline</th><th>Rule</th><th>Boundary</th></tr></thead>
+                <tbody>
+                  <tr><td>Budget</td><td><span class="mono">max 12 selected refs</span> per actor / period</td><td>finite, deterministic</td></tr>
+                  <tr><td>Per-dimension cap</td><td><span class="mono">3 refs / focus dimension</span></td><td>prevents single-axis dominance</td></tr>
+                  <tr><td>Decay</td><td>inherited focus weight halves each period without reinforcement</td><td>integer-counted, never stochastic</td></tr>
+                  <tr><td>Crowding</td><td>new high-weight focus displaces lowest-weight inherited focus</td><td>deterministic priority order</td></tr>
+                  <tr><td>Saturation</td><td>above 8 focus labels → drop_oldest</td><td>cap on simultaneous attention</td></tr>
+                </tbody>
+              </table>
+              <div class="note-box" style="margin-top:10px;">
+                None of these is a calibrated probability. None of these
+                is a behavioral forecast. They are bookkeeping rules on
+                a finite attention object.
+              </div>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Attention feedback loop</h3>
+              <svg class="mini-chart" viewBox="0 0 1100 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Attention feedback diagram">
+                <defs>
+                  <marker id="arrow1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#034694"/>
+                  </marker>
+                </defs>
+                <rect x="30"  y="60" width="150" height="50" fill="#e8eef8" stroke="#034694"/>
+                <text x="105" y="90" text-anchor="middle" font-size="13" font-family="Inter">Market Environment</text>
+                <rect x="230" y="60" width="150" height="50" fill="#fff"    stroke="#034694"/>
+                <text x="305" y="90" text-anchor="middle" font-size="13" font-family="Inter">Firm Latent State</text>
+                <rect x="430" y="60" width="150" height="50" fill="#fff"    stroke="#034694"/>
+                <text x="505" y="83" text-anchor="middle" font-size="13" font-family="Inter">Selected Evidence</text>
+                <text x="505" y="99" text-anchor="middle" font-size="11" font-family="Inter" fill="#6b7280">bounded, budgeted</text>
+                <rect x="630" y="60" width="150" height="50" fill="#fff"    stroke="#034694"/>
+                <text x="705" y="83" text-anchor="middle" font-size="13" font-family="Inter">Intent / Review</text>
+                <text x="705" y="99" text-anchor="middle" font-size="11" font-family="Inter" fill="#6b7280">non-binding</text>
+                <rect x="830" y="60" width="180" height="50" fill="#fff"    stroke="#034694"/>
+                <text x="920" y="83" text-anchor="middle" font-size="13" font-family="Inter">Attention Feedback</text>
+                <text x="920" y="99" text-anchor="middle" font-size="11" font-family="Inter" fill="#6b7280">decay + crowding</text>
+
+                <line x1="180" y1="85" x2="230" y2="85" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow1)"/>
+                <line x1="380" y1="85" x2="430" y2="85" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow1)"/>
+                <line x1="580" y1="85" x2="630" y2="85" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow1)"/>
+                <line x1="780" y1="85" x2="830" y2="85" stroke="#034694" stroke-width="1.4" marker-end="url(#arrow1)"/>
+
+                <path d="M 920 110 C 920 150, 505 150, 505 112" fill="none" stroke="#7c1d2c" stroke-width="1.2" marker-end="url(#arrow1)"/>
+                <text x="705" y="160" text-anchor="middle" font-size="12" font-family="Inter" fill="#7c1d2c">next-period memory selection changes</text>
+              </svg>
+            </section>
+          </div>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- FIRMS -->
+    <article id="sheet-firms" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet IV</div><h1>Firms · Latent State &amp; Financing Need</h1></div>
+          <div class="mono">corporate side · label-only</div>
+        </div>
+        <div class="subband">Firms record latent operating-pressure labels and synthetic financing-need posture. Never a financial-statement update.</div>
+        <div class="panel-body">
+
+          <section class="card">
+            <h3 class="card-title">Firm financial latent state · 2026-Q3</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Firm</th>
+                  <th>Liquidity pressure</th>
+                  <th>Funding need</th>
+                  <th>Debt-service pressure</th>
+                  <th>Market-access pressure</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>firm:1</td><td class="num">0.42</td><td class="num">0.30</td><td class="num">0.55</td><td class="num">0.48</td><td class="num">0.50</td></tr>
+                <tr><td>firm:2</td><td class="num">0.71</td><td class="num">0.74</td><td class="num">0.66</td><td class="num">0.62</td><td class="num">0.55</td></tr>
+                <tr><td>firm:3</td><td class="num">0.38</td><td class="num">0.28</td><td class="num">0.40</td><td class="num">0.36</td><td class="num">0.50</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <div class="grid cols-2" style="margin-top:14px;">
+            <section class="card">
+              <h3 class="card-title">Corporate financing need (v1.14.1) · placeholder</h3>
+              <table>
+                <thead>
+                  <tr><th>Firm</th><th>Horizon</th><th>Purpose</th><th>Urgency</th><th>Size label</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>firm:1</td><td>near_term</td><td>working_capital</td><td>moderate</td><td>reference_size_medium</td></tr>
+                  <tr><td>firm:2</td><td>immediate</td><td>refinancing</td><td>elevated</td><td>reference_size_large</td></tr>
+                  <tr><td>firm:3</td><td>medium_term</td><td>growth_capex</td><td>low</td><td>reference_size_small</td></tr>
+                </tbody>
+              </table>
+              <div class="note-box" style="margin-top:10px;">
+                Need labels record what a firm is paying attention to in
+                financing terms. They are not applications, mandates,
+                rates, or commitments.
+              </div>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Corporate strategic response candidates</h3>
+              <table>
+                <thead><tr><th>Firm</th><th>Posture</th><th>Trigger</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td>firm:1</td><td>watch</td><td>routine review</td><td>candidate</td></tr>
+                  <tr><td>firm:2</td><td>defensive_review</td><td>liquidity pressure</td><td>candidate</td></tr>
+                  <tr><td>firm:3</td><td>opportunistic_capex</td><td>cheap funding signal (lagged)</td><td>candidate</td></tr>
+                </tbody>
+              </table>
+              <div class="note-box" style="margin-top:10px;">
+                Candidates are recorded postures, not board decisions.
+                v1.10.3 stamps <span class="mono">no_decision</span> /
+                <span class="mono">no_contract_mutation</span> on every record.
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- INVESTORS -->
+    <article id="sheet-investors" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet V</div><h1>Investors · Intent &amp; Stewardship</h1></div>
+          <div class="mono">portfolio review · non-binding</div>
+        </div>
+        <div class="subband">Investors record valuation claims, intent labels, dialogue and escalation candidates. Never an order, allocation, or recommendation.</div>
+        <div class="panel-body">
+
+          <div class="grid cols-2">
+            <section class="card">
+              <h3 class="card-title">Valuation refresh lite · 2026-Q3</h3>
+              <table>
+                <thead>
+                  <tr><th>Investor → Firm</th><th>Method</th><th>Synthetic estimate</th><th>Confidence</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>investor:a → firm:1</td><td>multiples</td><td class="num">102.4</td><td class="num">0.55</td></tr>
+                  <tr><td>investor:a → firm:2</td><td>multiples</td><td class="num">96.1</td><td class="num">0.45</td></tr>
+                  <tr><td>investor:a → firm:3</td><td>multiples</td><td class="num">108.3</td><td class="num">0.60</td></tr>
+                  <tr><td>investor:b → firm:1</td><td>scenario</td><td class="num">100.7</td><td class="num">0.50</td></tr>
+                  <tr><td>investor:b → firm:2</td><td>scenario</td><td class="num">94.0</td><td class="num">0.40</td></tr>
+                  <tr><td>investor:b → firm:3</td><td>scenario</td><td class="num">109.5</td><td class="num">0.55</td></tr>
+                </tbody>
+              </table>
+              <div class="note-box" style="margin-top:10px;">
+                Each row is one valuer's opinionated synthetic claim.
+                Stamped with <span class="mono">no_price_movement</span> /
+                <span class="mono">no_investment_advice</span> /
+                <span class="mono">synthetic_only</span>.
+              </div>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Investor intent signal (v1.12.1)</h3>
+              <table>
+                <thead><tr><th>Investor</th><th>Firm</th><th>Direction</th><th>Trigger</th></tr></thead>
+                <tbody>
+                  <tr><td>investor:a</td><td>firm:1</td><td>routine</td><td>baseline</td></tr>
+                  <tr><td>investor:a</td><td>firm:2</td><td>deepen_due_diligence</td><td>liquidity pressure ≥ 0.65</td></tr>
+                  <tr><td>investor:a</td><td>firm:3</td><td>routine</td><td>baseline</td></tr>
+                  <tr><td>investor:b</td><td>firm:1</td><td>routine</td><td>baseline</td></tr>
+                  <tr><td>investor:b</td><td>firm:2</td><td>request_dialogue</td><td>refinancing_window selective</td></tr>
+                  <tr><td>investor:b</td><td>firm:3</td><td>routine</td><td>baseline</td></tr>
+                </tbody>
+              </table>
+            </section>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:14px;">
+            <section class="card">
+              <h3 class="card-title">Stewardship themes</h3>
+              <table>
+                <thead><tr><th>Investor</th><th>Theme</th><th>Type</th></tr></thead>
+                <tbody>
+                  <tr><td>investor:a</td><td>capital_discipline</td><td>cross-portfolio</td></tr>
+                  <tr><td>investor:a</td><td>governance_review</td><td>cross-portfolio</td></tr>
+                  <tr><td>investor:b</td><td>climate_disclosure</td><td>cross-portfolio</td></tr>
+                  <tr><td>investor:b</td><td>capital_discipline</td><td>cross-portfolio</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Dialogue / escalation candidates</h3>
+              <table>
+                <thead><tr><th>From</th><th>To</th><th>Type</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td>investor:a</td><td>firm:2</td><td>portfolio_company_dialogue</td><td>candidate</td></tr>
+                  <tr><td>investor:b</td><td>firm:2</td><td>investor_escalation_candidate</td><td>candidate</td></tr>
+                  <tr><td>investor:a</td><td>firm:3</td><td>portfolio_company_dialogue</td><td>candidate</td></tr>
+                </tbody>
+              </table>
+              <div class="note-box" style="margin-top:10px;">
+                Candidates only — no voting, no proxy filing, no public
+                campaign, no AGM/EGM action.
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- BANKS -->
+    <article id="sheet-banks" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet VI</div><h1>Banks · Credit Review &amp; Interbank Liquidity</h1></div>
+          <div class="mono">review note · non-binding</div>
+        </div>
+        <div class="subband">Banks record diagnostic credit-review notes and a placeholder per-period interbank-liquidity state. No lending decision, no covenant enforcement, no contract mutation.</div>
+        <div class="panel-body">
+
+          <div class="grid cols-2">
+            <section class="card">
+              <h3 class="card-title">Bank credit review lite · 2026-Q3</h3>
+              <table>
+                <thead>
+                  <tr><th>Bank → Firm</th><th>Watch label</th><th>Pressure</th><th>Confidence</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>bank:c → firm:1</td><td>routine_monitoring</td><td class="num">0.32</td><td class="num">0.60</td></tr>
+                  <tr><td>bank:c → firm:2</td><td>refinancing_watch</td><td class="num">0.74</td><td class="num">0.62</td></tr>
+                  <tr><td>bank:c → firm:3</td><td>routine_monitoring</td><td class="num">0.28</td><td class="num">0.55</td></tr>
+                  <tr><td>bank:d → firm:1</td><td>routine_monitoring</td><td class="num">0.30</td><td class="num">0.58</td></tr>
+                  <tr><td>bank:d → firm:2</td><td>liquidity_watch</td><td class="num">0.71</td><td class="num">0.60</td></tr>
+                  <tr><td>bank:d → firm:3</td><td>routine_monitoring</td><td class="num">0.26</td><td class="num">0.55</td></tr>
+                </tbody>
+              </table>
+              <div class="note-box" style="margin-top:10px;">
+                Every <span class="mono">bank_credit_review_note</span>
+                stamps <span class="mono">no_lending_decision</span> /
+                <span class="mono">no_covenant_enforcement</span> /
+                <span class="mono">no_contract_mutation</span> /
+                <span class="mono">no_default_declaration</span> /
+                <span class="mono">no_internal_rating</span> /
+                <span class="mono">no_probability_of_default</span>.
+              </div>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Interbank liquidity state (v1.13.5) · per bank · per period</h3>
+              <table>
+                <thead>
+                  <tr><th>Bank</th><th>Liquidity</th><th>Settlement pressure</th><th>Reserve access</th><th>Funding stress</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>bank:c</td><td>normal</td><td>low</td><td>available</td><td>low</td></tr>
+                  <tr><td>bank:d</td><td>normal</td><td>low</td><td>available</td><td>low</td></tr>
+                </tbody>
+              </table>
+              <div class="note-box" style="margin-top:10px;">
+                Placeholder labels at v1.13.5 — fixed strings, fixed
+                <span class="mono">confidence=0.5</span>. No real
+                balance, no calibrated liquidity model, no real-system
+                mapping.
+              </div>
+            </section>
+          </div>
+
+          <section class="card" style="margin-top:14px;">
+            <h3 class="card-title">v1.13 substrate (storage-only · not on per-period sweep)</h3>
+            <table>
+              <thead>
+                <tr><th>Layer</th><th>Record</th><th>Status</th><th>Boundary</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>v1.13.1</td><td>SettlementAccountRecord</td><td>storage</td><td>no payment execution</td></tr>
+                <tr><td>v1.13.2</td><td>PaymentInstructionRecord / SettlementEventRecord</td><td>storage</td><td>no clearing, no settlement</td></tr>
+                <tr><td>v1.13.3</td><td>InterbankLiquidityStateRecord</td><td>storage + per-period</td><td>no calibrated liquidity model</td></tr>
+                <tr><td>v1.13.4</td><td>CentralBankOperationSignal / CollateralEligibilitySignal</td><td>storage</td><td>tier labels — never percentages</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- OUTPUTS -->
+    <article id="sheet-outputs" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet VII</div><h1>Outputs · Index, Events, Causal Tables</h1></div>
+          <div class="mono">regime · constrained</div>
+        </div>
+        <div class="subband">The main output is not stylized facts. It is the time path, the event trace, the actor response, and the causal evidence chain.</div>
+        <div class="panel-body">
+
+          <div class="index-wrap">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+              <h3 class="card-title" style="margin:0;">Reference index path · one-year window</h3>
+              <span class="mono muted">2026-01-01 → 2026-12-31</span>
+            </div>
+            <svg class="index-chart" viewBox="0 0 1280 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reference index path">
+              <rect x="0" y="0" width="1280" height="380" fill="#fbfbfa"/>
+              <g stroke="#d4d4d4" stroke-width="0.7">
+                <line x1="70"  y1="60"  x2="1240" y2="60"/>
+                <line x1="70"  y1="120" x2="1240" y2="120"/>
+                <line x1="70"  y1="180" x2="1240" y2="180"/>
+                <line x1="70"  y1="240" x2="1240" y2="240"/>
+                <line x1="70"  y1="300" x2="1240" y2="300"/>
+                <line x1="70"  y1="40"  x2="70"   y2="320"/>
+                <line x1="360" y1="40"  x2="360"  y2="320"/>
+                <line x1="650" y1="40"  x2="650"  y2="320"/>
+                <line x1="940" y1="40"  x2="940"  y2="320"/>
+                <line x1="1240" y1="40" x2="1240" y2="320"/>
+              </g>
+              <text x="70"   y="348" font-family="Consolas" font-size="12" fill="#6b7280">Jan</text>
+              <text x="360"  y="348" font-family="Consolas" font-size="12" fill="#6b7280">Apr</text>
+              <text x="650"  y="348" font-family="Consolas" font-size="12" fill="#6b7280">Jul</text>
+              <text x="940"  y="348" font-family="Consolas" font-size="12" fill="#6b7280">Oct</text>
+              <text x="1230" y="348" font-family="Consolas" font-size="12" fill="#6b7280" text-anchor="end">Dec</text>
+
+              <path d="M70 230 C120 214, 160 226, 210 205 S310 183, 360 170 S455 155, 505 178 S605 210, 650 238 S760 272, 820 244 S900 210, 940 225 S1045 188, 1100 174 S1190 162, 1240 172"
+                    fill="none" stroke="#034694" stroke-width="3"/>
+              <path d="M70 240 C160 230, 260 210, 360 195 S560 205, 650 230 S820 250, 940 235 S1110 205, 1240 198"
+                    fill="none" stroke="#b7bfdb" stroke-width="2" stroke-dasharray="7 5"/>
+
+              <g font-family="Inter" font-size="12">
+                <line x1="360" y1="40" x2="360" y2="322" stroke="#7c1d2c" stroke-width="1.2" stroke-dasharray="4 3"/>
+                <text x="365" y="36" fill="#7c1d2c">↑ 2026-04-01 · Rate repricing</text>
+                <line x1="650" y1="40" x2="650" y2="322" stroke="#7c1d2c" stroke-width="1.2" stroke-dasharray="4 3"/>
+                <text x="655" y="36" fill="#7c1d2c">↑ 2026-08-01 · Market stress event</text>
+                <line x1="940" y1="40" x2="940" y2="322" stroke="#034694" stroke-width="1.2" stroke-dasharray="4 3"/>
+                <text x="945" y="36" fill="#034694">↑ 2026-10-15 · Funding window reopens</text>
+              </g>
+
+              <line x1="70" y1="320" x2="1240" y2="320" stroke="#6b7280"/>
+              <line x1="70" y1="40"  x2="70"   y2="320" stroke="#6b7280"/>
+              <text x="90"  y="56" font-family="Inter" font-size="12" fill="#034694">index</text>
+              <text x="142" y="56" font-family="Inter" font-size="12" fill="#6b7280">fundamental / context baseline</text>
+            </svg>
+            <div class="event-row">
+              <div class="event-chip"><div class="event-date">2026-04-01</div><strong>Rate repricing</strong><br/>market environment shifts to rising-rate context</div>
+              <div class="event-chip"><div class="event-date">2026-08-01</div><strong>Market stress event</strong><br/>risk appetite turns risk-off; attention budget reallocates</div>
+              <div class="event-chip blue"><div class="event-date">2026-10-15</div><strong>Funding window</strong><br/>selective reopening; credit review stays cautious</div>
+              <div class="event-chip blue"><div class="event-date">2026-12-31</div><strong>Year-end digest</strong><br/>canonical replay pinned for audit</div>
+            </div>
+          </div>
+
+          <div class="kpi-row" style="margin-top:14px;">
+            <div class="kpi"><div class="label">final index</div><div class="value">103.8</div><div class="note">synthetic</div></div>
+            <div class="kpi"><div class="label">risk intents</div><div class="value">14</div><div class="note">non-binding</div></div>
+            <div class="kpi"><div class="label">credit watches</div><div class="value">8</div><div class="note">no lending decision</div></div>
+            <div class="kpi"><div class="label">attention shifts</div><div class="value">22</div><div class="note">budgeted</div></div>
+            <div class="kpi"><div class="label">unresolved refs</div><div class="value">0</div><div class="note">context frame</div></div>
+            <div class="kpi"><div class="label">digest</div><div class="value" style="font-size:14px;">916e…b379</div><div class="note">canonical</div></div>
+          </div>
+
+          <section class="card" style="margin-top:14px;">
+            <h3 class="card-title">Causal summary table <span class="tag">LLM-readable</span></h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Event</th>
+                  <th>Affected actors</th>
+                  <th>Evidence</th>
+                  <th>Downstream records</th>
+                  <th>LLM-readable explanation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>2026-04-01</td>
+                  <td>Rate repricing</td>
+                  <td>bank:c, bank:d</td>
+                  <td class="mono">env:rates:rising</td>
+                  <td class="mono">credit_review_note · attention_feedback</td>
+                  <td>Banks moved to refinancing watch because the rate
+                      environment shifted to a rising tone, conditioning
+                      next-period attention on funding access.</td>
+                </tr>
+                <tr>
+                  <td>2026-08-01</td>
+                  <td>Market stress event</td>
+                  <td>investor:a, investor:b, firm:2</td>
+                  <td class="mono">env:risk_off · firm_state:liquidity_pressure≥0.65</td>
+                  <td class="mono">investor_intent_signal · dialogue_candidate</td>
+                  <td>Risk appetite turned risk-off and firm 2's
+                      liquidity pressure crossed the watch threshold;
+                      investors deepened due diligence and queued
+                      dialogue candidates.</td>
+                </tr>
+                <tr>
+                  <td>2026-10-15</td>
+                  <td>Funding window selective</td>
+                  <td>firm:2</td>
+                  <td class="mono">readout:funding:selective</td>
+                  <td class="mono">corporate_strategic_response_candidate</td>
+                  <td>Firm 2 recorded a defensive posture candidate as
+                      the funding window reopened only selectively,
+                      changing valuation context for the next period.</td>
+                </tr>
+                <tr>
+                  <td>2026-12-31</td>
+                  <td>Year-end digest pin</td>
+                  <td>world</td>
+                  <td class="mono">manifest · seed=42</td>
+                  <td class="mono">living_world_digest 916e…b379</td>
+                  <td>Canonical SHA-256 over the run's ledger view; two
+                      replays from the same seed produce byte-identical
+                      output.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="card" style="margin-top:14px;">
+            <h3 class="card-title">Stylized facts <span class="tag">secondary</span></h3>
+            <table>
+              <thead><tr><th>Fact</th><th class="num">Value</th><th>Status</th><th>Boundary</th></tr></thead>
+              <tbody>
+                <tr><td>Fat tails α</td><td class="num">3.42</td><td><span class="tag green">ok</span></td><td>diagnostic only</td></tr>
+                <tr><td>Vol clustering</td><td class="num">0.31</td><td><span class="tag green">ok</span></td><td>diagnostic only</td></tr>
+                <tr><td>Return autocorr</td><td class="num">0.02</td><td><span class="tag green">ok</span></td><td>diagnostic only</td></tr>
+                <tr><td>Leverage effect</td><td class="num">+0.04</td><td><span class="tag amber">open</span></td><td>diagnostic only</td></tr>
+              </tbody>
+            </table>
+            <div class="boundary-box" style="margin-top:10px;">
+              Stylized facts are diagnostic, not the whole output. The
+              core surface is the causal, actor-specific ledger trace
+              above.
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- LEDGER -->
+    <article id="sheet-ledger" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet VIII</div><h1>Ledger &amp; Causal Inspector</h1></div>
+          <div class="mono">parent evidence · downstream records</div>
+        </div>
+        <div class="subband">Each record reveals its source evidence, actor context frame, and downstream effects.</div>
+        <div class="panel-body">
+
+          <div class="grid cols-12-3">
+            <section class="card">
+              <h3 class="card-title">Record stream <span class="tag">period 2026-Q3</span></h3>
+              <table>
+                <thead><tr><th>Seq</th><th>Type</th><th>Source</th><th>Target</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td class="num">188</td><td>market_environment_state_added</td><td>market</td><td>world</td><td>completed</td></tr>
+                  <tr><td class="num">201</td><td>firm_latent_state_updated</td><td>firm:2</td><td>world</td><td>completed</td></tr>
+                  <tr><td class="num">214</td><td>interbank_liquidity_state_recorded</td><td>bank:c</td><td>world</td><td>completed</td></tr>
+                  <tr><td class="num">215</td><td>investor_intent_signal_added</td><td>investor:a</td><td>firm:2</td><td>completed</td></tr>
+                  <tr><td class="num">227</td><td>bank_credit_review_signal_added</td><td>bank:c</td><td>firm:2</td><td>completed</td></tr>
+                  <tr><td class="num">240</td><td>attention_feedback_recorded</td><td>investor:a</td><td>period+1</td><td>completed</td></tr>
+                  <tr><td class="num">252</td><td>corporate_financing_need_recorded</td><td>firm:2</td><td>world</td><td>completed</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Selected record</h3>
+              <table>
+                <tr><td>Record ID</td><td class="mono">intent:investor_a:firm_2:2026Q3</td></tr>
+                <tr><td>Type</td><td class="mono">investor_intent_signal_added</td></tr>
+                <tr><td>Actor context</td><td class="mono">ctx:investor_a:2026Q3</td></tr>
+                <tr><td>Intent label</td><td>deepen_due_diligence</td></tr>
+                <tr><td>Visibility</td><td>internal_only</td></tr>
+                <tr><td>Confidence</td><td class="num">0.55</td></tr>
+                <tr><td>Boundary</td><td>not an order, not a recommendation</td></tr>
+              </table>
+            </section>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:14px;">
+            <section class="card">
+              <h3 class="card-title">Parent evidence <span class="tag">resolved</span></h3>
+              <table>
+                <thead><tr><th>Bucket</th><th>Refs</th></tr></thead>
+                <tbody>
+                  <tr><td>market_environment_state</td><td class="mono">env:2026Q3</td></tr>
+                  <tr><td>firm_financial_state</td><td class="mono">firm_state:firm_2:2026Q3</td></tr>
+                  <tr><td>capital_market_readout</td><td class="mono">readout:Q3</td></tr>
+                  <tr><td>signal (corporate report)</td><td class="mono">corp:firm_2:Q3</td></tr>
+                  <tr><td>signal (firm pressure)</td><td class="mono">pressure:firm_2:Q3</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Downstream records</h3>
+              <table>
+                <thead><tr><th>Type</th><th>Object</th><th>Effect</th></tr></thead>
+                <tbody>
+                  <tr><td>portfolio_company_dialogue_recorded</td><td class="mono">dlg:investor_a:firm_2:Q3</td><td>candidate</td></tr>
+                  <tr><td>investor_escalation_candidate_added</td><td class="mono">esc:investor_a:firm_2:Q3</td><td>candidate</td></tr>
+                  <tr><td>attention_feedback_recorded</td><td class="mono">feedback:investor_a:Q4</td><td>focus shift</td></tr>
+                </tbody>
+              </table>
+            </section>
+          </div>
+
+          <section class="card" style="margin-top:14px;">
+            <h3 class="card-title">Digest &amp; manifest</h3>
+            <table>
+              <tr><td>Run digest (canonical SHA-256)</td><td class="mono">916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379</td></tr>
+              <tr><td>Manifest schema</td><td class="mono">living_world_manifest.v1</td></tr>
+              <tr><td>Per-period record count</td><td class="mono">81 (period 0) / 83 (periods 1+)</td></tr>
+              <tr><td>Per-run window</td><td class="mono">[324, 372]</td></tr>
+              <tr><td>Replay invariant</td><td>byte-identical across consecutive runs from the same seed</td></tr>
+              <tr><td>Version</td><td class="mono">v1.14.1 (substrate v1.13.last + corporate financing need v1.14.1)</td></tr>
+            </table>
+            <div class="note-box" style="margin-top:10px;">
+              The manifest is a static JSON artifact produced by the
+              CLI; this panel is a visual placeholder for future record-graph
+              navigation.
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- APPENDIX -->
+    <article id="sheet-appendix" class="sheet">
+      <div class="sheet-inner">
+        <div class="band">
+          <div><div class="chapter">Sheet IX</div><h1>Appendix · Public Boundary</h1></div>
+          <div class="mono">v1.x public prototype</div>
+        </div>
+        <div class="subband">Public FWE keeps universal abstraction. Japan calibration and proprietary assumptions remain out of scope here.</div>
+        <div class="panel-body">
+
+          <div class="grid cols-2">
+            <section class="card">
+              <h3 class="card-title">Version boundary</h3>
+              <table>
+                <thead><tr><th>Line</th><th>Scope</th><th>Public?</th></tr></thead>
+                <tbody>
+                  <tr><td>v0.xx</td><td>country-neutral world kernel</td><td>yes</td></tr>
+                  <tr><td>v1.xx</td><td>country-neutral reference financial system</td><td>yes</td></tr>
+                  <tr><td>v2.xx</td><td>Japan public calibration</td><td>conditional</td></tr>
+                  <tr><td>v3.xx</td><td>Japan proprietary calibration</td><td>no</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section class="card">
+              <h3 class="card-title">Hard boundary</h3>
+              <div class="boundary-box">
+                No price prediction. No price formation. No trading.
+                No order matching. No lending decisions. No portfolio
+                allocation. No investment advice. No real data. No
+                Japan calibration. No LLM execution. No behavior
+                probabilities.
+              </div>
+              <div class="note-box" style="margin-top:10px;">
+                Purpose: show how information conditions propagate into
+                actor-specific attention, review posture, valuation
+                claims, credit-review notes, and next-period attention.
+              </div>
+            </section>
+          </div>
+
+          <section class="card" style="margin-top:14px;">
+            <h3 class="card-title">Status of this UI</h3>
+            <table>
+              <tr><td>Type</td><td>static HTML prototype</td></tr>
+              <tr><td>Backend</td><td>none</td></tr>
+              <tr><td>Build tools</td><td>none</td></tr>
+              <tr><td>External runtime</td><td>none</td></tr>
+              <tr><td>Production claim</td><td>not production UI</td></tr>
+              <tr><td>Source of truth</td><td>actual records / digests / counts emitted by the FWE engine, not this file</td></tr>
+            </table>
+          </section>
+
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- Bottom tabs                                                    -->
+  <!-- ============================================================== -->
+  <nav class="bottom-tabs" aria-label="Workbook sheets">
+    <button class="sheet-tab active" data-sheet="cover" type="button">Cover</button>
+    <button class="sheet-tab" data-sheet="settings" type="button">Settings</button>
+    <button class="sheet-tab" data-sheet="market" type="button">Market State</button>
+    <button class="sheet-tab" data-sheet="attention" type="button">Attention</button>
+    <button class="sheet-tab" data-sheet="firms" type="button">Firms</button>
+    <button class="sheet-tab" data-sheet="investors" type="button">Investors</button>
+    <button class="sheet-tab" data-sheet="banks" type="button">Banks</button>
+    <button class="sheet-tab" data-sheet="outputs" type="button">Outputs</button>
+    <button class="sheet-tab" data-sheet="ledger" type="button">Ledger</button>
+    <button class="sheet-tab" data-sheet="appendix" type="button">Appendix</button>
+  </nav>
+</main>
+
+<script>
+  // -----------------------------------------------------------------
+  // Tab switching (vanilla JS, no build, no external deps)
+  // -----------------------------------------------------------------
+  (function () {
+    var tabs   = Array.prototype.slice.call(document.querySelectorAll('.sheet-tab'));
+    var sheets = Array.prototype.slice.call(document.querySelectorAll('.sheet'));
+
+    function activateSheet(name) {
+      var sheetEl = document.getElementById('sheet-' + name);
+      if (!sheetEl) return;
+      tabs.forEach(function (t) {
+        t.classList.toggle('active', t.dataset.sheet === name);
+      });
+      sheets.forEach(function (s) {
+        s.classList.toggle('active', s.id === 'sheet-' + name);
+      });
+      try { history.replaceState(null, '', '#' + name); } catch (e) { /* ignore */ }
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activateSheet(tab.dataset.sheet);
+      });
+    });
+
+    var initial = (location.hash || '').replace('#', '');
+    if (initial && document.getElementById('sheet-' + initial)) {
+      activateSheet(initial);
+    }
+  })();
+
+  // -----------------------------------------------------------------
+  // Settings: regime selector mock (no run is triggered)
+  // -----------------------------------------------------------------
+  (function () {
+    var pills = Array.prototype.slice.call(document.querySelectorAll('.regime-pill'));
+    var active = document.getElementById('regime-active');
+    pills.forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        pills.forEach(function (p) {
+          p.classList.toggle('active', p === pill);
+          p.setAttribute('aria-checked', p === pill ? 'true' : 'false');
+        });
+        if (active) active.textContent = pill.dataset.regime;
+      });
+    });
+  })();
+</script>
+</body>
+</html>

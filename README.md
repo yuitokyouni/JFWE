@@ -608,6 +608,10 @@ Start here:
   — reference variable + exposure design (v1.8.8 + hardening)
 - [examples/reference_world/README.md](japan-financial-world/examples/reference_world/README.md)
   — runnable demos (reference loop + endogenous chain)
+- [examples/ui/README.md](japan-financial-world/examples/ui/README.md)
+  — static HTML analyst-workbench UI prototype
+  ([`fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html);
+  open directly in a browser — no backend, no build tools)
 
 **v1 sub-milestone designs:**
 - [docs/v1_reference_system_design.md](japan-financial-world/docs/v1_reference_system_design.md)
