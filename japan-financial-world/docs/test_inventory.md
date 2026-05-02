@@ -1,15 +1,14 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.11.2** (`Demo market regime
-presets` — adds four named synthetic presets — constructive /
-mixed / constrained / tightening — on top of v1.11.1; CLI gains
-the `--market-regime` flag; the default-fixture
-`living_world_digest` is preserved bit-for-bit when no regime is
-specified, so v1.11.1's backward-compatibility contract carries
-forward; per-run record-count window unchanged at
-`[244, 276]`):
-`2137 / 2137 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1505 post-v1.7 additions covering reference demo, replay, manifest,
+Snapshot of the test suite at **v1.12.0** (`Firm financial latent
+state` — first time-crossing endogenous state-update layer in
+public FWE; market regimes / readouts / industry demand / pressure
+evidence accumulate over time into per-firm latent ordering
+scalars in `[0, 1]`; per-run record-count window widens from
+`[244, 276]` to `[256, 288]`; default-fixture `living_world_digest`
+changes to `1b9ee84a...` by design):
+`2259 / 2259 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1627 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -48,10 +47,17 @@ capital-market readout — `CapitalMarketReadoutRecord` /
 `world/market_surface_readout.py` plus the per-period readout
 phase in the living reference world demo exercised in the new
 `tests/test_market_surface_readout.py` and extended in
-`tests/test_living_reference_world.py`, and the v1.11.2 demo
+`tests/test_living_reference_world.py`, the v1.11.2 demo
 market regime presets — four named synthetic presets
 (constructive / mixed / constrained / tightening) +
 `--market-regime` CLI flag, exercised in
+`tests/test_living_reference_world.py`, and the v1.12.0 firm
+financial latent state — `FirmFinancialStateRecord` /
+`FirmFinancialStateBook` / `run_reference_firm_financial_state_update`
+in `world/firm_state.py` plus the per-period firm-state phase
+in the living reference world demo, the first time-crossing
+endogenous state-update layer, exercised in the new
+`tests/test_firm_state.py` and extended in
 `tests/test_living_reference_world.py`).
 
 This inventory is grouped by what each component verifies. The numbers in
@@ -1150,8 +1156,9 @@ no-mutation guarantee.
 | Industry demand condition signal (v1.10.4) | 1 | 84    |
 | Capital-market condition (v1.11.0) | 1 | 84 |
 | Capital-market readout (v1.11.1) | 1 | 72 |
-| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 additive in test_living_reference_world.py — 15 of these are v1.10.5-specific, 8 are v1.11.0-specific, 7 are v1.11.1-specific, and 15 are v1.11.2-specific integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 in test_living_reference_world.py) |
-| **post-v1.7 subtotal**                  | **35**| **1505** |
+| Firm financial latent state (v1.12.0) | 1 | 113 |
+| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 additive in test_living_reference_world.py — 15 v1.10.5-specific, 8 v1.11.0-specific, 7 v1.11.1-specific, 15 v1.11.2-specific, and 9 v1.12.0-specific integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 in test_living_reference_world.py) |
+| **post-v1.7 subtotal**                  | **36**| **1627** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1159,8 +1166,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2) | 35 | 1505 |
-| **Total**                        | **77**| **2137** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0) | 36 | 1627 |
+| **Total**                        | **78**| **2259** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

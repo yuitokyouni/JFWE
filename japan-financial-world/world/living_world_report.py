@@ -127,7 +127,13 @@ _BOUNDARY_STATEMENT: str = (
     "readable labels derived from v1.11.0 conditions; no spread "
     "calibration, no yield calibration, no market forecast, no "
     "deal advice, no transaction recommendation; readout / "
-    "report only."
+    "report only. "
+    "v1.12.0 firm financial latent state: synthetic [0, 1] "
+    "ordering scalars updated period-over-period by a small "
+    "documented rule set; no revenue, no sales, no EBITDA, no "
+    "net income, no cash balance, no debt amount, no real "
+    "financial statement, no forecast, no actual / accounting "
+    "value, no investment recommendation; latent ordering only."
 )
 
 
@@ -185,6 +191,17 @@ class LivingWorldPeriodReport:
     # period; the period summary carries one readout id per
     # period when v1.11.1 is wired).
     capital_market_readout_count: int = 0
+    # v1.12.0 additive: firm-financial-state record counts +
+    # average pressure scalars across the period's firms. Used
+    # by the Markdown renderer's "## Firm financial states"
+    # section.
+    firm_financial_state_count: int = 0
+    avg_margin_pressure: float = 0.0
+    avg_liquidity_pressure: float = 0.0
+    avg_debt_service_pressure: float = 0.0
+    avg_market_access_pressure: float = 0.0
+    avg_funding_need_intensity: float = 0.0
+    avg_response_readiness: float = 0.0
     # v1.11.1 additive: per-period banker-readable labels lifted
     # from the period's CapitalMarketReadoutRecord (if any). When
     # the period has no readout, the labels default to empty
@@ -224,6 +241,7 @@ class LivingWorldPeriodReport:
             "corporate_strategic_response_candidate_count",
             "market_condition_count",
             "capital_market_readout_count",
+            "firm_financial_state_count",
         ):
             value = getattr(self, name)
             if not isinstance(value, int) or value < 0:
@@ -266,6 +284,26 @@ class LivingWorldPeriodReport:
             tuple(sorted(normalized_counts)),
         )
 
+        # v1.12.0 — bounded synthetic average pressures in [0, 1].
+        # Reject bool to match the v1.11.0 / v1.11.1 / v1.12.0
+        # bounded-numeric idiom.
+        for name in (
+            "avg_margin_pressure",
+            "avg_liquidity_pressure",
+            "avg_debt_service_pressure",
+            "avg_market_access_pressure",
+            "avg_funding_need_intensity",
+            "avg_response_readiness",
+        ):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"{name} must be a number")
+            if not (0.0 <= float(value) <= 1.0):
+                raise ValueError(
+                    f"{name} must be between 0 and 1 inclusive"
+                )
+            object.__setattr__(self, name, float(value))
+
         object.__setattr__(self, "metadata", dict(self.metadata))
 
     def to_dict(self) -> dict[str, Any]:
@@ -297,6 +335,13 @@ class LivingWorldPeriodReport:
             ),
             "market_condition_count": self.market_condition_count,
             "capital_market_readout_count": self.capital_market_readout_count,
+            "firm_financial_state_count": self.firm_financial_state_count,
+            "avg_margin_pressure": self.avg_margin_pressure,
+            "avg_liquidity_pressure": self.avg_liquidity_pressure,
+            "avg_debt_service_pressure": self.avg_debt_service_pressure,
+            "avg_market_access_pressure": self.avg_market_access_pressure,
+            "avg_funding_need_intensity": self.avg_funding_need_intensity,
+            "avg_response_readiness": self.avg_response_readiness,
             "rates_tone": self.rates_tone,
             "credit_tone": self.credit_tone,
             "equity_tone": self.equity_tone,
@@ -834,6 +879,7 @@ def _build_period_report(
             capital_market_readout_count=len(
                 getattr(period, "capital_market_readout_ids", ())
             ),
+            **_extract_firm_state_averages(kernel, period),
             **_extract_readout_labels(kernel, period),
             record_type_counts=period_record_type_counts,
             warnings=tuple(period_warnings),
@@ -848,6 +894,75 @@ def _build_period_report(
         ),
         period_warnings,
     )
+
+
+def _extract_firm_state_averages(
+    kernel: Any, period: LivingReferencePeriodSummary
+) -> dict[str, float]:
+    """v1.12.0 — read the period's FirmFinancialStateRecords (if
+    any) and return the arithmetic average of each pressure /
+    readiness scalar across the cited firms. When the period has
+    no states, every average defaults to 0.0 — the renderer skips
+    the section."""
+    state_ids = getattr(period, "firm_financial_state_ids", ())
+    if not state_ids:
+        return {
+            "firm_financial_state_count": 0,
+            "avg_margin_pressure": 0.0,
+            "avg_liquidity_pressure": 0.0,
+            "avg_debt_service_pressure": 0.0,
+            "avg_market_access_pressure": 0.0,
+            "avg_funding_need_intensity": 0.0,
+            "avg_response_readiness": 0.0,
+        }
+    book = getattr(kernel, "firm_financial_states", None)
+    if book is None:
+        return {
+            "firm_financial_state_count": 0,
+            "avg_margin_pressure": 0.0,
+            "avg_liquidity_pressure": 0.0,
+            "avg_debt_service_pressure": 0.0,
+            "avg_market_access_pressure": 0.0,
+            "avg_funding_need_intensity": 0.0,
+            "avg_response_readiness": 0.0,
+        }
+    margins: list[float] = []
+    liquidities: list[float] = []
+    debt_services: list[float] = []
+    market_accesses: list[float] = []
+    funding_needs: list[float] = []
+    response_readinesses: list[float] = []
+    for sid in state_ids:
+        try:
+            rec = book.get_state(sid)
+        except Exception:
+            continue
+        margins.append(rec.margin_pressure)
+        liquidities.append(rec.liquidity_pressure)
+        debt_services.append(rec.debt_service_pressure)
+        market_accesses.append(rec.market_access_pressure)
+        funding_needs.append(rec.funding_need_intensity)
+        response_readinesses.append(rec.response_readiness)
+    n = len(margins)
+    if n == 0:
+        return {
+            "firm_financial_state_count": 0,
+            "avg_margin_pressure": 0.0,
+            "avg_liquidity_pressure": 0.0,
+            "avg_debt_service_pressure": 0.0,
+            "avg_market_access_pressure": 0.0,
+            "avg_funding_need_intensity": 0.0,
+            "avg_response_readiness": 0.0,
+        }
+    return {
+        "firm_financial_state_count": n,
+        "avg_margin_pressure": sum(margins) / n,
+        "avg_liquidity_pressure": sum(liquidities) / n,
+        "avg_debt_service_pressure": sum(debt_services) / n,
+        "avg_market_access_pressure": sum(market_accesses) / n,
+        "avg_funding_need_intensity": sum(funding_needs) / n,
+        "avg_response_readiness": sum(response_readinesses) / n,
+    }
 
 
 def _extract_readout_labels(
@@ -1119,6 +1234,48 @@ def render_living_world_markdown(report: LivingWorldTraceReport) -> str:
             "filing, no public campaign, no corporate action, no "
             "disclosure filing, no demand / revenue forecast, no "
             "firm financial-statement update."
+        )
+        lines.append("")
+
+    # v1.12.0 firm financial latent states section. One row per
+    # period showing the average of each pressure / readiness
+    # scalar across the period's firms. Synthetic ordering only
+    # — never an accounting figure, never a forecast.
+    has_v120_signal = any(
+        ps.get("firm_financial_state_count", 0) > 0
+        for ps in md["period_summaries"]
+    )
+    if has_v120_signal:
+        lines.append("## Firm financial states")
+        lines.append("")
+        lines.append(
+            "| period | as_of_date | firms | avg margin | avg liquidity | "
+            "avg debt service | avg market access | avg funding need | "
+            "avg response readiness |"
+        )
+        lines.append(
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+        )
+        for ps in md["period_summaries"]:
+            if ps.get("firm_financial_state_count", 0) == 0:
+                continue
+            lines.append(
+                f"| `{ps['period_id']}` | `{ps['as_of_date']}` | "
+                f"{ps.get('firm_financial_state_count', 0)} | "
+                f"{ps.get('avg_margin_pressure', 0.0):.2f} | "
+                f"{ps.get('avg_liquidity_pressure', 0.0):.2f} | "
+                f"{ps.get('avg_debt_service_pressure', 0.0):.2f} | "
+                f"{ps.get('avg_market_access_pressure', 0.0):.2f} | "
+                f"{ps.get('avg_funding_need_intensity', 0.0):.2f} | "
+                f"{ps.get('avg_response_readiness', 0.0):.2f} |"
+            )
+        lines.append("")
+        lines.append(
+            "> Firm financial states are synthetic latent "
+            "ordering scalars in [0, 1] updated period-over-period "
+            "by the v1.12.0 rule set. **Not** an accounting "
+            "statement, **not** revenue / EBITDA / cash / debt, "
+            "**not** a forecast, **not** investment advice."
         )
         lines.append("")
 

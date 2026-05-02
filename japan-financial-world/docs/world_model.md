@@ -6143,7 +6143,8 @@ A `StewardshipThemeRecord` and the `StewardshipBook` storing it are jurisdiction
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
 | v1.11.0 Capital-market surface | Code (§77). | Shipped |
 | v1.11.1 Capital-market readout | Code (§78). Additive readout layer. | Shipped |
-| **v1.11.2 Demo market regime presets** | Code (§79). Additive demo-only preset layer. | **Shipped** |
+| v1.11.2 Demo market regime presets | Code (§79). Additive demo-only preset layer. | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First time-crossing endogenous state-update layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6228,7 +6229,8 @@ A `PortfolioCompanyDialogueRecord` and the `DialogueBook` storing it are jurisdi
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
 | v1.11.0 Capital-market surface | Code (§77). | Shipped |
 | v1.11.1 Capital-market readout | Code (§78). Additive readout layer. | Shipped |
-| **v1.11.2 Demo market regime presets** | Code (§79). Additive demo-only preset layer. | **Shipped** |
+| v1.11.2 Demo market regime presets | Code (§79). Additive demo-only preset layer. | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First time-crossing endogenous state-update layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6355,7 +6357,8 @@ The v1.10.3 candidate records and their books are jurisdiction-neutral, signal-o
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
 | v1.11.0 Capital-market surface | Code (§77). | Shipped |
 | v1.11.1 Capital-market readout | Code (§78). Additive readout layer. | Shipped |
-| **v1.11.2 Demo market regime presets** | Code (§79). Additive demo-only preset layer. | **Shipped** |
+| v1.11.2 Demo market regime presets | Code (§79). Additive demo-only preset layer. | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First time-crossing endogenous state-update layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6437,7 +6440,8 @@ An `IndustryDemandConditionRecord` and the `IndustryConditionBook` storing it ar
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
 | v1.11.0 Capital-market surface | Code (§77). | Shipped |
 | v1.11.1 Capital-market readout | Code (§78). Additive readout layer. | Shipped |
-| **v1.11.2 Demo market regime presets** | Code (§79). Additive demo-only preset layer. | **Shipped** |
+| v1.11.2 Demo market regime presets | Code (§79). Additive demo-only preset layer. | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First time-crossing endogenous state-update layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6656,7 +6660,8 @@ v1.10.5 is **integration only**. It does **not**:
 | v1.10.5 Living-world integration | Code (§76). | Shipped |
 | v1.11.0 Capital-market surface | Code (§77). | Shipped |
 | v1.11.1 Capital-market readout | Code (§78). Additive readout layer. | Shipped |
-| **v1.11.2 Demo market regime presets** | Code (§79). Additive demo-only preset layer. | **Shipped** |
+| v1.11.2 Demo market regime presets | Code (§79). Additive demo-only preset layer. | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First time-crossing endogenous state-update layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6795,7 +6800,8 @@ A `MarketConditionRecord` and the `MarketConditionBook` storing it are jurisdict
 | v1.10.0 → v1.10.5 (engagement / strategic-response stack) | Code (§70 → §76). | Shipped |
 | v1.11.0 Capital-market surface | Code (§77). | Shipped |
 | v1.11.1 Capital-market readout | Code (§78). Additive readout layer. | Shipped |
-| **v1.11.2 Demo market regime presets** | Code (§79). Additive demo-only preset layer. | **Shipped** |
+| v1.11.2 Demo market regime presets | Code (§79). Additive demo-only preset layer. | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First time-crossing endogenous state-update layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
@@ -6908,7 +6914,8 @@ A `CapitalMarketReadoutRecord` and the `CapitalMarketReadoutBook` storing it are
 | v1.10.0 → v1.10.5 (engagement / strategic-response stack) | Code (§70 → §76). | Shipped |
 | v1.11.0 Capital-market surface | Code (§77). | Shipped |
 | v1.11.1 Capital-market readout | Code (§78). Additive readout layer. | Shipped |
-| **v1.11.2 Demo market regime presets** | Code (§79). Additive demo-only preset layer. | **Shipped** |
+| v1.11.2 Demo market regime presets | Code (§79). Additive demo-only preset layer. | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First time-crossing endogenous state-update layer. | **Shipped** |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v1.12 Funding / issuance intent layer (anticipated) | Code. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -6990,3 +6997,99 @@ When a regime is explicitly passed, the `living_world_digest` differs (different
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `2122 / 2122` (v1.11.1) to `2137 / 2137` (v1.11.2) — `+15` v1.11.2 tests in `tests/test_living_reference_world.py`. The CLI surface gains the `--market-regime` flag; the default fixture *shape*, the per-period record count, the per-run record window, and the default-fixture `living_world_digest` are all preserved unchanged.
+
+## 80. v1.12.0 Firm financial latent state — first endogenous state-update layer
+
+§80 ships the **first time-crossing endogenous state-update layer** in public FWE. It introduces `FirmFinancialStateRecord` + `FirmFinancialStateBook` + `run_reference_firm_financial_state_update`, a small synthetic latent-state layer that updates one record per (firm, period) by reading the period's evidence and the prior-period state for the same firm. Market regimes, capital-market readouts, industry-demand context, and pressure evidence now **accumulate over time** into a firm's latent state — the first place where v1.10.x → v1.11.x signal records propagate beyond their own period and shape future periods.
+
+This is **a synthetic latent state update for endogenous dynamics** (per the task spec), not an accounting statement update. The record stores six bounded synthetic pressure / readiness scalars in `[0.0, 1.0]` plus a `confidence` scalar plus an explicit `previous_state_id` chain link to the prior-period state. It does **not** store revenue, sales, EBITDA, net income, cash balance, debt amount, real financial statements, forecasts, real measurements, accounting values, or investment recommendations.
+
+### 80.1 Why this exists
+
+Through v1.11.2 the living world emitted lots of records but every record's lifetime was confined to its own period. A market regime in period 1 had no influence on period 2's records. v1.12.0 closes the first endogenous loop: a firm's latent state at period N is a function of the prior state at period N-1 plus the new evidence available at period N. Constructive market regimes let pressures decay; constrained / tightening regimes amplify them; contracting industry demand raises margin pressure; pressure signals raise liquidity pressure. All deltas are small and clamped, so trajectories stay bounded but visibly differentiated.
+
+### 80.2 What v1.12.0 ships
+
+- `world/firm_state.py` (new):
+  - `FirmFinancialStateRecord` (immutable dataclass) with seven bounded numeric scalars validated to `[0.0, 1.0]` with bool rejection (matching the v1.11.0 / v1.11.1 idiom). Anti-fields binding: no `revenue`, `sales`, `EBITDA`, `net_income`, `cash_balance`, `debt_amount`, `real_financial_statement`, `forecast_value`, `actual_value`, `accounting_value`, or `investment_recommendation` field.
+  - `FirmFinancialStateBook` (append-only store) with `add_state` / `get_state` / `list_states` / `list_by_firm` / `list_by_date` / `get_latest_for_firm` / `history_for_firm` / `snapshot`. The `get_latest_for_firm` and `history_for_firm` helpers return records in **insertion order** (the v1.12 living-world orchestrator inserts in chronological order).
+  - `run_reference_firm_financial_state_update(...)` — deterministic helper that resolves prior state (explicit `previous_state_id` overrides `get_latest_for_firm`), reads the cited evidence (market readouts / market conditions / industry conditions / pressure signals / valuations as plain ids), applies the v1.12.0 rule set, and emits exactly one record. Idempotent on `state_id`.
+  - Errors: `DuplicateFirmFinancialStateError`, `UnknownFirmFinancialStateError`.
+  - `FirmFinancialStateUpdateResult` dataclass returns the produced record + the resolved `previous_state_id`.
+- `world/ledger.py` — new `RecordType.FIRM_LATENT_STATE_UPDATED` (event type `firm_latent_state_updated`). Deliberately distinct from the legacy v0/v1 `firm_state_added` registration record type so the new endogenous-state event is unambiguously distinguishable in the ledger.
+- `world/kernel.py` — `firm_financial_states: FirmFinancialStateBook` wired in `WorldKernel.__post_init__`.
+- `world/reference_living_world.py` — new per-period firm-state phase between the v1.11.1 readout phase and the v1.8.x attention phase. `LivingReferencePeriodSummary` grows additively with `firm_financial_state_ids`. The phase walks every firm, cites that firm's evidence (the period's readout, its mapped industry condition, and its pressure signal), and writes one state record per (firm, period).
+- `world/living_world_report.py` — `LivingWorldPeriodReport` grows with `firm_financial_state_count` plus six bounded average-pressure scalars (`avg_margin_pressure`, `avg_liquidity_pressure`, `avg_debt_service_pressure`, `avg_market_access_pressure`, `avg_funding_need_intensity`, `avg_response_readiness`). The Markdown renderer adds a `## Firm financial states` section between the v1.10 engagement section and the attention divergence section. The boundary statement is extended in place to cover the v1.12 anti-claims; all prior prefixes are preserved verbatim.
+- `examples/reference_world/living_world_replay.py` — the canonical view echoes `firm_financial_state_ids` per period; the boundary statement constant tracks the reporter's. **Expected digest change**: the v1.12.0 living-world digest is *not* the same as the v1.11.2 / v1.11.1 default digest — the canonical view now includes the new id tuple and the boundary string was extended.
+- `examples/reference_world/living_world_manifest.py` — manifest summary echoes the new `firm_financial_state_total` count.
+- `examples/reference_world/run_living_reference_world.py` — per-period CLI trace line names `firm_states=`; summary line names the firm-state phase and the v1.12 anti-claims.
+- `tests/test_firm_state.py` (new) — 113 tests covering field validation, bounded numeric fields with bool rejection, anti-fields on dataclass + ledger payload, listings, snapshot determinism, ledger emission, kernel wiring, no-mutation against every other source-of-truth book (including v1.10.4 / v1.11.0 / v1.11.1 books), no-action / no-pricing / no-firm_state_added invariant, the helper's deterministic rule set (idempotency, chain via explicit `previous_state_id`, chain via `get_latest_for_firm`, neutral baseline when no prior state, constructive decay, constrained amplification, multi-period chained constructive vs constrained gap, contracting / expanding industry effects, pressure-signal-count effect on liquidity, derived `funding_need_intensity` and `response_readiness` arithmetic, clamping under saturation, helper-does-not-mutate-evidence-books), plus a jurisdiction-neutral identifier scan over both module and test file.
+- `tests/test_living_reference_world.py` — `+9` v1.12.0 integration tests: one state per firm per period, states resolve and carry bounded scalars, states chain via `previous_state_id` within a run, constructive regime yields lower end-of-run market_access_pressure than constrained (visible separation > 0.3), no forbidden accounting / forecast payload keys end-to-end, no `firm_state_added` (legacy) event types appear, two fresh runs produce byte-identical canonical view, canonical view carries the new id tuples explicitly, Markdown report includes the `## Firm financial states` section.
+- `tests/test_living_reference_world_performance_boundary.py` — `count_expected_living_world_records` and the per-run upper-bound test refreshed for the v1.12.0 fixture.
+
+### 80.3 Update rule set (binding, illustrative, deterministic)
+
+Each call to `run_reference_firm_financial_state_update`:
+
+1. **Resolves prior state.** If `previous_state_id` is supplied, fetch it. Else call `book.get_latest_for_firm(firm_id)`. If neither is available, start from a neutral baseline `0.5` for every pressure scalar.
+2. **Reads readout evidence.** For each cited `CapitalMarketReadoutRecord`:
+   - if `overall_market_access_label == "open_or_constructive"`: market_access_pressure -= 0.05; debt_service_pressure -= 0.03;
+   - if `overall_market_access_label == "selective_or_constrained"`: market_access_pressure += 0.10; debt_service_pressure += 0.05;
+   - if `overall_market_access_label == "mixed"`: market_access_pressure += 0.02;
+   - if `credit_tone in {"restrictive", "widening", "tightening"}`: debt_service_pressure += 0.05.
+3. **Reads market-condition evidence (only if no readout was cited).** Avoids double-counting the credit signal under the default living-world wiring where both readout and conditions are cited together.
+4. **Reads industry-demand evidence.** For each cited `IndustryDemandConditionRecord`:
+   - if `demand_direction in {"contracting", "weakening", "tightening"}`: margin_pressure += 0.05;
+   - if `demand_direction in {"expanding", "strengthening", "supportive"}`: margin_pressure -= 0.03.
+5. **Reads pressure-signal evidence.** Each cited pressure signal id nudges liquidity_pressure += 0.02 (count-based, intentionally simple).
+6. **Synthesizes derived scalars.**
+   - `funding_need_intensity = mean(liquidity_pressure, debt_service_pressure, market_access_pressure)`
+   - `response_readiness = mean(funding_need_intensity, margin_pressure)`
+7. **Clamps every scalar to `[0.0, 1.0]`.** All deltas use the `_step` helper which applies the clamp.
+8. **Sets confidence = 0.5** by default. Future milestones may refine to e.g. the mean of cited evidence's confidences.
+
+The rule set is small, documented, and reproducible. No rule is a recommendation; each scalar is a synthetic ordering whose value is shaped by the cited evidence.
+
+### 80.4 Anti-fields and anti-claims (binding)
+
+The dataclass deliberately has **no** `revenue`, `sales`, `EBITDA`, `net_income`, `cash_balance`, `debt_amount`, `real_financial_statement`, `forecast_value`, `actual_value`, `accounting_value`, or `investment_recommendation` field. The ledger payload likewise carries none of these keys. Two explicit tests (`test_state_record_has_no_accounting_or_forecast_field`, `test_add_state_payload_carries_no_accounting_or_forecast_keys`) introspect the dataclass field set and the ledger payload key set respectively.
+
+v1.12.0 does **not**:
+
+- update any firm financial statement;
+- emit any accounting value, real financial number, or vendor-curated number;
+- price, quote, calibrate, or recommend any security, deal, instrument, or market;
+- execute any DCM / ECM action, security issuance, loan origination, trade, order match, clearing event, contract mutation, covenant enforcement, or disclosure filing;
+- forecast any market level, return, default probability, revenue, EBITDA, or any real-world quantity;
+- mutate any other source-of-truth book (the no-mutation test asserts this against ownership, contracts, prices, constraints, signals, valuations, institutions, external_processes, relationships, interactions, routines, attention, variables, exposures, stewardship, engagement, escalations, strategic_responses, industry_conditions, market_conditions, and capital_market_readouts);
+- emit the legacy v0/v1 `firm_state_added` registration event from `add_state` — the new event is `firm_latent_state_updated`, distinct by name;
+- enforce membership of any free-form tag against any controlled vocabulary;
+- emit any ledger record other than `FIRM_LATENT_STATE_UPDATED` from a bare `add_state` call.
+
+### 80.5 Performance boundary (binding)
+
+v1.12.0 adds **one** record per (firm, period). The per-period formula gains `firms`; the per-run formula moves from 244 to **256** for the default fixture (firms=3 × 4 periods = +12); the per-run window moves from `[244, 276]` to **`[256, 288]`**. The firm-state phase is `O(P × F)` (one state per firm per period) — same shape as the v1.10.3 corporate-response phase. v1.12.0 introduces no new dense traversal.
+
+### 80.6 Living-world digest (expected change)
+
+The v1.12.0 living-world digest is **not** equal to the v1.11.2 / v1.11.1 default digest. The canonical view now carries `firm_financial_state_ids` per period and the boundary string was extended. This is **expected** and is part of v1.12.0's freeze surface. Tests assert that two fresh runs of the v1.12.0 default fixture produce *byte-identical* canonical JSON and the same digest. The default-fixture digest at v1.12.0 is `1b9ee84ab8e6e0f3012004a8fe2932c689d5dff5ea0031997a3dd5bca6b913ca`.
+
+### 80.7 What v1.12.0 does not decide
+
+- The shape of the eventual *attention-conditioned* downstream consumers. v1.12.0 makes firm-state ids citable by plain id; it does not refactor v1.9.5 / v1.9.7 / v1.10.3 mechanisms to consume them. A future milestone may add a `evidence_firm_state_ids` slot on `CorporateStrategicResponseCandidate`, on `BankCreditReviewLite`, or on a future funding/issuance intent record, mirroring the v1.10.4.1 / v1.11.0 type-correct cross-reference patterns.
+- The exact rule values beyond the v1.12.0 minimum. A future milestone may extend or tune the rule set without breaking the v1.12.0 freeze surface, as long as: the chain link via `previous_state_id` is preserved; constructive regimes still allow decay; constrained / tightening regimes still amplify; the per-period firm-count budget remains `firms`.
+- Whether `confidence` should average the cited evidence's confidences (instead of a hardcoded `0.5`). v1.12.0 keeps the simpler hardcode for now; a future milestone may refine.
+
+### 80.8 Position in the v1.12 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 → v1.10.5 (engagement / strategic-response stack) | Code (§70 → §76). | Shipped |
+| v1.11.0 → v1.11.2 (capital-market surface stack) | Code (§77 → §79). | Shipped |
+| **v1.12.0 Firm financial latent state** | Code (§80). First endogenous state-update layer. | **Shipped** |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v1.12.x next steps (anticipated) | Code. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `2137 / 2137` (v1.11.2) to `2259 / 2259` (v1.12.0) — `+122` tests (`+113` in the new `tests/test_firm_state.py`, `+9` v1.12.0 integration tests in `tests/test_living_reference_world.py`). The CLI surface gains a `firm_states=` column; the per-period record count moves from 61 to 64; the per-run record window widens from `[244, 276]` to `[256, 288]`; the default-fixture `living_world_digest` changes to `1b9ee84ab8e6e0f3012004a8fe2932c689d5dff5ea0031997a3dd5bca6b913ca` (expected — see §80.6).

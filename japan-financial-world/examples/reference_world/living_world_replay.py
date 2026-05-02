@@ -97,7 +97,13 @@ LIVING_WORLD_BOUNDARY_STATEMENT: str = (
     "readable labels derived from v1.11.0 conditions; no spread "
     "calibration, no yield calibration, no market forecast, no "
     "deal advice, no transaction recommendation; readout / "
-    "report only."
+    "report only. "
+    "v1.12.0 firm financial latent state: synthetic [0, 1] "
+    "ordering scalars updated period-over-period by a small "
+    "documented rule set; no revenue, no sales, no EBITDA, no "
+    "net income, no cash balance, no debt amount, no real "
+    "financial statement, no forecast, no actual / accounting "
+    "value, no investment recommendation; latent ordering only."
 )
 
 CANONICAL_FORMAT_VERSION: str = "living_world_canonical.v1"
@@ -215,6 +221,9 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
         ),
         "capital_market_readout_ids": list(
             getattr(period, "capital_market_readout_ids", ())
+        ),
+        "firm_financial_state_ids": list(
+            getattr(period, "firm_financial_state_ids", ())
         ),
     }
 

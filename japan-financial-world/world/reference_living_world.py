@@ -85,6 +85,7 @@ from world.market_conditions import (
     MarketConditionRecord,
 )
 from world.market_surface_readout import build_capital_market_readout
+from world.firm_state import run_reference_firm_financial_state_update
 from world.observation_menu_builder import ObservationMenuBuildRequest
 from world.stewardship import (
     DuplicateStewardshipThemeError,
@@ -205,6 +206,15 @@ class LivingReferencePeriodSummary:
     capital_market_readout_ids: tuple[str, ...] = field(
         default_factory=tuple
     )
+    # v1.12.0 additive: one firm-financial-state id per (firm,
+    # period) pair. The state is a synthetic latent ordering
+    # (margin / liquidity / debt-service / market-access /
+    # funding-need / response-readiness scalars in [0, 1])
+    # updated from prior period via the v1.12.0 rule set. Not
+    # an accounting statement; not a forecast.
+    firm_financial_state_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     record_count_created: int = 0
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -233,6 +243,7 @@ class LivingReferencePeriodSummary:
             "corporate_strategic_response_candidate_ids",
             "market_condition_ids",
             "capital_market_readout_ids",
+            "firm_financial_state_ids",
         ):
             value = tuple(getattr(self, tuple_field_name))
             for entry in value:
@@ -1265,6 +1276,37 @@ def run_living_reference_world(
             )
             capital_market_readout_ids.append(readout.readout_id)
 
+        # ------------------------------------------------------------------
+        # v1.12.0 — firm financial latent state update phase.
+        # For each firm, compute one synthetic
+        # ``FirmFinancialStateRecord`` from prior state (resolved
+        # via ``get_latest_for_firm``) plus this period's readout
+        # / market-condition / industry-condition / pressure
+        # signal evidence. This is the first time-crossing
+        # endogenous state-update layer in public FWE: market
+        # regimes and pressure evidence accumulate into the next
+        # period's state. Not an accounting statement; not a
+        # forecast; not a financial-statement update.
+        # ------------------------------------------------------------------
+        firm_financial_state_ids: list[str] = []
+        for firm_id in firms:
+            state_result = run_reference_firm_financial_state_update(
+                kernel,
+                firm_id=firm_id,
+                as_of_date=iso_date,
+                market_readout_ids=tuple(capital_market_readout_ids),
+                market_condition_ids=tuple(market_condition_ids),
+                industry_condition_ids=(
+                    (condition_id_by_industry[firm_to_industry[firm_id]],)
+                    if firm_to_industry[firm_id] in condition_id_by_industry
+                    else ()
+                ),
+                pressure_signal_ids=(
+                    pressure_signal_by_firm[firm_id],
+                ),
+            )
+            firm_financial_state_ids.append(state_result.state_id)
+
         # Attention phase. We iterate investors and banks in order so
         # the resulting summary tuples match the input order. Each
         # actor's menu picks up *every* firm's corporate signal that
@@ -1687,6 +1729,7 @@ def run_living_reference_world(
                 capital_market_readout_ids=tuple(
                     capital_market_readout_ids
                 ),
+                firm_financial_state_ids=tuple(firm_financial_state_ids),
                 record_count_created=period_end_idx - period_start_idx,
                 metadata={
                     "period_index": period_idx,

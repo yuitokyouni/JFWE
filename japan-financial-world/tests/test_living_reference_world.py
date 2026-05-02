@@ -1886,3 +1886,202 @@ def test_v1_11_2_cli_smoke_with_market_regime_flag():
     assert "constrained" in out
     assert "[setup]" in out
     assert "market_readouts=" in out
+
+
+# ===========================================================================
+# v1.12.0 — firm financial latent state integration
+# ===========================================================================
+
+
+def test_v1_12_0_one_firm_financial_state_per_firm_per_period():
+    """The v1.12.0 firm-state phase fires once per (firm, period);
+    each period summary carries one state id per firm."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected = len(_FIRM_IDS)
+    for ps in r.per_period_summaries:
+        assert len(ps.firm_financial_state_ids) == expected
+
+
+def test_v1_12_0_firm_states_resolve_and_carry_bounded_scalars():
+    k = _seed_kernel()
+    r = _run_default(k)
+    seen_ids: set[str] = set()
+    for ps in r.per_period_summaries:
+        seen_ids.update(ps.firm_financial_state_ids)
+    for sid in seen_ids:
+        rec = k.firm_financial_states.get_state(sid)
+        for v in (
+            rec.margin_pressure,
+            rec.liquidity_pressure,
+            rec.debt_service_pressure,
+            rec.market_access_pressure,
+            rec.funding_need_intensity,
+            rec.response_readiness,
+            rec.confidence,
+        ):
+            assert 0.0 <= v <= 1.0
+
+
+def test_v1_12_0_firm_states_chain_via_previous_state_id_within_run():
+    """Across periods 1 → 4 for the same firm, every state after
+    the first must carry a previous_state_id pointing at the
+    state from the prior period."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for firm_id in _FIRM_IDS:
+        states = [
+            k.firm_financial_states.get_state(
+                ps.firm_financial_state_ids[
+                    list(_FIRM_IDS).index(firm_id)
+                ]
+            )
+            for ps in r.per_period_summaries
+        ]
+        assert states[0].previous_state_id is None
+        for i in range(1, len(states)):
+            assert states[i].previous_state_id == states[i - 1].state_id
+
+
+def test_v1_12_0_constructive_regime_yields_lower_market_access_pressure_than_constrained():
+    """The headline endogenous-dynamics integration test: under
+    `constructive`, average market_access_pressure across firms
+    decays below baseline by the final period; under
+    `constrained`, it rises materially. The two regimes must
+    produce a visible end-of-run gap."""
+    def _final_avg_market_access(regime: str) -> float:
+        k = _seed_kernel()
+        r = run_living_reference_world(
+            k,
+            firm_ids=_FIRM_IDS,
+            investor_ids=_INVESTOR_IDS,
+            bank_ids=_BANK_IDS,
+            period_dates=_PERIOD_DATES,
+            market_regime=regime,
+        )
+        last = r.per_period_summaries[-1]
+        states = [
+            k.firm_financial_states.get_state(sid)
+            for sid in last.firm_financial_state_ids
+        ]
+        return sum(s.market_access_pressure for s in states) / len(states)
+
+    constructive_final = _final_avg_market_access("constructive")
+    constrained_final = _final_avg_market_access("constrained")
+    assert constructive_final < constrained_final
+    # Visible separation — not just floating-point noise.
+    assert constrained_final - constructive_final > 0.3
+
+
+def test_v1_12_0_no_accounting_or_forecast_payload_keys_in_ledger():
+    """No v1.12.0 record's ledger payload may carry any
+    accounting / forecast / recommendation key."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    forbidden_keys = {
+        "revenue",
+        "sales",
+        "EBITDA",
+        "ebitda",
+        "net_income",
+        "cash_balance",
+        "debt_amount",
+        "real_financial_statement",
+        "forecast_value",
+        "actual_value",
+        "accounting_value",
+        "investment_recommendation",
+    }
+    for rec in k.ledger.records[
+        r.ledger_record_count_before : r.ledger_record_count_after
+    ]:
+        leaked = set(rec.payload.keys()) & forbidden_keys
+        assert not leaked, (
+            f"v1.12.0 demo record {rec.object_id!r} leaks forbidden "
+            f"payload keys: {sorted(leaked)}"
+        )
+
+
+def test_v1_12_0_no_forbidden_action_or_firm_state_added_event_types():
+    """The integrated v1.12.0 sweep must not emit any
+    action-class record. In particular, the legacy v0/v1
+    `firm_state_added` registration event must not appear — the
+    new event type is `firm_latent_state_updated`, not
+    `firm_state_added`."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    forbidden_event_types = {
+        "order_submitted",
+        "price_updated",
+        "contract_created",
+        "contract_status_updated",
+        "contract_covenant_breached",
+        "ownership_position_added",
+        "ownership_transferred",
+        "institution_action_recorded",
+        "firm_state_added",
+    }
+    seen = {
+        rec.event_type
+        for rec in k.ledger.records[
+            r.ledger_record_count_before : r.ledger_record_count_after
+        ]
+    }
+    assert seen.isdisjoint(forbidden_event_types), (
+        "v1.12.0 integrated sweep emitted forbidden event types: "
+        f"{sorted(seen & forbidden_event_types)}"
+    )
+
+
+def test_v1_12_0_two_runs_produce_byte_identical_canonical_view():
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+        living_world_digest,
+    )
+
+    k1 = _seed_kernel()
+    r1 = _run_default(k1)
+    k2 = _seed_kernel()
+    r2 = _run_default(k2)
+    can1 = canonicalize_living_world_result(k1, r1)
+    can2 = canonicalize_living_world_result(k2, r2)
+    assert can1 == can2
+    assert living_world_digest(k1, r1) == living_world_digest(k2, r2)
+
+
+def test_v1_12_0_canonical_view_carries_firm_financial_state_id_tuples():
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+    )
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    can = canonicalize_living_world_result(k, r)
+    for ps in can["per_period_summaries"]:
+        assert "firm_financial_state_ids" in ps
+        assert len(ps["firm_financial_state_ids"]) == len(_FIRM_IDS)
+
+
+def test_v1_12_0_markdown_report_includes_firm_financial_states_section():
+    from world.living_world_report import (
+        build_living_world_trace_report,
+        render_living_world_markdown,
+    )
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    report = build_living_world_trace_report(k, r)
+    md = render_living_world_markdown(report)
+    assert "## Firm financial states" in md
+    assert "avg margin" in md
+    assert "avg liquidity" in md
+    assert "avg debt service" in md
+    assert "avg market access" in md
+    assert "avg funding need" in md
+    assert "avg response readiness" in md
+    md_lower = md.lower()
+    assert (
+        "not** an accounting statement" in md_lower
+        or "not* an accounting statement" in md_lower
+        or "ordering scalars" in md_lower
+    )

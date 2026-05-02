@@ -28,6 +28,7 @@ from world.scheduler import Phase, Scheduler, ScheduledTask, TaskSpec
 from world.signals import SignalBook
 from world.state import State
 from world.engagement import DialogueBook, EscalationCandidateBook
+from world.firm_state import FirmFinancialStateBook
 from world.industry import IndustryConditionBook
 from world.market_conditions import MarketConditionBook
 from world.market_surface_readout import CapitalMarketReadoutBook
@@ -86,6 +87,9 @@ class WorldKernel:
     capital_market_readouts: CapitalMarketReadoutBook = field(
         default_factory=CapitalMarketReadoutBook
     )
+    firm_financial_states: FirmFinancialStateBook = field(
+        default_factory=FirmFinancialStateBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
 
@@ -112,6 +116,7 @@ class WorldKernel:
             self.industry_conditions,
             self.market_conditions,
             self.capital_market_readouts,
+            self.firm_financial_states,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
