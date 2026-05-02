@@ -1,21 +1,24 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.12.5** (`Attention-conditioned
-valuation lite` — extends the v1.12.4 attention-bottleneck pattern
-to the v1.9.5 valuation-refresh-lite mechanism: a new
-`run_attention_conditioned_valuation_refresh_lite(...)` helper
-ships alongside the existing v1.9.5 helper, routes evidence
+Snapshot of the test suite at **v1.12.6** (`Attention-conditioned
+bank credit review lite` — extends the v1.12.4 / v1.12.5
+attention-bottleneck pattern to the v1.9.7 bank-credit-review-lite
+mechanism: a new
+`run_attention_conditioned_bank_credit_review_lite(...)` helper
+ships alongside the existing v1.9.7 helper, routes evidence
 through the v1.12.3 `EvidenceResolver` substrate, and produces
-synthetic `ValuationRecord`s whose `estimated_value` and
-`confidence` are conditioned on what the *valuer actually
-selected*; the headline divergence test pins *three valuers →
-at least two distinct (estimated_value, confidence) triples on
-the same target firm and same period*; helper-level + tests only
-— the orchestrator continues to call the pre-existing v1.9.5
-helper, so the per-run record-count window and
+synthetic `bank_credit_review_note` signals whose deterministic
+**watch label** — `information_gap_review` / `liquidity_watch` /
+`refinancing_watch` / `market_access_watch` / `collateral_watch`
+/ `heightened_review` / `routine_monitoring` — is conditioned on
+what the *bank actually selected*; the headline divergence test
+pins *three banks → three distinct (watch_label, status) audit
+shapes on the same borrower and same period*; helper-level +
+tests only — the orchestrator continues to call the pre-existing
+v1.9.7 helper, so the per-run record-count window and
 `living_world_digest` remain unchanged from v1.12.4):
-`2580 / 2580 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1948 post-v1.7 additions covering reference demo, replay, manifest,
+`2602 / 2602 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1970 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -422,9 +425,9 @@ no-mutation guarantee.
   two tests that pin its formula (`148` for the default fixture)
   and its linearity in `periods`.
 
-## Reference bank credit review lite (v1.9.7)
+## Reference bank credit review lite (v1.9.7) + v1.12.6 attention-conditioned helper
 
-- `test_reference_bank_credit_review_lite.py` (29) — adapter
+- `test_reference_bank_credit_review_lite.py` (51) — adapter
   satisfies `MechanismAdapter`; `MechanismSpec` carries the right
   vocabulary (`model_id == BANK_CREDIT_REVIEW_MODEL_ID`,
   `model_family == "credit_review_mechanism"`, `version == "0.1"`,
@@ -500,6 +503,62 @@ no-mutation guarantee.
   v1.9.4 mechanism produces non-zero output during the sweep,
   and the bank's selected observation sets are routed into the
   v1.9.7 evidence.
+
+  v1.12.6 (`+22`) — the new
+  `run_attention_conditioned_bank_credit_review_lite(...)` helper
+  alongside the preserved `run_reference_bank_credit_review_lite(...)`
+  helper. The new helper resolves an `ActorContextFrame` for the
+  bank (`actor_type="bank"`) via `world.evidence.resolve_actor_context`
+  and runs the v1.9.7 adapter on the resolved frame ids only. A
+  deterministic priority-order watch-label classifier
+  (`information_gap_review` → `liquidity_watch` →
+  `refinancing_watch` → `market_access_watch` → `collateral_watch`
+  → `heightened_review` → `routine_monitoring`) layers a
+  non-binding label on top of the existing v1.9.7 pressure scores.
+  Tests pin: resolver-call + four context-frame metadata keys
+  (`attention_conditioned`, `context_frame_id`,
+  `context_frame_status`, `context_frame_confidence`); the v1.9.7
+  boundary anti-claim metadata is preserved verbatim
+  (`no_lending_decision` / `no_covenant_enforcement` /
+  `no_contract_mutation` / `no_constraint_mutation` /
+  `no_default_declaration` / `no_internal_rating` /
+  `no_probability_of_default` / `synthetic_only`); reads-only-
+  selected-or-explicit-evidence pin (an un-cited pressure signal
+  in the kernel is *not* surfaced; helper takes the degraded
+  path); unresolved-refs land in `metadata["unresolved_refs"]` and
+  lower the frame confidence; `strict=True` raises
+  `StrictEvidenceResolutionError` and emits no signal; per-rule
+  classification (high liquidity → `liquidity_watch`, high funding
+  need → `refinancing_watch`, restrictive environment →
+  `market_access_watch`); selection refs flow through to evidence
+  buckets (a pressure-signal id reachable only via a
+  `SelectedObservationSet` lands in the signal bucket); the
+  headline divergence test asserts three banks produce three
+  distinct (watch_label, status) audit shapes on the same borrower
+  (Bank A → `liquidity_watch` / completed; Bank B →
+  `information_gap_review` / completed; Bank C →
+  `information_gap_review` / degraded); no-mutation guarantee
+  against every other source-of-truth book; ledger / signal
+  payload / signal metadata carry no anti-field key (`buy` /
+  `sell` / `lending_decision` / `loan_approved` / `loan_rejected`
+  / `covenant_breached` / `covenant_enforced` / `default_declared`
+  / `internal_rating` / `rating_grade` / `probability_of_default`
+  / `pd` / `lgd` / `ead` / `loan_pricing` / `credit_pricing` /
+  `interest_rate` / `underwriting_decision` / `approval_status` /
+  `loan_terms` / `investment_advice` / `recommendation` /
+  `contract_amended` / `constraint_changed`); only the existing
+  `signal_added` event type is emitted; determinism across two
+  fresh kernels with byte-identical signal payload + metadata;
+  idempotency-via-`signal_id` (the v1.9.7 SignalBook contract
+  refuses duplicates); `ALL_WATCH_LABELS` vocabulary export pin
+  (the closed set is importable and contains no forbidden tokens
+  like `buy` / `sell` / `rating` / `approved` / `rejected` /
+  `default` / `pd` / `lgd` / `ead` / `advice` / `recommendation`
+  / `underwrite`); defensive errors on `kernel=None` / empty
+  `bank_id` / empty `firm_id`. Helper-level + tests milestone —
+  the orchestrator continues to call the pre-existing v1.9.7
+  helper, so the per-run record-count window and
+  `living_world_digest` remain unchanged from v1.12.4.
 
 ## Reference valuation refresh lite (v1.9.5) + v1.12.5 attention-conditioned helper
 
@@ -1241,7 +1300,7 @@ no-mutation guarantee.
 | Reference firm operating pressure (v1.9.4) | 1  | 28    |
 | Reference valuation refresh lite (v1.9.5) + v1.12.5 attention-conditioned helper | 1  | 45    |
 | Living-world integration (v1.9.6 — added in test_living_reference_world.py) | 0 | 9 |
-| Reference bank credit review lite (v1.9.7) | 1 | 29    |
+| Reference bank credit review lite (v1.9.7) + v1.12.6 attention-conditioned helper | 1 | 51    |
 | Living-world integration (v1.9.7 — added in test_living_reference_world.py) | 0 | 7 |
 | Performance boundary (v1.9.8)           | 1     | 10    |
 | Stewardship theme signal (v1.10.1)      | 1     | 58    |
@@ -1263,8 +1322,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4 / v1.12.5) | 39 | 1948 |
-| **Total**                        | **81**| **2580** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4 / v1.12.5 / v1.12.6) | 39 | 1970 |
+| **Total**                        | **81**| **2602** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

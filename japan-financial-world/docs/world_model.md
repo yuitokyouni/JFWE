@@ -7713,3 +7713,114 @@ The default v1.9 living reference world's investor / bank profiles must continue
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count, per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.12.5 — §87 is docs-only and ships no code, no record, no test, no fixture.
+
+## 88. v1.12.6 Attention-conditioned bank credit review lite — different banks see different borrowers
+
+§88 extends the v1.12.4 / v1.12.5 attention-bottleneck pattern to the v1.9.7 bank credit review lite mechanism. v1.12.6 ships **a third attention-conditioned helper alongside the existing one** — `run_attention_conditioned_bank_credit_review_lite(...)` in `world/reference_bank_credit_review_lite.py` — which routes evidence through the v1.12.3 `EvidenceResolver` substrate and produces a `bank_credit_review_note` signal whose **watch label** and audit shape are conditioned on what the *bank actually selected*. The pre-existing `run_reference_bank_credit_review_lite(...)` helper is preserved bit-for-bit; the orchestrator continues to call it.
+
+This is still **a synthetic diagnostic note**, not a lending decision, internal rating, probability of default, LGD/EAD, credit pricing, underwriting decision, covenant action, or default declaration. Every v1.9.7 anti-claim is preserved on the produced signal's metadata bit-for-bit (`no_lending_decision` / `no_covenant_enforcement` / `no_contract_mutation` / `no_constraint_mutation` / `no_default_declaration` / `no_internal_rating` / `no_probability_of_default` / `synthetic_only`). v1.12.6 changes only **how the evidence the helper consumes is selected** — it now flows through the v1.12.3 attention bottleneck — and adds a small documented synthetic *watch label* to the signal payload + metadata.
+
+### 88.1 Why this exists
+
+Through v1.12.5 the v1.9.7 bank credit review helper still consumed evidence id tuples directly from its caller, with no per-actor attention bottleneck. The same set of pressure signals and valuations the orchestrator passed to every bank produced the same scores for every bank — every bank "saw" the same evidence by construction.
+
+§88 closes that loop for bank credit review. The new helper resolves an `ActorContextFrame` for the bank (`actor_type="bank"`) on the requested period via the v1.12.3 substrate and consumes only the resolver's surfaced ids. Different banks selecting different evidence sets for the same borrower now produce **different non-binding watch labels** because they attended to different things.
+
+The headline test (`test_attn_divergence_three_banks_three_review_labels`) pins this property: three banks review the same borrower on the same date with three different selected evidence sets, and the helper produces three distinct (watch_label, status) audit shapes — Bank A (firm state + market environment) lands on `liquidity_watch`; Bank B (valuation + corporate signal but no firm state) lands on `information_gap_review` with `status="completed"`; Bank C (no evidence at all) lands on `information_gap_review` with `status="degraded"`.
+
+### 88.2 What v1.12.6 ships
+
+- `world/reference_bank_credit_review_lite.py` — new `run_attention_conditioned_bank_credit_review_lite(...)` helper. Idempotent on `signal_id` (the v1.9.7 `SignalBook` contract refuses duplicates). Read-only over every other source-of-truth book; writes only the same single `signal_added` ledger record the v1.9.7 helper writes. The pre-existing `run_reference_bank_credit_review_lite(...)` helper is preserved unchanged for backward compatibility — every existing v1.9.7 test continues to pass against it. The new helper exposes a complete kwarg vocabulary: `selected_observation_set_ids`, `explicit_pressure_signal_ids`, `explicit_corporate_signal_ids`, `explicit_valuation_ids`, `explicit_firm_state_ids`, `explicit_market_readout_ids`, `explicit_market_environment_state_ids`, `explicit_industry_condition_ids`, `explicit_exposure_ids`, `explicit_variable_observation_ids`, plus `request_id` / `signal_id` / `strict` / `metadata`.
+- `world/reference_bank_credit_review_lite.py` — module-level constants exposing the v1.12.6 watch-label vocabulary: `WATCH_LABEL_INFORMATION_GAP_REVIEW`, `WATCH_LABEL_LIQUIDITY_WATCH`, `WATCH_LABEL_REFINANCING_WATCH`, `WATCH_LABEL_MARKET_ACCESS_WATCH`, `WATCH_LABEL_COLLATERAL_WATCH`, `WATCH_LABEL_HEIGHTENED_REVIEW`, `WATCH_LABEL_ROUTINE_MONITORING`, plus an `ALL_WATCH_LABELS` tuple. Importable so future audit / integration tests can pin against the closed set.
+- `tests/test_reference_bank_credit_review_lite.py` — `+22` v1.12.6 tests covering the new helper:
+  - resolver-call test pinning the four attention-metadata keys on `signal.metadata` (`attention_conditioned`, `context_frame_id`, `context_frame_status`, `context_frame_confidence`) plus the eight v1.9.7 boundary anti-claim keys;
+  - reads-only-selected-or-explicit-evidence pin (an un-cited pressure signal in the kernel is *not* surfaced; helper takes the degraded path);
+  - unresolved-refs land in `metadata["unresolved_refs"]` and lower the frame confidence; helper still emits a signal (tolerant by default);
+  - strict-mode-raises and strict-mode-passes invariants;
+  - per-rule classification (high liquidity → `liquidity_watch`, high funding need → `refinancing_watch`, restrictive environment → `market_access_watch`);
+  - the headline divergence test (three banks → three distinct (watch_label, status) audit shapes on the same borrower and same period);
+  - selection refs flow through to evidence buckets (a pressure-signal id reachable only via a `SelectedObservationSet` lands in the signal bucket and the v1.9.7 adapter scores it);
+  - no-mutation guarantee against every other source-of-truth book in the kernel;
+  - no anti-field payload keys (`lending_decision` / `loan_approved` / `loan_rejected` / `covenant_breached` / `covenant_enforced` / `contract_amended` / `constraint_changed` / `default_declared` / `internal_rating` / `rating_grade` / `probability_of_default` / `pd` / `lgd` / `ead` / `loan_pricing` / `credit_pricing` / `interest_rate` / `underwriting_decision` / `approval_status` / `loan_terms` / `investment_advice` / `recommendation` / `buy` / `sell` / `order` / `trade`) on `signal.payload`, `signal.metadata`, or the ledger payload;
+  - emits only the existing `signal_added` event type — no new event type;
+  - determinism (two fresh kernels with identical inputs → byte-identical signal payload and metadata) and idempotency on `signal_id`;
+  - watch-label vocabulary exposure pin (the closed set is importable and contains no forbidden tokens like `buy` / `sell` / `rating` / `approved` / `rejected` / `default` / `pd` / `lgd` / `ead` / `advice` / `recommendation` / `underwrite`);
+  - defensive errors on `kernel=None` / empty `bank_id` / empty `firm_id`.
+
+### 88.3 Watch-label classifier (binding)
+
+The new helper layers a deterministic priority-order watch-label classifier on top of the v1.9.7 adapter's existing scores. Rules fire in this order; the first match wins:
+
+1. `information_gap_review` — when the resolved frame surfaces neither a firm-state record nor an `InformationSignal` (the bank is reviewing without latent state).
+2. `liquidity_watch` — when any resolved firm state has `liquidity_pressure ≥ 0.65`.
+3. `refinancing_watch` — when any resolved firm state has `funding_need_intensity ≥ 0.7` OR `debt_service_pressure ≥ 0.65`.
+4. `market_access_watch` — when any resolved capital-market readout OR any resolved market environment state carries `overall_market_access_label == "selective_or_constrained"`.
+5. `collateral_watch` — when any resolved firm state has `market_access_pressure ≥ 0.65`.
+6. `heightened_review` — when the v1.9.7 adapter's `overall_credit_review_pressure ≥ 0.6`.
+7. `routine_monitoring` — default fallback.
+
+None of these labels is a rating, PD, LGD, EAD, loan term, pricing, or investment advice. The thresholds are small and documented; they are not calibrated probabilities. Tests pin the qualitative ordering, not specific arithmetic.
+
+### 88.4 Anti-fields and anti-claims (binding)
+
+The v1.12.6 helper introduces:
+
+- four new metadata keys on the produced `bank_credit_review_note` signal (`attention_conditioned`, `context_frame_id`, `context_frame_status`, `context_frame_confidence`), plus a `watch_label` key on both `signal.payload` and `signal.metadata`, plus a `resolved_evidence_buckets` audit dict on `signal.payload`, plus an optional `unresolved_refs` list when the resolver could not place every cited id;
+- one resolver call per helper invocation;
+- no new ledger event type — the helper emits only the existing `signal_added` record per call;
+- no new `InformationSignal` field;
+- no new bucket on `ActorContextFrame`.
+
+The signal continues to have **no** payload or metadata key for `lending_decision`, `loan_approved`, `loan_rejected`, `covenant_breached`, `covenant_enforced`, `contract_amended`, `constraint_changed`, `default_declared`, `internal_rating`, `rating_grade`, `probability_of_default`, `pd`, `lgd`, `ead`, `loan_pricing`, `credit_pricing`, `interest_rate`, `underwriting_decision`, `approval_status`, `loan_terms`, `investment_advice`, `recommendation`, `buy`, `sell`, `order`, or `trade`. The v1.9.7 boundary anti-claim metadata (`no_lending_decision` / `no_covenant_enforcement` / `no_contract_mutation` / `no_constraint_mutation` / `no_default_declaration` / `no_internal_rating` / `no_probability_of_default` / `synthetic_only`) is preserved bit-for-bit.
+
+### 88.5 Attention discipline (binding)
+
+The new helper:
+
+- builds an `ActorContextFrame` for `(bank_id, as_of_date)` via `world.evidence.resolve_actor_context(...)` with `actor_type="bank"`;
+- reads **only** `frame.resolved_*_ids` slots and `frame.unresolved_refs`; never scans `kernel.signals` / `kernel.firm_financial_states` / `kernel.market_environments` / any other book globally;
+- writes only one `InformationSignal` to `kernel.signals` (and the kernel ledger via the existing `signal_added` event type); never to any other source-of-truth book;
+- forwards `strict=True` to the resolver; on strict failure raises `StrictEvidenceResolutionError` and emits no signal;
+- is read-only over the resolver itself (the resolver remains read-only and non-emitting per v1.12.3 §83).
+
+### 88.6 Living-world integration (deferred)
+
+v1.12.6 is a **helper-level + tests milestone**, mirroring the v1.12.5 valuation-lite precedent. The orchestrator (`world/reference_living_world.py`) continues to call the pre-existing `run_reference_bank_credit_review_lite(...)` helper through its v1.9.7 bank credit review phase. Wiring the orchestrator to the new helper would change the `living_world_digest` bytes — the new helper adds `watch_label`, `context_frame_id`, `context_frame_status`, `resolved_evidence_buckets`, and several attention-metadata keys to the `signal_added` payload, all of which the canonical view digests. Per the v1.12.5 task spec's gate, v1.12.6 ships helper + tests only; orchestrator wiring is deferred to a future v1.12.6.x sub-milestone.
+
+A future sub-milestone where the orchestrator routes bank-credit-review evidence through the new helper will:
+
+- shift `signal_added` payload bytes for the default fixture (new `watch_label` + frame metadata keys);
+- update `examples/reference_world/living_world_replay.py` and `living_world_manifest.py` to pin the new digest;
+- add `+2`-ish living-world integration tests in `tests/test_living_reference_world.py` mirroring the v1.12.4 orchestrator-side tests.
+
+Until that sub-milestone, the v1.9.7 bank credit review phase remains on the v1.9.7 evidence-kwarg path, the default-fixture `living_world_digest` remains unchanged from v1.12.4 (`d6b25704014c3f19da330f534d5f8266ce8a9b73b9ee8da378b19c4691cb5dfe`), and the per-run record-count window remains `[284, 316]`.
+
+### 88.7 What v1.12.6 does not decide
+
+- **Does not** approve, reject, or originate any loan; **does not** form a lending decision.
+- **Does not** enforce, trip, or evaluate any covenant; **does not** mutate any contract or constraint.
+- **Does not** declare default, near-default, watchlist promotion, or any binding credit status.
+- **Does not** form an internal rating, rating grade, probability of default (PD), loss given default (LGD), exposure at default (EAD), or any regulator-recognised credit measure.
+- **Does not** compute credit pricing, interest rate, spread, fee, or loan terms.
+- **Does not** decide underwriting, approval status, or loan-terms change.
+- **Does not** form a price, target price, expected return, recommendation, buy/sell/rebalance/allocation, or any investment-advice shape.
+- **Does not** introduce LLM-agent execution. The frame is the *substrate* a future LLM-agent reviewer can read; v1.12.6 is not itself an LLM call.
+- **Does not** ingest real data or apply any Japan-specific calibration.
+- **Does not** drop the existing `run_reference_bank_credit_review_lite(...)` helper; both helpers continue to ship side by side, and existing v1.9.7 tests against the old helper continue to pass.
+- **Does not** wire the new helper into the orchestrator (see §88.6). A follow-up v1.12.6.x sub-milestone may do that opt-in once the canonical-view digest shift is documented.
+
+### 88.8 Position in the v1.12 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.12.0 → v1.12.2 (firm state / investor intent / market environment) | Code (§80 → §82). | Shipped |
+| v1.12.3 EvidenceResolver / ActorContextFrame | Code (§83). | Shipped |
+| v1.x Valuation Protocol — Comps Purpose Separation | Docs-only (§84). Advanced-actor-only. | Shipped |
+| v1.12.4 Attention-conditioned investor intent | Code (§85). First mechanism-level use of attention. | Shipped |
+| v1.12.5 Attention-conditioned valuation lite | Code (§86). Helper-level + tests. Orchestrator deferred. | Shipped |
+| v1.13.0 Generic central bank settlement infrastructure design | Docs-only (§87). Jurisdiction-neutral substrate vocabulary. | Shipped |
+| **v1.12.6 Attention-conditioned bank credit review lite** | Code (§88). Helper-level + tests. Orchestrator deferred. | **Shipped** |
+| v1.12.7 Next-period attention feedback (anticipated) | Code. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `2580 / 2580` (v1.12.5) to `2602 / 2602` (v1.12.6) — `+22` tests, all in `tests/test_reference_bank_credit_review_lite.py` (taking that file from 29 to 51 tests). The per-period record count, per-run window, and `living_world_digest` are unchanged from v1.12.4 / v1.12.5 because the orchestrator continues to call the pre-existing helper (the new helper is exercised by tests only). With v1.12.6 shipped, attention is now load-bearing for **three mechanism-level use cases**: investor intent (§85), valuation lite (§86), and bank credit review lite (§88).

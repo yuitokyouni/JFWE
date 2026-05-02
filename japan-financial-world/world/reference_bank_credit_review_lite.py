@@ -810,3 +810,549 @@ def run_reference_bank_credit_review_lite(
         signal_id=signal.signal_id,
         review_summary=summary,
     )
+
+
+# ---------------------------------------------------------------------------
+# v1.12.6 — attention-conditioned helper
+# ---------------------------------------------------------------------------
+
+
+# v1.12.6 watch-label vocabulary (binding).
+#
+# A *watch label* is a small free-form non-binding tag that names
+# what the bank's review attention surfaced in the resolved frame.
+# It is not a rating, not a probability of default, not a lending
+# decision, not a covenant view, not a price. The vocabulary is
+# illustrative; tests pin the priority-order classifier below.
+WATCH_LABEL_INFORMATION_GAP_REVIEW: str = "information_gap_review"
+WATCH_LABEL_LIQUIDITY_WATCH: str = "liquidity_watch"
+WATCH_LABEL_REFINANCING_WATCH: str = "refinancing_watch"
+WATCH_LABEL_MARKET_ACCESS_WATCH: str = "market_access_watch"
+WATCH_LABEL_COLLATERAL_WATCH: str = "collateral_watch"
+WATCH_LABEL_HEIGHTENED_REVIEW: str = "heightened_review"
+WATCH_LABEL_ROUTINE_MONITORING: str = "routine_monitoring"
+
+ALL_WATCH_LABELS: tuple[str, ...] = (
+    WATCH_LABEL_INFORMATION_GAP_REVIEW,
+    WATCH_LABEL_LIQUIDITY_WATCH,
+    WATCH_LABEL_REFINANCING_WATCH,
+    WATCH_LABEL_MARKET_ACCESS_WATCH,
+    WATCH_LABEL_COLLATERAL_WATCH,
+    WATCH_LABEL_HEIGHTENED_REVIEW,
+    WATCH_LABEL_ROUTINE_MONITORING,
+)
+
+
+# v1.12.6 watch-label rule-set thresholds. Small, documented,
+# deterministic. None is a calibrated probability; none is a
+# regulator-recognised credit measure.
+_LIQUIDITY_PRESSURE_THRESHOLD: float = 0.65
+_FUNDING_NEED_THRESHOLD: float = 0.70
+_DEBT_SERVICE_PRESSURE_THRESHOLD: float = 0.65
+_MARKET_ACCESS_PRESSURE_THRESHOLD: float = 0.65
+_OVERALL_HEIGHTENED_THRESHOLD: float = 0.60
+_RESTRICTIVE_OVERALL_LABEL: str = "selective_or_constrained"
+
+
+def _classify_watch_label(
+    *,
+    has_firm_state_evidence: bool,
+    has_pressure_signal_evidence: bool,
+    high_liquidity_pressure: bool,
+    high_funding_need_or_debt_service: bool,
+    restrictive_market: bool,
+    high_market_access_pressure: bool,
+    overall_credit_review_pressure: float,
+) -> str:
+    """v1.12.6 deterministic watch-label classifier.
+
+    Priority order:
+
+    1. ``information_gap_review`` — when the bank's resolved frame
+       carries neither firm-state evidence nor a pressure signal.
+       The bank is reviewing without latent state.
+    2. ``liquidity_watch`` — high liquidity pressure on a resolved
+       firm state.
+    3. ``refinancing_watch`` — high funding-need or debt-service
+       pressure on a resolved firm state.
+    4. ``market_access_watch`` — restrictive overall market access
+       label on a resolved environment / readout.
+    5. ``collateral_watch`` — high market-access pressure on a
+       resolved firm state.
+    6. ``heightened_review`` — overall pressure (from the v1.9.7
+       adapter) ≥ 0.6.
+    7. ``routine_monitoring`` — default.
+
+    None of these labels is a rating, PD, LGD, EAD, loan term, or
+    pricing.
+    """
+    if not (has_firm_state_evidence or has_pressure_signal_evidence):
+        return WATCH_LABEL_INFORMATION_GAP_REVIEW
+    if high_liquidity_pressure:
+        return WATCH_LABEL_LIQUIDITY_WATCH
+    if high_funding_need_or_debt_service:
+        return WATCH_LABEL_REFINANCING_WATCH
+    if restrictive_market:
+        return WATCH_LABEL_MARKET_ACCESS_WATCH
+    if high_market_access_pressure:
+        return WATCH_LABEL_COLLATERAL_WATCH
+    if overall_credit_review_pressure >= _OVERALL_HEIGHTENED_THRESHOLD:
+        return WATCH_LABEL_HEIGHTENED_REVIEW
+    return WATCH_LABEL_ROUTINE_MONITORING
+
+
+def run_attention_conditioned_bank_credit_review_lite(
+    kernel: Any,
+    *,
+    bank_id: str,
+    firm_id: str,
+    as_of_date: date | str | None = None,
+    selected_observation_set_ids: Sequence[str] = (),
+    explicit_pressure_signal_ids: Sequence[str] = (),
+    explicit_corporate_signal_ids: Sequence[str] = (),
+    explicit_valuation_ids: Sequence[str] = (),
+    explicit_firm_state_ids: Sequence[str] = (),
+    explicit_market_readout_ids: Sequence[str] = (),
+    explicit_market_environment_state_ids: Sequence[str] = (),
+    explicit_industry_condition_ids: Sequence[str] = (),
+    explicit_exposure_ids: Sequence[str] = (),
+    explicit_variable_observation_ids: Sequence[str] = (),
+    request_id: str | None = None,
+    signal_id: str | None = None,
+    strict: bool = False,
+    metadata: Mapping[str, Any] | None = None,
+) -> BankCreditReviewLiteResult:
+    """
+    v1.12.6 — attention-conditioned bank credit review lite.
+
+    Builds an :class:`world.evidence.ActorContextFrame` for the
+    bank via :func:`world.evidence.resolve_actor_context` and
+    runs the v1.9.7 :class:`BankCreditReviewLiteAdapter` on
+    **only the resolver-surfaced evidence ids**. The bank's
+    ``SelectedObservationSet`` is the attention surface;
+    explicit-id kwargs cover evidence types not yet in the v1.8.x
+    menu builder (firm states, market environment states, market
+    readouts, valuations, industry conditions).
+
+    The adapter's existing pressure-score formula is preserved
+    bit-for-bit; v1.12.6 layers a deterministic synthetic
+    **watch label** on top, derived from the resolved frame:
+
+    - ``information_gap_review`` when the frame surfaces no firm
+      state and no pressure signal;
+    - ``liquidity_watch`` when a resolved firm state has
+      ``liquidity_pressure ≥ 0.65``;
+    - ``refinancing_watch`` when a resolved firm state has
+      ``funding_need_intensity ≥ 0.7`` or
+      ``debt_service_pressure ≥ 0.65``;
+    - ``market_access_watch`` when a resolved capital-market
+      readout or market environment carries
+      ``overall_market_access_label == "selective_or_constrained"``;
+    - ``collateral_watch`` when a resolved firm state has
+      ``market_access_pressure ≥ 0.65``;
+    - ``heightened_review`` when the v1.9.7 adapter's
+      ``overall_credit_review_pressure ≥ 0.6``;
+    - ``routine_monitoring`` otherwise.
+
+    The watch label is a *recorded label*, not a decision. None
+    of these is a rating, PD, LGD, EAD, loan term, pricing, or
+    investment advice. Anti-claim metadata
+    (``no_lending_decision`` / ``no_covenant_enforcement`` /
+    ``no_contract_mutation`` / ``no_constraint_mutation`` /
+    ``no_default_declaration`` / ``no_internal_rating`` /
+    ``no_probability_of_default`` / ``synthetic_only``) is
+    preserved bit-for-bit on the produced signal's metadata.
+
+    Helper-level: the orchestrator continues to call
+    :func:`run_reference_bank_credit_review_lite` for the
+    living-world bank credit review phase. v1.12.6 is opt-in
+    helper + tests; orchestrator wiring would shift the
+    ``signal_added`` payload bytes (the new watch label and
+    frame metadata) and is therefore deferred to a future
+    v1.12.6.x sub-milestone, mirroring the v1.12.5 precedent.
+
+    The helper does **not**:
+
+    - approve, reject, or origin any loan;
+    - enforce or trip any covenant;
+    - mutate any source-of-truth book beyond the existing single
+      ``SignalBook.add_signal`` write;
+    - change interest rates or any other contract field;
+    - detect or declare default;
+    - form, observe, or move any market price;
+    - imply that any score is a probability of default, an
+      internal rating, an LGD, an EAD, or any
+      regulator-recognised credit measure;
+    - imply investment advice;
+    - ingest real data, calibrate to any real economy, or apply
+      Japan-specific calibration;
+    - dispatch to an LLM agent or any external solver.
+
+    Strict mode forwards to the resolver and raises
+    :class:`world.evidence.StrictEvidenceResolutionError` on any
+    unresolved id; the helper does not emit a signal in that
+    case.
+    """
+    if kernel is None:
+        raise ValueError("kernel is required")
+    if not isinstance(bank_id, str) or not bank_id:
+        raise ValueError(
+            "bank_id is required and must be a non-empty string"
+        )
+    if not isinstance(firm_id, str) or not firm_id:
+        raise ValueError(
+            "firm_id is required and must be a non-empty string"
+        )
+
+    # Local import to keep the v1.9.7 import surface unchanged for
+    # callers that don't use the v1.12.6 helper.
+    from world.evidence import (  # noqa: PLC0415
+        ActorContextFrame,
+        resolve_actor_context,
+    )
+
+    iso_date = _coerce_iso_date(as_of_date, kernel=kernel)
+    rid = request_id or _default_request_id(bank_id, firm_id, iso_date)
+
+    # ------------------------------------------------------------------
+    # Pass 1 — ask the resolver to build a context frame for this
+    # bank on this date. Strict mode raises before any record is
+    # emitted.
+    # ------------------------------------------------------------------
+    frame: ActorContextFrame = resolve_actor_context(
+        kernel,
+        actor_id=bank_id,
+        actor_type="bank",
+        as_of_date=iso_date,
+        selected_observation_set_ids=tuple(selected_observation_set_ids),
+        explicit_signal_ids=(
+            tuple(explicit_pressure_signal_ids)
+            + tuple(explicit_corporate_signal_ids)
+        ),
+        explicit_valuation_ids=tuple(explicit_valuation_ids),
+        explicit_firm_state_ids=tuple(explicit_firm_state_ids),
+        explicit_market_readout_ids=tuple(explicit_market_readout_ids),
+        explicit_market_environment_state_ids=tuple(
+            explicit_market_environment_state_ids
+        ),
+        explicit_industry_condition_ids=tuple(explicit_industry_condition_ids),
+        explicit_exposure_ids=tuple(explicit_exposure_ids),
+        explicit_variable_observation_ids=tuple(
+            explicit_variable_observation_ids
+        ),
+        strict=strict,
+    )
+
+    # ------------------------------------------------------------------
+    # Pass 2 — populate the adapter's evidence dict from resolved
+    # frame ids only. The helper never scans the kernel's other
+    # books for additional context.
+    # ------------------------------------------------------------------
+    evidence: dict[str, list[dict[str, Any]]] = {
+        "InformationSignal": [],
+        "ValuationRecord": [],
+        "SelectedObservationSet": [],
+        "VariableObservation": [],
+        "ExposureRecord": [],
+    }
+
+    has_pressure_signal_evidence = False
+    for sid in frame.resolved_signal_ids:
+        sig = kernel.signals.get_signal(sid)
+        evidence["InformationSignal"].append(
+            {
+                "signal_id": sig.signal_id,
+                "signal_type": sig.signal_type,
+                "subject_id": sig.subject_id,
+                "source_id": sig.source_id,
+                "published_date": sig.published_date,
+                "payload": dict(sig.payload),
+                "metadata": dict(sig.metadata),
+            }
+        )
+        if (
+            sig.signal_type == _FIRM_PRESSURE_SIGNAL_TYPE
+            and sig.subject_id == firm_id
+        ):
+            has_pressure_signal_evidence = True
+
+    for vid in frame.resolved_valuation_ids:
+        record = kernel.valuations.get_valuation(vid)
+        evidence["ValuationRecord"].append(
+            {
+                "valuation_id": record.valuation_id,
+                "subject_id": record.subject_id,
+                "valuer_id": record.valuer_id,
+                "valuation_type": record.valuation_type,
+                "method": record.method,
+                "as_of_date": record.as_of_date,
+                "estimated_value": record.estimated_value,
+                "currency": record.currency,
+                "numeraire": record.numeraire,
+                "confidence": record.confidence,
+                "metadata": dict(record.metadata),
+            }
+        )
+
+    for sel_id in frame.selected_observation_set_ids:
+        try:
+            sel = kernel.attention.get_selection(sel_id)
+        except Exception:
+            continue
+        evidence["SelectedObservationSet"].append(
+            {
+                "selection_id": sel.selection_id,
+                "actor_id": sel.actor_id,
+                "menu_id": sel.menu_id,
+                "selected_refs": list(sel.selected_refs),
+                "as_of_date": sel.as_of_date,
+            }
+        )
+
+    for oid in frame.resolved_variable_observation_ids:
+        obs = kernel.variables.get_observation(oid)
+        try:
+            spec = kernel.variables.get_variable(obs.variable_id)
+            variable_group = spec.variable_group
+        except Exception:
+            variable_group = None
+        evidence["VariableObservation"].append(
+            {
+                "observation_id": obs.observation_id,
+                "variable_id": obs.variable_id,
+                "variable_group": variable_group,
+                "as_of_date": obs.as_of_date,
+                "value": obs.value,
+                "unit": obs.unit,
+            }
+        )
+
+    for eid in frame.resolved_exposure_ids:
+        exp = kernel.exposures.get_exposure(eid)
+        evidence["ExposureRecord"].append(
+            {
+                "exposure_id": exp.exposure_id,
+                "subject_id": exp.subject_id,
+                "subject_type": exp.subject_type,
+                "variable_id": exp.variable_id,
+                "exposure_type": exp.exposure_type,
+                "metric": exp.metric,
+                "magnitude": float(exp.magnitude),
+                "direction": exp.direction,
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # Pass 3 — derive the watch-label classifier inputs from
+    # additional resolved frame slots that the v1.9.7 adapter does
+    # not consume directly (firm states, market readouts, market
+    # environments).
+    # ------------------------------------------------------------------
+    has_firm_state_evidence = bool(frame.resolved_firm_state_ids)
+    high_liquidity_pressure = False
+    high_funding_need_or_debt_service = False
+    high_market_access_pressure = False
+    if has_firm_state_evidence:
+        for fsid in frame.resolved_firm_state_ids:
+            try:
+                state = kernel.firm_financial_states.get_state(fsid)
+            except Exception:
+                continue
+            if state.liquidity_pressure >= _LIQUIDITY_PRESSURE_THRESHOLD:
+                high_liquidity_pressure = True
+            if (
+                state.funding_need_intensity >= _FUNDING_NEED_THRESHOLD
+                or state.debt_service_pressure
+                >= _DEBT_SERVICE_PRESSURE_THRESHOLD
+            ):
+                high_funding_need_or_debt_service = True
+            if (
+                state.market_access_pressure
+                >= _MARKET_ACCESS_PRESSURE_THRESHOLD
+            ):
+                high_market_access_pressure = True
+
+    restrictive_market = False
+    for rid_x in frame.resolved_market_readout_ids:
+        try:
+            readout = kernel.capital_market_readouts.get_readout(rid_x)
+        except Exception:
+            continue
+        if readout.overall_market_access_label == _RESTRICTIVE_OVERALL_LABEL:
+            restrictive_market = True
+    for eid in frame.resolved_market_environment_state_ids:
+        try:
+            env = kernel.market_environments.get_state(eid)
+        except Exception:
+            continue
+        if env.overall_market_access_label == _RESTRICTIVE_OVERALL_LABEL:
+            restrictive_market = True
+
+    # ------------------------------------------------------------------
+    # Pass 4 — build evidence_refs (deterministic, first-seen
+    # order) and run the adapter.
+    # ------------------------------------------------------------------
+    resolved_refs: tuple[str, ...] = (
+        tuple(frame.resolved_signal_ids)
+        + tuple(frame.resolved_valuation_ids)
+        + tuple(frame.selected_observation_set_ids)
+        + tuple(frame.resolved_variable_observation_ids)
+        + tuple(frame.resolved_exposure_ids)
+        + tuple(frame.resolved_firm_state_ids)
+        + tuple(frame.resolved_market_readout_ids)
+        + tuple(frame.resolved_market_environment_state_ids)
+        + tuple(frame.resolved_industry_condition_ids)
+    )
+
+    parameters: dict[str, Any] = {"bank_id": bank_id}
+    if signal_id is not None:
+        parameters["signal_id"] = signal_id
+
+    request = MechanismRunRequest(
+        request_id=rid,
+        model_id=BANK_CREDIT_REVIEW_MODEL_ID,
+        actor_id=firm_id,
+        as_of_date=iso_date,
+        selected_observation_set_ids=tuple(
+            frame.selected_observation_set_ids
+        ),
+        evidence_refs=resolved_refs,
+        evidence=evidence,
+        parameters=parameters,
+        metadata=dict(metadata or {}),
+    )
+
+    adapter = BankCreditReviewLiteAdapter()
+    output = adapter.apply(request)
+    if not output.proposed_signals:
+        raise RuntimeError(
+            "BankCreditReviewLiteAdapter returned no proposed signal; "
+            "the v1.9.7 contract requires exactly one"
+        )
+    proposed = output.proposed_signals[0]
+    overall_credit_review_pressure = float(
+        proposed["payload"].get("overall_credit_review_pressure", 0.0)
+    )
+
+    # ------------------------------------------------------------------
+    # Pass 5 — derive the watch label and stamp the v1.12.6 frame
+    # audit onto the proposed signal's payload + metadata. We do
+    # NOT introduce any new ledger event type; the adapter still
+    # emits a single ``signal_added`` record per call.
+    # ------------------------------------------------------------------
+    watch_label = _classify_watch_label(
+        has_firm_state_evidence=has_firm_state_evidence,
+        has_pressure_signal_evidence=has_pressure_signal_evidence,
+        high_liquidity_pressure=high_liquidity_pressure,
+        high_funding_need_or_debt_service=high_funding_need_or_debt_service,
+        restrictive_market=restrictive_market,
+        high_market_access_pressure=high_market_access_pressure,
+        overall_credit_review_pressure=overall_credit_review_pressure,
+    )
+
+    final_signal_id = signal_id or proposed["signal_id"]
+    payload = dict(proposed.get("payload", {}))
+    # v1.12.6 additive payload key: the synthetic non-binding
+    # watch label, plus the frame's resolved bucket counts so an
+    # audit reader can see which evidence shapes the bank actually
+    # surfaced.
+    payload["watch_label"] = watch_label
+    payload["context_frame_id"] = frame.context_frame_id
+    payload["context_frame_status"] = frame.status
+    payload["resolved_evidence_buckets"] = {
+        "signals": len(frame.resolved_signal_ids),
+        "valuations": len(frame.resolved_valuation_ids),
+        "exposures": len(frame.resolved_exposure_ids),
+        "firm_states": len(frame.resolved_firm_state_ids),
+        "market_readouts": len(frame.resolved_market_readout_ids),
+        "market_environment_states": len(
+            frame.resolved_market_environment_state_ids
+        ),
+        "industry_conditions": len(frame.resolved_industry_condition_ids),
+        "variable_observations": len(
+            frame.resolved_variable_observation_ids
+        ),
+    }
+
+    extra_metadata = dict(proposed.get("metadata", {}))
+    extra_metadata["attention_conditioned"] = True
+    extra_metadata["context_frame_id"] = frame.context_frame_id
+    extra_metadata["context_frame_status"] = frame.status
+    extra_metadata["context_frame_confidence"] = frame.confidence
+    extra_metadata["watch_label"] = watch_label
+    if frame.unresolved_refs:
+        extra_metadata["unresolved_refs"] = [
+            r.to_dict() for r in frame.unresolved_refs
+        ]
+
+    signal = InformationSignal(
+        signal_id=final_signal_id,
+        signal_type=proposed["signal_type"],
+        subject_id=proposed["subject_id"],
+        source_id=proposed["source_id"],
+        published_date=proposed["published_date"],
+        effective_date=proposed.get(
+            "effective_date", proposed["published_date"]
+        ),
+        visibility=proposed.get("visibility", "public"),
+        confidence=float(proposed.get("confidence", 1.0)),
+        payload=payload,
+        related_ids=tuple(proposed.get("related_ids", ())),
+        metadata=extra_metadata,
+    )
+    kernel.signals.add_signal(signal)
+
+    # ------------------------------------------------------------------
+    # Pass 6 — audit run record (mirrors v1.9.7 shape; adds the
+    # attention-conditioning audit fields under metadata).
+    # ------------------------------------------------------------------
+    summary: dict[str, Any] = {
+        "operating_pressure_score": float(
+            output.output_summary.get("operating_pressure_score", 0.0)
+        ),
+        "valuation_pressure_score": float(
+            output.output_summary.get("valuation_pressure_score", 0.0)
+        ),
+        "debt_service_attention_score": float(
+            output.output_summary.get("debt_service_attention_score", 0.0)
+        ),
+        "collateral_attention_score": float(
+            output.output_summary.get("collateral_attention_score", 0.0)
+        ),
+        "information_quality_score": float(
+            output.output_summary.get("information_quality_score", 0.0)
+        ),
+        "overall_credit_review_pressure": overall_credit_review_pressure,
+        "bank_id": bank_id,
+        "firm_id": firm_id,
+        "watch_label": watch_label,
+        "attention_conditioned": True,
+        "context_frame_id": frame.context_frame_id,
+        "context_frame_status": frame.status,
+        "context_frame_confidence": frame.confidence,
+    }
+
+    run_record = MechanismRunRecord(
+        run_id=f"mechanism_run:{request.request_id}",
+        request_id=request.request_id,
+        model_id=adapter.spec.model_id,
+        model_family=adapter.spec.model_family,
+        version=adapter.spec.version,
+        actor_id=request.actor_id,
+        as_of_date=request.as_of_date,
+        status=output.status,
+        input_refs=request.evidence_refs,
+        committed_output_refs=(signal.signal_id,),
+        metadata={
+            "calibration_status": adapter.spec.calibration_status,
+            "review_summary": summary,
+        },
+    )
+
+    return BankCreditReviewLiteResult(
+        request=request,
+        output=output,
+        run_record=run_record,
+        signal_id=signal.signal_id,
+        review_summary=summary,
+    )
