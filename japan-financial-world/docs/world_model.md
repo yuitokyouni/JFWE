@@ -6138,7 +6138,8 @@ A `StewardshipThemeRecord` and the `StewardshipBook` storing it are jurisdiction
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
-| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
+| v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
+| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -6219,7 +6220,8 @@ A `PortfolioCompanyDialogueRecord` and the `DialogueBook` storing it are jurisdi
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
-| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
+| v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
+| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -6291,7 +6293,7 @@ The investor side and the corporate side are separated by file:
 - `status` — small free-form lifecycle tag (`"draft"` / `"active"` / `"on_hold"` / `"withdrawn"` / `"superseded"` / `"closed"`).
 - `priority` — small enumerated tag (`"low"` / `"medium"` / `"high"`). **Never** a calibrated probability.
 - `horizon` — free-form label.
-- `trigger_theme_ids`, `trigger_dialogue_ids`, `trigger_signal_ids`, `trigger_valuation_ids` — tuples of plain-id cross-references; stored as data, not validated.
+- `trigger_theme_ids`, `trigger_dialogue_ids`, `trigger_signal_ids`, `trigger_valuation_ids`, `trigger_industry_condition_ids` — tuples of plain-id cross-references; stored as data, not validated. The `trigger_industry_condition_ids` slot was added in v1.10.4.1 (§75) so v1.10.4 `IndustryDemandConditionRecord` ids are kept *out* of `trigger_signal_ids` — see §75 for the type-correctness rationale.
 - `expected_effect_label` — small free-form tag (`"expected_efficiency_improvement_candidate"` / `"expected_governance_improvement_candidate"` / `"expected_disclosure_quality_improvement_candidate"` / `"effect_unspecified"`, …). **Never** a forecast and **never** a calibrated probability — illustrative ordering only.
 - `constraint_label` — small free-form tag (`"subject_to_board_review"` / `"subject_to_regulatory_review"` / `"subject_to_internal_review"` / `"no_known_constraint"`, …); metadata only.
 - `next_review_date` — optional ISO `YYYY-MM-DD` date naming the firm's scheduled next internal review of the candidate. `None` means no scheduled review date. When set, must be on or after `as_of_date`.
@@ -6342,7 +6344,8 @@ The v1.10.3 candidate records and their books are jurisdiction-neutral, signal-o
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
-| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
+| v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
+| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -6420,9 +6423,70 @@ An `IndustryDemandConditionRecord` and the `IndustryConditionBook` storing it ar
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
-| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
+| v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
+| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | Code (§75). Additive. | **Shipped** |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `1844 / 1844` (v1.10.3) to `1928 / 1928` (v1.10.4) — `+84` tests in the new `tests/test_industry_conditions.py`. The CLI surface, the default fixture, the per-period flow, the reproducibility surface, and the performance boundary of v1.9.last are all preserved unchanged.
+
+## 75. v1.10.4.1 Additive: type-correct industry-condition cross-reference slot on `CorporateStrategicResponseCandidate`
+
+§75 is a small, additive cleanup on top of v1.10.3 + v1.10.4. It does not introduce a new primitive, a new book, or a new ledger record type; it adds one type-correct cross-reference slot to an existing v1.10.3 record so that v1.10.4 industry-condition ids do not have to ride in the wrong field.
+
+### 75.1 Why this exists
+
+v1.10.4 (§74) introduced `IndustryDemandConditionRecord` in `world/industry.py`. The v1.10.4 test suite originally exercised the v1.10.3 ↔ v1.10.4 cross-link by citing an industry-condition id from a `CorporateStrategicResponseCandidate.trigger_signal_ids` slot. That worked operationally — `trigger_signal_ids` is a `tuple[str, ...]` of plain ids and accepts any string — but it was **type-incorrect**: an `IndustryDemandConditionRecord` is not a `SignalBook` `Signal`. Conflating the two in the same field meant a downstream consumer (a future report builder, a future replay tool, a future lineage / dependency graph view) would have had to introspect the payload to tell whether each id resolved to a `SignalBook` entry or to an `IndustryConditionBook` entry.
+
+v1.10.4.1 fixes this by adding a dedicated slot. Disambiguation is now by *field*, not by *payload introspection*.
+
+### 75.2 What v1.10.4.1 ships
+
+- `world/strategic_response.py`:
+  - New field `trigger_industry_condition_ids: tuple[str, ...]` on `CorporateStrategicResponseCandidate`, default `()`. Added to `TUPLE_FIELDS` so the same empty-string-rejection / normalization discipline applies. Added to `to_dict()` and to the ledger payload emitted by `StrategicResponseCandidateBook.add_candidate`.
+  - New method `StrategicResponseCandidateBook.list_by_industry_condition(condition_id)` — symmetric with the existing `list_by_dialogue` / `list_by_theme` filters.
+- `world/ledger.py` — unchanged; the existing `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` record type carries the new payload key automatically (`payload` is a free-form `Mapping`).
+- `world/kernel.py` — unchanged.
+- `tests/test_strategic_response.py` — extended with `test_response_default_trigger_industry_condition_ids_is_empty_tuple`, `test_list_response_by_industry_condition`, `test_list_by_industry_condition_does_not_match_signal_slot`, and an additional parametrize entry for the empty-string-rejection test on the new tuple field. The existing `test_response_to_dict_round_trips_fields`, `test_add_response_payload_carries_full_field_set`, `test_response_can_reference_unresolved_trigger_ids`, and the no-mutation guarantee test are extended in place to exercise the new slot. `+4` new tests overall.
+- `tests/test_industry_conditions.py` — the v1.10.3 ↔ v1.10.4 cross-link test (`test_condition_id_can_be_referenced_from_corporate_response_candidate`) is rewritten to use the dedicated `trigger_industry_condition_ids` slot, asserts that `trigger_signal_ids` stays empty for the same record, and asserts that `list_by_industry_condition(condition_id)` surfaces the candidate. The test count here is unchanged.
+
+### 75.3 Backward compatibility
+
+The change is purely additive:
+
+- The new field has a default of `()` so every existing `CorporateStrategicResponseCandidate` constructor call (in tests, demos, or any future caller) continues to work without modification.
+- The ledger payload of an existing record is augmented by a new key whose value is `[]` for any record constructed without the new field — the consumer that doesn't read it pays no cost.
+- No existing field is removed, renamed, or re-typed. `trigger_signal_ids` keeps its meaning: ids that resolve against `SignalBook`. The new slot keeps `IndustryConditionBook` ids out of that field by giving them a dedicated home.
+- `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` is unchanged as a record type — only the payload shape grew.
+- No kernel field changed; no new book was added.
+
+A test (`test_list_by_industry_condition_does_not_match_signal_slot`) explicitly exercises the disambiguation: a condition-id sitting *in* `trigger_signal_ids` (the historical, type-incorrect placement) must **not** be surfaced by `list_by_industry_condition`. Field-level disambiguation is what v1.10.4.1 buys; the test pins it.
+
+### 75.4 Hard boundary (binding) — unchanged from §70.3 / §73 / §74
+
+v1.10.4.1 does **not** introduce voting, voting execution, proxy voting, shareholder-proposal execution, public-campaign execution, exit execution, AGM / EGM action, corporate-action execution (buyback / dividend / divestment / merger / governance change), disclosure-filing execution, demand forecasting, sales forecasting, revenue updates, financial-statement updates, investment recommendation, trading, price formation, lending decisions, real data ingestion, Japan calibration, jurisdiction-specific sector classifications, source-specific forecast values, calibrated behavior probabilities, or any new mechanism. The candidate-only / no-execution / no-forecast disciplines of §73 and §74 carry forward without modification.
+
+### 75.5 Why an additive field rather than a separate book
+
+Two alternatives were considered and rejected:
+
+1. **Repurpose `trigger_signal_ids` to carry both signal and industry-condition ids.** Rejected: ledger replay, lineage reconstruction, and report generation should disambiguate by field, not by payload introspection. The cost of an extra field is one optional `tuple[str, ...]` per candidate; the cost of payload introspection is paid by every downstream consumer for the lifetime of the schema.
+2. **Add a separate "trigger book" or "trigger graph" abstraction that holds (candidate, industry_condition) edges.** Rejected for v1.10.4.1: the v1.10 layer is deliberately a sequence of *flat* append-only books. Introducing a join book would conflict with the v1.8.5 `AttentionBook`, v1.10.1 `StewardshipBook`, v1.10.2 `DialogueBook`, v1.10.3 `EscalationCandidateBook` / `StrategicResponseCandidateBook`, and v1.10.4 `IndustryConditionBook` discipline. If a join layer is later wanted, it can land on top of these existing books without re-litigating v1.10's record shapes.
+
+### 75.6 Position in the v1.10 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
+| v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
+| v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
+| v1.10.4 Industry demand condition signal | Code (§74). | Shipped |
+| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | **Code (§75). Additive.** | **Shipped** |
+| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `1928 / 1928` (v1.10.4) to `1932 / 1932` (v1.10.4.1) — `+4` new tests in `tests/test_strategic_response.py` (one extra parametrize entry plus three new test functions). The CLI surface, the default fixture, the per-period flow, the reproducibility surface, and the performance boundary of v1.9.last are all preserved unchanged.

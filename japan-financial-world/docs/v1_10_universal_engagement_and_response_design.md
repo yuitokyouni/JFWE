@@ -53,7 +53,8 @@ the milestone sequence.
 | v1.10.1 Stewardship theme signal | Code. `StewardshipThemeRecord` + `StewardshipBook` + ledger `STEWARDSHIP_THEME_ADDED` + kernel wiring + 58 tests. | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code. `PortfolioCompanyDialogueRecord` + `DialogueBook` + ledger `PORTFOLIO_COMPANY_DIALOGUE_RECORDED` + kernel wiring + 53 tests. | Shipped |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code. `InvestorEscalationCandidate` + `EscalationCandidateBook` (added to `world/engagement.py`) + `CorporateStrategicResponseCandidate` + `StrategicResponseCandidateBook` (new `world/strategic_response.py`) + ledger `INVESTOR_ESCALATION_CANDIDATE_ADDED` + `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` + kernel wiring + 107 tests. | Shipped |
-| **v1.10.4 Industry demand condition signal** | **Code. `IndustryDemandConditionRecord` + `IndustryConditionBook` (new `world/industry.py`) + ledger `INDUSTRY_DEMAND_CONDITION_ADDED` + kernel wiring + 84 tests. Synthetic, jurisdiction-neutral context evidence; bounded `demand_strength` and `confidence` in `[0.0, 1.0]`; not a forecast and not a revenue model.** | **Shipped** |
+| v1.10.4 Industry demand condition signal | Code. `IndustryDemandConditionRecord` + `IndustryConditionBook` (new `world/industry.py`) + ledger `INDUSTRY_DEMAND_CONDITION_ADDED` + kernel wiring + 84 tests. Synthetic, jurisdiction-neutral context evidence; bounded `demand_strength` and `confidence` in `[0.0, 1.0]`; not a forecast and not a revenue model. | Shipped |
+| **v1.10.4.1 Type-correct industry-condition cross-reference slot** | **Code. Additive `trigger_industry_condition_ids` field + `list_by_industry_condition` filter on `CorporateStrategicResponseCandidate` / `StrategicResponseCandidateBook` + 4 new tests. Disambiguates `signal_id` vs `condition_id` by field rather than by payload introspection.** | **Shipped** |
 | v1.10.5 Living-world integration | Code. Wires v1.10.1–v1.10.3 into the multi-period sweep. | Planned |
 | v1.10.last Freeze | Docs-only. Public engagement layer freeze. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -809,6 +810,102 @@ v1.10.4 adds 84 tests in the new
 `tests/test_industry_conditions.py`. The total test count moves
 from `1844 / 1844` (v1.10.3) to `1928 / 1928` (v1.10.4).
 
+## v1.10.4.1 — what shipped
+
+v1.10.4.1 is a small, additive cleanup on top of v1.10.3 + v1.10.4.
+It does **not** introduce a new primitive, a new book, or a new
+ledger record type. It adds one type-correct cross-reference slot to
+an existing v1.10.3 record so that v1.10.4 industry-condition ids do
+not have to ride in the wrong field.
+
+**Why this exists**
+
+The v1.10.4 test suite originally exercised the v1.10.3 ↔ v1.10.4
+cross-link by citing an industry-condition id from a
+`CorporateStrategicResponseCandidate.trigger_signal_ids` slot. That
+worked operationally — `trigger_signal_ids` is a `tuple[str, ...]`
+and accepts any string — but it was **type-incorrect**: an
+`IndustryDemandConditionRecord` is not a `SignalBook` `Signal`.
+Conflating the two in one field meant a downstream consumer (a
+future report builder, replay tool, or lineage / dependency graph)
+would have had to introspect each id's payload to tell whether it
+resolved to `SignalBook` or to `IndustryConditionBook`. v1.10.4.1
+fixes this by adding a dedicated slot. Disambiguation is now by
+*field*, not by *payload introspection*.
+
+**What v1.10.4.1 adds**
+
+- `world/strategic_response.py`:
+  - new `trigger_industry_condition_ids: tuple[str, ...]` field
+    on `CorporateStrategicResponseCandidate`, default `()`. Added
+    to `TUPLE_FIELDS` (so the same empty-string-rejection /
+    normalization discipline applies), to `to_dict()`, and to the
+    ledger payload emitted by
+    `StrategicResponseCandidateBook.add_candidate`.
+  - new `StrategicResponseCandidateBook.list_by_industry_condition(
+    condition_id)` method, symmetric with `list_by_dialogue` and
+    `list_by_theme`.
+- `world/ledger.py`, `world/kernel.py`, the v1.10.4
+  `IndustryConditionBook`, and every prior v1.10.x book are
+  unchanged. No new `RecordType` enum value was added; the
+  existing `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` record
+  type carries the new payload key automatically.
+- `tests/test_strategic_response.py` is extended with
+  `test_response_default_trigger_industry_condition_ids_is_empty_tuple`,
+  `test_list_response_by_industry_condition`,
+  `test_list_by_industry_condition_does_not_match_signal_slot`,
+  and a new parametrize entry for the empty-string-rejection test
+  on the new tuple field. The existing to_dict round-trip,
+  ledger-payload, plain-id-cross-reference, and no-mutation tests
+  are extended in place. `+4` new tests overall.
+- `tests/test_industry_conditions.py`'s v1.10.3 ↔ v1.10.4
+  cross-link test is rewritten to use the dedicated
+  `trigger_industry_condition_ids` slot, asserts that
+  `trigger_signal_ids` stays empty for the same record, and
+  asserts that `list_by_industry_condition(condition_id)` surfaces
+  the candidate. The test count there is unchanged.
+
+**Backward compatibility**
+
+The change is purely additive:
+
+- The new field has a default of `()`; every existing
+  `CorporateStrategicResponseCandidate` constructor call works
+  without modification.
+- The ledger payload of an existing record is augmented by a new
+  key whose value is `[]` for any record constructed without the
+  new field — a consumer that doesn't read it pays no cost.
+- No existing field is removed, renamed, or re-typed.
+  `trigger_signal_ids` keeps its meaning (ids that resolve against
+  `SignalBook`); the new slot keeps `IndustryConditionBook` ids
+  out of that field by giving them a dedicated home.
+- A test
+  (`test_list_by_industry_condition_does_not_match_signal_slot`)
+  explicitly pins the disambiguation: a condition-id sitting *in*
+  `trigger_signal_ids` (the historical, type-incorrect placement)
+  must **not** be surfaced by `list_by_industry_condition`.
+
+**Hard boundary — unchanged**
+
+v1.10.4.1 does not introduce voting, voting execution, proxy
+voting, shareholder-proposal execution, public-campaign execution,
+exit execution, AGM / EGM action, corporate-action execution
+(buyback / dividend / divestment / merger / governance change),
+disclosure-filing execution, demand forecasting, sales forecasting,
+revenue updates, financial-statement updates, investment
+recommendation, trading, price formation, lending decisions, real
+data ingestion, Japan calibration, jurisdiction-specific sector
+classifications, source-specific forecast values, calibrated
+behavior probabilities, or any new mechanism. The candidate-only /
+no-execution / no-forecast disciplines of v1.10.3 and v1.10.4 carry
+forward without modification.
+
+**Test count**
+
+v1.10.4.1 adds 4 tests to `tests/test_strategic_response.py`. The
+total test count moves from `1928 / 1928` (v1.10.4) to
+`1932 / 1932` (v1.10.4.1).
+
 ## v1.10 milestone sequence
 
 1. **v1.10.0 — Universal Engagement / Strategic Response
@@ -844,11 +941,18 @@ from `1844 / 1844` (v1.10.3) to `1928 / 1928` (v1.10.4).
    in `[0.0, 1.0]`; not a forecast and not a revenue model. Tests
    assert no-action / no-forecast / no-firm-state boundaries on both
    the dataclass and the ledger payload.
-6. **v1.10.5 — Living-world integration.** Wires v1.10.1–v1.10.3
+6. **v1.10.4.1 — Type-correct industry-condition cross-reference
+   slot.** Shipped. Additive `trigger_industry_condition_ids` field
+   + `list_by_industry_condition` filter on
+   `CorporateStrategicResponseCandidate` /
+   `StrategicResponseCandidateBook`. Disambiguates `signal_id` vs
+   `condition_id` by field, not by payload introspection. No new
+   primitive, no new book, no new ledger record type.
+7. **v1.10.5 — Living-world integration.** Wires v1.10.1–v1.10.3
    (and optionally v1.10.4) into the multi-period sweep behind a
    v1.10-scoped fixture, separate from the v1.9.last default
    fixture. The v1.9.last fixture remains byte-deterministic.
-7. **v1.10.last — Public engagement layer freeze.** Docs-only.
+8. **v1.10.last — Public engagement layer freeze.** Docs-only.
    Mirrors v1.9.last's discipline: anti-claim list, scope-language
    agreement, forbidden-token scan clean, no investment-advice
    framings, CI green on the tag commit.

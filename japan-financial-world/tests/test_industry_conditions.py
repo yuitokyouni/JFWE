@@ -523,10 +523,13 @@ def test_condition_can_reference_unresolved_variable_signal_exposure_ids():
 
 def test_condition_id_can_be_referenced_from_corporate_response_candidate():
     """
-    A v1.10.3 ``CorporateStrategicResponseCandidate`` must be able to
-    cite an industry condition record's id at its
-    ``trigger_signal_ids`` slot as a plain id, without v1.10.4
-    forcing cross-book validation.
+    A v1.10.3 ``CorporateStrategicResponseCandidate`` cites a v1.10.4
+    industry-condition id via its **type-correct slot**
+    ``trigger_industry_condition_ids`` (added in v1.10.4.1) — *not*
+    via ``trigger_signal_ids``. The dedicated slot keeps
+    ``signal_id`` and ``condition_id`` distinguishable in ledger
+    replay, lineage reconstruction, and report generation without
+    requiring payload introspection.
     """
     from world.strategic_response import (
         CorporateStrategicResponseCandidate,
@@ -552,11 +555,17 @@ def test_condition_id_can_be_referenced_from_corporate_response_candidate():
             ),
             constraint_label="subject_to_board_review",
             visibility="internal_only",
-            trigger_signal_ids=("cond:cited",),
+            trigger_industry_condition_ids=("cond:cited",),
         )
     )
     listed = response_book.list_candidates()
-    assert listed[0].trigger_signal_ids == ("cond:cited",)
+    assert listed[0].trigger_industry_condition_ids == ("cond:cited",)
+    # The type-correct slot must keep industry-condition ids out of
+    # the signal slot — disambiguation is by field, not by payload.
+    assert listed[0].trigger_signal_ids == ()
+    assert response_book.list_by_industry_condition("cond:cited") == (
+        listed[0],
+    )
 
 
 # ---------------------------------------------------------------------------

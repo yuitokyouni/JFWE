@@ -188,8 +188,22 @@ class CorporateStrategicResponseCandidate:
       cross-references are stored as data and not validated.
     - ``trigger_signal_ids`` is a tuple of signal ids that
       triggered (or contextualize) the candidate; not validated.
+      Reserved for ids that resolve against ``SignalBook`` —
+      v1.10.4 ``IndustryDemandConditionRecord`` ids must use
+      ``trigger_industry_condition_ids`` instead, since they live
+      in a separate book and have a separate ledger record type.
     - ``trigger_valuation_ids`` is a tuple of valuation ids that
       triggered (or contextualize) the candidate; not validated.
+    - ``trigger_industry_condition_ids`` is a tuple of v1.10.4
+      industry-condition ids (``IndustryDemandConditionRecord``)
+      that triggered (or contextualize) the candidate;
+      cross-references are stored as data and not validated against
+      ``IndustryConditionBook``. **Type-correctness slot, added in
+      v1.10.4.1**: keeps industry-condition ids out of
+      ``trigger_signal_ids`` so that ledger replay, lineage
+      reconstruction, and report generation can disambiguate
+      ``signal_id`` vs ``condition_id`` by field rather than by
+      payload introspection.
     - ``expected_effect_label`` is a small free-form tag describing
       the generic expected-effect class the firm attached to the
       candidate (e.g.,
@@ -240,6 +254,9 @@ class CorporateStrategicResponseCandidate:
     trigger_dialogue_ids: tuple[str, ...] = field(default_factory=tuple)
     trigger_signal_ids: tuple[str, ...] = field(default_factory=tuple)
     trigger_valuation_ids: tuple[str, ...] = field(default_factory=tuple)
+    trigger_industry_condition_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     next_review_date: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -261,6 +278,7 @@ class CorporateStrategicResponseCandidate:
         "trigger_dialogue_ids",
         "trigger_signal_ids",
         "trigger_valuation_ids",
+        "trigger_industry_condition_ids",
     )
 
     def __post_init__(self) -> None:
@@ -321,6 +339,9 @@ class CorporateStrategicResponseCandidate:
             "trigger_dialogue_ids": list(self.trigger_dialogue_ids),
             "trigger_signal_ids": list(self.trigger_signal_ids),
             "trigger_valuation_ids": list(self.trigger_valuation_ids),
+            "trigger_industry_condition_ids": list(
+                self.trigger_industry_condition_ids
+            ),
             "metadata": dict(self.metadata),
         }
 
@@ -399,6 +420,9 @@ class StrategicResponseCandidateBook:
                     "trigger_valuation_ids": list(
                         candidate.trigger_valuation_ids
                     ),
+                    "trigger_industry_condition_ids": list(
+                        candidate.trigger_industry_condition_ids
+                    ),
                 },
                 space_id="strategic_response",
                 agent_id=candidate.company_id,
@@ -476,6 +500,27 @@ class StrategicResponseCandidateBook:
             c
             for c in self._candidates.values()
             if dialogue_id in c.trigger_dialogue_ids
+        )
+
+    def list_by_industry_condition(
+        self, condition_id: str
+    ) -> tuple[CorporateStrategicResponseCandidate, ...]:
+        """
+        Return every candidate whose ``trigger_industry_condition_ids``
+        tuple contains ``condition_id``.
+
+        v1.10.4.1: type-correct cross-reference filter for v1.10.4
+        ``IndustryDemandConditionRecord`` ids. Industry-condition ids
+        do **not** appear in ``trigger_signal_ids`` — they live in
+        their own slot so that ledger replay, lineage
+        reconstruction, and report generation can disambiguate
+        ``signal_id`` vs ``condition_id`` by field rather than by
+        payload introspection.
+        """
+        return tuple(
+            c
+            for c in self._candidates.values()
+            if condition_id in c.trigger_industry_condition_ids
         )
 
     def list_by_date(

@@ -1,11 +1,13 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.10.4** (`Industry demand
-condition signal` — fourth concrete code milestone of the v1.10
-engagement / response layer; synthetic, jurisdiction-neutral
-context evidence, not a forecast and not a revenue model):
-`1928 / 1928 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1296 post-v1.7 additions covering reference demo, replay, manifest,
+Snapshot of the test suite at **v1.10.4.1** (`Type-correct
+industry-condition cross-reference slot on
+CorporateStrategicResponseCandidate` — additive cleanup that
+disambiguates `signal_id` vs `condition_id` by field rather than by
+payload introspection; v1.10.4 industry demand condition signal
+remains the most recent concrete primitive milestone):
+`1932 / 1932 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1300 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -22,9 +24,12 @@ storage / audit layer, the v1.10.2 portfolio-company dialogue record
 metadata storage / audit layer, the v1.10.3 investor escalation
 candidate storage / audit layer (added to the engagement test file),
 the v1.10.3 corporate strategic response candidate storage / audit
-layer in the strategic-response test file, and the v1.10.4 industry
+layer in the strategic-response test file, the v1.10.4 industry
 demand condition signal storage / audit layer in the new
-industry-conditions test file).
+industry-conditions test file, and the v1.10.4.1 additive
+type-correct industry-condition cross-reference slot on
+`CorporateStrategicResponseCandidate` exercised in the
+strategic-response test file).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -1118,9 +1123,9 @@ no-mutation guarantee.
 | Performance boundary (v1.9.8)           | 1     | 10    |
 | Stewardship theme signal (v1.10.1)      | 1     | 58    |
 | Portfolio-company dialogue record (v1.10.2) + investor escalation candidate (v1.10.3, added to test_engagement.py) | 1 | 105    |
-| Corporate strategic response candidate (v1.10.3) | 1 | 55    |
+| Corporate strategic response candidate (v1.10.3) + v1.10.4.1 type-correct industry-condition cross-reference slot (added to test_strategic_response.py) | 1 | 59    |
 | Industry demand condition signal (v1.10.4) | 1 | 84    |
-| **post-v1.7 subtotal**                  | **33**| **1296** |
+| **post-v1.7 subtotal**                  | **33**| **1300** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1128,8 +1133,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4) | 33 | 1296 |
-| **Total**                        | **75**| **1928** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1) | 33 | 1300 |
+| **Total**                        | **75**| **1932** |
 
 ## Auditing for jurisdiction-neutral identifiers
 
