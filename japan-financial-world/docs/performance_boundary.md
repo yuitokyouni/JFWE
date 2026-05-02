@@ -46,7 +46,7 @@ This milestone records the loop shapes so that:
 3. Anyone reviewing the v1.9 freeze surface can see, in one
    place, what the engine is and is not doing.
 
-## Current loop shapes (v1.12.2)
+## Current loop shapes (v1.12.last)
 
 The following table describes the loop shape of each phase
 inside `world/reference_living_world.run_living_reference_world`.
@@ -59,7 +59,7 @@ v1.11.1+). The `n_obs` and `n_exposures` factors are bounded by
 the fixture's variable count (currently 4) and per-firm exposure
 count (currently 2–3 each).
 
-| Phase                                                    | Loop shape                                | v1.12.2 default        |
+| Phase                                                    | Loop shape                                | v1.12.last default     |
 | -------------------------------------------------------- | ----------------------------------------- | ---------------------- |
 | Corporate quarterly reporting                            | `O(P × F)`                                | 4 × 3 = 12 reports     |
 | Firm pressure assessment (v1.9.4)                        | `O(P × F × n_exposures)`                  | 4 × 3 × ~2.5 = 30 pass |
@@ -70,16 +70,18 @@ count (currently 2–3 each).
 | Firm financial latent state (v1.12.0)                    | `O(P × F)`                                | 4 × 3 = 12 states      |
 | Menu construction (per actor)                            | `O(P × (I+B) × n_relevant_observations)`  | 4 × 4 × ~4 = 64 pass   |
 | Observation set selection                                | `O(P × (I+B))`                            | 4 × 4 = 16 selections  |
-| Valuation refresh lite (v1.9.5)                          | `O(P × I × F)`                            | 4 × 2 × 3 = 24 valns   |
-| Bank credit review lite (v1.9.7)                         | `O(P × B × F)`                            | 4 × 2 × 3 = 24 reviews |
+| Memory selection (v1.12.8 + v1.12.9 budget)              | `O((P-1) × (I+B))` (period 1+; budgeted)  | 3 × 2 = 6 inv-memory   |
+| Valuation refresh lite (v1.12.7 wires v1.12.5)           | `O(P × I × F)`                            | 4 × 2 × 3 = 24 valns   |
+| Bank credit review lite (v1.12.7 wires v1.12.6)          | `O(P × B × F)`                            | 4 × 2 × 3 = 24 reviews |
 | Portfolio-company dialogue (v1.10.2)                     | `O(P × I × F)`                            | 4 × 2 × 3 = 24 dialog. |
 | Investor escalation candidate (v1.10.3, investor)        | `O(P × I × F)`                            | 4 × 2 × 3 = 24 cands.  |
-| Investor intent signal (v1.12.1)                         | `O(P × I × F)`                            | 4 × 2 × 3 = 24 intents |
+| Investor intent signal (v1.12.4 wires v1.12.1)           | `O(P × I × F)`                            | 4 × 2 × 3 = 24 intents |
 | Corporate strategic response candidate (v1.10.3, corp.)  | `O(P × F)`                                | 4 × 3 = 12 cands.      |
 | Review routines                                          | `O(P × (I+B))`                            | 4 × 4 = 16 reviews     |
-| Reporting / replay / manifest                            | `O(R)` over emitted ledger records        | ~302 records           |
+| Attention feedback (v1.12.8)                             | `O(P × (I+B))`                            | 4 × 4 = 16 states+fb×2 |
+| Reporting / replay / manifest                            | `O(R)` over emitted ledger records        | ~340 records           |
 
-Per-period record-count breakdown (default fixture, v1.12.2):
+Per-period record-count breakdown (default fixture, v1.12.last):
 
 ```
 2 × F                  corporate run + corporate signal              =  6
@@ -97,11 +99,14 @@ I × F                  investor escalation candidate (v1.10.3, inv.) =  6
 I × F                  investor intent signal (v1.12.1)              =  6
 F                      corporate strategic response candidate        =  3
 2 × (I + B)            review_run + review_signal                    =  8
-                                                            total   = 71
-× 4 periods                                                         = 284
+2 × (I + B)            attention state + feedback (v1.12.8)          =  8
+                                                            total   = 79  (period 0)
++ (I + B) memory selections from period 1+ (budgeted)             ≈ +2  (period 1+)
+                                                            total   = 81  (period 1+)
+× 4 periods (period 0: 79; periods 1–3: 81)                        = 322
 + ~14 one-off setup (interactions, routines, profiles)
 +   4 one-off setup (stewardship themes, v1.10.5)
-                                                          ≈ ~302 records
+                                                          ≈ ~340 records
 ```
 
 Of the loops above:

@@ -1,15 +1,20 @@
-# Public Prototype Plan — v1.9.last
+# Public Prototype Plan — v1.9.last + v1.12.last
 
-> **Status:** v1.9.last freeze landed 2026-05-02. The repository
-> contents have been frozen as the v1.9 public prototype; tagging
-> is the downstream gate in `RELEASE_CHECKLIST.md` and depends on
-> CI being green on the commit being tagged.
+> **Status:** v1.9.last freeze landed 2026-05-02; v1.12.last
+> freeze landed 2026-05-04. The repository contents have been
+> frozen as the v1.9 public prototype + v1.12 endogenous
+> attention-feedback loop; tagging is the downstream gate in
+> `RELEASE_CHECKLIST.md` and depends on CI being green on the
+> commit being tagged.
 > This document defines what "public prototype" means for this
-> project, what gates the v1.9.last tag must clear, and how the
-> freeze maps to the runnable surface.
+> project, what gates each freeze must clear, and how the freeze
+> maps to the runnable surface.
 >
-> For the single-page reader summary see
-> [`v1_9_public_prototype_summary.md`](v1_9_public_prototype_summary.md).
+> For the single-page reader summaries see
+> [`v1_9_public_prototype_summary.md`](v1_9_public_prototype_summary.md)
+> (the runnable substrate) and
+> [`v1_12_endogenous_attention_loop_summary.md`](v1_12_endogenous_attention_loop_summary.md)
+> (the v1.12 endogenous attention-feedback loop layered on top).
 
 ## What "public prototype" means here
 

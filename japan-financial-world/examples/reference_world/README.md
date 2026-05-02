@@ -56,6 +56,86 @@ contract or constraint mutation. No firm financial-statement
 updates. No canonical valuations. No Japan calibration. No real
 data. No scenarios. No investment advice — direct or indirect.
 
+**v1.12.last endogenous attention loop (frozen 2026-05-04).**
+Layered on top of the v1.9.last substrate, the v1.12 sequence
+closes a minimal endogenous attention-feedback loop:
+
+```
+market environment → firm latent state → selected evidence
+  → investor intent / valuation lite / bank credit review lite
+  → attention feedback → next-period selected evidence
+  → budget / decay / crowding / saturation
+```
+
+The loop is **synthetic, deterministic, non-binding, replayable**.
+Two consecutive runs produce byte-identical output. For the
+single-page reader-facing summary see
+[`../../docs/v1_12_endogenous_attention_loop_summary.md`](../../docs/v1_12_endogenous_attention_loop_summary.md);
+for the full technical narrative see `world_model.md` §80–§92.
+The v1.12.last hard boundary preserves every v1.9.last item
+above and adds: no probabilistic forgetting / random decay, no
+behavior probabilities, no LLM-agent execution, no calibrated
+sensitivities — every step is integer-counted and
+weight-deterministic.
+
+### v1.12 regime-comparison demo
+
+The simplest way to see the v1.12 endogenous loop in action is
+to run the same fixture under three different market regimes
+and diff the outputs:
+
+```bash
+cd japan-financial-world
+
+python -m examples.reference_world.run_living_reference_world \
+    --market-regime constructive --markdown
+
+python -m examples.reference_world.run_living_reference_world \
+    --market-regime constrained --markdown
+
+python -m examples.reference_world.run_living_reference_world \
+    --market-regime tightening --markdown
+```
+
+What to look for between the three regimes (period by period):
+
+- **Firm financial latent state trajectory** (§80) — under
+  `constructive`, the six pressure / readiness scalars decay
+  below the 0.5 baseline; under `constrained` and `tightening`,
+  they accumulate above baseline. Watch
+  `funding_need_intensity` and `market_access_pressure` in
+  particular.
+- **Investor intent direction histogram** (§81 / §85) — the
+  default `constructive` regime concentrates intents on
+  `engagement_watch`; `constrained` and `tightening` shift the
+  histogram toward `risk_flag_watch` and `deepen_due_diligence`.
+- **Valuation confidence and audit shape** (§86 / §89) — the
+  v1.12.5 attention-conditioned helper applies a small
+  documented synthetic delta on top of the v1.9.5
+  pressure-haircut formula. Under `constructive`, valuations
+  land at higher `confidence`; under `constrained`, lower.
+- **Bank credit review watch labels** (§88) — under
+  `constructive`, every review lands on `routine_monitoring`;
+  under `constrained`, the histogram includes `liquidity_watch`,
+  `refinancing_watch`, `market_access_watch`, or
+  `information_gap_review` depending on which firm states /
+  market environments the bank actually selected.
+- **Attention focus changes across periods** (§90) — period 0's
+  attention state focus_labels reflect period 0's outcomes;
+  period 1's reflect a mix (current period + decayed
+  inheritance from period 0); under sustained regime, period 2+
+  drops the unreinforced focus labels via the `decay_horizon=2`
+  rule.
+- **Memory-selected evidence and budget effects** (§91) — every
+  memory `SelectedObservationSet` is bounded at
+  `max_selected_refs=12` and `per_dimension_budget=3`. The
+  `selected_refs` count never grows monotonically; the
+  composition swaps as triggers swap.
+
+Two runs of the same regime produce byte-identical Markdown
+reports; two runs across regimes produce different reports
+deterministically.
+
 ## What is in this directory
 
 | File                    | Purpose                                                     |

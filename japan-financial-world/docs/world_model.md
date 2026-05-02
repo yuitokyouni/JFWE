@@ -8130,3 +8130,55 @@ The default-fixture `living_world_digest` moves from `3002a499df6aff5c37628df5f1
 The test count moves from `2725 / 2725` (v1.12.8) to `2751 / 2751` (v1.12.9) — `+26` tests (`+20` in `tests/test_attention_feedback.py` covering `apply_attention_budget` + decay + crowding + state field validation, `+7` in `tests/test_living_reference_world.py` covering orchestrator-level budget invariants and the constrained-regime reinforcement test, `−1` from renaming the digest pin). Per-period record count and per-run window are unchanged from v1.12.8 (the v1.12.9 changes are internal). Default-fixture `living_world_digest` moves to `e508b4bf10df217f7b561b41aea845f841b12215d5bf815587375c52cffcdcb5` by design.
 
 With v1.12.9 shipped, attention is no longer a monotonically widening surface. It is **scarce, budgeted, decaying, and saturating** — a constrained adaptive process whose shape changes in deterministic response to outcomes, never just by accumulation.
+
+## 92. v1.12.last — Endogenous attention loop freeze (docs-only)
+
+§92 is the **v1.12.last freeze** — a docs-only milestone that closes the v1.12 endogenous-attention sequence. No new code, no new tests, no new ledger event types, no new behavior. v1.12.last is a *reading-and-release-discipline* milestone: it ships the single-page reader-facing summary in [`v1_12_endogenous_attention_loop_summary.md`](v1_12_endogenous_attention_loop_summary.md), refreshes the release checklist, refreshes `examples/reference_world/README.md` with a regime-comparison demo section, and updates `test_inventory.md` / `performance_boundary.md` / `README.md` to mark v1.12 as the first FWE milestone with a minimal endogenous attention-feedback loop.
+
+### 92.1 What v1.12.last freezes
+
+The v1.12.last freeze surface is intentionally narrow. It freezes:
+
+- **The loop shape** (eight v1.12-affected phases per period) — see the summary doc's "What is frozen" section for the full ordered list.
+- **The CLI surface** — same v1.9.last entry points plus the v1.11.2 `--market-regime` flag. Two consecutive runs produce byte-identical output for each `(command, regime)` pair.
+- **The vocabulary surface** — 13 attention focus labels (§90), 6 trigger labels (§90), 9 environment regime labels (§82), 7 watch labels (§88), 7 investor-intent direction labels (§81). Closed sets pinned in tests against `_FORBIDDEN_TOKENS`.
+- **The performance boundary** — per-period 79 (period 0) / 81 (period 1+); per-run window `[316, 364]`; default-fixture `living_world_digest` `e508b4bf10df217f7b561b41aea845f841b12215d5bf815587375c52cffcdcb5` (perf fixture) / `e328f955922117f7d9697ea9a68877c418b818eedbab888f2d82c4b9ac4070b0` (integration-test fixture). All pinned in regression tests.
+- **The hard boundary** — same as v1.9.last plus the v1.12-specific anti-claims listed in §80 → §91.
+
+### 92.2 Why this freeze
+
+Through v1.12.9 the engine accumulated, period by period, a closed cross-period attention-feedback loop:
+
+```
+market environment → firm latent state → selected evidence
+  → investor intent / valuation lite / bank credit review lite
+  → attention feedback → next-period selected evidence
+  → budget / decay / crowding / saturation
+```
+
+The freeze does three things the underlying milestones cannot do on their own:
+
+1. **Reader-facing single-page summary.** A non-technical reader (banker, asset manager, supervisor, journalist, fund allocator) can read the v1.12 freeze in one document and understand both what the engine *does* and what it explicitly *does not claim*. The summary doc carries the full anti-overclaiming language and the regime-comparison demo so the reader can run the engine themselves.
+2. **Release-checklist refresh.** A release reviewer can walk a single sequence of gates (`pytest -q` / `compileall` / `ruff` / manifest reproducibility / markdown smoke / regime comparison smoke / forbidden-token scan / public-wording audit / public-private boundary review / no-confidential-content / no-real-data / no-behavior-probability) and tag a v1.12 public release without needing to re-derive the gates from each underlying milestone.
+3. **Anti-overclaiming language.** v1.12 introduces several record types — `ActorAttentionStateRecord`, `AttentionFeedbackRecord`, the v1.12.6 `watch_label` on bank-credit-review signals, the v1.12.5 `attention_conditioned` metadata on valuations — that are easy for a casual reader to mistake for binding signals. The freeze doc names every one of these explicitly and pins the non-binding interpretation in writing.
+
+### 92.3 What v1.12.last does not change
+
+- **Does not** add new economic behavior. No trading, no price formation, no lending decisions, no investment recommendations, no portfolio allocation, no market clearing, no behavior probabilities, no real data ingestion, no Japan calibration, no LLM-agent execution.
+- **Does not** change the loop shape, the per-period record budget, the per-run window, or the `living_world_digest`. The freeze is docs-only; running `pytest -q` on the v1.12.9 commit and on the v1.12.last commit produces the same `2751 / 2751 passing` line.
+- **Does not** add new ledger event types or modify any existing record's payload bytes. v1.12.last writes nothing to the ledger.
+- **Does not** alter the v1.9.last public prototype freeze surface. v1.9.last and v1.12.last sit alongside each other; the v1.9.last document is unchanged.
+
+### 92.4 Position in the v1 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last | First public prototype freeze (runnable substrate) | Shipped |
+| v1.12.0 → v1.12.9 | Endogenous attention-feedback stack | Shipped (§80 → §91) |
+| **v1.12.last** | **Endogenous attention loop freeze** | **Shipped (§92, this section)** |
+| v1.x advanced | Valuation protocol — comps purpose separation | Shipped (§84) |
+| v1.13.0 | Generic central bank settlement infrastructure design | Shipped (§87) |
+| v1.13.1 → v1.13.5 | Settlement substrate code | Planned |
+| v2.0 | Japan public-data calibration design gate | Not started |
+
+The test count, per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.12.9 — §92 is docs-only and ships no code, no record, no test, no fixture. The full v1.12 narrative is in §80 → §91; the reader-facing single-page summary is [`v1_12_endogenous_attention_loop_summary.md`](v1_12_endogenous_attention_loop_summary.md).

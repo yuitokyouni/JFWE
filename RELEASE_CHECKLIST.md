@@ -22,6 +22,83 @@ Each readiness review records its result here so the next reviewer
 can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
+- **Date:** 2026-05-04
+- **Target:** v1.12.last endogenous attention loop freeze. The
+  v1.9.last public prototype freeze (2026-05-02 snapshot below)
+  and the v1.8.0 public release
+  (`v1.8-public-release` at commit `7fa2c42`) both remain
+  unchanged; v1.12.last freezes the v1.12 endogenous
+  attention-feedback loop as the headline runnable surface on
+  top of those earlier freezes. v1.12.last is docs-only and adds
+  no test count change vs v1.12.9.
+- **Status:** docs + tests frozen. The freeze is conditional on
+  CI being green on the commit being tagged.
+- **Local results (v1.12.last):**
+  - `pytest -q` → 2751 passed
+  - `compileall world spaces tests examples` → clean
+  - `ruff check .` (repo root) → clean
+  - `python -m examples.reference_world.run_living_reference_world`
+    → produces `[setup]` / `[period N]` / `[ledger]` trace with
+    v1.12.8 `attn_states=` + `memory_sels=` per-period columns;
+    re-run yields byte-identical output
+  - `... --markdown` → appends v1.9.1 deterministic Markdown
+    report including the v1.12.8 `## Attention feedback`
+    section; re-run yields byte-identical output
+  - `... --manifest /tmp/lw.json` → writes
+    `living_world_manifest.v1` JSON carrying
+    `living_world_digest`
+    `e508b4bf10df217f7b561b41aea845f841b12215d5bf815587375c52cffcdcb5`;
+    two runs into different paths diff to zero (modulo path)
+  - `... --market-regime constructive --markdown`,
+    `... --market-regime constrained --markdown`, and
+    `... --market-regime tightening --markdown` — three
+    regime-preset modes; each pair of consecutive runs of the
+    same regime is byte-identical; runs across regimes produce
+    different reports deterministically (v1.12 endogenous loop
+    visible: firm latent state, intent histogram, valuation
+    confidence, watch label, focus labels, memory selection
+    composition all shift between regimes)
+  - Forbidden-token scan (word-boundary against
+    `world/experiment.py::_FORBIDDEN_TOKENS` plus the v1.12.x
+    closed-set vocabulary scans for `ALL_FOCUS_LABELS`,
+    `ALL_WATCH_LABELS`, intent direction labels, trigger labels)
+    → no hits in any object id, signal id, payload key, metadata
+    key, or example output
+  - Public-wording audit → no "predicts markets",
+    "production-ready", "Japan market simulator", "alpha",
+    "buy / sell", "rating", "PD", "LGD", "EAD", "investment
+    advice", "buyout-target", or any similar marketing /
+    binding-signal framing in `README.md`,
+    `docs/v1_12_endogenous_attention_loop_summary.md`,
+    `docs/world_model.md`, or
+    `examples/reference_world/README.md`
+  - Public / private boundary review → no `boj`, `mufg`, `smbc`,
+    `mizuho`, `fsa`, `jpx`, `tse`, `nikkei`, `topix`, `sony`,
+    `jgb`, `gpif`, `nyse`, or any other real-system identifier
+    appears in any public-FWE module, test, doc, or fixture
+  - No-confidential-content audit → the v1.10.2 dialogue /
+    v1.10.3 escalation layer carries restricted-visibility
+    metadata, but no transcript, attendees list, named-client
+    material, or expert-interview content appears anywhere in
+    the public record set; the v1.12.3 `EvidenceResolver`
+    surfaces only ids, not content; the v1.12.8 attention-feedback
+    record carries only ids, labels, and integer stale_counts
+  - No-real-data audit → no real central-bank, exchange, broker,
+    audit, vendor, or regulator data appears in any public-FWE
+    record; every numeric value is a synthetic illustrative
+    scalar; v1.13.0 settlement design is docs-only and stays in
+    the public layer's vocabulary, never as Japan-specific
+    runtime
+  - No-behavior-probability audit → no calibrated probability of
+    default, calibrated forecast, calibrated sensitivity, or
+    stochastic decay rule appears anywhere; the v1.12.9 decay
+    rule is integer-counted and weight-deterministic; the
+    closed-set vocabulary contains no `pd` / `lgd` / `ead` /
+    `default` / `rating` / `advice` / `recommendation` /
+    `underwrite` / `buy` / `sell` token
+
+#### v1.9.last historical snapshot (unchanged)
+
 - **Date:** 2026-05-02
 - **Target:** v1.9.last public prototype freeze. The v1.8.0 public
   release (`v1.8-public-release` at commit `7fa2c42`) remains

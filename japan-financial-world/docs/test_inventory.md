@@ -1,8 +1,22 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.12.9** (`Attention budget /
-decay / saturation` — disciplines the v1.12.8 cross-period
-feedback loop with a **finite synthetic attention budget**:
+Snapshot of the test suite at **v1.12.last** (`Endogenous
+attention loop freeze` — docs-only milestone that closes the
+v1.12 endogenous-attention sequence; ships the single-page
+reader-facing summary in
+[`v1_12_endogenous_attention_loop_summary.md`](v1_12_endogenous_attention_loop_summary.md),
+the regime-comparison demo section in
+[`examples/reference_world/README.md`](../examples/reference_world/README.md),
+the v1.12.last release-readiness snapshot in
+[`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md), and the
+v1.12.last position-in-sequence row in `world_model.md` §92; no
+new code, no new tests, no new ledger event types, no new
+behavior; test count, per-period record count, per-run window,
+and `living_world_digest` are all **unchanged** from v1.12.9 —
+the underlying surface is what v1.12.9 froze: `Attention
+budget / decay / saturation` — disciplines the v1.12.8
+cross-period feedback loop with a **finite synthetic attention
+budget**:
 `ActorAttentionStateRecord` carries `per_dimension_budget=3` /
 `decay_horizon=2` / `saturation_policy="drop_oldest"`;
 `max_selected_refs` is capped at 12; an inherited focus label
