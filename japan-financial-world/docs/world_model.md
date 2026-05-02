@@ -6136,8 +6136,8 @@ A `StewardshipThemeRecord` and the `StewardshipBook` storing it are jurisdiction
 | v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
 | v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
-| **v1.10.2 Portfolio-company dialogue record** | Code (§72). | **Shipped** |
-| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code. | Planned |
+| v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
+| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | Code (§73). | **Shipped** |
 | v1.10.4 Optional industry demand condition signal | Code. | Optional |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
@@ -6217,9 +6217,134 @@ A `PortfolioCompanyDialogueRecord` and the `DialogueBook` storing it are jurisdi
 | v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
 | v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
-| **v1.10.2 Portfolio-company dialogue record** | Code (§72). | **Shipped** |
-| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code. | Planned |
+| v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
+| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | Code (§73). | **Shipped** |
 | v1.10.4 Optional industry demand condition signal | Code. | Optional |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
+
+## 73. v1.10.3 Investor escalation candidate + corporate strategic response candidate
+
+§73 lands the third concrete primitive group of the v1.10 engagement / strategic-response layer named in §70 and in `docs/v1_10_universal_engagement_and_response_design.md`. Like v1.10.1 (§71) and v1.10.2 (§72), the deliverable is **storage and audit only** — two immutable record shapes and two append-only books, plus the kernel wiring that joins them to the kernel's ledger and clock. The runtime, the per-period flow of v1.9, and every existing mechanism are unchanged. The v1.10 hard boundary (§70.3) and the meta-abstraction deferral rule (§70.4) continue to hold without modification.
+
+### 73.1 What v1.10.3 names
+
+v1.10.3 names two **candidate** records that close the non-binding engagement chain:
+
+- An *investor escalation candidate* names that an investor *could* escalate against a target portfolio company in a given period, given prior themes, dialogues, signals, and valuations. It is **not** an executed escalation: no vote, no proxy filing, no shareholder proposal, no public campaign, no exit, no letter sent. The candidate names the option, not the act.
+- A *corporate strategic response candidate* names that a portfolio company *could* take a strategic response in a given period, given prior themes, dialogues, signals, and valuations. It is **not** an executed corporate action: no buyback, no dividend change, no divestment, no merger, no governance change, no disclosure filing, no operational restructure occurs because a candidate is recorded.
+
+Together, v1.10.1 → v1.10.2 → v1.10.3 close the public-FWE engagement chain as a sequence of *signal / metadata / candidate* records:
+
+```
+stewardship theme (v1.10.1)
+  → portfolio-company dialogue metadata (v1.10.2)
+    → investor escalation candidate (v1.10.3, investor side)
+    → corporate strategic response candidate (v1.10.3, corporate side)
+```
+
+Every link in the chain is non-binding. No execution occurs at any step.
+
+### 73.2 Module layout
+
+The investor side and the corporate side are separated by file:
+
+- `world/engagement.py` carries both v1.10.2 (`PortfolioCompanyDialogueRecord` + `DialogueBook`) and v1.10.3 investor-side (`InvestorEscalationCandidate` + `EscalationCandidateBook`). The investor flow is one module because dialogue and escalation candidate are both initiated by the investor side and share the same v1.10.2 cross-reference rule (theme / signal / valuation ids stored as data, not validated).
+- `world/strategic_response.py` is new in v1.10.3 and carries the corporate side (`CorporateStrategicResponseCandidate` + `StrategicResponseCandidateBook`). Splitting the corporate side into its own module keeps the engagement module from drifting into a generic catch-all and leaves room for later corporate-side primitives without bloating `engagement.py`.
+
+### 73.3 What v1.10.3 ships
+
+- `world/engagement.py` — adds `InvestorEscalationCandidate` (immutable dataclass) + `EscalationCandidateBook` (append-only store) alongside the existing v1.10.2 dialogue types.
+- `world/strategic_response.py` (new) — `CorporateStrategicResponseCandidate` (immutable dataclass) + `StrategicResponseCandidateBook` (append-only store).
+- `world/ledger.py` — `RecordType.INVESTOR_ESCALATION_CANDIDATE_ADDED` and `RecordType.CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED`, each emitted exactly once per `add_candidate` call.
+- `world/kernel.py` — `escalations: EscalationCandidateBook` and `strategic_responses: StrategicResponseCandidateBook` wired in `WorldKernel.__post_init__` with the same ledger / clock injection pattern every other source-of-truth book uses.
+- `tests/test_engagement.py` — extended to 105 tests (was 53) covering the investor-side escalation candidate: field validation, immutability, duplicate rejection, unknown-id lookup, every list / filter (`list_candidates`, `list_by_investor`, `list_by_target_company`, `list_by_type`, `list_by_status`, `list_by_priority`, `list_by_theme`, `list_by_dialogue`, `list_by_date`), deterministic snapshots, ledger emission of the new record type, kernel wiring, the no-mutation guarantee against every other source-of-truth book (including v1.10.1 stewardship, v1.10.2 dialogues, and v1.10.3 corporate responses), the no-action invariant, an explicit assertion that no transcript / content / vote_cast / proposal_filed / campaign_executed / exit_executed / letter_sent / verbatim / paraphrase / body field exists on the record or in the ledger payload, an explicit assertion that no action-class record (`order_submitted`, `price_updated`, `contract_*`, `ownership_*`, `institution_action_recorded`) is emitted by `add_candidate`, plain-id cross-reference acceptance, and a jurisdiction-neutral identifier scan over both the module and the test file.
+- `tests/test_strategic_response.py` (new) — 55 tests covering the corporate-side response candidate with the same shape as the investor side, plus the optional `next_review_date` semantics (must be `None` or on/after `as_of_date`).
+
+### 73.4 Investor-side record shape
+
+`InvestorEscalationCandidate` is a frozen dataclass. All required strings reject empty values; tuple fields normalize to `tuple[str, ...]` and reject empty entries; cross-references are stored as data and not validated against any other book.
+
+- `escalation_candidate_id` — stable, unique-within-book id.
+- `investor_id` — investor / steward / asset owner identification (free-form).
+- `target_company_id` — portfolio-company identification (free-form).
+- `as_of_date` — required ISO `YYYY-MM-DD` date.
+- `escalation_type` — controlled-vocabulary tag (`"private_letter"`, `"public_statement"`, `"shareholder_proposal_candidate"`, `"campaign_candidate"`, `"exit_candidate"`, `"vote_against_candidate"`, …); not enforced.
+- `status` — small free-form lifecycle tag (`"draft"` / `"active"` / `"on_hold"` / `"withdrawn"` / `"superseded"` / `"closed"`).
+- `priority` — small enumerated tag (`"low"` / `"medium"` / `"high"`). **Never** a calibrated probability.
+- `horizon` — free-form label (`"short_term"` / `"medium_term"` / `"long_term"`).
+- `theme_ids`, `dialogue_ids`, `related_signal_ids`, `related_valuation_ids` — tuples of plain-id cross-references, stored as data and not validated.
+- `rationale_label` — small free-form tag (`"no_response"` / `"insufficient_action"` / `"persistent_underperformance_signal"` / `"governance_concern"`, …); illustrative only, not a forecast and not a calibrated probability.
+- `next_step_label` — small free-form tag (`"schedule_followup"` / `"draft_communication"` / `"continue_monitoring"` / `"close_candidate"`, …). Metadata only — does **not** by itself trigger any escalation, voting, trading, or corporate-response mechanism.
+- `visibility` — free-form generic visibility tag (`"public"` / `"internal_only"` / `"restricted"`); metadata only, not enforced as a runtime gate.
+- `metadata` — free-form mapping for provenance.
+
+### 73.5 Corporate-side record shape
+
+`CorporateStrategicResponseCandidate` is a frozen dataclass. Same validation discipline as the investor side. The optional `next_review_date` adds a small extra invariant; everything else mirrors the investor side modulo field naming.
+
+- `response_candidate_id` — stable, unique-within-book id.
+- `company_id` — issuing portfolio-company identification (free-form).
+- `as_of_date` — required ISO `YYYY-MM-DD` date.
+- `response_type` — controlled-vocabulary tag (`"capital_allocation_review"`, `"governance_change_review"`, `"operational_restructure_review"`, `"disclosure_enhancement_review"`, `"sustainability_practice_review"`, `"no_change_candidate"`, …); not enforced.
+- `status` — small free-form lifecycle tag (`"draft"` / `"active"` / `"on_hold"` / `"withdrawn"` / `"superseded"` / `"closed"`).
+- `priority` — small enumerated tag (`"low"` / `"medium"` / `"high"`). **Never** a calibrated probability.
+- `horizon` — free-form label.
+- `trigger_theme_ids`, `trigger_dialogue_ids`, `trigger_signal_ids`, `trigger_valuation_ids` — tuples of plain-id cross-references; stored as data, not validated.
+- `expected_effect_label` — small free-form tag (`"expected_efficiency_improvement_candidate"` / `"expected_governance_improvement_candidate"` / `"expected_disclosure_quality_improvement_candidate"` / `"effect_unspecified"`, …). **Never** a forecast and **never** a calibrated probability — illustrative ordering only.
+- `constraint_label` — small free-form tag (`"subject_to_board_review"` / `"subject_to_regulatory_review"` / `"subject_to_internal_review"` / `"no_known_constraint"`, …); metadata only.
+- `next_review_date` — optional ISO `YYYY-MM-DD` date naming the firm's scheduled next internal review of the candidate. `None` means no scheduled review date. When set, must be on or after `as_of_date`.
+- `visibility` — free-form generic visibility tag; metadata only, not enforced as a runtime gate.
+- `metadata` — free-form mapping for provenance.
+
+### 73.6 Anti-fields (binding)
+
+Both records deliberately have **no** `transcript`, `content`, `contents`, `notes`, `minutes`, `attendees`, `verbatim`, `paraphrase`, `paraphrased`, or `body` field — the v1.10.2 anti-field discipline carries forward.
+
+The investor-side record additionally has **no** `vote_cast`, `proposal_filed`, `campaign_executed`, `exit_executed`, or `letter_sent` field. The corporate-side record additionally has **no** `buyback_executed`, `dividend_changed`, `divestment_executed`, `merger_executed`, `board_change_executed`, or `disclosure_filed` field. These exclusions are enforced by explicit tests on both the dataclass field set and the ledger payload key set, parallel to the v1.10.2 dialogue tests. A future v1.10.x or later milestone that introduces such a field would by construction trip these tests.
+
+### 73.7 Ledger emission
+
+Every successful `add_candidate` call on `EscalationCandidateBook` emits exactly one ledger record of type `INVESTOR_ESCALATION_CANDIDATE_ADDED`, with `object_id = escalation_candidate_id`, `source = investor_id`, `target = target_company_id`, `agent_id = investor_id`, `space_id = "engagement"`, `visibility = candidate.visibility`, and a payload mirroring the record fields (excluding `metadata`).
+
+Every successful `add_candidate` call on `StrategicResponseCandidateBook` emits exactly one ledger record of type `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED`, with `object_id = response_candidate_id`, `source = company_id`, `agent_id = company_id`, `space_id = "strategic_response"`, `visibility = candidate.visibility`, and a payload mirroring the record fields (excluding `metadata`).
+
+Duplicate `add_candidate` calls raise `DuplicateEscalationCandidateError` / `DuplicateResponseCandidateError` respectively and emit **no** additional ledger record. Books without a ledger accept adds silently. No other ledger record type is emitted from a bare `add_candidate` — the no-action invariant and the no-action-class assertion (enumerating `order_submitted`, `price_updated`, `contract_*`, `ownership_*`, `institution_action_recorded`) hold for both books.
+
+### 73.8 Kernel wiring
+
+`WorldKernel` exposes `kernel.escalations: EscalationCandidateBook` and `kernel.strategic_responses: StrategicResponseCandidateBook`. Both are constructed via `field(default_factory=...)` and joined to the kernel's ledger and clock in `__post_init__` alongside every other source-of-truth book. Neither book registers tasks, subscribes to events, nor participates in `tick()` / `run()` — they are passive append-only stores, mirroring the v1.8.5 `AttentionBook`, the v1.10.1 `StewardshipBook`, and the v1.10.2 `DialogueBook` discipline.
+
+### 73.9 No-behavior boundary (binding)
+
+The v1.10.3 candidate records and their books are jurisdiction-neutral, signal-only, behavior-free, and content-free. v1.10.3 does **not**:
+
+- introduce voting, proxy voting, shareholder-proposal execution, public-campaign execution, exit execution, letter sending, AGM / EGM action, corporate-action execution (buyback / dividend / divestment / merger / governance change), disclosure-filing execution, investment recommendation, trading, price formation, real data ingestion, Japan calibration, jurisdiction-specific stewardship codes, source-specific behavior probabilities, or any new mechanism;
+- store transcripts, verbatim or paraphrased meeting notes, attendee lists, or any non-public company information — see §73.6 (anti-fields, binding) and `docs/public_private_boundary.md`;
+- mutate any other source-of-truth book (the no-mutation tests assert this against ownership, contracts, prices, constraints, signals, valuations, institutions, external_processes, relationships, interactions, routines, attention, variables, exposures, stewardship, engagement, escalations, and strategic_responses, in both directions);
+- enforce membership of `escalation_type`, `response_type`, `status`, `priority`, `horizon`, `rationale_label`, `next_step_label`, `expected_effect_label`, `constraint_label`, or `visibility` against any controlled vocabulary — the recommended labels are illustrative;
+- emit any ledger record other than `INVESTOR_ESCALATION_CANDIDATE_ADDED` or `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` from a bare `add_candidate` call.
+
+### 73.10 What v1.10.3 does not decide
+
+- Whether `industry_demand_condition_signal` ships (v1.10.4).
+- Which review routines emit which records (v1.10.5). v1.10.3 records the data shape that those routines will read; it does not name the routines themselves.
+- Any fixture extension to the v1.9.last default living-world demo. v1.10.x demo additions land behind v1.10-scoped fixtures, separate from the v1.9.last default.
+- The meta-abstractions `actor_business_model_transition_pressure` and `actor_strategic_response_candidate`. v1.10.3 ships the *concrete* corporate-side response candidate; the meta gate stays closed until at least two concrete *response candidate* specializations are stable in public FWE.
+
+### 73.11 Position in the v1.10 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
+| v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
+| v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
+| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | Code (§73). | **Shipped** |
+| v1.10.4 Optional industry demand condition signal | Code. | Optional |
+| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `1737 / 1737` (v1.10.2) to `1844 / 1844` (v1.10.3) — `+52` tests added to `tests/test_engagement.py` for the investor-side escalation candidate, plus `+55` tests in the new `tests/test_strategic_response.py` for the corporate-side response candidate. The CLI surface, the default fixture, the per-period flow, the reproducibility surface, and the performance boundary of v1.9.last are all preserved unchanged.

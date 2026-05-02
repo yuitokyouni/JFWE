@@ -254,6 +254,55 @@ attachment lives in JFWE Proprietary (v3 territory), in a separate
 private repository, with access controls — never in this public
 repository, even synthetically.
 
+### v1.10.3 — binding implementation of the no-execution rule
+
+v1.10.3 ships the public-FWE `InvestorEscalationCandidate` shape
+(see `world/engagement.py`) and the public-FWE
+`CorporateStrategicResponseCandidate` shape (see
+`world/strategic_response.py`). Both implementations make the
+candidate-only / no-execution rule binding rather than aspirational:
+
+- The investor-side dataclass deliberately has **no** `vote_cast`,
+  `proposal_filed`, `campaign_executed`, `exit_executed`, or
+  `letter_sent` field. The corporate-side dataclass deliberately
+  has **no** `buyback_executed`, `dividend_changed`,
+  `divestment_executed`, `merger_executed`,
+  `board_change_executed`, or `disclosure_filed` field. Both
+  inherit the v1.10.2 anti-field rule (no `transcript`, `content`,
+  `notes`, `minutes`, `attendees`, `verbatim`, `paraphrase`, or
+  `body`).
+- The ledger payloads mirror the record fields and likewise carry
+  none of the above keys.
+- Tests
+  (`test_escalation_record_has_no_execution_or_content_field`,
+  `test_response_record_has_no_execution_or_content_field`,
+  `test_add_escalation_payload_carries_no_execution_or_content_keys`,
+  `test_add_response_payload_carries_no_execution_or_content_keys`)
+  introspect both the dataclass field set and the ledger payload
+  key set against the forbidden lists. A future v1.10.x or later
+  milestone that introduces such a field would by construction
+  trip these tests.
+- A no-action-class assertion (forbidding `order_submitted`,
+  `price_updated`, `contract_*`, `ownership_*`,
+  `institution_action_recorded`) holds for `add_candidate` on both
+  books.
+- The recommended `escalation_type` / `response_type` /
+  `expected_effect_label` / `constraint_label` /
+  `rationale_label` / `next_step_label` tags are illustrative
+  controlled-vocabulary labels, never calibrated probabilities;
+  the books do not enforce membership of any tag against any list,
+  so no jurisdiction-specific code can leak in via tag enforcement.
+- The `visibility` field is recorded so that downstream JFWE
+  Public / JFWE Proprietary boundaries can rely on it, but
+  v1.10.3 itself does **not** use it as a runtime gate — it is
+  metadata only.
+
+If a future milestone needs to attach an executed escalation, an
+executed corporate action, or any document filed with a real
+regulator / exchange, that attachment lives in JFWE Proprietary
+(v3 territory), in a separate private repository, with access
+controls — never in this public repository, even synthetically.
+
 ## What this document does not decide
 
 - The specific access-control model for JFWE Proprietary (a v3

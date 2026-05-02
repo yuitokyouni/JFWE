@@ -27,8 +27,9 @@ from world.routines import RoutineBook
 from world.scheduler import Phase, Scheduler, ScheduledTask, TaskSpec
 from world.signals import SignalBook
 from world.state import State
-from world.engagement import DialogueBook
+from world.engagement import DialogueBook, EscalationCandidateBook
 from world.stewardship import StewardshipBook
+from world.strategic_response import StrategicResponseCandidateBook
 from world.valuations import ValuationBook, ValuationComparator
 from world.variables import WorldVariableBook
 
@@ -67,6 +68,12 @@ class WorldKernel:
     exposures: ExposureBook = field(default_factory=ExposureBook)
     stewardship: StewardshipBook = field(default_factory=StewardshipBook)
     engagement: DialogueBook = field(default_factory=DialogueBook)
+    escalations: EscalationCandidateBook = field(
+        default_factory=EscalationCandidateBook
+    )
+    strategic_responses: StrategicResponseCandidateBook = field(
+        default_factory=StrategicResponseCandidateBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
 
@@ -88,6 +95,8 @@ class WorldKernel:
             self.exposures,
             self.stewardship,
             self.engagement,
+            self.escalations,
+            self.strategic_responses,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger

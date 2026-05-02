@@ -51,8 +51,8 @@ the milestone sequence.
 | v1.9.last Public Prototype Freeze | Docs-only (§69 of `world_model.md`). | Shipped |
 | v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only — this document + `world_model.md` §70 + boundary updates. | Shipped |
 | v1.10.1 Stewardship theme signal | Code. `StewardshipThemeRecord` + `StewardshipBook` + ledger `STEWARDSHIP_THEME_ADDED` + kernel wiring + 58 tests. | Shipped |
-| **v1.10.2 Portfolio-company dialogue record** | **Code. `PortfolioCompanyDialogueRecord` + `DialogueBook` + ledger `PORTFOLIO_COMPANY_DIALOGUE_RECORDED` + kernel wiring + 53 tests.** | **Shipped** |
-| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code. Two concrete `candidate`-shaped records. | Planned |
+| v1.10.2 Portfolio-company dialogue record | Code. `PortfolioCompanyDialogueRecord` + `DialogueBook` + ledger `PORTFOLIO_COMPANY_DIALOGUE_RECORDED` + kernel wiring + 53 tests. | Shipped |
+| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | **Code. `InvestorEscalationCandidate` + `EscalationCandidateBook` (added to `world/engagement.py`) + `CorporateStrategicResponseCandidate` + `StrategicResponseCandidateBook` (new `world/strategic_response.py`) + ledger `INVESTOR_ESCALATION_CANDIDATE_ADDED` + `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` + kernel wiring + 107 tests.** | **Shipped** |
 | v1.10.4 Optional industry demand context | Code. Optional context-signal shape. | Optional |
 | v1.10.5 Living-world integration | Code. Wires v1.10.1–v1.10.3 into the multi-period sweep. | Planned |
 | v1.10.last Freeze | Docs-only. Public engagement layer freeze. | Planned |
@@ -593,6 +593,123 @@ milestones can read it without rewriting the storage layer:
 v1.10.2 adds 53 tests. The total test count moves from
 `1684 / 1684` (v1.10.1) to `1737 / 1737` (v1.10.2).
 
+## v1.10.3 — what shipped
+
+v1.10.3 lands two concrete candidate primitives that close the
+non-binding engagement chain: an investor-side escalation candidate
+and a corporate-side strategic response candidate. Together with
+v1.10.1 (theme) and v1.10.2 (dialogue), v1.10.3 makes the chain
+*stewardship theme → portfolio-company dialogue metadata →
+investor escalation candidate → corporate strategic response
+candidate* fully representable in public FWE — every link signal /
+metadata / candidate, no execution at any step.
+
+**Module layout**
+
+The investor side and the corporate side are deliberately split by
+file:
+
+- `world/engagement.py` carries both v1.10.2 (dialogue) and v1.10.3
+  investor-side (escalation candidate). Both are initiated by the
+  investor side and share the same v1.10.2 cross-reference rule.
+- `world/strategic_response.py` is new in v1.10.3 and carries the
+  corporate side. Splitting the corporate side keeps the engagement
+  module from drifting into a generic catch-all and leaves room for
+  later corporate-side primitives without bloating `engagement.py`.
+
+**What v1.10.3 adds**
+
+- `world/engagement.py` — adds `InvestorEscalationCandidate`
+  (immutable dataclass) + `EscalationCandidateBook` (append-only
+  store) with `add_candidate`, `get_candidate`, `list_candidates`,
+  `list_by_investor`, `list_by_target_company`, `list_by_type`,
+  `list_by_status`, `list_by_priority`, `list_by_theme`,
+  `list_by_dialogue`, `list_by_date`, and `snapshot`.
+- `world/strategic_response.py` (new) — the
+  `CorporateStrategicResponseCandidate` immutable dataclass and the
+  append-only `StrategicResponseCandidateBook` store with
+  `add_candidate`, `get_candidate`, `list_candidates`,
+  `list_by_company`, `list_by_type`, `list_by_status`,
+  `list_by_priority`, `list_by_theme`, `list_by_dialogue`,
+  `list_by_date`, and `snapshot`. The corporate-side record adds
+  one extra invariant: an optional `next_review_date` that, when
+  set, must be on or after `as_of_date`.
+- `world/ledger.py` — two new `RecordType` enum values:
+  `INVESTOR_ESCALATION_CANDIDATE_ADDED` and
+  `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED`. Each is emitted
+  exactly once per `add_candidate` call on its book.
+- `world/kernel.py` — wires `escalations: EscalationCandidateBook`
+  and `strategic_responses: StrategicResponseCandidateBook` in
+  `WorldKernel`, with the same ledger / clock injection pattern
+  used by every other v0/v1 source-of-truth book.
+- `tests/test_engagement.py` — extended from 53 to 105 tests
+  (`+52`), exercising the investor-side escalation candidate end to
+  end: field validation, immutability, duplicate rejection,
+  unknown-id lookup, every list / filter, deterministic snapshots,
+  ledger emission, kernel wiring, the no-mutation guarantee against
+  every other source-of-truth book (including the v1.10.3 sibling
+  corporate-response book), the no-action invariant, the explicit
+  no-execution / no-transcript field assertion (vote_cast,
+  proposal_filed, campaign_executed, exit_executed, letter_sent,
+  transcript, content, …), the no-action-class ledger assertion,
+  plain-id cross-reference acceptance, and a jurisdiction-neutral
+  identifier scan over both module and test file.
+- `tests/test_strategic_response.py` (new) — 55 tests covering the
+  corporate-side response candidate with the same shape as the
+  investor side, plus the `next_review_date` invariants, plus the
+  forbidden corporate-action fields (buyback_executed,
+  dividend_changed, divestment_executed, merger_executed,
+  board_change_executed, disclosure_filed).
+
+**What v1.10.3 does not add**
+
+The v1.10 hard boundary is binding. v1.10.3 does **not** add
+voting, proxy voting, shareholder-proposal execution,
+public-campaign execution, exit execution, letter sending, AGM /
+EGM action, corporate-action execution (buyback / dividend /
+divestment / merger / governance change), disclosure-filing
+execution, investment recommendation, trading, price formation,
+real data ingestion, Japan calibration, jurisdiction-specific
+stewardship codes, source-specific behavior probabilities, or any
+new mechanism. Both records are candidate-metadata storage only.
+
+The records are also **content-free** by binding rule: neither
+carries a transcript, content, contents, notes, minutes, attendees,
+verbatim, paraphrase, paraphrased, or body field. The investor-side
+record additionally has no vote_cast / proposal_filed /
+campaign_executed / exit_executed / letter_sent field. The
+corporate-side record additionally has no buyback_executed /
+dividend_changed / divestment_executed / merger_executed /
+board_change_executed / disclosure_filed field. These exclusions
+are introspected by the test suite against both the dataclass field
+set and the ledger payload key set.
+
+**Meta-abstraction gate stays closed**
+
+v1.10.3 ships the *concrete* corporate-side response candidate. The
+meta-abstractions `actor_business_model_transition_pressure` and
+`actor_strategic_response_candidate` remain deferred per §70.4 —
+the gate stays closed until at least two concrete *response
+candidate* specializations are stable in public FWE.
+
+**Future hooks**
+
+- v1.10.4 (optional `industry_demand_condition_signal`) may be
+  referenced from corporate response candidates as additional
+  context — at the candidate's `trigger_signal_ids` slot, no schema
+  change required.
+- v1.10.5 living-world integration will wire review routines that
+  consult `list_by_target_company` (escalation) and `list_by_company`
+  (response) to decide which candidates are in scope for a given
+  simulation date.
+
+**Test count**
+
+v1.10.3 adds 107 tests (`+52` to `tests/test_engagement.py`,
+`+55` in the new `tests/test_strategic_response.py`). The total
+test count moves from `1737 / 1737` (v1.10.2) to
+`1844 / 1844` (v1.10.3).
+
 ## v1.10 milestone sequence
 
 1. **v1.10.0 — Universal Engagement / Strategic Response
@@ -609,11 +726,19 @@ v1.10.2 adds 53 tests. The total test count moves from
    no action-class record. The review-routine emission path itself
    lands at v1.10.5 (living-world integration), not v1.10.2.
 4. **v1.10.3 — `investor_escalation_candidate` +
-   `corporate_strategic_response_candidate`.** Two `MechanismAdapter`
-   implementations satisfying the v1.9.3 / v1.9.3.1 contract,
-   sibling to the v1.9.4 / v1.9.5 / v1.9.7 adapters. Tests
-   exercise no-action / no-vote / no-corporate-action / no-trade
-   boundaries.
+   `corporate_strategic_response_candidate`.** Shipped. Two
+   immutable candidate dataclasses + two append-only books. Investor
+   side (`InvestorEscalationCandidate` + `EscalationCandidateBook`)
+   lives in `world/engagement.py`; corporate side
+   (`CorporateStrategicResponseCandidate` +
+   `StrategicResponseCandidateBook`) lives in the new
+   `world/strategic_response.py`. Both books emit exactly one
+   ledger record per `add_candidate` and never any action-class
+   record; tests assert no-action / no-vote / no-corporate-action /
+   no-trade / no-transcript boundaries on both sides. The
+   `MechanismAdapter`-shaped consumer paths (review routines that
+   *generate* candidates) land at v1.10.5 (living-world
+   integration), not v1.10.3.
 5. **v1.10.4 — Optional `industry_demand_condition_signal`.**
    Optional later extension; can ship as a single signal book with
    no consumer mechanism.

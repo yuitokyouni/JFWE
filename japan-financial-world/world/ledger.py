@@ -68,6 +68,10 @@ class RecordType(str, Enum):
     EXPOSURE_ADDED = "exposure_added"
     STEWARDSHIP_THEME_ADDED = "stewardship_theme_added"
     PORTFOLIO_COMPANY_DIALOGUE_RECORDED = "portfolio_company_dialogue_recorded"
+    INVESTOR_ESCALATION_CANDIDATE_ADDED = "investor_escalation_candidate_added"
+    CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED = (
+        "corporate_strategic_response_candidate_added"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"
