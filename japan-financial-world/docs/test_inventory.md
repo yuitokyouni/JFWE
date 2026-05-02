@@ -1,10 +1,11 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.10.3** (`Investor escalation
-candidate + corporate strategic response candidate` — third concrete
-code milestone of the v1.10 engagement / response layer):
-`1844 / 1844 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1212 post-v1.7 additions covering reference demo, replay, manifest,
+Snapshot of the test suite at **v1.10.4** (`Industry demand
+condition signal` — fourth concrete code milestone of the v1.10
+engagement / response layer; synthetic, jurisdiction-neutral
+context evidence, not a forecast and not a revenue model):
+`1928 / 1928 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1296 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -20,8 +21,10 @@ pressure assessment mechanism, the v1.10.1 stewardship theme signal
 storage / audit layer, the v1.10.2 portfolio-company dialogue record
 metadata storage / audit layer, the v1.10.3 investor escalation
 candidate storage / audit layer (added to the engagement test file),
-and the v1.10.3 corporate strategic response candidate storage /
-audit layer in the new strategic-response test file).
+the v1.10.3 corporate strategic response candidate storage / audit
+layer in the strategic-response test file, and the v1.10.4 industry
+demand condition signal storage / audit layer in the new
+industry-conditions test file).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -1116,7 +1119,8 @@ no-mutation guarantee.
 | Stewardship theme signal (v1.10.1)      | 1     | 58    |
 | Portfolio-company dialogue record (v1.10.2) + investor escalation candidate (v1.10.3, added to test_engagement.py) | 1 | 105    |
 | Corporate strategic response candidate (v1.10.3) | 1 | 55    |
-| **post-v1.7 subtotal**                  | **32**| **1212** |
+| Industry demand condition signal (v1.10.4) | 1 | 84    |
+| **post-v1.7 subtotal**                  | **33**| **1296** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1124,8 +1128,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3) | 32 | 1212 |
-| **Total**                        | **74**| **1844** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4) | 33 | 1296 |
+| **Total**                        | **75**| **1928** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

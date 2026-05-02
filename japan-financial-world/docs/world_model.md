@@ -6137,8 +6137,8 @@ A `StewardshipThemeRecord` and the `StewardshipBook` storing it are jurisdiction
 | v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
-| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | Code (§73). | **Shipped** |
-| v1.10.4 Optional industry demand condition signal | Code. | Optional |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
+| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -6218,8 +6218,8 @@ A `PortfolioCompanyDialogueRecord` and the `DialogueBook` storing it are jurisdi
 | v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
-| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | Code (§73). | **Shipped** |
-| v1.10.4 Optional industry demand condition signal | Code. | Optional |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
+| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -6341,10 +6341,88 @@ The v1.10.3 candidate records and their books are jurisdiction-neutral, signal-o
 | v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
 | v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
-| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | Code (§73). | **Shipped** |
-| v1.10.4 Optional industry demand condition signal | Code. | Optional |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
+| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
 | v1.10.5 Living-world integration | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `1737 / 1737` (v1.10.2) to `1844 / 1844` (v1.10.3) — `+52` tests added to `tests/test_engagement.py` for the investor-side escalation candidate, plus `+55` tests in the new `tests/test_strategic_response.py` for the corporate-side response candidate. The CLI surface, the default fixture, the per-period flow, the reproducibility surface, and the performance boundary of v1.9.last are all preserved unchanged.
+
+## 74. v1.10.4 Industry demand condition signal — context evidence storage
+
+§74 lands the optional context-signal primitive of the v1.10 engagement / strategic-response layer named in §70 and in `docs/v1_10_universal_engagement_and_response_design.md`. Like every prior v1.10 milestone, the deliverable is **storage and audit only** — one immutable record shape and one append-only book, plus the kernel wiring that joins it to the kernel's ledger and clock. The runtime, the per-period flow of v1.9, and every existing mechanism are unchanged. The v1.10 hard boundary (§70.3) and the meta-abstraction deferral rule (§70.4) continue to hold without modification.
+
+### 74.1 What v1.10.4 names
+
+An *industry demand condition* is **context evidence**: a synthetic, jurisdiction-neutral *demand state* of an industry / sector / market in a given period. The record names a direction class (`expanding` / `stable` / `contracting` / `mixed` / `unknown`), a bounded synthetic strength in `[0.0, 1.0]`, a horizon class, a bounded synthetic confidence in `[0.0, 1.0]`, an illustrative condition-type tag, and a small lifecycle-status tag, plus plain-id cross-references to variables, signals, and exposures.
+
+The record is explicitly *not* a forecast. It does not predict demand, sales, or revenue; it does not update any firm's financial statements; it does not move any price, trigger any corporate action, drive any lending decision, or recommend any investment. It is a context record that later milestones (firm pressure assessment, valuation refresh, bank credit review, corporate strategic response candidates, v1.10.5 living-world integration) may *read* as one input among many, by plain id.
+
+### 74.2 What v1.10.4 ships
+
+- `world/industry.py` (new) — `IndustryDemandConditionRecord` (immutable dataclass) and `IndustryConditionBook` (append-only store) with `add_condition`, `get_condition`, `list_conditions`, `list_by_industry`, `list_by_condition_type`, `list_by_demand_direction`, `list_by_status`, `list_by_date`, and `snapshot`.
+- `world/ledger.py` — `RecordType.INDUSTRY_DEMAND_CONDITION_ADDED`, emitted exactly once per `add_condition` call.
+- `world/kernel.py` — `industry_conditions: IndustryConditionBook` wired in `WorldKernel.__post_init__` with the same ledger / clock injection pattern every other source-of-truth book uses.
+- `tests/test_industry_conditions.py` (new) — 84 tests covering field validation, the bounded synthetic numeric fields (`demand_strength` and `confidence` each in `[0.0, 1.0]` inclusive, with explicit bool rejection matching the v1 `world/exposures.py` style), immutability, duplicate rejection, unknown-id lookup, every list / filter, deterministic snapshots, ledger emission of the new record type, kernel wiring, the no-mutation guarantee against every other source-of-truth book (including v1.10.1 stewardship, v1.10.2 dialogues, v1.10.3 escalation, v1.10.3 strategic response), the no-action invariant, an explicit no-action / no-forecast / no-firm-state ledger assertion, an explicit assertion that no `forecast_value` / `revenue_forecast` / `sales_forecast` / `market_size` / `demand_index_value` / `vendor_consensus` / `consensus_forecast` / `real_data_value` field exists on the record or in the ledger payload, plain-id cross-reference acceptance, and a jurisdiction-neutral identifier scan over both module and test file. The test suite also exercises the v1.10.3 ↔ v1.10.4 link by citing a v1.10.4 condition id from a `CorporateStrategicResponseCandidate` `trigger_signal_ids` slot without forcing cross-book validation.
+
+### 74.3 Record shape
+
+`IndustryDemandConditionRecord` is a frozen dataclass. All required strings reject empty values; tuple fields normalize to `tuple[str, ...]` and reject empty entries; cross-references are stored as data and not validated against any other book.
+
+- `condition_id` — stable, unique-within-book id.
+- `industry_id` — generic, jurisdiction-neutral industry / sector / market identifier (e.g., `"industry:reference_manufacturing_general"`); free-form.
+- `industry_label` — short jurisdiction-neutral label.
+- `as_of_date` — required ISO `YYYY-MM-DD` date.
+- `condition_type` — controlled-vocabulary tag (`"demand_assessment"`, `"demand_outlook_synthetic"`, `"structural_demand_state"`, `"cyclical_demand_state"`, …); not enforced.
+- `demand_direction` — small free-form tag (`"expanding"` / `"stable"` / `"contracting"` / `"mixed"` / `"unknown"`); not enforced.
+- `demand_strength` — synthetic bounded numeric in `[0.0, 1.0]` inclusive. Booleans rejected. Coerced to `float`. **Never** a calibrated probability and **never** a forecast — illustrative magnitude ordering only.
+- `time_horizon` — free-form label (`"short_term"` / `"medium_term"` / `"long_term"` / `"structural"`).
+- `confidence` — synthetic bounded numeric in `[0.0, 1.0]` inclusive. Booleans rejected. Coerced to `float`. **Never** a calibrated probability and **never** a measurement — illustrative confidence ordering only.
+- `status` — small free-form lifecycle tag (`"draft"` / `"active"` / `"under_review"` / `"superseded"` / `"retired"` / `"withdrawn"`).
+- `related_variable_ids`, `related_signal_ids`, `related_exposure_ids` — tuples of plain-id cross-references; stored as data, not validated.
+- `visibility` — free-form generic visibility tag (`"public"` / `"internal_only"` / `"restricted"`); metadata only, not enforced as a runtime gate.
+- `metadata` — free-form mapping for provenance.
+
+### 74.4 Anti-fields (binding)
+
+The record deliberately has **no** `forecast_value`, `revenue_forecast`, `sales_forecast`, `market_size`, `demand_index_value`, `vendor_consensus`, `consensus_forecast`, or `real_data_value` field. The ledger payload likewise carries none of these keys. Two explicit tests (`test_condition_record_has_no_forecast_or_revenue_field`, `test_add_condition_payload_carries_no_forecast_or_revenue_keys`) introspect the dataclass field set and the ledger payload key set respectively. A future v1.10.x or later milestone that introduces such a field would by construction trip these tests.
+
+### 74.5 Ledger emission
+
+Every successful `add_condition` call emits exactly one ledger record of type `INDUSTRY_DEMAND_CONDITION_ADDED`, with `object_id = condition_id`, `source = industry_id`, `space_id = "industry"`, `visibility = condition.visibility`, `confidence = condition.confidence` (the `LedgerRecord` already carries an optional `confidence` slot validated to `[0, 1]`), and a payload mirroring the record fields (excluding `metadata`). A duplicate `add_condition` call raises `DuplicateIndustryConditionError` and emits **no** additional ledger record. A book without a ledger accepts adds silently. No other ledger record type is emitted by the book — the no-action invariant and the no-action / no-forecast / no-firm-state ledger assertion (enumerating `order_submitted`, `price_updated`, `contract_*`, `ownership_*`, `institution_action_recorded`, `valuation_added`, `valuation_compared`, `firm_state_added`) hold.
+
+### 74.6 Kernel wiring
+
+`WorldKernel` exposes `kernel.industry_conditions: IndustryConditionBook`. The book is constructed via `field(default_factory=IndustryConditionBook)` and joined to the kernel's ledger and clock in `__post_init__` alongside every other source-of-truth book. The book does not register tasks, does not subscribe to events, and does not participate in `tick()` / `run()` — it is a passive append-only store, mirroring the v1.8.5 `AttentionBook`, the v1.10.1 `StewardshipBook`, the v1.10.2 `DialogueBook`, and the v1.10.3 `EscalationCandidateBook` / `StrategicResponseCandidateBook` discipline.
+
+### 74.7 No-behavior boundary (binding)
+
+An `IndustryDemandConditionRecord` and the `IndustryConditionBook` storing it are jurisdiction-neutral, signal-only, behavior-free, and forecast-free. v1.10.4 does **not**:
+
+- introduce demand forecasting, sales forecasting, revenue updates, financial-statement updates, corporate-action execution, voting execution, AGM / EGM action, disclosure-filing execution, investment recommendation, trading, price formation, lending decisions, real data ingestion, Japan calibration, jurisdiction-specific sector classifications, source-specific forecast values, or calibrated behavior probabilities;
+- mutate any other source-of-truth book (the no-mutation test asserts this against ownership, contracts, prices, constraints, signals, valuations, institutions, external_processes, relationships, interactions, routines, attention, variables, exposures, stewardship, engagement, escalations, and strategic_responses);
+- enforce membership of `condition_type`, `demand_direction`, `time_horizon`, `status`, or `visibility` against any controlled vocabulary — the recommended labels are illustrative;
+- emit any ledger record other than `INDUSTRY_DEMAND_CONDITION_ADDED` from a bare `add_condition` call.
+
+### 74.8 What v1.10.4 does not decide
+
+- Which review routines emit which records (v1.10.5). v1.10.4 records the data shape that those routines will read; it does not name the routines themselves.
+- Any fixture extension to the v1.9.last default living-world demo. v1.10.x demo additions land behind v1.10-scoped fixtures, separate from the v1.9.last default.
+- The corporate-side / firm-side consumer plumbing that *uses* an industry condition (firm pressure assessment, valuation refresh, bank credit review, corporate strategic response candidates). v1.10.4 makes industry conditions *citable* by plain id from any of those layers; it does not change any of them.
+
+### 74.9 Position in the v1.10 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
+| v1.10.1 Stewardship theme signal | Code (§71). | Shipped |
+| v1.10.2 Portfolio-company dialogue record | Code (§72). | Shipped |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code (§73). | Shipped |
+| **v1.10.4 Industry demand condition signal** | Code (§74). | **Shipped** |
+| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `1844 / 1844` (v1.10.3) to `1928 / 1928` (v1.10.4) — `+84` tests in the new `tests/test_industry_conditions.py`. The CLI surface, the default fixture, the per-period flow, the reproducibility surface, and the performance boundary of v1.9.last are all preserved unchanged.

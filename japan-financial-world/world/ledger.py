@@ -72,6 +72,7 @@ class RecordType(str, Enum):
     CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED = (
         "corporate_strategic_response_candidate_added"
     )
+    INDUSTRY_DEMAND_CONDITION_ADDED = "industry_demand_condition_added"
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

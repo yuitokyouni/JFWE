@@ -52,8 +52,8 @@ the milestone sequence.
 | v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only — this document + `world_model.md` §70 + boundary updates. | Shipped |
 | v1.10.1 Stewardship theme signal | Code. `StewardshipThemeRecord` + `StewardshipBook` + ledger `STEWARDSHIP_THEME_ADDED` + kernel wiring + 58 tests. | Shipped |
 | v1.10.2 Portfolio-company dialogue record | Code. `PortfolioCompanyDialogueRecord` + `DialogueBook` + ledger `PORTFOLIO_COMPANY_DIALOGUE_RECORDED` + kernel wiring + 53 tests. | Shipped |
-| **v1.10.3 Investor escalation candidate + corporate strategic response candidate** | **Code. `InvestorEscalationCandidate` + `EscalationCandidateBook` (added to `world/engagement.py`) + `CorporateStrategicResponseCandidate` + `StrategicResponseCandidateBook` (new `world/strategic_response.py`) + ledger `INVESTOR_ESCALATION_CANDIDATE_ADDED` + `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` + kernel wiring + 107 tests.** | **Shipped** |
-| v1.10.4 Optional industry demand context | Code. Optional context-signal shape. | Optional |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code. `InvestorEscalationCandidate` + `EscalationCandidateBook` (added to `world/engagement.py`) + `CorporateStrategicResponseCandidate` + `StrategicResponseCandidateBook` (new `world/strategic_response.py`) + ledger `INVESTOR_ESCALATION_CANDIDATE_ADDED` + `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` + kernel wiring + 107 tests. | Shipped |
+| **v1.10.4 Industry demand condition signal** | **Code. `IndustryDemandConditionRecord` + `IndustryConditionBook` (new `world/industry.py`) + ledger `INDUSTRY_DEMAND_CONDITION_ADDED` + kernel wiring + 84 tests. Synthetic, jurisdiction-neutral context evidence; bounded `demand_strength` and `confidence` in `[0.0, 1.0]`; not a forecast and not a revenue model.** | **Shipped** |
 | v1.10.5 Living-world integration | Code. Wires v1.10.1–v1.10.3 into the multi-period sweep. | Planned |
 | v1.10.last Freeze | Docs-only. Public engagement layer freeze. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
@@ -710,6 +710,105 @@ v1.10.3 adds 107 tests (`+52` to `tests/test_engagement.py`,
 test count moves from `1737 / 1737` (v1.10.2) to
 `1844 / 1844` (v1.10.3).
 
+## v1.10.4 — what shipped
+
+v1.10.4 lands the optional context-signal primitive of the v1.10
+layer: a storage-and-audit shape for *industry demand condition*
+records. The ship is deliberately narrow; everything outside the
+storage layer (review routines, attention integration, consumer
+plumbing in firm pressure / valuation refresh / bank credit review,
+living-world integration) stays out of v1.10.4 and lands at later
+milestones in the sequence.
+
+The record is explicitly **context evidence**, not a forecast. The
+two numeric fields, `demand_strength` and `confidence`, are
+synthetic quantities bounded in `[0.0, 1.0]` inclusive — illustrative
+ordering only, never calibrated probabilities and never forecasts.
+This rule is binding: see "Anti-fields" below.
+
+**What v1.10.4 adds**
+
+- `world/industry.py` (new) — the immutable
+  `IndustryDemandConditionRecord` dataclass and the append-only
+  `IndustryConditionBook` store with `add_condition`,
+  `get_condition`, `list_conditions`, `list_by_industry`,
+  `list_by_condition_type`, `list_by_demand_direction`,
+  `list_by_status`, `list_by_date`, and `snapshot`.
+- `world/ledger.py` — a new
+  `RecordType.INDUSTRY_DEMAND_CONDITION_ADDED` enum value, emitted
+  exactly once per `add_condition` call.
+- `world/kernel.py` — wires `industry_conditions:
+  IndustryConditionBook` in `WorldKernel`, joined to the kernel's
+  ledger and clock in `__post_init__` alongside every other v0/v1
+  source-of-truth book.
+- `tests/test_industry_conditions.py` (new) — 84 tests covering
+  field validation, the bounded synthetic numeric fields
+  (`demand_strength` and `confidence` each in `[0.0, 1.0]`
+  inclusive, with explicit bool rejection matching the v1
+  `world/exposures.py` style), immutability, duplicate rejection,
+  unknown-id lookup, every list / filter, deterministic snapshots,
+  ledger emission, kernel wiring, the no-mutation guarantee against
+  every other source-of-truth book in the kernel (ownership,
+  contracts, prices, constraints, signals, valuations, institutions,
+  external_processes, relationships, interactions, routines,
+  attention, variables, exposures, stewardship, engagement,
+  escalations, strategic_responses), the no-action invariant, an
+  explicit no-action / no-forecast / no-firm-state ledger
+  assertion, an explicit anti-fields assertion on both the dataclass
+  field set and the ledger payload key set, plain-id cross-reference
+  acceptance, and a jurisdiction-neutral identifier scan over both
+  module and test file. The test suite also exercises the v1.10.3 ↔
+  v1.10.4 link by citing a v1.10.4 condition id from a
+  `CorporateStrategicResponseCandidate`'s `trigger_signal_ids` slot
+  without forcing cross-book validation.
+
+**Anti-fields (binding)**
+
+The dataclass deliberately has **no** `forecast_value`,
+`revenue_forecast`, `sales_forecast`, `market_size`,
+`demand_index_value`, `vendor_consensus`, `consensus_forecast`, or
+`real_data_value` field. The ledger payload likewise carries none of
+these keys. Two explicit tests
+(`test_condition_record_has_no_forecast_or_revenue_field`,
+`test_add_condition_payload_carries_no_forecast_or_revenue_keys`)
+introspect the dataclass field set and the ledger payload key set
+respectively. A future v1.10.x or later milestone that introduces
+such a field would by construction trip these tests.
+
+**What v1.10.4 does not add**
+
+The v1.10 hard boundary is binding. v1.10.4 does **not** add demand
+forecasting, sales forecasting, revenue updates, financial-statement
+updates, corporate-action execution, voting execution, AGM / EGM
+action, disclosure-filing execution, investment recommendation,
+trading, price formation, lending decisions, real data ingestion,
+Japan calibration, jurisdiction-specific sector classifications,
+source-specific forecast values, calibrated behavior probabilities,
+or any new mechanism. An industry condition record is context
+storage only.
+
+**Future hooks**
+
+An `IndustryDemandConditionRecord` is shaped so that later
+milestones can read it without rewriting the storage layer:
+
+- A v1.10.3 `CorporateStrategicResponseCandidate` may cite a
+  condition id at its `trigger_signal_ids` slot (no schema change
+  required).
+- v1.9.4 firm operating-pressure assessment, v1.9.5 valuation
+  refresh, and v1.9.7 bank credit review may all later read
+  industry conditions as one input among many; v1.10.4 itself does
+  not change those mechanisms.
+- v1.10.5 living-world integration will wire a review routine that
+  consults `list_by_industry` and `list_by_date` to decide which
+  conditions are in scope for a given simulation date.
+
+**Test count**
+
+v1.10.4 adds 84 tests in the new
+`tests/test_industry_conditions.py`. The total test count moves
+from `1844 / 1844` (v1.10.3) to `1928 / 1928` (v1.10.4).
+
 ## v1.10 milestone sequence
 
 1. **v1.10.0 — Universal Engagement / Strategic Response
@@ -739,9 +838,12 @@ test count moves from `1737 / 1737` (v1.10.2) to
    `MechanismAdapter`-shaped consumer paths (review routines that
    *generate* candidates) land at v1.10.5 (living-world
    integration), not v1.10.3.
-5. **v1.10.4 — Optional `industry_demand_condition_signal`.**
-   Optional later extension; can ship as a single signal book with
-   no consumer mechanism.
+5. **v1.10.4 — `industry_demand_condition_signal`.** Shipped.
+   Single context-signal book with no consumer mechanism. Synthetic,
+   jurisdiction-neutral; bounded `demand_strength` and `confidence`
+   in `[0.0, 1.0]`; not a forecast and not a revenue model. Tests
+   assert no-action / no-forecast / no-firm-state boundaries on both
+   the dataclass and the ledger payload.
 6. **v1.10.5 — Living-world integration.** Wires v1.10.1–v1.10.3
    (and optionally v1.10.4) into the multi-period sweep behind a
    v1.10-scoped fixture, separate from the v1.9.last default

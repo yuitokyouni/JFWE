@@ -28,6 +28,7 @@ from world.scheduler import Phase, Scheduler, ScheduledTask, TaskSpec
 from world.signals import SignalBook
 from world.state import State
 from world.engagement import DialogueBook, EscalationCandidateBook
+from world.industry import IndustryConditionBook
 from world.stewardship import StewardshipBook
 from world.strategic_response import StrategicResponseCandidateBook
 from world.valuations import ValuationBook, ValuationComparator
@@ -74,6 +75,9 @@ class WorldKernel:
     strategic_responses: StrategicResponseCandidateBook = field(
         default_factory=StrategicResponseCandidateBook
     )
+    industry_conditions: IndustryConditionBook = field(
+        default_factory=IndustryConditionBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
 
@@ -97,6 +101,7 @@ class WorldKernel:
             self.engagement,
             self.escalations,
             self.strategic_responses,
+            self.industry_conditions,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
