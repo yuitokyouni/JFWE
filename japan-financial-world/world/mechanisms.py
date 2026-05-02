@@ -1,86 +1,87 @@
 """
-v1.9.3 Mechanism interface (contract only — no behavior).
+v1.9.3 Mechanism interface + v1.9.3.1 hardening (contract only — no
+behavior).
 
 This module ships the **contract** that v1.9.4+ economic-behavior
-mechanisms will plug into. v1.9.3 adds no economic behavior; the
-five types defined here are pure data + a Protocol. Concrete
-mechanisms (firm-financial, valuation, credit-review,
-investor-intent, and later market mechanisms) attach as
-:class:`MechanismAdapter` implementations in subsequent
-milestones.
+mechanisms will plug into. v1.9.3 introduced the five interface
+types; v1.9.3.1 hardened them in three small ways:
 
-Why an interface ships before any mechanism
--------------------------------------------
+1. **Deep-ish freeze for JSON-like data.** The four immutable
+   dataclasses store nested mappings as ``MappingProxyType`` and
+   nested lists / tuples as ``tuple``, recursively. A frozen
+   dataclass alone is *shallow* — it prevents reassignment of a
+   top-level attribute but does nothing to stop an outsider
+   mutating a nested ``dict`` via subscript-assign. v1.9.3.1
+   pushes the immutability one level deeper so audit / replay
+   downstream of a mechanism's output cannot quietly observe a
+   different snapshot than the mechanism saw.
+2. **Rename** ``MechanismInputBundle`` → :class:`MechanismRunRequest`
+   with a clearer field set. The new shape splits *evidence
+   refs* (the deterministic lineage of record ids the caller
+   resolved) from *evidence* (the resolved data, grouped by
+   record type or logical key). Adapters read ``evidence``;
+   they do **not** reach into the kernel or any book. The
+   caller is responsible for resolving refs into evidence
+   before invoking ``apply``. ``MechanismInputBundle`` is kept
+   as a one-line backwards-compat alias.
+3. **Clarify input-refs ordering.** :class:`MechanismRunRecord`
+   preserves caller-provided ``input_refs`` order verbatim. It
+   does **not** auto-dedupe or sort. Callers that need
+   deterministic replay must order / dedupe their input_refs
+   themselves; some mechanisms may carry meaningful order
+   (e.g., a sequence of trades or a series of revisions) and
+   v1.9.3.1 declines to second-guess them.
+
+v1.9.3.1 still ships **no economic behavior**. The four dataclasses
+plus the Protocol are pure data; the only code change is in the
+deep-freeze helpers and the field rename.
+
+Why this matters before v1.9.4
+-------------------------------
 
 The v1.9.3 audit
-(``docs/model_mechanism_inventory.md`` + ``docs/behavioral_gap_audit.md``)
-records that the project so far is a **routine-driven
-information-flow substrate** rather than a model. Mechanisms are
-the missing layer. Locking the interface now — in a milestone
-that does not introduce any behavior — means that v1.9.4's first
-mechanism cannot accidentally introduce a divergent shape.
+(``docs/model_mechanism_inventory.md`` +
+``docs/behavioral_gap_audit.md``) records that the project so
+far is a routine-driven information-flow substrate. v1.9.4 will
+introduce the first concrete mechanism (firm financial update /
+margin pressure). Hardening the interface *before* v1.9.4 lands
+means:
 
-Principles (also documented in the inventory)
----------------------------------------------
+- the first concrete mechanism cannot accidentally rely on
+  shallow immutability;
+- adapter code never receives a kernel reference (the contract
+  forbids it; tests pin it);
+- ``input_refs`` ordering responsibility is the caller's, by
+  contract — so the mechanism cannot blame the substrate for
+  replay drift on a misordered list.
+
+Principles (also documented in ``docs/model_mechanism_inventory.md``)
+---------------------------------------------------------------------
 
 1. **Mechanisms do not directly mutate books.** They *propose*
    outputs; the caller decides what is committed.
-2. **Mechanisms consume typed refs / selected observations /
-   state views.** Inputs are explicit; no hidden globals.
+2. **Mechanisms consume typed refs / resolved evidence / state
+   views.** Inputs are explicit; no hidden globals; **no kernel
+   or book access**.
 3. **Mechanisms return proposed records or output bundles.**
 4. **The caller decides which outputs are committed.**
 5. **Every mechanism run is ledger-auditable** — through a
-   :class:`MechanismRunRecord` the caller writes (the record is
-   immutable; a future v1.9.x may give it its own ledger
-   record-type, or fold it into ``ROUTINE_RUN_RECORDED``).
+   :class:`MechanismRunRecord` the caller writes.
 6. **Each mechanism declares**: ``model_id``, ``model_family``,
    ``version``, ``assumptions``, ``calibration_status``,
    ``stochasticity``, ``required_inputs``, ``output_types``.
-7. **Reference mechanisms are simple and synthetic.** v1.9.4 –
-   v1.9.6 mechanisms are jurisdiction-neutral, deterministic
-   (or pinned-seed stochastic), and produce visible ledger
-   traces.
-8. **Advanced mechanisms attach as adapters.** FCN (Fundamental
-   / Chartist / Noise), herding, minority-game, speculation
-   game, LOB-style market microstructure adapters are explicit
-   v2+ candidates. The :class:`MechanismAdapter` Protocol is
-   exactly the seam they will use.
-
-Suggested mechanism families (v1.9.4+)
----------------------------------------
-
-- ``firm_financial_mechanism`` — synthetic margin / liquidity /
-  debt pressure update.
-- ``valuation_mechanism`` — selected refs → ``ValuationRecord``
-  proposals.
-- ``credit_review_mechanism`` — selected refs → credit-review
-  notes + constraint-pressure deltas.
-- ``investor_intent_mechanism`` — selected refs → non-binding
-  ``investor_intent`` records (no orders, no trades).
-- ``market_mechanism`` — FCN / herding / minority-game /
-  speculation-game / LOB adapters. v2+ territory.
-
-Anti-scope
-----------
-
-v1.9.3 does **not** ship:
-
-- any concrete mechanism (those are v1.9.4 onward);
-- any new ledger record type;
-- any auto-firing scheduler hook (mechanisms remain
-  caller-initiated, like the rest of v1.x);
-- any economic interpretation of any record;
-- any real-data ingestion or Japan-specific calibration.
+7. **Reference mechanisms are simple and synthetic.**
+8. **Advanced mechanisms attach as adapters.** FCN, herding,
+   minority game, speculation game, LOB-style market
+   microstructure are v2+ candidates.
 
 Calibration vocabulary
 ----------------------
 
-``MechanismSpec.calibration_status`` is a free-form string but
-should follow this vocabulary so future tooling can group
-mechanisms by maturity:
+``MechanismSpec.calibration_status`` follows
+:data:`CALIBRATION_STATUSES`:
 
-- ``"synthetic"`` — illustrative round numbers, not calibrated
-  to any data.
+- ``"synthetic"`` — illustrative round numbers, not calibrated.
 - ``"public_data_calibrated"`` — driven by openly available data
   (v2 territory).
 - ``"proprietary_calibrated"`` — driven by paid / expert data
@@ -89,8 +90,8 @@ mechanisms by maturity:
 Stochasticity vocabulary
 ------------------------
 
-``MechanismSpec.stochasticity`` is a free-form string but should
-follow:
+``MechanismSpec.stochasticity`` follows
+:data:`STOCHASTICITY_LABELS`:
 
 - ``"deterministic"`` — given the same input, same output.
 - ``"pinned_seed"`` — randomness derived from a declared seed,
@@ -102,12 +103,14 @@ follow:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Mapping, Protocol, runtime_checkable
 
 
-# Canonical labels reserved by v1.9.3. Concrete mechanisms in
-# v1.9.4+ are encouraged to use these strings so the inventory
-# tooling can group them; free-form values are still permitted.
+# Canonical labels reserved by v1.9.3 / v1.9.3.1. Concrete
+# mechanisms in v1.9.4+ are encouraged to use these strings so the
+# inventory tooling can group them; free-form values are still
+# permitted.
 MECHANISM_FAMILIES: tuple[str, ...] = (
     "firm_financial_mechanism",
     "valuation_mechanism",
@@ -131,6 +134,67 @@ STOCHASTICITY_LABELS: tuple[str, ...] = (
 
 
 # ---------------------------------------------------------------------------
+# v1.9.3.1 Deep-ish freeze for JSON-like data
+# ---------------------------------------------------------------------------
+
+
+def _freeze_json_like(value: Any) -> Any:
+    """Recursively freeze a JSON-like value so audit / replay
+    downstream of a mechanism's input or output cannot mutate it
+    in place.
+
+    - ``Mapping`` → ``MappingProxyType`` (read-only view)
+    - ``list`` / ``tuple`` → ``tuple``
+    - ``set`` / ``frozenset`` → ``tuple`` (sorted by stable str
+      repr when items are heterogeneous so ordering is
+      deterministic across processes)
+    - scalar (``None`` / ``bool`` / ``int`` / ``float`` / ``str``)
+      → returned as-is
+
+    Anything not in those categories (e.g., a custom object) is
+    returned unchanged. Mechanisms that want strict JSON-only
+    inputs should validate at the call site; the helper is
+    permissive on purpose so v1.9.4+ adapters can carry small
+    typed sub-records.
+    """
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {str(k): _freeze_json_like(v) for k, v in value.items()}
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_json_like(v) for v in value)
+    if isinstance(value, (set, frozenset)):
+        try:
+            ordered = sorted(value, key=lambda item: (type(item).__name__, str(item)))
+        except TypeError:
+            ordered = list(value)
+        return tuple(_freeze_json_like(v) for v in ordered)
+    return value
+
+
+def _thaw_json_like(value: Any) -> Any:
+    """Recursively undo :func:`_freeze_json_like`. Returns regular
+    mutable ``dict`` / ``list`` copies suitable for JSON
+    serialization or caller-side mutation.
+
+    A mechanism's ``to_dict`` always returns thawed copies — the
+    frozen views are an *internal storage* property, not a
+    serialization shape.
+    """
+    if isinstance(value, Mapping):
+        return {str(k): _thaw_json_like(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_thaw_json_like(v) for v in value]
+    if isinstance(value, (set, frozenset)):
+        try:
+            ordered = sorted(value, key=lambda item: (type(item).__name__, str(item)))
+        except TypeError:
+            ordered = list(value)
+        return [_thaw_json_like(v) for v in ordered]
+    return value
+
+
+# ---------------------------------------------------------------------------
 # MechanismSpec
 # ---------------------------------------------------------------------------
 
@@ -147,30 +211,24 @@ class MechanismSpec:
     byte-identical outputs on byte-identical inputs (the
     deterministic-replay invariant).
 
+    v1.9.3.1: ``metadata`` is now stored deeply frozen; nested
+    dicts inside ``metadata`` are read-only.
+
     Field semantics
     ---------------
     - ``model_id`` is a stable, unique id for this mechanism.
       Suggested format: ``"mechanism:<family>:<short_label>"``.
     - ``model_family`` names the broad mechanism family
       (suggested values in :data:`MECHANISM_FAMILIES`).
-    - ``version`` is a free-form version string. Suggested:
-      semantic-version style ``"1.0"`` / ``"1.0.1"``.
-    - ``assumptions`` is a tuple of free-form strings naming
-      the modeling assumptions a reader should know about.
-      Suggested examples: ``"linear_pressure_aggregation"``,
-      ``"ignores_lag_structure"``, ``"jurisdiction_neutral"``.
-    - ``calibration_status`` follows
-      :data:`CALIBRATION_STATUSES`.
+    - ``version`` is a free-form version string.
+    - ``assumptions`` is a tuple of free-form strings.
+    - ``calibration_status`` follows :data:`CALIBRATION_STATUSES`.
     - ``stochasticity`` follows :data:`STOCHASTICITY_LABELS`.
     - ``required_inputs`` is a tuple naming the input record
-      types the adapter expects (e.g.,
-      ``"SelectedObservationSet"``, ``"VariableObservation"``,
-      ``"ExposureRecord"``).
+      types the adapter expects.
     - ``output_types`` is a tuple naming the proposed-record
-      types the adapter emits (e.g., ``"InformationSignal"``,
-      ``"ValuationRecord"``).
-    - ``metadata`` is free-form: provenance notes, references,
-      doc paths.
+      types the adapter emits.
+    - ``metadata`` is free-form, deeply frozen.
     """
 
     model_id: str
@@ -208,7 +266,7 @@ class MechanismSpec:
                     )
             object.__setattr__(self, tuple_field_name, value)
 
-        object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(self, "metadata", _freeze_json_like(self.metadata))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -220,49 +278,67 @@ class MechanismSpec:
             "stochasticity": self.stochasticity,
             "required_inputs": list(self.required_inputs),
             "output_types": list(self.output_types),
-            "metadata": dict(self.metadata),
+            "metadata": _thaw_json_like(self.metadata),
         }
 
 
 # ---------------------------------------------------------------------------
-# MechanismInputBundle
+# MechanismRunRequest (v1.9.3.1; replaces MechanismInputBundle)
 # ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
-class MechanismInputBundle:
+class MechanismRunRequest:
     """
-    Typed input bundle for one mechanism call.
+    One resolved mechanism invocation prepared by the caller.
 
-    The bundle is **read-only**. Concrete mechanisms must not
-    mutate any field; the dataclass is frozen to enforce this at
-    runtime.
+    v1.9.3.1 introduces this type to make the contract between
+    caller and adapter explicit:
+
+    - The **caller** resolves refs from kernel books into
+      ``evidence_refs`` (the lineage / id list) and ``evidence``
+      (the resolved data, grouped by record type or logical key)
+      *before* calling ``apply``.
+    - The **adapter** reads ``evidence``; it does **not** access
+      the kernel, any book, or the ledger. v1.9.4+ tests pin
+      this property by passing adapters a request constructed
+      without a kernel.
+
+    ``evidence_refs`` is a *deterministic lineage* tuple — the
+    caller may dedupe / order it however it wants, but the
+    request stores it verbatim. ``evidence`` is the resolved
+    data the adapter reads; its keys are usually record-type
+    names (``"InformationSignal"``, ``"VariableObservation"``,
+    ``"ExposureRecord"``) but free-form logical keys are allowed.
 
     Field semantics
     ---------------
-    - ``request_id`` is a stable id for this invocation. Used to
-      derive the resulting :class:`MechanismRunRecord` id.
-    - ``model_id`` echoes the spec's id so the bundle is
-      self-describing (the caller can route the same bundle to
-      different adapters by changing only this field).
+    - ``request_id`` is a stable id for this invocation.
+    - ``model_id`` echoes the spec.
     - ``actor_id`` is the actor on whose behalf the mechanism is
-      running (firm / investor / bank / external observer).
+      running.
     - ``as_of_date`` is ISO ``YYYY-MM-DD``.
     - ``selected_observation_set_ids`` is a tuple of
       :class:`SelectedObservationSet` ids the mechanism may
-      consume.
-    - ``input_refs`` is a tuple of arbitrary record ids
-      (signals, observations, exposures, valuations, ...) the
-      caller hands in directly. Mechanisms must declare what
-      types they expect via the spec's ``required_inputs``.
-    - ``state_views`` is a free-form mapping from a logical name
-      to a deterministic snapshot dict (e.g., a balance-sheet
-      view). Stored as data; not mutable.
-    - ``parameters`` is a free-form mapping carrying any extra
-      caller-supplied mechanism parameters (e.g., a synthetic
-      sensitivity weight). v1.9.3 does not constrain the shape
-      beyond JSON-friendliness.
-    - ``metadata`` is free-form.
+      consume (resolved separately from ``evidence_refs`` so the
+      adapter can correlate selections with their refs).
+    - ``evidence_refs`` is the caller-resolved tuple of record
+      ids that flow through this run. Stored verbatim; no
+      auto-dedup, no auto-sort.
+    - ``evidence`` is a deeply-frozen mapping of resolved input
+      data (record type / logical key → list of records or
+      sub-dicts).
+    - ``state_views`` is a mapping from a logical name to a
+      deterministic state snapshot (e.g., a balance-sheet view).
+      Deeply frozen.
+    - ``parameters`` is a free-form deeply-frozen mapping.
+    - ``metadata`` is a free-form deeply-frozen mapping.
+
+    Backwards-compat: ``MechanismInputBundle`` is aliased to
+    ``MechanismRunRequest`` for one milestone so code that imported
+    the old name still loads. The alias does **not** restore the
+    old field set — code using ``input_refs=...`` must update to
+    ``evidence_refs=...``.
     """
 
     request_id: str
@@ -270,8 +346,9 @@ class MechanismInputBundle:
     actor_id: str
     as_of_date: str
     selected_observation_set_ids: tuple[str, ...] = field(default_factory=tuple)
-    input_refs: tuple[str, ...] = field(default_factory=tuple)
-    state_views: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
+    evidence_refs: tuple[str, ...] = field(default_factory=tuple)
+    evidence: Mapping[str, Any] = field(default_factory=dict)
+    state_views: Mapping[str, Any] = field(default_factory=dict)
     parameters: Mapping[str, Any] = field(default_factory=dict)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -285,7 +362,7 @@ class MechanismInputBundle:
 
         for tuple_field_name in (
             "selected_observation_set_ids",
-            "input_refs",
+            "evidence_refs",
         ):
             value = tuple(getattr(self, tuple_field_name))
             for entry in value:
@@ -295,16 +372,20 @@ class MechanismInputBundle:
                     )
             object.__setattr__(self, tuple_field_name, value)
 
-        # state_views: dict[str, dict[str, Any]]; freeze copies.
-        normalised_views: dict[str, dict[str, Any]] = {}
-        for k, v in dict(self.state_views).items():
+        # `evidence` keys must be non-empty strings. Values are
+        # deeply frozen but otherwise free-form.
+        if not isinstance(self.evidence, Mapping):
+            raise ValueError(
+                f"evidence must be a Mapping; got {type(self.evidence).__name__}"
+            )
+        for k in dict(self.evidence).keys():
             if not isinstance(k, str) or not k:
-                raise ValueError("state_views keys must be non-empty strings")
-            normalised_views[k] = dict(v) if isinstance(v, Mapping) else {"value": v}
-        object.__setattr__(self, "state_views", normalised_views)
+                raise ValueError("evidence keys must be non-empty strings")
 
-        object.__setattr__(self, "parameters", dict(self.parameters))
-        object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(self, "evidence", _freeze_json_like(self.evidence))
+        object.__setattr__(self, "state_views", _freeze_json_like(self.state_views))
+        object.__setattr__(self, "parameters", _freeze_json_like(self.parameters))
+        object.__setattr__(self, "metadata", _freeze_json_like(self.metadata))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -315,11 +396,18 @@ class MechanismInputBundle:
             "selected_observation_set_ids": list(
                 self.selected_observation_set_ids
             ),
-            "input_refs": list(self.input_refs),
-            "state_views": {k: dict(v) for k, v in self.state_views.items()},
-            "parameters": dict(self.parameters),
-            "metadata": dict(self.metadata),
+            "evidence_refs": list(self.evidence_refs),
+            "evidence": _thaw_json_like(self.evidence),
+            "state_views": _thaw_json_like(self.state_views),
+            "parameters": _thaw_json_like(self.parameters),
+            "metadata": _thaw_json_like(self.metadata),
         }
+
+
+# Backwards-compat alias (kept for one milestone). The alias does
+# not restore the old field set; code using ``input_refs=...``
+# must rename to ``evidence_refs=...``.
+MechanismInputBundle = MechanismRunRequest
 
 
 # ---------------------------------------------------------------------------
@@ -334,33 +422,18 @@ class MechanismOutputBundle:
 
     The bundle carries **proposals**, not commits. The caller
     chooses which proposals (if any) to write through to a book.
-    A mechanism that wants something committed lists it here;
-    nothing else flips state.
 
-    Field semantics
-    ---------------
-    - ``request_id`` mirrors the input bundle's request id.
-    - ``model_id`` echoes the spec.
-    - ``status`` is a free-form short label. Suggested vocabulary
-      (mirroring v1.8.1 anti-scenario discipline): ``"completed"``
-      when inputs flowed through cleanly; ``"degraded"`` when
-      some inputs were missing or empty; ``"skipped"`` when the
-      adapter chose not to run; ``"failed"`` is reserved for
-      hard errors (mechanisms should prefer ``degraded``).
-    - ``proposed_signals`` / ``proposed_valuation_records`` /
-      ``proposed_constraint_pressure_deltas`` /
-      ``proposed_intent_records`` /
-      ``proposed_run_records`` are tuples of dataclass-shaped
-      *proposals*. v1.9.3 carries them as opaque tuples of dicts
-      so the contract does not pull in v1.9.4+ record types
-      prematurely. Adapters in v1.9.4+ may switch to typed
-      tuples per family.
-    - ``output_summary`` is a free-form mapping carrying any
-      counts, ranges, or audit fields the mechanism wants the
-      :class:`MechanismRunRecord` to capture.
-    - ``warnings`` is a tuple of free-form non-fatal warning
-      strings.
-    - ``metadata`` is free-form.
+    v1.9.3.1: every nested mapping in the proposal tuples plus
+    ``output_summary`` and ``metadata`` is deeply frozen.
+
+    Status vocabulary (suggested):
+
+    - ``"completed"`` — inputs flowed through cleanly.
+    - ``"degraded"`` — some inputs were missing or empty (the
+      v1.8.1 anti-scenario rule).
+    - ``"skipped"`` — adapter chose not to run.
+    - ``"failed"`` — hard error (mechanisms should prefer
+      ``"degraded"``).
     """
 
     request_id: str
@@ -404,7 +477,10 @@ class MechanismOutputBundle:
                     raise ValueError(
                         f"{tuple_field_name} entries must be Mapping[str, Any]"
                     )
-            normalised = tuple(dict(entry) for entry in value)
+            # Each proposal is deeply frozen so audit / replay
+            # downstream cannot mutate the proposed record by
+            # subscript-assign on a nested dict.
+            normalised = tuple(_freeze_json_like(entry) for entry in value)
             object.__setattr__(self, tuple_field_name, normalised)
 
         warnings_value = tuple(self.warnings)
@@ -413,8 +489,8 @@ class MechanismOutputBundle:
                 raise ValueError("warnings entries must be non-empty strings")
         object.__setattr__(self, "warnings", warnings_value)
 
-        object.__setattr__(self, "output_summary", dict(self.output_summary))
-        object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(self, "output_summary", _freeze_json_like(self.output_summary))
+        object.__setattr__(self, "metadata", _freeze_json_like(self.metadata))
 
     @property
     def total_proposed_count(self) -> int:
@@ -431,22 +507,22 @@ class MechanismOutputBundle:
             "request_id": self.request_id,
             "model_id": self.model_id,
             "status": self.status,
-            "proposed_signals": [dict(e) for e in self.proposed_signals],
+            "proposed_signals": [_thaw_json_like(e) for e in self.proposed_signals],
             "proposed_valuation_records": [
-                dict(e) for e in self.proposed_valuation_records
+                _thaw_json_like(e) for e in self.proposed_valuation_records
             ],
             "proposed_constraint_pressure_deltas": [
-                dict(e) for e in self.proposed_constraint_pressure_deltas
+                _thaw_json_like(e) for e in self.proposed_constraint_pressure_deltas
             ],
             "proposed_intent_records": [
-                dict(e) for e in self.proposed_intent_records
+                _thaw_json_like(e) for e in self.proposed_intent_records
             ],
             "proposed_run_records": [
-                dict(e) for e in self.proposed_run_records
+                _thaw_json_like(e) for e in self.proposed_run_records
             ],
-            "output_summary": dict(self.output_summary),
+            "output_summary": _thaw_json_like(self.output_summary),
             "warnings": list(self.warnings),
-            "metadata": dict(self.metadata),
+            "metadata": _thaw_json_like(self.metadata),
         }
 
 
@@ -460,39 +536,48 @@ class MechanismRunRecord:
     """
     Append-only audit record of one mechanism invocation.
 
-    Captures the contractually relevant facts: who ran, what
-    spec, what inputs (by id, not value), what proposals came
-    out (by count + summary), what status, and where the actual
-    proposed records ended up *after* the caller committed them.
+    v1.9.3.1: ``metadata`` is deeply frozen.
 
-    The record is **data**. v1.9.3 does not introduce a new
-    ledger record type for it; v1.9.4 may either fold it into the
-    existing ``ROUTINE_RUN_RECORDED`` shape or introduce
-    ``MECHANISM_RUN_RECORDED`` as an additive type.
+    Ordering responsibility
+    -----------------------
+
+    ``input_refs`` and ``committed_output_refs`` are stored
+    **verbatim** in caller-supplied order. v1.9.3.1 does **not**:
+
+    - dedupe entries;
+    - sort entries;
+    - reject duplicates.
+
+    Callers that need deterministic replay must order / dedupe
+    their tuples themselves before constructing the record. Some
+    mechanisms intentionally carry meaningful order (a sequence
+    of revisions, a temporal trail of inputs); v1.9.3.1 declines
+    to second-guess them. The contract test in
+    ``tests/test_mechanism_interface.py`` pins the
+    "preserve verbatim" property.
 
     Field semantics
     ---------------
-    - ``run_id`` is the stable id of the run. Default formula:
+    - ``run_id`` is the stable id of the run. Suggested formula:
       ``"mechanism_run:" + request_id``.
-    - ``request_id`` mirrors the bundle.
+    - ``request_id`` mirrors the request.
     - ``model_id`` / ``model_family`` / ``version`` echo the
       spec.
-    - ``actor_id`` echoes the input bundle.
-    - ``as_of_date`` echoes the input bundle.
+    - ``actor_id`` echoes the request.
+    - ``as_of_date`` echoes the request.
     - ``input_summary_hash`` and ``output_summary_hash`` are
       free-form opaque digest strings if the caller computed
-      them; v1.9.3 does not require any specific hash function.
-    - ``input_refs`` is the resolved (deduped, ordered) tuple of
-      input record ids the mechanism actually consumed.
+      them.
+    - ``input_refs`` is the caller-resolved tuple of input
+      record ids the mechanism actually consumed (verbatim
+      order).
     - ``committed_output_refs`` is the tuple of record ids the
       caller wrote to its books after consuming
-      :class:`MechanismOutputBundle`. May be a subset of the
-      proposals when the caller dropped some.
+      :class:`MechanismOutputBundle` (verbatim order).
     - ``status`` mirrors the output bundle.
     - ``parent_record_ids`` lets the run point back to upstream
-      records (the four-property action contract's lineage
-      hook).
-    - ``metadata`` is free-form.
+      records.
+    - ``metadata`` is free-form, deeply frozen.
     """
 
     run_id: str
@@ -538,6 +623,9 @@ class MechanismRunRecord:
                     raise ValueError(
                         f"{tuple_field_name} entries must be non-empty strings"
                     )
+            # Preserve verbatim caller-supplied order. No dedupe,
+            # no sort — see the docstring's "Ordering
+            # responsibility" section.
             object.__setattr__(self, tuple_field_name, value)
 
         for hash_field_name in ("input_summary_hash", "output_summary_hash"):
@@ -547,7 +635,7 @@ class MechanismRunRecord:
                     f"{hash_field_name} must be a non-empty string or None"
                 )
 
-        object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(self, "metadata", _freeze_json_like(self.metadata))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -564,7 +652,7 @@ class MechanismRunRecord:
             "parent_record_ids": list(self.parent_record_ids),
             "input_summary_hash": self.input_summary_hash,
             "output_summary_hash": self.output_summary_hash,
-            "metadata": dict(self.metadata),
+            "metadata": _thaw_json_like(self.metadata),
         }
 
 
@@ -579,20 +667,32 @@ class MechanismAdapter(Protocol):
     The Protocol that v1.9.4+ concrete mechanisms implement.
 
     An adapter is an object exposing a :class:`MechanismSpec`
-    and an ``apply`` method. The adapter is responsible for
-    interpreting an :class:`MechanismInputBundle` against the
-    spec and returning a :class:`MechanismOutputBundle` of
-    proposals. The adapter must **not** mutate any kernel book;
-    every persistence step lives in the caller.
+    and an ``apply`` method that takes a
+    :class:`MechanismRunRequest` and returns a
+    :class:`MechanismOutputBundle` of proposals.
+
+    Adapter contract (v1.9.3.1):
+
+    - The adapter must **not** mutate the request. The request's
+      nested mappings / sequences are deeply frozen;
+      subscript-assign on any nested dict raises ``TypeError``.
+    - The adapter must **not** read the kernel, any book, or the
+      ledger. The caller resolves refs into ``request.evidence``
+      *before* invocation; the adapter computes proposals from
+      ``request.evidence`` alone.
+    - The adapter must **not** commit any proposal. The caller
+      decides which (if any) of the returned proposals to write
+      through to a book.
+    - The adapter must return proposals only.
 
     The Protocol is ``runtime_checkable`` so tests can assert
-    ``isinstance(adapter, MechanismAdapter)`` cheaply. The check
-    is structural — any class with a ``spec`` attribute and an
+    ``isinstance(adapter, MechanismAdapter)``. The check is
+    structural — any class with a ``spec`` attribute and an
     ``apply`` method satisfies it.
     """
 
     spec: MechanismSpec
 
     def apply(
-        self, bundle: MechanismInputBundle
+        self, request: MechanismRunRequest
     ) -> MechanismOutputBundle: ...

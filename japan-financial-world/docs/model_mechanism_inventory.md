@@ -131,28 +131,70 @@ mechanisms have a standard shape to attach. The interface is
 **pure data** — the dataclasses carry no behavior. Mechanisms
 *propose* outputs; the caller decides what is committed.
 
-### Five types
+### Five types (v1.9.3 + v1.9.3.1 hardening)
 
 ```python
 MechanismSpec        — model_id, model_family, version,
                        assumptions, calibration_status,
                        stochasticity, required_inputs,
                        output_types, metadata
-MechanismInputBundle — structured inputs (selected_refs, state
-                       views, variable observations, exposures,
-                       caller-supplied parameters)
+MechanismRunRequest  — one resolved mechanism invocation prepared
+                       by the caller. Splits evidence_refs
+                       (caller-resolved lineage id tuple,
+                       verbatim) from evidence (the resolved
+                       data, grouped by record type / logical
+                       key). Adapters read evidence; they do NOT
+                       access kernel / books.
+                       (v1.9.3.1 rename of the v1.9.3
+                       MechanismInputBundle. The old name is
+                       kept as a one-line alias to the same
+                       class for one milestone.)
 MechanismOutputBundle — proposed records the caller may commit
                         (signals, valuations, run records,
                         constraint pressure deltas, etc.)
 MechanismRunRecord   — append-only audit record of one
                        mechanism invocation (model_id, status,
-                       input / output digests, ledger refs)
+                       input / output digests, ledger refs).
+                       v1.9.3.1: input_refs and
+                       committed_output_refs are preserved
+                       verbatim — no auto-dedupe, no auto-sort.
 MechanismAdapter     — Protocol for "an object with a `spec`
-                       and `apply(input) -> output`" — adapters
+                       and `apply(request) -> output`" — adapters
                        are how concrete mechanisms (FCN /
                        herding / MG / SG / LOB / firm-financial /
                        valuation / credit-review) plug in
 ```
+
+### v1.9.3.1 deep-freeze property
+
+A `frozen=True` dataclass alone is *shallow* — it prevents
+reassignment of a top-level attribute but does nothing to stop
+an outsider mutating a nested `dict` via subscript-assign.
+v1.9.3.1 adds a deep-freeze pass: every JSON-like field on the
+four dataclasses is recursively converted to `MappingProxyType`
+(for mappings) and `tuple` (for lists / tuples / sets) on
+construction. Subscript-assign on any nested dict raises
+`TypeError`. `to_dict()` thaws back to plain mutable `dict` /
+`list` so the JSON-friendly projection stays caller-mutable.
+
+The fields covered:
+
+- `MechanismSpec.metadata`
+- `MechanismRunRequest.evidence` / `state_views` / `parameters`
+  / `metadata`
+- every proposal mapping inside `MechanismOutputBundle` plus
+  `output_summary` and `metadata`
+- `MechanismRunRecord.metadata`
+
+### v1.9.3.1 ordering responsibility
+
+`MechanismRunRecord.input_refs` and `committed_output_refs` are
+stored **verbatim** in caller-supplied order — duplicates are
+preserved, ordering is preserved, no sort. Callers needing
+deterministic replay must order / dedupe their tuples themselves;
+some mechanisms (e.g., a sequence of revisions) intentionally
+carry meaningful order, and v1.9.3.1 declines to second-guess
+them.
 
 ### Mechanism principles
 

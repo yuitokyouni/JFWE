@@ -157,7 +157,8 @@ in well under a second, and are deterministic across invocations.
 | v1.9.1-prep   | Living world report contract audit                        | Shipped |
 | v1.9.1        | Living World Trace Report                                 | Shipped |
 | v1.9.2        | Living World Replay / Manifest / Digest                   | Shipped |
-| **v1.9.3**    | **Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface** | **Shipped** |
+| v1.9.3        | Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Shipped |
+| **v1.9.3.1**  | **Mechanism Interface Hardening (deep-freeze + rename + ordering clarification)** | **Shipped** |
 | v1.9.4        | Synthetic Firm Financial Update / Margin Pressure         | Next |
 | v1.9.5        | Valuation Refresh Lite                                    | Planned |
 | v1.9.6        | Bank Credit Review Lite                                   | Planned |
@@ -465,15 +466,16 @@ From the `japan-financial-world` directory:
 python -m pytest -q
 ```
 
-Expected: `1481 passed` at the latest commit (444 v0 + 188 v1
-frozen reference + 849 post-v1.7 additions covering the reference
+Expected: `1507 passed` at the latest commit (444 v0 + 188 v1
+frozen reference + 875 post-v1.7 additions covering the reference
 demo, replay, manifest, catalog-shape, experiment harness, the
 v1.8.x endogenous-activity stack — interactions, routines,
 attention, variable / exposure layers, the menu builder, the
 investor / bank attention demo, the two review routines, the chain
 harness, and the ledger trace report — plus the v1.9.x living
 reference world, its trace report, the replay / manifest helpers,
-and the v1.9.3 mechanism interface contract).
+and the v1.9.3 / v1.9.3.1 mechanism interface contract +
+hardening).
 
 To run only v0 tests, exclude the v1 test files; to run only v1 tests:
 

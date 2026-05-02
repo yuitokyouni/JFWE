@@ -1,9 +1,9 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.3** (`Model Mechanism
-Inventory + Behavioral Gap Audit + Mechanism Interface`):
-`1481 / 1481 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-849 post-v1.7 additions covering reference demo, replay,
+Snapshot of the test suite at **v1.9.3.1** (`Mechanism Interface
+Hardening` — deep-freeze + rename + ordering clarification):
+`1507 / 1507 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+875 post-v1.7 additions covering reference demo, replay,
 manifest, catalog-shape, experiment harness, renamed WorldID
 tests, interactions, routines, attention, routine engine, the
 corporate quarterly reporting routine, the world-variable
@@ -14,7 +14,8 @@ bank review routines, the endogenous chain harness, the ledger
 trace report, the multi-period living reference world demo, the
 v1.9.1-prep report contract, the v1.9.1 living world trace
 report, the v1.9.2 living-world replay-determinism + manifest
-helpers, and the v1.9.3 mechanism interface contract).
+helpers, the v1.9.3 mechanism interface contract, and the
+v1.9.3.1 hardening).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -282,15 +283,18 @@ no-mutation guarantee.
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
 
-## Mechanism interface contract (v1.9.3)
+## Mechanism interface contract (v1.9.3 + v1.9.3.1 hardening)
 
-- `test_mechanism_interface.py` (39) — required-field contract
+- `test_mechanism_interface.py` (65) — required-field contract
   on `MechanismSpec` (model_id / model_family / version /
   assumptions / calibration_status / stochasticity /
   required_inputs / output_types / metadata),
-  `MechanismInputBundle` (request_id / model_id / actor_id /
-  as_of_date / selected_observation_set_ids / input_refs /
-  state_views / parameters / metadata), `MechanismOutputBundle`
+  `MechanismRunRequest` (request_id / model_id / actor_id /
+  as_of_date / selected_observation_set_ids / **evidence_refs** /
+  **evidence** / state_views / parameters / metadata — v1.9.3.1
+  rename of the v1.9.3 `MechanismInputBundle`; the old name is
+  pinned as a one-line alias to the same class),
+  `MechanismOutputBundle`
   (request_id / model_id / status / proposed_signals /
   proposed_valuation_records /
   proposed_constraint_pressure_deltas / proposed_intent_records /
@@ -311,7 +315,25 @@ no-mutation guarantee.
   proprietary_calibrated}`; `STOCHASTICITY_LABELS ==
   {deterministic, pinned_seed, open_seed}`); constructing the
   interface dataclasses requires no kernel (anti-behavior
-  invariant for v1.9.3).
+  invariant carried from v1.9.3).
+- **v1.9.3.1 hardening additions**: `_freeze_json_like` /
+  `_thaw_json_like` helpers tested directly (mapping →
+  `MappingProxyType`; list / tuple → tuple; set → sorted-tuple;
+  scalar passthrough; thaw round-trips back to mutable
+  `dict` / `list`). Nested-mutation rejected on every
+  JSON-like field of every dataclass —
+  `MechanismSpec.metadata`, `MechanismRunRequest.evidence` /
+  `state_views` / `parameters`, every
+  `MechanismOutputBundle` proposal mapping + `output_summary`,
+  `MechanismRunRecord.metadata`. `to_dict()` returns mutable
+  copies. `MechanismInputBundle` is a one-line alias to
+  `MechanismRunRequest`. `MechanismRunRecord.input_refs` and
+  `committed_output_refs` preserve caller-supplied order
+  verbatim — duplicates kept, no auto-dedupe / auto-sort.
+  Adapter Protocol's `apply` signature uses
+  `MechanismRunRequest`. The "adapter does not require kernel"
+  anti-behavior test constructs an adapter that computes from
+  `request.evidence` alone.
 
 ## Living world replay / manifest / digest (v1.9.2)
 
@@ -854,7 +876,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -881,8 +903,8 @@ no-mutation guarantee.
 | Living world trace report (v1.9.1)      | 1     | 27    |
 | Living world replay (v1.9.2)            | 1     | 16    |
 | Living world manifest (v1.9.2)          | 1     | 19    |
-| Mechanism interface contract (v1.9.3)   | 1     | 39    |
-| **post-v1.7 subtotal**                  | **24**| **849** |
+| Mechanism interface contract (v1.9.3 + v1.9.3.1) | 1 | 65    |
+| **post-v1.7 subtotal**                  | **24**| **875** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -890,8 +912,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3) | 24 | 849 |
-| **Total**                        | **66**| **1481** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1) | 24 | 875 |
+| **Total**                        | **66**| **1507** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

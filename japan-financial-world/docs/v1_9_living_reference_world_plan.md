@@ -169,6 +169,51 @@ therefore lands as v1.9.3; downstream milestones shift by one.
 The full suite passes 1481 tests (1442 prior + 39 mechanism
 contract).
 
+## v1.9.3.1 — what shipped
+
+A targeted hardening of the v1.9.3 mechanism interface, before
+v1.9.4 introduces the first concrete mechanism. **No economic
+behavior; no concrete mechanism; v1.9.0 / v1.9.1 / v1.9.2
+modules byte-identical before / after.** Three changes:
+
+- **Deep-ish freeze for JSON-like data.** Two private helpers
+  in `world/mechanisms.py` — `_freeze_json_like` and
+  `_thaw_json_like` — recursively convert nested mappings to
+  `MappingProxyType` and lists / tuples to `tuple`. The four
+  immutable dataclasses now apply this on construction, so
+  subscript-assign on any nested dict raises `TypeError`.
+  `to_dict()` thaws back to plain mutable `dict` / `list` for
+  JSON friendliness.
+- **Rename `MechanismInputBundle` → `MechanismRunRequest`.** The
+  new type splits `evidence_refs` (caller-resolved lineage
+  id tuple, verbatim) from `evidence` (resolved data the
+  adapter reads, grouped by record-type or logical key).
+  Adapters consume `evidence`; they do **not** access kernel /
+  books. The caller resolves before invocation.
+  `MechanismInputBundle = MechanismRunRequest` is kept as a
+  one-line backwards-compat alias for one milestone.
+- **Clarify `MechanismRunRecord` ordering responsibility.**
+  `input_refs` and `committed_output_refs` are stored
+  **verbatim** — no auto-dedupe, no auto-sort. Callers that
+  need deterministic replay must order / dedupe their tuples
+  themselves; mechanisms that intentionally carry meaningful
+  order keep it.
+
+The Protocol's `apply` signature changes accordingly:
+`apply(self, request: MechanismRunRequest) -> MechanismOutputBundle`.
+
+`tests/test_mechanism_interface.py` (39 → 65) gains 26 new tests
+pinning the deep-freeze property on every nested mutation site,
+the `to_dict` thaw round-trip, the `MechanismInputBundle` alias
+equality, the rename / new field set, the `evidence` validation
+(Mapping required; non-empty string keys; lists become tuples
+on freeze), the verbatim `input_refs` order including
+duplicates, the new Protocol signature, the freeze helpers
+themselves, and the "adapter does not require kernel"
+anti-behavior test.
+
+The full suite passes 1507 tests (1481 prior + 26 hardening).
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral

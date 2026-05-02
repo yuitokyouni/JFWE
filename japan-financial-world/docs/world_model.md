@@ -5246,12 +5246,62 @@ These principles apply to v1.9.4+ mechanisms and are pinned in the contract test
 | v1.9.1-prep Report Contract Audit | Docs + contract test (§60). | Shipped |
 | v1.9.1 Living World Trace Report | Code (§61). | Shipped |
 | v1.9.2 Living World Replay / Manifest / Digest | Code (§62). | Shipped |
-| **v1.9.3 Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface** | Docs + interface contract (§63). | **Shipped** |
+| v1.9.3 Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Docs + interface contract (§63). | Shipped |
+| **v1.9.3.1 Mechanism Interface Hardening** | Code (§63.9). Deep-freeze + rename + ordering clarification. | **Shipped** |
 | v1.9.4 Firm Financial Update / Margin Pressure | First concrete `MechanismAdapter`. | Next |
 | v1.9.5 Valuation Refresh Lite | `valuation_mechanism` adapter. | After v1.9.4 |
 | v1.9.6 Bank Credit Review Lite | `credit_review_mechanism` adapter. | After v1.9.5 |
 | v1.9.7 Performance Boundary | Sparse-iteration hardening. | After v1.9.6 |
 | v1.9.last | First lightweight public prototype. | After v1.9.7 |
+
+### 63.9 v1.9.3.1 Mechanism Interface Hardening
+
+§63.9 (v1.9.3.1) hardens the v1.9.3 mechanism interface in three small ways before v1.9.4 introduces the first concrete mechanism. **No economic behavior; no concrete mechanism.** The change set:
+
+1. **Deep-ish freeze for JSON-like data.** Two private helpers in `world/mechanisms.py` — `_freeze_json_like` and `_thaw_json_like` — recursively convert nested mappings to `MappingProxyType` and lists / tuples to `tuple`. The four immutable dataclasses now apply this on construction:
+   - `MechanismSpec.metadata`
+   - `MechanismRunRequest.evidence` / `state_views` / `parameters` / `metadata`
+   - `MechanismOutputBundle` proposal tuples + `output_summary` + `metadata`
+   - `MechanismRunRecord.metadata`
+
+   `to_dict()` thaws back to plain mutable `dict` / `list` for JSON friendliness. The shallow-immutability of `frozen=True` is no longer the only line of defence; nested-dict subscript-assign is rejected at runtime. Tests (`test_mechanism_interface.py`) pin every nested-mutation refusal.
+2. **Rename `MechanismInputBundle` → `MechanismRunRequest`.** The new type splits `evidence_refs` (caller-resolved lineage id tuple, verbatim) from `evidence` (resolved data the adapter reads, grouped by record-type or logical key). Adapters consume `evidence`; they do **not** read the kernel or any book — the caller resolves before invocation. `MechanismInputBundle = MechanismRunRequest` is kept as a one-line backwards-compat alias for one milestone; the alias does not restore the old `input_refs` field (callers must rename to `evidence_refs`).
+3. **Clarify `MechanismRunRecord` ordering responsibility.** The record preserves caller-supplied `input_refs` / `committed_output_refs` order **verbatim** — no auto-dedupe, no auto-sort. Callers needing deterministic replay must order / dedupe their tuples themselves; mechanisms that intentionally carry meaningful order keep their order. The "preserve verbatim" property is pinned by a contract test.
+
+The Protocol's `apply` signature changes accordingly:
+
+```python
+def apply(self, request: MechanismRunRequest) -> MechanismOutputBundle: ...
+```
+
+#### What v1.9.3.1 lands
+
+- `world/mechanisms.py` — `_freeze_json_like` / `_thaw_json_like` helpers, the renamed `MechanismRunRequest` dataclass with the `evidence_refs` + `evidence` field split, deep-freeze applied to every JSON-like field on the four dataclasses, the updated Protocol signature, and the one-line `MechanismInputBundle = MechanismRunRequest` alias.
+- `tests/test_mechanism_interface.py` — 26 new tests pinning the deep-freeze property (one per nested mutation site), the `to_dict` thaw round-trip, the alias equality, the rename / field set, the new `evidence` validation (Mapping required; non-empty string keys; lists become tuples on freeze), the `evidence_refs` verbatim storage, the caller-preserved `MechanismRunRecord.input_refs` order including duplicates, the new Protocol signature acceptance, and the "adapter does not require kernel" anti-behavior test. The original 39 tests carry forward (some renamed to use `MechanismRunRequest`).
+
+#### What v1.9.3.1 deliberately does NOT do
+
+- ship any concrete mechanism (those are v1.9.4 onward);
+- introduce any new ledger record type;
+- change v1.9.0 / v1.9.1 / v1.9.2 modules (they are byte-identical before / after);
+- alter the eight ship-or-die mechanism principles;
+- change the calibration / stochasticity / family vocabularies.
+
+#### v1.9.3.1 success criteria
+
+§63.9 is complete when **all** hold:
+
+1. `_freeze_json_like` recursively freezes mappings → `MappingProxyType`, lists / tuples → `tuple`, sets → sorted-tuple, scalars → passthrough.
+2. `_thaw_json_like` round-trips back to plain `dict` / `list`.
+3. Every JSON-like field on the four dataclasses is deeply frozen on construction; subscript-assign on any nested dict raises `TypeError`.
+4. `to_dict()` returns mutable `dict` / `list` copies; mutation on the thawed copy succeeds.
+5. `MechanismRunRequest` is the public name; `MechanismInputBundle` is a one-line alias to the same class.
+6. `evidence` is a Mapping with non-empty string keys; lists inside `evidence` are tuples after freeze.
+7. `MechanismRunRecord.input_refs` and `committed_output_refs` are stored verbatim (no dedupe / sort).
+8. The `MechanismAdapter` Protocol's `apply` signature is `apply(self, request: MechanismRunRequest) -> MechanismOutputBundle`.
+9. The full test suite passes (1507 = 1481 prior + 26 v1.9.3.1).
+10. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+11. v1.9.0 / v1.9.1 / v1.9.2 modules are byte-identical before / after.
 
 
 
