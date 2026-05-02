@@ -1,32 +1,39 @@
 """
-v1.9.0 reference CLI — runs the Living Reference World demo on a
-synthetic seed kernel and prints a compact per-period trace.
+v1.9.0 + v1.9.1 reference CLI — runs the Living Reference World
+demo on a synthetic seed kernel, prints a compact per-period
+operational trace, and optionally renders the v1.9.1
+``LivingWorldTraceReport`` as deterministic Markdown.
 
 Usage:
 
     cd japan-financial-world
     python -m examples.reference_world.run_living_reference_world
+    python -m examples.reference_world.run_living_reference_world --markdown
 
 The seed values are deterministic and synthetic (no Japan
 calibration, no real data). Re-running the script produces the same
-trace.
+trace and the same Markdown report — byte-identically.
 
 This is a thin wrapper around
-``world.reference_living_world.run_living_reference_world``. Tests
-exercise the helper directly; the CLI is for human eyeballs. The
-``--markdown`` flag is intentionally not yet wired — that is a
-v1.9.1 polishing step. v1.9.0's brief is "first multi-period sweep,
-nothing else."
+``world.reference_living_world.run_living_reference_world`` (the
+v1.9.0 sweep) and ``world.living_world_report`` (the v1.9.1
+reporter). Tests exercise both directly; the CLI is for human
+eyeballs.
 """
 
 from __future__ import annotations
 
+import argparse
 from datetime import date
 
 from world.clock import Clock
 from world.exposures import ExposureRecord
 from world.kernel import WorldKernel
 from world.ledger import Ledger
+from world.living_world_report import (
+    build_living_world_trace_report,
+    render_living_world_markdown,
+)
 from world.reference_living_world import (
     LivingReferenceWorldResult,
     run_living_reference_world,
@@ -204,7 +211,27 @@ def _print_trace(result: LivingReferenceWorldResult) -> None:
     )
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="run_living_reference_world",
+        description=(
+            "Run the v1.9.0 Living Reference World demo on a synthetic "
+            "seed kernel and optionally render the v1.9.1 Markdown report."
+        ),
+    )
+    parser.add_argument(
+        "--markdown",
+        action="store_true",
+        help=(
+            "After the operational trace, render the v1.9.1 living-world "
+            "trace report as deterministic Markdown."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
     kernel = _build_seed_kernel()
     result = run_living_reference_world(
         kernel,
@@ -213,6 +240,11 @@ def main() -> None:
         bank_ids=_BANK_IDS,
     )
     _print_trace(result)
+
+    if args.markdown:
+        report = build_living_world_trace_report(kernel, result)
+        print()
+        print(render_living_world_markdown(report), end="")
 
 
 if __name__ == "__main__":

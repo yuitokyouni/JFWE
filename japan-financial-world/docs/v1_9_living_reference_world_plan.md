@@ -59,6 +59,34 @@ before / after. Documents:
 
 The full suite passes 1380 tests (1368 prior + 12 contract).
 
+## v1.9.1 — what shipped
+
+The v1.9.1 sub-release implements the v1.9.1-prep contract:
+
+- `world/living_world_report.py` exports
+  `LivingWorldPeriodReport`, `LivingWorldTraceReport`,
+  `build_living_world_trace_report`, and
+  `render_living_world_markdown`. **Read-only explainability —
+  no new economic behavior, no new ledger record types, no new
+  kernel state, no scheduler hooks.**
+- The reporter takes a `LivingReferenceWorldResult` plus the
+  kernel and produces a deterministic immutable report whose
+  `infra_record_count + per_period_record_count_total ==
+  created_record_count` (the v1.9.1-prep algebra, now enforced
+  in `__post_init__`).
+- The CLI `examples/reference_world/run_living_reference_world.py`
+  gains a `--markdown` flag mirroring v1.8.15's CLI. Default mode
+  prints only the operational trace; `--markdown` appends the
+  rendered report. Both modes are byte-identical across runs.
+- `tests/test_living_world_report.py` (27 tests) pins shape,
+  algebra, sorting, byte-identical determinism, every required
+  Markdown section heading, the verbatim hard-boundary
+  statement, warning emission on tampered chain results, and
+  the read-only guarantee against every kernel book and the
+  ledger length.
+
+The full suite passes 1407 tests (1380 prior + 27 reporter).
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral

@@ -450,6 +450,22 @@ a v1+ behavioral milestone, not an extension of this demo.
 > from v1.8.15 is intentionally not yet wired into v1.9.0; that is
 > a v1.9.x polishing step.
 
+### Update — v1.9.1 Living World Trace Report
+
+> v1.9.1 ships `world/living_world_report.py`, the symmetric counterpart
+> to v1.8.15's `ledger_trace_report` for the multi-period v1.9.0
+> sweep. `build_living_world_trace_report(kernel, living_world_result)`
+> produces a deterministic immutable `LivingWorldTraceReport` plus
+> `to_dict()` and a Markdown rendering. The Markdown layout is fixed
+> (Setup → Infra prelude → Per-period summary → Attention divergence
+> → Ledger event-type counts → Warnings → Boundaries) and includes
+> the mandatory hard-boundary statement verbatim. The reporter is
+> read-only and adds no new ledger record types, no new economic
+> behavior, no scheduler hooks. The CLI now accepts `--markdown` —
+> two consecutive runs produce byte-identical output. v1.7-era
+> reference demo and v1.7 manifest / replay-determinism gates remain
+> unaffected.
+
 ### Update — v1.8.16 freeze / readiness
 
 > v1.8.16 is documentation only — no new code, no test surface

@@ -13,14 +13,17 @@ Three synthetic, jurisdiction-neutral demos sit in this directory:
    required, and no shock is applied.** With `--markdown` the v1.8.15
    reporter renders a deterministic Markdown summary of every
    record the chain wrote.
-3. **v1.9.0 living reference world**
+3. **v1.9.0 living reference world** + **v1.9.1 trace report**
    (`run_living_reference_world.py`) — the multi-period sweep: 4
    quarters × 3 firms / 2 investors / 2 banks. Each quarter every
    firm publishes a synthetic report, the investor and the bank
    rebuild their menus, their selections diverge, and both run a
    review routine. Output is a compact `[setup]` / `[period N]` /
-   `[ledger]` trace. Markdown output is intentionally not yet
-   wired (deferred to v1.9.x polishing).
+   `[ledger]` trace. With `--markdown` the v1.9.1 reporter
+   appends a deterministic Markdown report covering setup, infra
+   prelude, per-period table, attention divergence, ledger
+   event-type counts, warnings, and the mandatory hard-boundary
+   statement.
 
 Both demos are research artifacts. **Neither is a market predictor,
 investment advice, or a calibrated Japan model.** Every entity name
@@ -62,6 +65,9 @@ python -m examples.reference_world.run_endogenous_chain --markdown
 
 # v1.9.0 living reference world (4 quarterly periods)
 python -m examples.reference_world.run_living_reference_world
+
+# v1.9.0 sweep + v1.9.1 deterministic Markdown trace report
+python -m examples.reference_world.run_living_reference_world --markdown
 ```
 
 Expected output (abbreviated):

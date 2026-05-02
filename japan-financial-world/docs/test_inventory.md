@@ -1,9 +1,8 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.1-prep** (`Living World
-Report Contract Audit` — docs + contract test only, no production
-code change): `1380 / 1380 passing` (444 v0 + 188 v1.0-v1.7 frozen
-reference + 748 post-v1.7 additions covering reference demo,
+Snapshot of the test suite at **v1.9.1** (`Living World Trace
+Report`): `1407 / 1407 passing` (444 v0 + 188 v1.0-v1.7 frozen
+reference + 775 post-v1.7 additions covering reference demo,
 replay, manifest, catalog-shape, experiment harness, renamed
 WorldID tests, interactions, routines, attention, routine engine,
 the corporate quarterly reporting routine, the world-variable
@@ -11,8 +10,9 @@ storage layer, the exposure / dependency storage layer, the
 observation-menu builder join service, the
 heterogeneous-attention investor / bank demo, the investor /
 bank review routines, the endogenous chain harness, the ledger
-trace report, the multi-period living reference world demo, and
-the v1.9.1-prep report contract).
+trace report, the multi-period living reference world demo, the
+v1.9.1-prep report contract, and the v1.9.1 living world trace
+report).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -279,6 +279,38 @@ no-mutation guarantee.
   determinism; snapshot determinism; ledger emission of
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
+
+## Living world trace report (v1.9.1)
+
+- `test_living_world_report.py` (27) — `LivingWorldTraceReport`
+  immutable shape and schema-level `__post_init__` validation
+  (rejects `infra + per_period != created`); per-period
+  `LivingWorldPeriodReport` records preserve `period_id`,
+  `as_of_date`, `record_count_created`, and the corporate /
+  review signal id tuples; `infra_record_count +
+  per_period_record_count_total == created_record_count` (the
+  v1.9.1-prep algebra); overall and per-period
+  `record_type_counts` sum to their record counts and are sorted
+  for determinism; `ordered_record_ids` matches
+  `LivingReferenceWorldResult.created_record_ids` byte-identically;
+  aggregated set differences (`shared_selected_refs`,
+  `investor_only_refs`, `bank_only_refs`) match the unions of
+  stored `kernel.attention.get_selection(...)` selections and
+  are sorted alphabetically; per-actor count triples
+  (`(actor_id, period_id, count)`) cover every period × actor
+  and are sorted by `(period_id, actor_id)`; `to_dict` and
+  `render_living_world_markdown` are byte-identical across two
+  fresh kernels seeded identically; Markdown contains every
+  required section heading and emits the hard-boundary statement
+  verbatim — *"No price formation, no trading, no lending
+  decisions, no valuation behavior, no Japan calibration, no
+  real data, no investment advice."* — plus per-period table
+  rows for every period; warnings emitted on tampered chain
+  results (slice / chain mismatch, ledger truncated) without
+  crashing; defensive errors on `kernel=None` and non-
+  `LivingReferenceWorldResult` inputs; full read-only guarantee
+  against every kernel book and the ledger length; CLI smoke
+  tests for both `--markdown` and default modes.
 
 ## Living world report contract (v1.9.1-prep)
 
@@ -744,7 +776,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -768,7 +800,8 @@ no-mutation guarantee.
 | Ledger trace report (v1.8.15)           | 1     | 23    |
 | Living reference world (v1.9.0)         | 1     | 27    |
 | Living world report contract (v1.9.1-prep) | 1 | 12    |
-| **post-v1.7 subtotal**                  | **20**| **748** |
+| Living world trace report (v1.9.1)      | 1     | 27    |
+| **post-v1.7 subtotal**                  | **21**| **775** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -776,8 +809,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep) | 20 | 748 |
-| **Total**                        | **62**| **1380** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1) | 21 | 775 |
+| **Total**                        | **63**| **1407** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

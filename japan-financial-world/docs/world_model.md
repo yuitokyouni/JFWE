@@ -4951,10 +4951,104 @@ This is **expected and honest**: per-period counts cover only what each period i
 | Milestone | Scope | Status |
 | --- | --- | --- |
 | v1.9.0 Living Reference World Demo | Code (§59). | Shipped |
-| **v1.9.1-prep Report Contract Audit** | Docs + contract test (§60). | **Shipped** |
-| v1.9.1 Living World Trace Report | Code: `LivingWorldTraceReport` + Markdown renderer over the v1.9.0 result. | Next |
-| v1.9.x | Report polishing, sparse / performance boundary, public-prototype readiness. | After v1.9.1 |
+| v1.9.1-prep Report Contract Audit | Docs + contract test (§60). | Shipped |
+| **v1.9.1 Living World Trace Report** | Code (§61). Read-only explainability over the multi-period sweep. | **Shipped** |
+| v1.9.x | Report polishing, sparse / performance boundary, public-prototype readiness. | Next |
 | v1.9.last | First lightweight public prototype (CLI-first, deterministic, explainability-first). | Planned |
+
+## 61. v1.9.1 Living World Trace Report
+
+§61 (v1.9.1) is the implementation of the v1.9.1-prep contract (§60). Where v1.8.15 ships a read-only reporter for the **single-chain** v1.8.14 harness, v1.9.1 ships the symmetric reporter for the **multi-period** v1.9.0 sweep. Same discipline — no new ledger types, no new economic behavior, no new books, no scheduler hooks, no kernel mutation. The reporter takes a `LivingReferenceWorldResult` plus the kernel's ledger slice and produces a deterministic immutable `LivingWorldTraceReport` plus `to_dict()` and Markdown projections.
+
+The reporter exists for **public-prototype explainability**. With v1.9.1 in the tree, a reader who runs `python -m examples.reference_world.run_living_reference_world --markdown` gets, in one byte-deterministic block: setup summary → infra prelude (with the algebraic relationship visible) → per-period table → attention divergence aggregated across all periods → overall ledger event-type counts → warnings → the mandatory hard-boundary statement.
+
+### 61.1 What lands in v1.9.1
+
+- `world/living_world_report.py` — new module:
+  - `LivingWorldPeriodReport` — immutable per-period record (period_id, as_of_date, record_count_created, the six count fields for corporate / menus / selections / reviews, the corporate / review signal id tuples, the per-period sorted `record_type_counts`, per-period warnings, metadata).
+  - `LivingWorldTraceReport` — immutable aggregate naming the run, the actor counts, the ledger slice metadata (`ledger_record_count_before` / `_after`, `created_record_count`), the **infra prelude** (`infra_record_count`) and `per_period_record_count_total` (which sum to `created_record_count`), the overall sorted `record_type_counts`, the per-period reports, the per-actor `(actor_id, period_id, count)` triples, the aggregated set differences (`shared_selected_refs`, `investor_only_refs`, `bank_only_refs` — sorted alphabetically), `ordered_record_ids` (preserving ledger order), `warnings`, and `metadata`.
+  - `build_living_world_trace_report(kernel, living_world_result, *, report_id=None, metadata=None)` — re-walks the ledger slice for verification and event-type counts; reads each period's selections via `kernel.attention.get_selection(...)` to compute per-actor counts and the aggregated unions; computes `infra_record_count` from the v1.9.1-prep algebraic relationship; emits non-fatal warning strings on any cross-check that fails (slice / chain mismatch, ledger truncated, missing expected event types, empty selections).
+  - `LivingWorldTraceReport.to_dict()` — JSON-friendly projection.
+  - `render_living_world_markdown(report)` — deterministic compact Markdown rendering with the fixed section layout the v1.9.1-prep contract specified.
+- `examples/reference_world/run_living_reference_world.py` — extended with a `--markdown` flag mirroring v1.8.15's CLI. Default mode (no flag) prints only the operational trace; both modes are byte-identical across runs.
+- `tests/test_living_world_report.py` — 27 tests pinning shape, field carry-through, infra-algebra equality, sorted record_type_counts, byte-equal `ordered_record_ids`, aggregated set-difference correctness, sorted set-difference tuples, per-actor count triples sorted by `(period_id, actor_id)`, determinism of `to_dict` and Markdown across two fresh kernels seeded identically, every required Markdown section heading, the mandatory hard-boundary statement emitted verbatim, warning emission on tampered chain results without crashing, defensive errors (None kernel, wrong-type result), schema-level `__post_init__` validation (rejects `infra + per_period != created`), full no-mutation guarantee against every kernel book and the ledger length, and CLI smoke for both `--markdown` and default modes.
+
+### 61.2 Aggregated set-difference semantics
+
+The v1.9.0 sweep has `len(investors) ≥ 1` and `len(banks) ≥ 1`, so the natural "shared / investor-only / bank-only" question is whether a ref appears in *any* investor selection vs *any* bank selection. v1.9.1 adopts the **union-of-unions** rule:
+
+```
+investor_union = ⋃ investor_selection.selected_refs across all investors and all periods
+bank_union     = ⋃ bank_selection.selected_refs     across all banks    and all periods
+shared_selected_refs   = sorted(investor_union ∩ bank_union)
+investor_only_refs     = sorted(investor_union - bank_union)
+bank_only_refs         = sorted(bank_union - investor_union)
+```
+
+Per-actor counts are surfaced separately as
+`investor_selected_ref_counts: tuple[(actor_id, period_id, count), ...]`
+sorted by `(period_id, actor_id)` so the Markdown table renders deterministically. The same shape is used for banks.
+
+### 61.3 The infra prelude in the report
+
+The v1.9.1-prep contract requires the reporter to surface the v1.9.0 infra prelude separately from per-period activity. v1.9.1 implements this via:
+
+```
+infra_record_count
+    = max(created_record_count - per_period_record_count_total, 0)
+```
+
+The `__post_init__` validator on `LivingWorldTraceReport` enforces
+`infra_record_count + per_period_record_count_total == created_record_count` so any tampering with one component without the other fails construction. The Markdown's "Infra prelude" section prints all three numbers and the algebra check, so a reader can verify the relationship at a glance.
+
+### 61.4 Determinism rules
+
+- `record_type_counts` (overall and per period) sorted by event type.
+- `period_summaries` preserve input order (chronological by `as_of_date`).
+- `ordered_record_ids` preserve ledger order.
+- `shared_selected_refs` / `investor_only_refs` / `bank_only_refs` sorted alphabetically (set differences have no natural order; we pick a stable one).
+- `investor_selected_ref_counts` / `bank_selected_ref_counts` sorted by `(period_id, actor_id)`.
+- No timestamps, no random ids, no wall-clock dependencies, no floating-point accumulation.
+- Markdown layout fixed: title → Setup → Infra prelude → Per-period summary → Attention divergence (per-actor counts → shared → investor-only → bank-only) → Ledger event-type counts → Warnings → Boundaries (verbatim hard-boundary statement).
+
+### 61.5 Anti-scope
+
+§61 is reporting only. v1.9.1 does **not** add:
+
+- new economic behavior, new routines, new books, new ledger record types;
+- new kernel state or scheduler hooks;
+- web UI, real data ingestion, scenario engines, randomness, wall-clock dependencies;
+- ranking, weighting, recommendation, or any economic interpretation of selected refs.
+
+If a future polishing milestone needs to extend the reporter, it must keep the read-only invariant and the deterministic-output invariant.
+
+### 61.6 v1.9.1 success criteria
+
+§61 is complete when **all** hold:
+
+1. `world/living_world_report.py` exports `LivingWorldPeriodReport`, `LivingWorldTraceReport`, `build_living_world_trace_report`, and `render_living_world_markdown` with the v1.9.1 contract.
+2. `infra_record_count + per_period_record_count_total == created_record_count` is enforced in `__post_init__`.
+3. `record_type_counts` (overall and per period) sums to its corresponding record count and is sorted.
+4. `ordered_record_ids` matches `LivingReferenceWorldResult.created_record_ids` byte-identically on the canonical seed.
+5. Aggregated set differences match the unions of stored selections.
+6. The reporter does not mutate any kernel book or the ledger length.
+7. `to_dict` and `render_living_world_markdown` are deterministic across two fresh kernels seeded identically.
+8. Markdown contains every required section heading and emits the hard-boundary statement verbatim:
+   *"No price formation, no trading, no lending decisions, no valuation behavior, no Japan calibration, no real data, no investment advice."*
+9. The CLI's `--markdown` flag prints both the operational trace and the report; the default mode prints only the trace.
+10. The full test suite passes (1407 tests = 1380 prior + 27 reporter).
+11. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+
+### 61.7 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.0 Living Reference World Demo | Code (§59). | Shipped |
+| v1.9.1-prep Report Contract Audit | Docs + contract test (§60). | Shipped |
+| **v1.9.1 Living World Trace Report** | Code (§61). | **Shipped** |
+| v1.9.x | Report polishing, sparse / performance boundary, public-prototype readiness. | Next |
+| v1.9.last | First lightweight public prototype. | Planned |
+
 
 
 
