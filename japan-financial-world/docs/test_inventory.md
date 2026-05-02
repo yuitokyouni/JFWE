@@ -1,15 +1,18 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.12.3** (`EvidenceResolver /
-ActorContextFrame` — read-only evidence resolution layer that
-turns SelectedObservationSet ids and explicit evidence ids into
-a structured actor-specific context frame; substrate-only
-milestone — per-run record-count window and `living_world_digest`
-both unchanged from v1.12.2; this is the attention bottleneck
-future v1.12.4 → v1.12.7 attention-conditioned mechanisms will
-consume):
-`2540 / 2540 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
-1908 post-v1.7 additions covering reference demo, replay, manifest,
+Snapshot of the test suite at **v1.12.4** (`Attention-conditioned
+investor intent` — first mechanism-level use of attention as a
+real information bottleneck: the orchestrator's per-period
+investor-intent phase now routes evidence through the v1.12.3
+`EvidenceResolver` substrate, classifying intent on the resolved
+`ActorContextFrame` ids only; the headline divergence test pins
+*three investors → three different non-binding intent labels on
+the same target firm and same period*; per-run record-count
+window and `living_world_digest` both unchanged from v1.12.3 —
+the new metadata lives on the record's `metadata` field, not on
+the ledger payload):
+`2563 / 2563 passing` (444 v0 + 188 v1.0-v1.7 frozen reference +
+1931 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the corporate
 quarterly reporting routine, the world-variable storage layer, the
@@ -85,7 +88,18 @@ resolution layer (`EvidenceRef` + `ActorContextFrame` +
 `EvidenceResolver` + `resolve_actor_context` in new
 `world/evidence.py`) plus the optional
 `WorldKernel.evidence_resolver` field, exercised in the new
-`tests/test_evidence_resolver.py`).
+`tests/test_evidence_resolver.py`, and the v1.12.4
+attention-conditioned investor intent —
+`run_attention_conditioned_investor_intent_signal` in
+`world/investor_intent.py` (new helper alongside the existing
+`run_reference_investor_intent_signal`) that calls
+`resolve_actor_context` and classifies on the resolved frame
+ids only, plus the additive `stewardship_theme` bucket on
+`ActorContextFrame`, plus the orchestrator switch to the new
+helper, exercised by extended tests in
+`tests/test_investor_intent.py` (including the headline
+attention-divergence test) and
+`tests/test_living_reference_world.py`).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -1184,11 +1198,11 @@ no-mutation guarantee.
 | Capital-market condition (v1.11.0) | 1 | 84 |
 | Capital-market readout (v1.11.1) | 1 | 72 |
 | Firm financial latent state (v1.12.0) | 1 | 116 |
-| Investor intent signal (v1.12.1) | 1 | 84 |
+| Investor intent signal (v1.12.1) + v1.12.4 attention-conditioned helper | 1 | 103 |
 | Market environment state (v1.12.2) | 1 | 87 |
 | EvidenceResolver / ActorContextFrame (v1.12.3) | 1 | 84 |
-| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 + v1.12.1 + v1.12.2 additive in test_living_reference_world.py — 15 v1.10.5, 8 v1.11.0, 7 v1.11.1, 15 v1.11.2, 9 v1.12.0, 9 v1.12.1, and 11 v1.12.2 integration tests; v1.12.3 is substrate-only and adds no living-world integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 / +9 v1.12.1 / +11 v1.12.2 in test_living_reference_world.py) |
-| **post-v1.7 subtotal**                  | **39**| **1908** |
+| Living-world integration tests (v1.9.x core + v1.10.5 + v1.11.0 + v1.11.1 + v1.11.2 + v1.12.0 + v1.12.1 + v1.12.2 + v1.12.4 additive in test_living_reference_world.py — 15 v1.10.5, 8 v1.11.0, 7 v1.11.1, 15 v1.11.2, 9 v1.12.0, 9 v1.12.1, 11 v1.12.2, and 4 v1.12.4 integration tests; v1.12.3 is substrate-only and adds no living-world integration tests) | (counted under existing files) | (+15 v1.10.5 / +8 v1.11.0 / +7 v1.11.1 / +15 v1.11.2 / +9 v1.12.0 / +9 v1.12.1 / +11 v1.12.2 / +4 v1.12.4 in test_living_reference_world.py) |
+| **post-v1.7 subtotal**                  | **39**| **1931** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1196,8 +1210,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3) | 39 | 1908 |
-| **Total**                        | **81**| **2540** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4) | 39 | 1931 |
+| **Total**                        | **81**| **2563** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

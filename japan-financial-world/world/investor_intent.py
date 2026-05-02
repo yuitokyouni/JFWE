@@ -72,8 +72,15 @@ from datetime import date
 from typing import Any, ClassVar, Iterable, Mapping, Sequence
 
 from world.clock import Clock
+from world.evidence import (
+    ActorContextFrame,
+    EvidenceResolutionError,
+    StrictEvidenceResolutionError,
+    resolve_actor_context,
+)
 from world.firm_state import FirmFinancialStateBook
 from world.ledger import Ledger
+from world.market_environment import MarketEnvironmentBook
 from world.market_surface_readout import CapitalMarketReadoutBook
 
 
@@ -745,3 +752,299 @@ def run_reference_investor_intent_signal(
         record=record,
         intent_direction=intent_direction,
     )
+
+
+# ---------------------------------------------------------------------------
+# v1.12.4 — attention-conditioned helper
+# ---------------------------------------------------------------------------
+
+
+# v1.12.4 — additional rule-set constants. The new helper consults
+# the v1.12.2 market-environment record alongside the v1.11.1
+# readout. Both surfaces map ``selective_or_constrained`` to
+# "restrictive market", and the v1.12.2 ``risk_appetite_regime``
+# label ``risk_off`` also triggers the restrictive branch. The
+# default ``open_or_constructive`` / ``risk_on`` cases never fire
+# rule 2 — so the v1.12.1 default-fixture behavior is preserved.
+_RESTRICTIVE_RISK_APPETITE_LABEL: str = "risk_off"
+
+
+def run_attention_conditioned_investor_intent_signal(
+    kernel: Any,
+    *,
+    investor_id: str,
+    target_company_id: str,
+    as_of_date: date | str,
+    selected_observation_set_ids: Sequence[str] = (),
+    explicit_market_environment_state_ids: Sequence[str] = (),
+    explicit_firm_state_ids: Sequence[str] = (),
+    explicit_market_readout_ids: Sequence[str] = (),
+    explicit_market_condition_ids: Sequence[str] = (),
+    explicit_valuation_ids: Sequence[str] = (),
+    explicit_dialogue_ids: Sequence[str] = (),
+    explicit_escalation_candidate_ids: Sequence[str] = (),
+    explicit_stewardship_theme_ids: Sequence[str] = (),
+    intent_id: str | None = None,
+    priority: str = "medium",
+    horizon: str = "medium_term",
+    visibility: str = "internal_only",
+    strict: bool = False,
+    metadata: Mapping[str, Any] | None = None,
+) -> InvestorIntentSignalResult:
+    """
+    v1.12.4 — attention-conditioned investor-intent helper.
+
+    Builds an :class:`ActorContextFrame` for ``(investor_id,
+    target_company_id, as_of_date)`` via the v1.12.3
+    :func:`world.evidence.resolve_actor_context` substrate, then
+    classifies ``intent_direction`` using **only the resolved
+    frame ids**. The v1.12.1 rule-set order is preserved, with one
+    additive rule path: the v1.12.2 market-environment state's
+    ``overall_market_access_label`` and ``risk_appetite_regime``
+    can also trigger the restrictive-market branch (rule 2).
+
+    Idempotent: an intent already added under the same
+    ``intent_id`` is returned unchanged. Read-only over every
+    other book; writes only to ``kernel.investor_intents`` and
+    the kernel ledger.
+
+    The helper reads only what the resolver surfaced for *this*
+    investor on *this* date — never global. Resolved evidence ids
+    land in the matching ``evidence_*_ids`` slot on the produced
+    record; unresolved refs are recorded as a small data list in
+    ``metadata["unresolved_refs"]``; the resolver's
+    ``context_frame_id`` is recorded in
+    ``metadata["context_frame_id"]``. Strict mode (``strict=True``)
+    is forwarded to the resolver and raises
+    :class:`StrictEvidenceResolutionError` on any unresolved id —
+    the helper does not emit a record in that case.
+
+    The helper does **not**:
+
+    - submit any order, trade, rebalance, allocation, or
+      execution;
+    - produce a buy / sell / overweight / underweight / target
+      weight / expected return / target price / recommendation /
+      investment advice;
+    - ingest real data or apply any Japan-specific calibration;
+    - dispatch to an LLM agent or any external solver;
+    - compute any behavior probability.
+    """
+    if kernel is None:
+        raise ValueError("kernel is required")
+    if not isinstance(investor_id, str) or not investor_id:
+        raise ValueError("investor_id is required and must be a non-empty string")
+    if not isinstance(target_company_id, str) or not target_company_id:
+        raise ValueError(
+            "target_company_id is required and must be a non-empty string"
+        )
+
+    iso_date = _coerce_iso_date(as_of_date)
+    iid = intent_id or _default_intent_id(
+        investor_id, target_company_id, iso_date
+    )
+
+    book: InvestorIntentBook = kernel.investor_intents
+    try:
+        existing = book.get_intent(iid)
+        return InvestorIntentSignalResult(
+            intent_id=existing.intent_id,
+            record=existing,
+            intent_direction=existing.intent_direction,
+        )
+    except UnknownInvestorIntentError:
+        pass
+
+    # ------------------------------------------------------------------
+    # Pass 1 — ask the resolver to build a context frame for this
+    # actor on this date. Strict mode raises before any record is
+    # emitted.
+    # ------------------------------------------------------------------
+    frame: ActorContextFrame = resolve_actor_context(
+        kernel,
+        actor_id=investor_id,
+        actor_type="investor",
+        as_of_date=iso_date,
+        selected_observation_set_ids=tuple(selected_observation_set_ids),
+        explicit_market_environment_state_ids=tuple(
+            explicit_market_environment_state_ids
+        ),
+        explicit_firm_state_ids=tuple(explicit_firm_state_ids),
+        explicit_market_readout_ids=tuple(explicit_market_readout_ids),
+        explicit_market_condition_ids=tuple(explicit_market_condition_ids),
+        explicit_valuation_ids=tuple(explicit_valuation_ids),
+        explicit_dialogue_ids=tuple(explicit_dialogue_ids),
+        explicit_escalation_candidate_ids=tuple(
+            explicit_escalation_candidate_ids
+        ),
+        explicit_stewardship_theme_ids=tuple(
+            explicit_stewardship_theme_ids
+        ),
+        strict=strict,
+    )
+
+    # ------------------------------------------------------------------
+    # Pass 2 — classify on the resolved frame. The helper reads
+    # only ids the resolver surfaced; it does not scan books for
+    # additional context.
+    # ------------------------------------------------------------------
+    high_funding_need = False
+    high_pressure = False
+    if frame.resolved_firm_state_ids:
+        firm_state_book: FirmFinancialStateBook = (
+            kernel.firm_financial_states
+        )
+        for fsid in frame.resolved_firm_state_ids:
+            try:
+                state = firm_state_book.get_state(fsid)
+            except Exception:
+                continue
+            if (
+                state.funding_need_intensity
+                >= _FIRM_STATE_HIGH_FUNDING_NEED_THRESHOLD
+            ):
+                high_funding_need = True
+            if (
+                state.market_access_pressure
+                >= _FIRM_STATE_HIGH_PRESSURE_THRESHOLD
+                or state.funding_need_intensity
+                >= _FIRM_STATE_HIGH_PRESSURE_THRESHOLD
+            ):
+                high_pressure = True
+
+    restrictive_market = False
+    if frame.resolved_market_readout_ids:
+        readout_book: CapitalMarketReadoutBook = (
+            kernel.capital_market_readouts
+        )
+        for rid in frame.resolved_market_readout_ids:
+            try:
+                readout = readout_book.get_readout(rid)
+            except Exception:
+                continue
+            if (
+                readout.overall_market_access_label
+                == _RESTRICTIVE_OVERALL_LABEL
+            ):
+                restrictive_market = True
+    # v1.12.4 additive: the v1.12.2 environment state can also
+    # carry a restrictive overall label OR a risk_off appetite —
+    # either is treated as restrictive for rule 2.
+    if frame.resolved_market_environment_state_ids:
+        env_book: MarketEnvironmentBook = kernel.market_environments
+        for eid in frame.resolved_market_environment_state_ids:
+            try:
+                env = env_book.get_state(eid)
+            except Exception:
+                continue
+            if (
+                env.overall_market_access_label
+                == _RESTRICTIVE_OVERALL_LABEL
+            ):
+                restrictive_market = True
+            if (
+                env.risk_appetite_regime
+                == _RESTRICTIVE_RISK_APPETITE_LABEL
+            ):
+                restrictive_market = True
+
+    low_valuation_confidence = False
+    if frame.resolved_valuation_ids:
+        for vid in frame.resolved_valuation_ids:
+            try:
+                valuation = kernel.valuations.get_valuation(vid)
+            except Exception:
+                continue
+            confidence = getattr(valuation, "confidence", None)
+            if (
+                isinstance(confidence, (int, float))
+                and not isinstance(confidence, bool)
+                and float(confidence)
+                < _VALUATION_LOW_CONFIDENCE_THRESHOLD
+            ):
+                low_valuation_confidence = True
+                break
+
+    engagement_present = (
+        bool(frame.resolved_dialogue_ids)
+        or bool(frame.resolved_escalation_candidate_ids)
+    )
+
+    intent_direction, intent_type = _classify_intent_direction(
+        high_funding_need=high_funding_need,
+        high_pressure=high_pressure,
+        restrictive_market=restrictive_market,
+        low_valuation_confidence=low_valuation_confidence,
+        engagement_present=engagement_present,
+    )
+
+    # ------------------------------------------------------------------
+    # Compose the record. Resolved evidence ids land in their
+    # matching ``evidence_*_ids`` slots; the cited
+    # selected_observation_set_ids land in
+    # ``evidence_selected_observation_set_ids``; the resolver's
+    # context-frame metadata + unresolved-ref summary land in
+    # ``metadata`` (we deliberately do not introduce a dedicated
+    # field on the record in v1.12.4 — staying additive).
+    # ------------------------------------------------------------------
+    extra_metadata: dict[str, Any] = dict(metadata or {})
+    extra_metadata.setdefault("attention_conditioned", True)
+    extra_metadata["context_frame_id"] = frame.context_frame_id
+    extra_metadata["context_frame_status"] = frame.status
+    extra_metadata["context_frame_confidence"] = frame.confidence
+    if frame.unresolved_refs:
+        extra_metadata["unresolved_refs"] = [
+            r.to_dict() for r in frame.unresolved_refs
+        ]
+
+    record = InvestorIntentRecord(
+        intent_id=iid,
+        investor_id=investor_id,
+        target_company_id=target_company_id,
+        as_of_date=iso_date,
+        intent_type=intent_type,
+        intent_direction=intent_direction,
+        priority=priority,
+        horizon=horizon,
+        status="active",
+        visibility=visibility,
+        confidence=_DEFAULT_INTENT_CONFIDENCE,
+        evidence_selected_observation_set_ids=(
+            frame.selected_observation_set_ids
+        ),
+        evidence_market_readout_ids=frame.resolved_market_readout_ids,
+        evidence_market_condition_ids=frame.resolved_market_condition_ids,
+        evidence_market_environment_state_ids=(
+            frame.resolved_market_environment_state_ids
+        ),
+        evidence_firm_state_ids=frame.resolved_firm_state_ids,
+        evidence_valuation_ids=frame.resolved_valuation_ids,
+        evidence_dialogue_ids=frame.resolved_dialogue_ids,
+        evidence_escalation_candidate_ids=(
+            frame.resolved_escalation_candidate_ids
+        ),
+        evidence_stewardship_theme_ids=(
+            frame.resolved_stewardship_theme_ids
+        ),
+        metadata=extra_metadata,
+    )
+    book.add_intent(record)
+    return InvestorIntentSignalResult(
+        intent_id=record.intent_id,
+        record=record,
+        intent_direction=intent_direction,
+    )
+
+
+# Re-export for convenience.
+__all__ = [
+    "DuplicateInvestorIntentError",
+    "InvestorIntentBook",
+    "InvestorIntentRecord",
+    "InvestorIntentSignalResult",
+    "UnknownInvestorIntentError",
+    "run_reference_investor_intent_signal",
+    "run_attention_conditioned_investor_intent_signal",
+    "EvidenceResolutionError",
+    "StrictEvidenceResolutionError",
+]

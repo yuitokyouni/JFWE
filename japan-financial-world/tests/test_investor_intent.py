@@ -37,14 +37,18 @@ from world.clock import Clock
 from world.firm_state import (
     FirmFinancialStateRecord,
 )
+from world.evidence import StrictEvidenceResolutionError
 from world.investor_intent import (
     DuplicateInvestorIntentError,
     InvestorIntentBook,
     InvestorIntentRecord,
     InvestorIntentSignalResult,
     UnknownInvestorIntentError,
+    run_attention_conditioned_investor_intent_signal,
     run_reference_investor_intent_signal,
 )
+from world.market_environment import MarketEnvironmentStateRecord
+from world.stewardship import StewardshipThemeRecord
 from world.kernel import WorldKernel
 from world.ledger import Ledger, RecordType
 from world.market_conditions import MarketConditionRecord
@@ -1118,6 +1122,676 @@ def test_helper_does_not_mutate_evidence_books():
     for name, before in snaps_before.items():
         after = getattr(kernel, name).snapshot()
         assert after == before, f"book {name!r} was mutated by helper"
+
+
+# ---------------------------------------------------------------------------
+# v1.12.4 — attention-conditioned helper
+# ---------------------------------------------------------------------------
+
+
+def _seed_market_environment(
+    kernel: WorldKernel,
+    *,
+    env_id: str = "market_environment:2026-03-31",
+    overall_market_access_label: str = "open_or_constructive",
+    risk_appetite_regime: str = "neutral",
+    as_of_date: str = "2026-03-31",
+) -> str:
+    kernel.market_environments.add_state(
+        MarketEnvironmentStateRecord(
+            environment_state_id=env_id,
+            as_of_date=as_of_date,
+            liquidity_regime="normal",
+            volatility_regime="calm",
+            credit_regime="neutral",
+            funding_regime="normal",
+            risk_appetite_regime=risk_appetite_regime,
+            rate_environment="low",
+            refinancing_window="open",
+            equity_valuation_regime="neutral",
+            overall_market_access_label=overall_market_access_label,
+            status="active",
+            visibility="internal_only",
+            confidence=0.5,
+        )
+    )
+    return env_id
+
+
+def _seed_stewardship_theme(
+    kernel: WorldKernel,
+    *,
+    theme_id: str = "theme:investor:reference_pension_a:capital_allocation_discipline:setup",
+    owner_id: str = "investor:reference_pension_a",
+) -> str:
+    kernel.stewardship.add_theme(
+        StewardshipThemeRecord(
+            theme_id=theme_id,
+            owner_id=owner_id,
+            owner_type="investor",
+            theme_type="capital_allocation_discipline",
+            title="Reference theme",
+            target_scope="reference_scope",
+            priority="medium",
+            horizon="medium_term",
+            status="active",
+            effective_from="2026-01-01",
+        )
+    )
+    return theme_id
+
+
+def _seed_selection_with_refs(
+    kernel: WorldKernel,
+    *,
+    selection_id: str,
+    actor_id: str,
+    selected_refs: tuple[str, ...],
+    as_of_date: str = "2026-03-31",
+) -> str:
+    """Seed an AttentionProfile + ObservationMenu + selection so
+    a v1.12.4 helper test can drive the resolver from a real
+    SelectedObservationSet. The selection's selected_refs are
+    free-form ids — the v1.12.4 resolver classifies them by
+    prefix and resolves each against the matching book."""
+    from world.attention import AttentionProfile, ObservationMenu, SelectedObservationSet
+
+    profile_id = f"profile:{actor_id}"
+    try:
+        kernel.attention.get_profile(profile_id)
+    except Exception:
+        kernel.attention.add_profile(
+            AttentionProfile(
+                profile_id=profile_id,
+                actor_id=actor_id,
+                actor_type="investor",
+                update_frequency="QUARTERLY",
+            )
+        )
+    menu_id = f"menu:{actor_id}:{as_of_date}"
+    try:
+        kernel.attention.get_menu(menu_id)
+    except Exception:
+        kernel.attention.add_menu(
+            ObservationMenu(
+                menu_id=menu_id,
+                actor_id=actor_id,
+                as_of_date=as_of_date,
+            )
+        )
+    kernel.attention.add_selection(
+        SelectedObservationSet(
+            selection_id=selection_id,
+            actor_id=actor_id,
+            attention_profile_id=profile_id,
+            menu_id=menu_id,
+            selection_reason="explicit",
+            as_of_date=as_of_date,
+            status="completed",
+            selected_refs=selected_refs,
+        )
+    )
+    return selection_id
+
+
+def test_attention_helper_calls_resolver_and_records_context_frame_metadata():
+    kernel = _kernel()
+    rid, _ = _seed_default_market_surface(
+        kernel,
+        as_of_date="2026-03-31",
+        regime_overall="open_or_constructive",
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_readout_ids=(rid,),
+    )
+    assert out.record.metadata.get("attention_conditioned") is True
+    assert out.record.metadata.get("context_frame_id") == (
+        "context_frame:investor:reference_pension_a:2026-03-31"
+    )
+    assert out.record.metadata.get("context_frame_status") == "resolved"
+    assert out.record.metadata.get("context_frame_confidence") == 1.0
+    # The resolved readout must land in the matching slot.
+    assert out.record.evidence_market_readout_ids == (rid,)
+
+
+def test_attention_helper_reads_only_selected_or_explicit_evidence():
+    """The helper must not surface a record the caller did not
+    cite — even if the record exists in the kernel."""
+    kernel = _kernel()
+    # Seed a firm state in the kernel that the helper would
+    # surface ONLY if it were scanning globally.
+    _seed_firm_state(
+        kernel,
+        state_id="firm_state:not_cited",
+        funding_need_intensity=0.95,
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+    )
+    # Without citing the firm state, the helper must NOT pick it
+    # up — the intent direction is therefore not deepen_due_diligence.
+    assert out.record.evidence_firm_state_ids == ()
+    assert out.record.intent_direction == "hold_review"
+
+
+def test_attention_helper_unknown_explicit_id_lands_in_unresolved_metadata():
+    kernel = _kernel()
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_firm_state_ids=("firm_state:does_not_exist",),
+    )
+    assert out.record.evidence_firm_state_ids == ()
+    unresolved = out.record.metadata.get("unresolved_refs")
+    assert unresolved is not None
+    assert any(
+        r["ref_id"] == "firm_state:does_not_exist"
+        for r in unresolved
+    )
+    assert out.record.metadata.get("context_frame_status") == (
+        "partially_resolved"
+    )
+
+
+def test_attention_helper_strict_mode_raises_on_unknown_refs():
+    kernel = _kernel()
+    with pytest.raises(StrictEvidenceResolutionError):
+        run_attention_conditioned_investor_intent_signal(
+            kernel,
+            investor_id="investor:reference_pension_a",
+            target_company_id="firm:reference_manufacturer_a",
+            as_of_date="2026-03-31",
+            explicit_firm_state_ids=("firm_state:does_not_exist",),
+            strict=True,
+        )
+    # Strict failure must NOT leave a partial intent record in
+    # the book.
+    intents = kernel.investor_intents.list_intents()
+    assert intents == ()
+
+
+def test_attention_helper_strict_mode_passes_when_all_resolve():
+    kernel = _kernel()
+    rid, _ = _seed_default_market_surface(
+        kernel,
+        as_of_date="2026-03-31",
+        regime_overall="open_or_constructive",
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_readout_ids=(rid,),
+        strict=True,
+    )
+    assert out.record.metadata.get("context_frame_status") == "resolved"
+
+
+def test_attention_helper_engagement_evidence_yields_engagement_watch():
+    kernel = _kernel()
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_dialogue_ids=("dialogue:nope",),
+    )
+    # The dialogue id is unresolved, so engagement_present is
+    # False under the v1.12.4 attention discipline (only
+    # *resolved* refs drive classification). The helper falls
+    # through to hold_review.
+    assert out.record.intent_direction == "hold_review"
+
+
+def test_attention_helper_high_funding_need_yields_deepen_due_diligence():
+    kernel = _kernel()
+    fsid = _seed_firm_state(
+        kernel,
+        state_id="firm_state:high_funding",
+        funding_need_intensity=0.85,
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_firm_state_ids=(fsid,),
+    )
+    assert out.record.intent_direction == "deepen_due_diligence"
+
+
+def test_attention_helper_constrained_environment_yields_risk_flag_watch():
+    """v1.12.4 additive: the v1.12.2 environment state's
+    overall_market_access_label can drive rule 2 directly,
+    without a readout."""
+    kernel = _kernel()
+    env_id = _seed_market_environment(
+        kernel,
+        overall_market_access_label="selective_or_constrained",
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_environment_state_ids=(env_id,),
+    )
+    assert out.record.intent_direction == "risk_flag_watch"
+
+
+def test_attention_helper_risk_off_environment_yields_risk_flag_watch():
+    kernel = _kernel()
+    env_id = _seed_market_environment(
+        kernel,
+        env_id="market_environment:risk_off",
+        risk_appetite_regime="risk_off",
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_environment_state_ids=(env_id,),
+    )
+    assert out.record.intent_direction == "risk_flag_watch"
+
+
+def test_attention_helper_default_no_evidence_yields_hold_review():
+    kernel = _kernel()
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+    )
+    assert out.record.intent_direction == "hold_review"
+    # An empty frame still has confidence 1.0 (nothing to fail).
+    assert out.record.metadata.get("context_frame_confidence") == 1.0
+
+
+def test_attention_helper_resolves_selection_refs_to_evidence_buckets():
+    """Selection refs that match the resolver's prefix table land
+    in the matching evidence_*_ids slots on the produced record."""
+    kernel = _kernel()
+    fsid = _seed_firm_state(
+        kernel, state_id="firm_state:from_selection"
+    )
+    env_id = _seed_market_environment(kernel)
+    rid, _ = _seed_default_market_surface(
+        kernel,
+        as_of_date="2026-03-31",
+        regime_overall="open_or_constructive",
+    )
+    sel_id = _seed_selection_with_refs(
+        kernel,
+        selection_id="selection:via_attention",
+        actor_id="investor:reference_pension_a",
+        selected_refs=(fsid, env_id, rid),
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        selected_observation_set_ids=(sel_id,),
+    )
+    assert out.record.evidence_firm_state_ids == (fsid,)
+    assert out.record.evidence_market_environment_state_ids == (env_id,)
+    assert out.record.evidence_market_readout_ids == (rid,)
+    assert out.record.evidence_selected_observation_set_ids == (sel_id,)
+
+
+def test_attention_helper_does_not_mutate_evidence_books():
+    kernel = _kernel()
+    rid, _ = _seed_default_market_surface(
+        kernel,
+        as_of_date="2026-03-31",
+        regime_overall="open_or_constructive",
+    )
+    fsid = _seed_firm_state(
+        kernel, state_id="firm_state:no_mutation"
+    )
+    env_id = _seed_market_environment(kernel)
+    snaps_before = {
+        "market_conditions": kernel.market_conditions.snapshot(),
+        "capital_market_readouts": (
+            kernel.capital_market_readouts.snapshot()
+        ),
+        "market_environments": kernel.market_environments.snapshot(),
+        "firm_financial_states": (
+            kernel.firm_financial_states.snapshot()
+        ),
+    }
+    run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_readout_ids=(rid,),
+        explicit_firm_state_ids=(fsid,),
+        explicit_market_environment_state_ids=(env_id,),
+    )
+    for name, before in snaps_before.items():
+        assert getattr(kernel, name).snapshot() == before
+
+
+def test_attention_helper_produces_no_forbidden_payload_keys():
+    """Helper must continue to satisfy the v1.12.1 anti-fields
+    binding even via the new resolver path."""
+    kernel = _kernel()
+    fsid = _seed_firm_state(
+        kernel,
+        state_id="firm_state:high_funding",
+        funding_need_intensity=0.85,
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_firm_state_ids=(fsid,),
+    )
+    forbidden = {
+        "order",
+        "order_id",
+        "trade",
+        "buy",
+        "sell",
+        "rebalance",
+        "target_weight",
+        "overweight",
+        "underweight",
+        "expected_return",
+        "target_price",
+        "recommendation",
+        "investment_advice",
+        "portfolio_allocation",
+        "execution",
+    }
+    intent_records = kernel.ledger.filter(
+        event_type="investor_intent_signal_added"
+    )
+    assert intent_records
+    for rec in intent_records:
+        leaked = set(rec.payload.keys()) & forbidden
+        assert not leaked, (
+            f"attention helper leaked forbidden payload keys: "
+            f"{sorted(leaked)}"
+        )
+    # And the record's own metadata must not carry anti-fields.
+    assert not (set(out.record.metadata.keys()) & forbidden)
+
+
+def test_attention_helper_idempotent_on_intent_id():
+    kernel = _kernel()
+    out1 = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        intent_id="intent:idempotent",
+    )
+    out2 = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        intent_id="intent:idempotent",
+    )
+    assert out1.record is out2.record
+    assert len(kernel.investor_intents.list_intents()) == 1
+
+
+def test_attention_helper_deterministic_for_identical_inputs():
+    """Two fresh kernels with identical resolver inputs produce
+    byte-identical records (modulo only the metadata's
+    context_frame_id, which is also deterministic on actor +
+    date)."""
+    k_a = _kernel()
+    rid_a, _ = _seed_default_market_surface(
+        k_a,
+        as_of_date="2026-03-31",
+        regime_overall="open_or_constructive",
+    )
+    fsid_a = _seed_firm_state(k_a, state_id="firm_state:a")
+    out_a = run_attention_conditioned_investor_intent_signal(
+        k_a,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_readout_ids=(rid_a,),
+        explicit_firm_state_ids=(fsid_a,),
+    )
+
+    k_b = _kernel()
+    rid_b, _ = _seed_default_market_surface(
+        k_b,
+        as_of_date="2026-03-31",
+        regime_overall="open_or_constructive",
+    )
+    fsid_b = _seed_firm_state(k_b, state_id="firm_state:a")
+    out_b = run_attention_conditioned_investor_intent_signal(
+        k_b,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_readout_ids=(rid_b,),
+        explicit_firm_state_ids=(fsid_b,),
+    )
+    assert out_a.record.to_dict() == out_b.record.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# v1.12.4 — attention divergence (headline)
+# ---------------------------------------------------------------------------
+
+
+def _seed_world_for_divergence() -> tuple[WorldKernel, str, str, str, str]:
+    """Seed one shared kernel with:
+    - a market environment record with selective_or_constrained overall
+    - a firm state for the target firm with high funding_need_intensity
+    - a dialogue record for an investor / firm pair
+    Returns (kernel, env_id, firm_state_id, dialogue_id, theme_id).
+    """
+    from world.engagement import PortfolioCompanyDialogueRecord
+
+    kernel = _kernel()
+    env_id = _seed_market_environment(
+        kernel,
+        env_id="market_environment:divergence:2026-03-31",
+        overall_market_access_label="selective_or_constrained",
+    )
+    fsid = _seed_firm_state(
+        kernel,
+        state_id="firm_state:divergence:firm:reference_manufacturer_a:2026-03-31",
+        funding_need_intensity=0.85,
+    )
+    dialogue_id = (
+        "dialogue:divergence:investor:reference_pension_b:firm:reference_manufacturer_a:2026-03-31"
+    )
+    kernel.engagement.add_dialogue(
+        PortfolioCompanyDialogueRecord(
+            dialogue_id=dialogue_id,
+            initiator_id="investor:reference_pension_b",
+            counterparty_id="firm:reference_manufacturer_a",
+            initiator_type="investor",
+            counterparty_type="firm",
+            as_of_date="2026-03-31",
+            dialogue_type="reference_engagement",
+            status="completed",
+            outcome_label="reference_outcome",
+            next_step_label="reference_next_step",
+            visibility="restricted",
+        )
+    )
+    theme_id = _seed_stewardship_theme(
+        kernel,
+        theme_id=(
+            "theme:investor:reference_pension_b:capital_allocation_discipline:setup"
+        ),
+        owner_id="investor:reference_pension_b",
+    )
+    return kernel, env_id, fsid, dialogue_id, theme_id
+
+
+def test_attention_divergence_three_investors_three_intent_labels():
+    """Headline v1.12.4 test. The same shared world produces
+    three different intent labels for three different investors
+    *because they selected different evidence*. The same target
+    firm and same period are used for every investor.
+
+    Investor A selects market_environment + firm_state →
+    rule 1 fires (high funding_need) → deepen_due_diligence.
+    Investor B selects dialogue (engagement evidence) but no
+    firm_state → rule 4 fires → engagement_watch.
+    Investor C selects nothing → rule 5 fires → hold_review.
+    """
+    kernel, env_id, fsid, dialogue_id, theme_id = (
+        _seed_world_for_divergence()
+    )
+    target = "firm:reference_manufacturer_a"
+
+    sel_a = _seed_selection_with_refs(
+        kernel,
+        selection_id="selection:divergence:a",
+        actor_id="investor:reference_pension_a",
+        selected_refs=(env_id, fsid),
+    )
+    out_a = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id=target,
+        as_of_date="2026-03-31",
+        selected_observation_set_ids=(sel_a,),
+    )
+
+    sel_b = _seed_selection_with_refs(
+        kernel,
+        selection_id="selection:divergence:b",
+        actor_id="investor:reference_pension_b",
+        selected_refs=(dialogue_id, theme_id),
+    )
+    out_b = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_b",
+        target_company_id=target,
+        as_of_date="2026-03-31",
+        selected_observation_set_ids=(sel_b,),
+    )
+
+    sel_c = _seed_selection_with_refs(
+        kernel,
+        selection_id="selection:divergence:c",
+        actor_id="investor:reference_pension_c",
+        selected_refs=(),
+    )
+    out_c = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_c",
+        target_company_id=target,
+        as_of_date="2026-03-31",
+        selected_observation_set_ids=(sel_c,),
+    )
+
+    assert out_a.record.intent_direction == "deepen_due_diligence"
+    assert out_b.record.intent_direction == "engagement_watch"
+    assert out_c.record.intent_direction == "hold_review"
+    # Pin the headline claim: three different labels, same world,
+    # same target firm.
+    assert (
+        len(
+            {
+                out_a.record.intent_direction,
+                out_b.record.intent_direction,
+                out_c.record.intent_direction,
+            }
+        )
+        == 3
+    )
+
+
+def test_attention_divergence_investor_a_has_resolved_firm_state_evidence():
+    """Investor A's record must show the firm state was resolved
+    (so the audit trail proves the attention surface drove rule 1)."""
+    kernel, env_id, fsid, _, _ = _seed_world_for_divergence()
+    sel_a = _seed_selection_with_refs(
+        kernel,
+        selection_id="selection:divergence:a:audit",
+        actor_id="investor:reference_pension_a",
+        selected_refs=(env_id, fsid),
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        selected_observation_set_ids=(sel_a,),
+    )
+    assert fsid in out.record.evidence_firm_state_ids
+    assert env_id in out.record.evidence_market_environment_state_ids
+
+
+def test_attention_divergence_investor_b_record_has_no_firm_state():
+    """Investor B did not select firm_state — so the resolved
+    evidence_firm_state_ids on B's record must be empty, even
+    though firm_state exists in the kernel."""
+    kernel, _, _, dialogue_id, theme_id = (
+        _seed_world_for_divergence()
+    )
+    sel_b = _seed_selection_with_refs(
+        kernel,
+        selection_id="selection:divergence:b:audit",
+        actor_id="investor:reference_pension_b",
+        selected_refs=(dialogue_id, theme_id),
+    )
+    out = run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_b",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        selected_observation_set_ids=(sel_b,),
+    )
+    assert out.record.evidence_firm_state_ids == ()
+    # Engagement evidence must still appear.
+    assert dialogue_id in out.record.evidence_dialogue_ids
+
+
+def test_attention_helper_does_not_emit_forbidden_event_types():
+    kernel = _kernel()
+    rid, _ = _seed_default_market_surface(
+        kernel,
+        as_of_date="2026-03-31",
+        regime_overall="open_or_constructive",
+    )
+    run_attention_conditioned_investor_intent_signal(
+        kernel,
+        investor_id="investor:reference_pension_a",
+        target_company_id="firm:reference_manufacturer_a",
+        as_of_date="2026-03-31",
+        explicit_market_readout_ids=(rid,),
+    )
+    forbidden = {
+        "order_submitted",
+        "price_updated",
+        "contract_created",
+        "contract_status_updated",
+        "contract_covenant_breached",
+        "ownership_position_added",
+        "ownership_transferred",
+        "institution_action_recorded",
+    }
+    seen = {r.record_type.value for r in kernel.ledger.records}
+    assert seen.isdisjoint(forbidden)
 
 
 def test_helper_deterministic_for_identical_inputs():

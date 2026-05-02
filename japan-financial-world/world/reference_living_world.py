@@ -87,7 +87,9 @@ from world.market_conditions import (
 from world.market_surface_readout import build_capital_market_readout
 from world.market_environment import build_market_environment_state
 from world.firm_state import run_reference_firm_financial_state_update
-from world.investor_intent import run_reference_investor_intent_signal
+from world.investor_intent import (
+    run_attention_conditioned_investor_intent_signal,
+)
 from world.observation_menu_builder import ObservationMenuBuildRequest
 from world.stewardship import (
     DuplicateStewardshipThemeError,
@@ -1638,17 +1640,31 @@ def run_living_reference_world(
                 investor_escalation_candidate_ids.append(escalation_id)
 
         # ------------------------------------------------------------------
-        # v1.12.1 — investor intent signal phase.
-        # For each (investor, firm) pair, build one synthetic
-        # ``InvestorIntentRecord`` that conditions a pre-action
-        # review posture on the cited evidence: the investor's
-        # period selection (attention), the period's market
-        # readout, the firm's latent state, the (investor, firm)
-        # pair's valuation, the (investor, firm) pair's dialogue,
-        # the (investor, firm) pair's escalation candidate, and
-        # the investor's stewardship themes. Pre-trade /
-        # pre-decision posture only — never an order, trade,
-        # rebalance, allocation, or recommendation.
+        # v1.12.4 — attention-conditioned investor intent phase.
+        # For each (investor, firm) pair, the orchestrator now
+        # routes evidence through the v1.12.3
+        # :class:`world.evidence.EvidenceResolver` substrate by
+        # calling ``run_attention_conditioned_investor_intent_signal``.
+        # The investor's ``SelectedObservationSet`` is the
+        # *attention surface* — its ``selected_refs`` (signals,
+        # variable observations, exposures) drive the resolver's
+        # signal / variable-observation / exposure buckets.
+        #
+        # **Transitional explicits.** The v1.8.x menu builder does
+        # not yet surface firm states, market environment states,
+        # market readouts, valuations, dialogues, escalation
+        # candidates, or stewardship themes through the menu /
+        # selection pipeline. v1.12.4 keeps these as explicit-id
+        # kwargs so the integration is honest rather than silent.
+        # A future milestone may extend the menu builder to make
+        # them selectable and drop the explicit kwargs; until
+        # then, the explicit-kwarg path is documented and pinned
+        # by tests so a contributor cannot accidentally turn
+        # silent global scanning back on.
+        #
+        # The helper itself never scans the kernel's other books;
+        # its only inputs are the resolver's frame plus the
+        # caller-supplied ids.
         # ------------------------------------------------------------------
         investor_intent_ids: list[str] = []
         investor_selection_id_by_investor = dict(
@@ -1670,26 +1686,36 @@ def run_living_reference_world(
                     if f":{investor_id}:{firm_id}:" in vid
                 )
                 firm_state = firm_state_id_by_firm.get(firm_id)
-                intent_result = run_reference_investor_intent_signal(
-                    kernel,
-                    investor_id=investor_id,
-                    target_company_id=firm_id,
-                    as_of_date=iso_date,
-                    selected_observation_set_ids=(
-                        (inv_selection,) if inv_selection else ()
-                    ),
-                    market_readout_ids=tuple(capital_market_readout_ids),
-                    market_condition_ids=tuple(market_condition_ids),
-                    market_environment_state_ids=tuple(
-                        market_environment_state_ids
-                    ),
-                    firm_state_ids=((firm_state,) if firm_state else ()),
-                    valuation_ids=pair_valuation,
-                    dialogue_ids=(
-                        (pair_dialogue,) if pair_dialogue else ()
-                    ),
-                    escalation_candidate_ids=(pair_escalation,),
-                    stewardship_theme_ids=inv_themes,
+                intent_result = (
+                    run_attention_conditioned_investor_intent_signal(
+                        kernel,
+                        investor_id=investor_id,
+                        target_company_id=firm_id,
+                        as_of_date=iso_date,
+                        selected_observation_set_ids=(
+                            (inv_selection,) if inv_selection else ()
+                        ),
+                        explicit_market_readout_ids=tuple(
+                            capital_market_readout_ids
+                        ),
+                        explicit_market_condition_ids=tuple(
+                            market_condition_ids
+                        ),
+                        explicit_market_environment_state_ids=tuple(
+                            market_environment_state_ids
+                        ),
+                        explicit_firm_state_ids=(
+                            (firm_state,) if firm_state else ()
+                        ),
+                        explicit_valuation_ids=pair_valuation,
+                        explicit_dialogue_ids=(
+                            (pair_dialogue,) if pair_dialogue else ()
+                        ),
+                        explicit_escalation_candidate_ids=(
+                            (pair_escalation,)
+                        ),
+                        explicit_stewardship_theme_ids=inv_themes,
+                    )
                 )
                 investor_intent_ids.append(intent_result.intent_id)
 

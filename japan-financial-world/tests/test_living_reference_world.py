@@ -2292,6 +2292,94 @@ def test_v1_12_1_markdown_report_includes_investor_intent_section():
 
 
 # ---------------------------------------------------------------------------
+# v1.12.4 — attention-conditioned investor intent (orchestrator wiring)
+# ---------------------------------------------------------------------------
+
+
+def test_v1_12_4_orchestrator_uses_attention_conditioned_helper():
+    """Every intent the orchestrator produces must carry the
+    v1.12.4 attention metadata stamped by the new helper."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for iid in ps.investor_intent_ids:
+            rec = k.investor_intents.get_intent(iid)
+            assert rec.metadata.get("attention_conditioned") is True
+            assert rec.metadata.get("context_frame_id"), (
+                f"intent {iid!r} missing context_frame_id"
+            )
+            assert rec.metadata.get("context_frame_status") in {
+                "resolved",
+                "partially_resolved",
+                "empty",
+            }
+            assert isinstance(
+                rec.metadata.get("context_frame_confidence"), (int, float)
+            )
+
+
+def test_v1_12_4_orchestrator_intent_carries_selection_id_per_investor():
+    """v1.12.4 routing: every intent's
+    ``evidence_selected_observation_set_ids`` must reference the
+    matching investor's per-period selection — not anyone else's."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        sel_by_investor: dict[str, str] = {}
+        for sid in ps.investor_selection_ids:
+            sel = k.attention.get_selection(sid)
+            sel_by_investor[sel.actor_id] = sid
+        for iid in ps.investor_intent_ids:
+            rec = k.investor_intents.get_intent(iid)
+            expected = sel_by_investor.get(rec.investor_id)
+            assert expected is not None
+            assert (
+                rec.evidence_selected_observation_set_ids == (expected,)
+            )
+
+
+def test_v1_12_4_orchestrator_living_world_digest_remains_deterministic():
+    """The orchestrator's switch to the attention-conditioned
+    helper must keep the living-world canonical view byte-
+    identical across two fresh runs."""
+    from examples.reference_world.living_world_replay import (
+        canonicalize_living_world_result,
+        living_world_digest,
+    )
+
+    k1 = _seed_kernel()
+    r1 = _run_default(k1)
+    k2 = _seed_kernel()
+    r2 = _run_default(k2)
+    can1 = canonicalize_living_world_result(k1, r1)
+    can2 = canonicalize_living_world_result(k2, r2)
+    assert can1 == can2
+    assert living_world_digest(k1, r1) == living_world_digest(k2, r2)
+
+
+def test_v1_12_4_constrained_regime_still_yields_risk_or_due_diligence():
+    """The v1.12.1 regime-divergence behavior must be preserved
+    under the new helper — the constrained regime still lands
+    every intent on risk_flag_watch or deepen_due_diligence."""
+    k = _seed_kernel()
+    r = run_living_reference_world(
+        k,
+        firm_ids=_FIRM_IDS,
+        investor_ids=_INVESTOR_IDS,
+        bank_ids=_BANK_IDS,
+        period_dates=_PERIOD_DATES,
+        market_regime="constrained",
+    )
+    seen: set[str] = set()
+    for ps in r.per_period_summaries:
+        for iid in ps.investor_intent_ids:
+            rec = k.investor_intents.get_intent(iid)
+            seen.add(rec.intent_direction)
+    assert seen
+    assert seen.issubset({"risk_flag_watch", "deepen_due_diligence"})
+
+
+# ---------------------------------------------------------------------------
 # v1.12.2 — market environment state
 # ---------------------------------------------------------------------------
 

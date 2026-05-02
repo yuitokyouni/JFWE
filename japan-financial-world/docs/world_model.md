@@ -7439,3 +7439,113 @@ A future advanced-actor variant (e.g., `investor:reference_advanced_protocol_a`)
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count, per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.12.3 — §84 is docs-only and ships no code, no record, no test, no fixture.
+
+## 85. v1.12.4 Attention-conditioned investor intent — first mechanism-level use of attention as a real bottleneck
+
+§85 is the **first mechanism-level use of attention as a real information bottleneck** in public FWE. Through v1.12.3 the `EvidenceResolver` substrate existed but the orchestrator did not yet route mechanism evidence through it; investor-intent classification still consumed evidence id tuples directly from the orchestrator. v1.12.4 closes that loop for investor intent: the orchestrator now calls a new `run_attention_conditioned_investor_intent_signal(...)` helper which builds an `ActorContextFrame` via `resolve_actor_context(...)` and **classifies on the resolved frame ids only** — never on raw kwargs, never on a global book scan.
+
+The headline claim is: *the same market environment and the same target firm can produce different non-binding investor-intent labels for different investors, because they selected different evidence.* A pinned divergence test shows three investors → three different intent labels (`deepen_due_diligence`, `engagement_watch`, `hold_review`) on the same firm and date.
+
+This is still **pre-action review posture**, not a trade or allocation decision. The v1.12.1 anti-fields binding (no order, no trade, no rebalance, no target weight, no overweight / underweight, no expected return, no target price, no recommendation, no investment advice, no portfolio allocation, no execution) is preserved bit-for-bit; v1.12.4 changes only how evidence is *resolved*, not what the record stores or what the engine does.
+
+### 85.1 Why this exists
+
+Through v1.12.3 the v1.12.1 helper resolved evidence id tuples the orchestrator passed in, but two facts made attention silently *not* load-bearing:
+
+- the helper read directly from caller-supplied id tuples; it did not require any of those ids to come from the actor's `SelectedObservationSet`;
+- the orchestrator passed the same set of ids for every investor on every period (the period's market readout, the period's market environment, the firm's latent state, etc.), so investors with different attention surfaces still produced byte-identical inputs to the classifier.
+
+v1.12.4 closes both gaps. The orchestrator now routes evidence through the v1.12.3 `EvidenceResolver` substrate — selection refs come from the actor's `SelectedObservationSet`, explicit kwargs cover the evidence types not yet surfaced through the menu builder (firm states, market environment states, market readouts, valuations, dialogues, escalation candidates, stewardship themes), and the helper classifies on the *resolved* frame ids only. A future menu-builder extension can drop the explicit kwargs entirely; until then, the explicit-kwarg path is documented as transitional and pinned by tests so a contributor cannot accidentally turn silent global scanning back on.
+
+### 85.2 What v1.12.4 ships
+
+- `world/investor_intent.py` — new `run_attention_conditioned_investor_intent_signal(...)` helper. Idempotent on `intent_id`. Writes only to `kernel.investor_intents` and the kernel ledger. The pre-existing `run_reference_investor_intent_signal(...)` helper is preserved unchanged for backward compatibility — every existing v1.12.1 test continues to pass against it.
+- `world/evidence.py` — additive `stewardship_theme` bucket on `ActorContextFrame` (eleventh bucket → twelfth bucket). The bucket label, `BUCKET_STEWARDSHIP_THEME` constant, the `theme:` prefix → `stewardship` book → `get_theme` getter dispatch, the `resolved_stewardship_theme_ids` slot on `ActorContextFrame`, and the `explicit_stewardship_theme_ids` kwarg on both the class method and the module-level helper are all additive. No v1.12.3 test required edits; the new bucket is exercised by v1.12.4 tests.
+- `world/reference_living_world.py` — orchestrator's per-period investor-intent phase switches from `run_reference_investor_intent_signal` to `run_attention_conditioned_investor_intent_signal`. Each call passes the investor's `SelectedObservationSet` plus the documented transitional explicit-id kwargs.
+- `tests/test_investor_intent.py` — `+19` v1.12.4 tests covering the new helper:
+  - resolver is called and the produced record carries `attention_conditioned` / `context_frame_id` / `context_frame_status` / `context_frame_confidence` metadata;
+  - the helper reads only selected / explicit evidence — a firm state that exists in the kernel but is not cited stays out of the produced record;
+  - unknown explicit ids land in `metadata["unresolved_refs"]` and lower the frame confidence;
+  - `strict=True` raises `StrictEvidenceResolutionError` and emits no record;
+  - per-rule classification (engagement evidence → engagement_watch, high funding need → deepen_due_diligence, constrained environment → risk_flag_watch, risk-off appetite → risk_flag_watch, no evidence → hold_review);
+  - selection refs are bucketed correctly through the resolver's prefix dispatch;
+  - the helper does not mutate any source-of-truth book;
+  - the produced ledger payload carries no anti-field key (no order / trade / recommendation / execution / etc.);
+  - the helper is idempotent on `intent_id` and deterministic across two fresh kernels;
+  - **the headline divergence test**: three investors → three different intent labels under the same shared world.
+- `tests/test_living_reference_world.py` — `+4` v1.12.4 orchestrator integration tests:
+  - every orchestrator-produced intent carries the v1.12.4 attention metadata;
+  - each intent's `evidence_selected_observation_set_ids` references *its own investor's* selection, not anyone else's;
+  - the canonical view stays byte-identical across two fresh runs and the `living_world_digest` does not move;
+  - the v1.12.1 constrained-regime divergence still holds under the new helper (every intent → `risk_flag_watch` or `deepen_due_diligence`).
+
+### 85.3 Classification rule set (binding)
+
+The new helper preserves the v1.12.1 priority-order classifier, with one **additive** rule path on top:
+
+1. `deepen_due_diligence` — when any resolved firm state has `funding_need_intensity ≥ 0.7`.
+2. `risk_flag_watch` — when any resolved firm state has `market_access_pressure ≥ 0.65` OR `funding_need_intensity ≥ 0.65`; OR any resolved capital-market readout has `overall_market_access_label == "selective_or_constrained"`; OR (**v1.12.4 additive**) any resolved market environment state has `overall_market_access_label == "selective_or_constrained"`; OR (**v1.12.4 additive**) any resolved market environment state has `risk_appetite_regime == "risk_off"`.
+3. `decrease_confidence` — when any resolved valuation has `confidence < 0.4`.
+4. `engagement_watch` — when at least one dialogue id OR at least one escalation candidate id was resolved.
+5. `hold_review` — otherwise.
+
+The default `open_or_constructive` / `risk_on` cases never fire rule 2, so the v1.12.1 default-fixture behavior is preserved bit-for-bit.
+
+The label vocabulary is unchanged: `hold_review` / `increase_watch` / `decrease_confidence` / `engagement_watch` / `risk_flag_watch` / `deepen_due_diligence` / `coverage_review`. **No** `buy` / `sell` / `overweight` / `underweight` / `rebalance` / `target_weight` / `expected_return` / `target_price` / `recommendation` / `investment_advice` label exists in the vocabulary, and tests pin the absence on the dataclass field set and the ledger payload key set.
+
+### 85.4 Attention discipline (binding)
+
+The helper's rule set reads **only** the resolved frame ids:
+
+- never the kernel's other books for additional context;
+- never an evidence id the caller did not cite (selection or explicit);
+- never a record content field — only ids;
+- never a confidential dialogue text, transcript, attendee list, or non-public company information.
+
+When a cited id fails to resolve (the record does not exist, the prefix doesn't match, the book lookup raises), the resolver records the failure in `frame.unresolved_refs` and the helper folds that list into `record.metadata["unresolved_refs"]`. The metadata key `unresolved_refs` is the audit trail; downstream consumers that want to surface "this intent was conditioned on incomplete attention" can read it deterministically.
+
+### 85.5 Anti-fields and anti-claims (binding)
+
+v1.12.4 introduces:
+
+- **No** order submission, trade, rebalancing, allocation decision, or buy / sell / overweight / underweight execution.
+- **No** target weights, expected return forecasting, target prices, security recommendations, investment advice, or portfolio allocation.
+- **No** trading, price formation, lending decisions, or covenant enforcement.
+- **No** real data ingestion, Japan-specific calibration, IFRS / US GAAP / J-GAAP compliance, or LLM-agent execution.
+- **No** behavior probability or calibrated likelihood.
+
+The new helper writes only `RecordType.INVESTOR_INTENT_SIGNAL_ADDED` records to the kernel ledger; it adds no new event type. The resolver itself remains read-only and non-emitting (per v1.12.3 §83).
+
+### 85.6 Performance boundary (binding)
+
+Per-period record count: **unchanged** from v1.12.3 (71). Per-run record window: **unchanged** from v1.12.3 (`[284, 316]`). The `living_world_digest` for the default fixture is **unchanged** from v1.12.3 (`d6b25704014c3f19da330f534d5f8266ce8a9b73b9ee8da378b19c4691cb5dfe`) because:
+
+- the new helper's `record.metadata` extra keys (`attention_conditioned`, `context_frame_id`, `context_frame_status`, `context_frame_confidence`) live on the dataclass record's metadata field, not on the ledger payload that the canonical view digests;
+- the orchestrator's resolved evidence id tuples for the default fixture match the v1.12.1 cited tuples bit-for-bit (every cited id resolves on the healthy default fixture), so the canonical view's payload bytes are identical.
+
+A future milestone where the menu-builder surfaces firm states or market environments as selectable would change the digest because the resolver would surface them via selection rather than via explicit-kwarg path. v1.12.4 does not make that change.
+
+### 85.7 What v1.12.4 does not decide
+
+- **Does not** introduce trading, price formation, lending decisions, investment recommendations, portfolio allocation, order submission, target weights, or expected return forecasting.
+- **Does not** introduce real data ingestion, Japan calibration, or IFRS / US GAAP / J-GAAP compliance.
+- **Does not** introduce LLM-agent execution. The frame is the *substrate* a future LLM-agent reviewer can read; v1.12.4 is not itself an LLM call.
+- **Does not** compute any behavior probability.
+- **Does not** refactor v1.12.5 valuation lite or v1.12.6 bank credit review (anticipated). Those remain on the v1.12.1 evidence-kwarg path until their own milestone.
+- **Does not** drop the existing `run_reference_investor_intent_signal(...)` helper; both helpers continue to ship side by side, and existing v1.12.1 tests against the old helper continue to pass.
+- **Does not** make every investor's `SelectedObservationSet` carry every evidence type. Firm states, market environments, market readouts, valuations, dialogues, escalation candidates, and stewardship themes still flow as explicit-id kwargs from the orchestrator. Routing them through the menu builder is a future-milestone concern.
+
+### 85.8 Position in the v1.12 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.12.0 → v1.12.2 (firm state / investor intent / market environment) | Code (§80 → §82). | Shipped |
+| v1.12.3 EvidenceResolver / ActorContextFrame | Code (§83). | Shipped |
+| v1.x Valuation Protocol — Comps Purpose Separation | Docs-only (§84). Advanced-actor-only. | Shipped |
+| **v1.12.4 Attention-conditioned investor intent** | Code (§85). First mechanism-level use of attention as a real bottleneck. | **Shipped** |
+| v1.12.5 Attention-conditioned valuation lite (anticipated) | Code. | Planned |
+| v1.12.6 Attention-conditioned bank credit review (anticipated) | Code. | Planned |
+| v1.12.7 Next-period attention feedback (anticipated) | Code. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `2540 / 2540` (v1.12.3) to `2563 / 2563` (v1.12.4) — `+23` tests (`+19` in `tests/test_investor_intent.py` exercising the new helper plus the headline divergence test, `+4` orchestrator-side tests in `tests/test_living_reference_world.py`). The per-period record count, per-run window, and `living_world_digest` are unchanged from v1.12.3 (the new helper's frame metadata lives on the record's `metadata` field, not on the ledger payload).

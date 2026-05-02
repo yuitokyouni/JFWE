@@ -153,6 +153,12 @@ BUCKET_FIRM_STATE: str = "firm_state"
 BUCKET_VALUATION: str = "valuation"
 BUCKET_DIALOGUE: str = "dialogue"
 BUCKET_ESCALATION_CANDIDATE: str = "escalation_candidate"
+# v1.12.4 — stewardship theme bucket. Added so the
+# attention-conditioned investor-intent helper can resolve theme
+# ids through the same substrate as every other piece of
+# evidence; theme ids start with ``theme:`` per the v1.10.x
+# orchestrator's id convention.
+BUCKET_STEWARDSHIP_THEME: str = "stewardship_theme"
 
 ALL_BUCKETS: tuple[str, ...] = (
     BUCKET_SIGNAL,
@@ -166,6 +172,7 @@ ALL_BUCKETS: tuple[str, ...] = (
     BUCKET_VALUATION,
     BUCKET_DIALOGUE,
     BUCKET_ESCALATION_CANDIDATE,
+    BUCKET_STEWARDSHIP_THEME,
 )
 
 
@@ -327,6 +334,9 @@ class ActorContextFrame:
     resolved_escalation_candidate_ids: tuple[str, ...] = field(
         default_factory=tuple
     )
+    resolved_stewardship_theme_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     unresolved_refs: tuple[EvidenceRef, ...] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -351,6 +361,7 @@ class ActorContextFrame:
         "resolved_valuation_ids",
         "resolved_dialogue_ids",
         "resolved_escalation_candidate_ids",
+        "resolved_stewardship_theme_ids",
     )
 
     def __post_init__(self) -> None:
@@ -429,6 +440,9 @@ class ActorContextFrame:
             "resolved_dialogue_ids": list(self.resolved_dialogue_ids),
             "resolved_escalation_candidate_ids": list(
                 self.resolved_escalation_candidate_ids
+            ),
+            "resolved_stewardship_theme_ids": list(
+                self.resolved_stewardship_theme_ids
             ),
             "unresolved_refs": [r.to_dict() for r in self.unresolved_refs],
             "metadata": dict(self.metadata),
@@ -515,6 +529,13 @@ _PREFIX_TABLE: tuple[tuple[str, str, str, str], ...] = (
         "escalations",
         "get_candidate",
     ),
+    # v1.12.4 — stewardship theme prefix dispatch.
+    (
+        "theme:",
+        BUCKET_STEWARDSHIP_THEME,
+        "stewardship",
+        "get_theme",
+    ),
     # The ``signal:`` prefix is intentionally last among the
     # short-prefix entries so a more specific prefix gets a
     # chance to match first.
@@ -539,6 +560,7 @@ _BUCKET_TO_FRAME_FIELD: Mapping[str, str] = {
     BUCKET_VALUATION: "resolved_valuation_ids",
     BUCKET_DIALOGUE: "resolved_dialogue_ids",
     BUCKET_ESCALATION_CANDIDATE: "resolved_escalation_candidate_ids",
+    BUCKET_STEWARDSHIP_THEME: "resolved_stewardship_theme_ids",
 }
 
 
@@ -601,6 +623,7 @@ class EvidenceResolver:
         explicit_valuation_ids: Sequence[str] = (),
         explicit_dialogue_ids: Sequence[str] = (),
         explicit_escalation_candidate_ids: Sequence[str] = (),
+        explicit_stewardship_theme_ids: Sequence[str] = (),
         context_frame_id: str | None = None,
         strict: bool = False,
         metadata: Mapping[str, Any] | None = None,
@@ -628,6 +651,7 @@ class EvidenceResolver:
             explicit_valuation_ids=explicit_valuation_ids,
             explicit_dialogue_ids=explicit_dialogue_ids,
             explicit_escalation_candidate_ids=explicit_escalation_candidate_ids,
+            explicit_stewardship_theme_ids=explicit_stewardship_theme_ids,
             context_frame_id=context_frame_id,
             strict=strict,
             metadata=metadata,
@@ -654,6 +678,7 @@ _EXPLICIT_BUCKET_KWARGS: tuple[tuple[str, str], ...] = (
     ("explicit_valuation_ids", BUCKET_VALUATION),
     ("explicit_dialogue_ids", BUCKET_DIALOGUE),
     ("explicit_escalation_candidate_ids", BUCKET_ESCALATION_CANDIDATE),
+    ("explicit_stewardship_theme_ids", BUCKET_STEWARDSHIP_THEME),
 )
 
 
@@ -669,6 +694,7 @@ _BUCKET_TO_SOURCE_BOOK: Mapping[str, str] = {
     BUCKET_VALUATION: "valuations",
     BUCKET_DIALOGUE: "engagement",
     BUCKET_ESCALATION_CANDIDATE: "escalations",
+    BUCKET_STEWARDSHIP_THEME: "stewardship",
 }
 
 
@@ -684,6 +710,7 @@ _BUCKET_TO_GETTER: Mapping[str, str] = {
     BUCKET_VALUATION: "get_valuation",
     BUCKET_DIALOGUE: "get_dialogue",
     BUCKET_ESCALATION_CANDIDATE: "get_candidate",
+    BUCKET_STEWARDSHIP_THEME: "get_theme",
 }
 
 
@@ -744,6 +771,7 @@ def resolve_actor_context(
     explicit_valuation_ids: Sequence[str] = (),
     explicit_dialogue_ids: Sequence[str] = (),
     explicit_escalation_candidate_ids: Sequence[str] = (),
+    explicit_stewardship_theme_ids: Sequence[str] = (),
     context_frame_id: str | None = None,
     strict: bool = False,
     metadata: Mapping[str, Any] | None = None,
@@ -904,6 +932,7 @@ def resolve_actor_context(
         "explicit_valuation_ids": explicit_valuation_ids,
         "explicit_dialogue_ids": explicit_dialogue_ids,
         "explicit_escalation_candidate_ids": explicit_escalation_candidate_ids,
+        "explicit_stewardship_theme_ids": explicit_stewardship_theme_ids,
     }
     for kwarg_name, bucket in _EXPLICIT_BUCKET_KWARGS:
         ids = _normalize_string_tuple(
