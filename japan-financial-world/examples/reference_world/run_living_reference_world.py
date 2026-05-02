@@ -1,30 +1,35 @@
 """
-v1.9.0 + v1.9.1 reference CLI — runs the Living Reference World
-demo on a synthetic seed kernel, prints a compact per-period
+v1.9.0 + v1.9.1 + v1.9.2 reference CLI — runs the Living Reference
+World demo on a synthetic seed kernel, prints a compact per-period
 operational trace, and optionally renders the v1.9.1
-``LivingWorldTraceReport`` as deterministic Markdown.
+``LivingWorldTraceReport`` as deterministic Markdown and / or
+emits the v1.9.2 reproducibility manifest.
 
 Usage:
 
     cd japan-financial-world
     python -m examples.reference_world.run_living_reference_world
     python -m examples.reference_world.run_living_reference_world --markdown
+    python -m examples.reference_world.run_living_reference_world --manifest path/to/manifest.json
 
 The seed values are deterministic and synthetic (no Japan
 calibration, no real data). Re-running the script produces the same
-trace and the same Markdown report — byte-identically.
+trace, the same Markdown report, and the same SHA-256 living-world
+digest — byte-identically.
 
 This is a thin wrapper around
 ``world.reference_living_world.run_living_reference_world`` (the
-v1.9.0 sweep) and ``world.living_world_report`` (the v1.9.1
-reporter). Tests exercise both directly; the CLI is for human
-eyeballs.
+v1.9.0 sweep), ``world.living_world_report`` (the v1.9.1 reporter),
+and ``examples.reference_world.living_world_replay`` /
+``living_world_manifest`` (the v1.9.2 reproducibility helpers).
+Tests exercise all of them directly; the CLI is for human eyeballs.
 """
 
 from __future__ import annotations
 
 import argparse
 from datetime import date
+from pathlib import Path
 
 from world.clock import Clock
 from world.exposures import ExposureRecord
@@ -42,6 +47,11 @@ from world.registry import Registry
 from world.scheduler import Scheduler
 from world.state import State
 from world.variables import ReferenceVariableSpec, VariableObservation
+
+from examples.reference_world.living_world_manifest import (
+    build_living_world_manifest,
+    write_living_world_manifest,
+)
 
 
 _FIRM_IDS: tuple[str, ...] = (
@@ -216,7 +226,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="run_living_reference_world",
         description=(
             "Run the v1.9.0 Living Reference World demo on a synthetic "
-            "seed kernel and optionally render the v1.9.1 Markdown report."
+            "seed kernel; optionally render the v1.9.1 Markdown report "
+            "and / or emit the v1.9.2 reproducibility manifest."
         ),
     )
     parser.add_argument(
@@ -225,6 +236,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "After the operational trace, render the v1.9.1 living-world "
             "trace report as deterministic Markdown."
+        ),
+    )
+    parser.add_argument(
+        "--manifest",
+        type=str,
+        default=None,
+        help=(
+            "Path to write the v1.9.2 reproducibility manifest as "
+            "deterministic JSON. Parent directories are created if "
+            "missing. The manifest carries the SHA-256 living-world "
+            "digest."
         ),
     )
     return parser.parse_args(argv)
@@ -241,10 +263,27 @@ def main(argv: list[str] | None = None) -> None:
     )
     _print_trace(result)
 
+    report = None
     if args.markdown:
         report = build_living_world_trace_report(kernel, result)
         print()
         print(render_living_world_markdown(report), end="")
+
+    if args.manifest is not None:
+        manifest = build_living_world_manifest(
+            kernel,
+            result,
+            report=report,
+            input_profile="reference_world_default",
+            preset_name="cli_default",
+            variable_count=len(_REFERENCE_VARIABLES),
+            exposure_count=len(_seed_exposures()),
+        )
+        target = write_living_world_manifest(manifest, Path(args.manifest))
+        print(
+            f"\n[manifest] wrote {target} "
+            f"(living_world_digest={manifest['living_world_digest']})"
+        )
 
 
 if __name__ == "__main__":

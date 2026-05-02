@@ -466,6 +466,33 @@ a v1+ behavioral milestone, not an extension of this demo.
 > reference demo and v1.7 manifest / replay-determinism gates remain
 > unaffected.
 
+### Update — v1.9.2 living-world replay / manifest / digest
+
+> v1.9.2 ships
+> `examples/reference_world/living_world_replay.py` and
+> `examples/reference_world/living_world_manifest.py`, the
+> symmetric pair to the v1.7-era `replay_utils.py` /
+> `manifest.py` for the v1.9.0 multi-period sweep. Two helpers:
+>
+> - `canonicalize_living_world_result(kernel, result, report=None)` +
+>   `living_world_digest(kernel, result, report=None)` produce a
+>   deterministic JSON-friendly canonical view (volatile
+>   `record_id` / `timestamp` excluded; `parent_record_ids`
+>   rewritten as slice-relative `parent_sequences`) and a
+>   64-char lowercase hex SHA-256.
+> - `build_living_world_manifest(...)` +
+>   `write_living_world_manifest(...)` produce a deterministic
+>   JSON manifest (sort_keys=True, indent=2, atomic write) with
+>   the `living_world_digest`, structural counts, the v1.9.1
+>   hard-boundary statement, a best-effort git probe (never
+>   crashes), Python version, and platform.
+>
+> The CLI gains a `--manifest path/to/m.json` flag. The v1.7-era
+> reference demo described in this document and the v1.7
+> manifest / replay-determinism gates remain unaffected; v1.9.2 is
+> a parallel manifest schema (`living_world_manifest.v1`) for the
+> multi-period sweep, not a replacement for the v1.7-era one.
+
 ### Update — v1.8.16 freeze / readiness
 
 > v1.8.16 is documentation only — no new code, no test surface

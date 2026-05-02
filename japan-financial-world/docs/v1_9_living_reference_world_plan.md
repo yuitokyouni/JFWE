@@ -87,6 +87,40 @@ The v1.9.1 sub-release implements the v1.9.1-prep contract:
 
 The full suite passes 1407 tests (1380 prior + 27 reporter).
 
+## v1.9.2 — what shipped
+
+The v1.9.2 sub-release adds reproducibility infrastructure for
+the living-world demo, mirroring the v1.7-era reference-demo
+`replay_utils.py` + `manifest.py` pair:
+
+- `examples/reference_world/living_world_replay.py` exports
+  `canonicalize_living_world_result(kernel, result, report=None)`
+  and `living_world_digest(kernel, result, report=None)`.
+  Canonical view excludes volatile `record_id` / `timestamp` and
+  rewrites `parent_record_ids` as slice-relative
+  `parent_sequences`. The digest is a 64-char lowercase hex
+  SHA-256 over `json.dumps(canonical, sort_keys=True,
+  separators=(",", ":"), ensure_ascii=False)`.
+- `examples/reference_world/living_world_manifest.py` exports
+  `build_living_world_manifest(...)` and
+  `write_living_world_manifest(...)`. The manifest carries a
+  best-effort git probe (never crashes on missing git), the
+  Python version, platform, structural counts, the
+  `living_world_digest`, and the v1.9.1 hard-boundary statement.
+  Writer is deterministic (`sort_keys=True`, `indent=2`,
+  `ensure_ascii=False`, trailing newline), atomic (temp sibling +
+  rename), and creates parent directories.
+- The CLI gains a `--manifest path/to/m.json` flag.
+  `examples/reference_world/run_living_reference_world.py`
+  default mode is unchanged; `--markdown` still works;
+  `--manifest` writes a deterministic JSON manifest.
+- `tests/test_living_world_replay.py` (16) +
+  `tests/test_living_world_manifest.py` (19) pin shape, digest,
+  determinism, atomic writer, missing-git resilience, and the
+  read-only guarantee.
+
+The full suite passes 1442 tests (1407 prior + 35 reproducibility).
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral

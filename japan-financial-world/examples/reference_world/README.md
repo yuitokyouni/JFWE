@@ -39,8 +39,10 @@ value is an illustrative round number, not a measurement.
 | `expected_story.md`     | Per-step narrative of the ledger trace the script produces. |
 | `run_reference_loop.py` | Runnable script that builds the demo kernel, walks the seven loop steps, advances two ticks, and prints a summary. |
 | `run_endogenous_chain.py` | v1.8.14 endogenous chain demo. Builds a small synthetic seed kernel, runs `run_reference_endogenous_chain`, and prints a compact operational trace. With `--markdown` it appends the v1.8.15 deterministic ledger trace report. |
-| `run_living_reference_world.py` | v1.9.0 multi-period sweep. Builds a small synthetic seed kernel (3 firms / 2 investors / 2 banks / 6 variables / 10 exposures) and runs `run_living_reference_world` over 4 quarterly periods. Prints a compact `[setup]` / `[period N]` / `[ledger]` trace. |
-| `replay_utils.py`       | `canonicalize_ledger(kernel)` and `ledger_digest(kernel)` helpers used by the v1 replay-determinism gate. |
+| `run_living_reference_world.py` | v1.9.0 multi-period sweep. Builds a small synthetic seed kernel (3 firms / 2 investors / 2 banks / 6 variables / 10 exposures) and runs `run_living_reference_world` over 4 quarterly periods. Prints a compact `[setup]` / `[period N]` / `[ledger]` trace. `--markdown` appends the v1.9.1 report; `--manifest path` writes the v1.9.2 reproducibility manifest. |
+| `living_world_replay.py` | v1.9.2 `canonicalize_living_world_result(kernel, result)` + `living_world_digest(kernel, result)` — deterministic structural digest (64-char lowercase SHA-256) of the multi-period sweep. |
+| `living_world_manifest.py` | v1.9.2 `build_living_world_manifest(kernel, result, ...)` + `write_living_world_manifest(manifest, output_path)` — atomic deterministic JSON manifest carrying the `living_world_digest`, structural counts, git revision (best-effort), Python / platform info, and the v1.9.1 hard-boundary statement. |
+| `replay_utils.py`       | v1.7-era `canonicalize_ledger(kernel)` and `ledger_digest(kernel)` helpers used by the v1 replay-determinism gate. |
 | `manifest.py`           | `build_reference_demo_manifest(kernel, summary)` and `write_manifest(manifest, path)` helpers for the reproducibility manifest (git_sha, python_version, platform, input file hashes, ledger digest, summary). |
 | `configs/`              | YAML configs for the v1.8 experiment harness. `configs/base.yaml` mirrors the bundled demo and produces the same SHA-256 ledger digest. |
 
@@ -68,6 +70,10 @@ python -m examples.reference_world.run_living_reference_world
 
 # v1.9.0 sweep + v1.9.1 deterministic Markdown trace report
 python -m examples.reference_world.run_living_reference_world --markdown
+
+# v1.9.2 reproducibility manifest (deterministic JSON + SHA-256 digest)
+python -m examples.reference_world.run_living_reference_world \
+    --manifest /tmp/living_world.manifest.json
 ```
 
 Expected output (abbreviated):

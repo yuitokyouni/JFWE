@@ -5045,9 +5045,116 @@ If a future polishing milestone needs to extend the reporter, it must keep the r
 | --- | --- | --- |
 | v1.9.0 Living Reference World Demo | Code (§59). | Shipped |
 | v1.9.1-prep Report Contract Audit | Docs + contract test (§60). | Shipped |
-| **v1.9.1 Living World Trace Report** | Code (§61). | **Shipped** |
+| v1.9.1 Living World Trace Report | Code (§61). | Shipped |
+| **v1.9.2 Living World Replay / Manifest / Digest** | Code (§62). Reproducibility infrastructure. | **Shipped** |
 | v1.9.x | Report polishing, sparse / performance boundary, public-prototype readiness. | Next |
 | v1.9.last | First lightweight public prototype. | Planned |
+
+## 62. v1.9.2 Living World Replay / Manifest / Digest
+
+§62 (v1.9.2) is **reproducibility infrastructure** for the multi-period v1.9.0 living reference world. Where v1.7-public-rc1+ shipped `replay_utils.py` + `manifest.py` for the single-day reference demo, v1.9.2 ships the symmetric pair for the multi-period sweep:
+
+- `examples/reference_world/living_world_replay.py` — `canonicalize_living_world_result(...)` + `living_world_digest(...)`.
+- `examples/reference_world/living_world_manifest.py` — `build_living_world_manifest(...)` + `write_living_world_manifest(...)`.
+
+The point of v1.9.2 is to give a researcher running the v1.9.0 demo a way to answer two questions, deterministically and from a single command:
+
+1. **"Is this the same run as that one?"** — compare the SHA-256 `living_world_digest`.
+2. **"If I re-run on the same code, do I get the same trace?"** — re-run the demo with `--manifest path/to/m.json` and compare `m["living_world_digest"]` between runs.
+
+§62 is reporting / packaging only. It introduces no new economic behavior, no new ledger record types, no new books, no kernel mutation, no scheduler hooks.
+
+### 62.1 What lands in v1.9.2
+
+- `examples/reference_world/living_world_replay.py` — new module:
+  - `LIVING_WORLD_BOUNDARY_STATEMENT` constant (must match the v1.9.1 reporter's verbatim string; tests pin this).
+  - `CANONICAL_FORMAT_VERSION = "living_world_canonical.v1"`.
+  - `canonicalize_living_world_result(kernel, result, report=None) -> dict` — JSON-friendly structural projection of the run. Captures run identity, ledger slice metadata, the v1.9.1-prep infra-algebra (`infra_record_count + per_period_record_count_total == created_record_count`), per-period summaries (with id tuples in ledger order), aggregated event-type counts (sorted), aggregated attention divergence, per-actor selected-ref count triples, the canonicalised ledger slice (volatile `record_id` / `timestamp` excluded; `parent_record_ids` rewritten as slice-relative `parent_sequences`), and the boundary statement.
+  - `living_world_digest(kernel, result, report=None) -> str` — 64-char lowercase hex SHA-256 over `json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
+- `examples/reference_world/living_world_manifest.py` — new module:
+  - `MANIFEST_VERSION = "living_world_manifest.v1"` and `RUN_TYPE = "living_reference_world"`.
+  - `_git_probe()` — best-effort git revision / dirty / status probe; never raises (`status ∈ {"ok", "git_unavailable", "not_a_repo", "error"}`).
+  - `build_living_world_manifest(kernel, result, *, report=None, input_profile=None, preset_name=None, variable_count=None, exposure_count=None, summary=None) -> dict` — the manifest builder. Includes the standalone `living_world_digest` and (when `report` is supplied) a `report_digest` cross-check. Returns a deterministic dict.
+  - `write_living_world_manifest(manifest, output_path) -> Path` — deterministic JSON writer (`sort_keys=True`, `indent=2`, `ensure_ascii=False`, trailing newline). Atomic via temp sibling + rename. Creates parent directories.
+- `examples/reference_world/run_living_reference_world.py` — new `--manifest path/to/m.json` flag. Default mode unchanged; `--markdown` still works; `--manifest` writes the deterministic JSON manifest at the supplied path and prints a `[manifest]` line with the digest.
+- `tests/test_living_world_replay.py` — 16 tests pinning canonical shape, infra-algebra preservation, volatile-field exclusion (with slice-relative parent sequences), JSON round-trip stability, byte-equal canonical / digest across two fresh kernels seeded identically, the explicit SHA-256 digest recipe, digest sensitivity to canonical changes, the read-only guarantee, the boundary-statement consistency check against the v1.9.1 reporter, and defensive errors.
+- `tests/test_living_world_manifest.py` — 19 tests pinning required fields, `manifest_version` / `run_type` constants, manifest digest equality with `living_world_digest`, count carry-through, missing-git resilience (monkey-patched `subprocess.run`), deterministic byte-equal writer output across consecutive writes, sorted-keys JSON layout, parent-directory creation, atomic-write cleanup (no `.tmp` left behind), writer return type, full read-only guarantee, and CLI smoke tests for both `--manifest` and default modes.
+
+### 62.2 The canonical view's volatility rule
+
+v1.9.2 mirrors the v1.7-era replay-utils volatility rule:
+
+| Field | In canonical? | Rationale |
+| --- | --- | --- |
+| `record_id` | **No** | Hash-derived from `timestamp.isoformat()`; non-deterministic. |
+| `timestamp` | **No** | Wall-clock. |
+| `parent_record_ids` | **Rewritten** | Replaced with `parent_sequences`: slice-relative integer indices. Two kernels whose pre-existing ledgers differ in length still produce identical `parent_sequences`. |
+| `record_type`, `source`, `target`, `object_id`, `payload`, `metadata`, `simulation_date`, `correlation_id`, `causation_id`, `scenario_id`, `run_id`, `seed`, `space_id`, `agent_id`, `snapshot_id`, `state_hash`, `visibility`, `confidence`, `schema_version` | **Yes** | All deterministic across runs of a deterministic fixture. |
+| Result-level fields (`run_id`, `period_count`, actor id tuples, `created_record_ids`, per-period summaries) | **Yes** | All pinned deterministic by v1.9.0 tests. |
+| Aggregated event-type counts | **Yes** (sorted) | Re-walked from the slice. |
+| Aggregated attention divergence | **Yes** (sorted alphabetically) | Read from `kernel.attention.get_selection(...).selected_refs`. |
+| `boundary_statement` | **Yes** | Pinned to v1.9.1 reporter. |
+
+### 62.3 The manifest schema
+
+The manifest is intentionally narrow. Required fields:
+
+```
+manifest_version, run_type,
+git_sha, git_dirty, git_status,
+python_version, platform,
+input_profile, preset_name,
+period_count, firm_count, investor_count, bank_count,
+variable_count, exposure_count,
+ledger_record_count_before, ledger_record_count_after,
+created_record_count, infra_record_count,
+per_period_record_count_total,
+living_world_digest,
+boundary_statement,
+summary
+```
+
+When the caller supplies a v1.9.1 `LivingWorldTraceReport`, the manifest also carries `report_digest` (a SHA-256 over a small report-derived view) as a sanity cross-check.
+
+The manifest is **synthetic-demo metadata only**. It carries no real data, no proprietary content, no investment claims. The boundary statement embedded in the manifest is the same verbatim string the v1.9.1 reporter emits.
+
+### 62.4 Anti-scope
+
+§62 is reproducibility infrastructure only. v1.9.2 does **not** add:
+
+- new economic behavior, new routines, new books, new ledger record types;
+- new kernel state or scheduler hooks;
+- web UI, real data ingestion, scenario engines, randomness, wall-clock dependencies in canonical output;
+- ranking, weighting, recommendation, or any economic interpretation.
+
+### 62.5 v1.9.2 success criteria
+
+§62 is complete when **all** hold:
+
+1. `living_world_replay.py` exports `LIVING_WORLD_BOUNDARY_STATEMENT`, `CANONICAL_FORMAT_VERSION`, `canonicalize_living_world_result`, and `living_world_digest`.
+2. `living_world_manifest.py` exports `MANIFEST_VERSION`, `RUN_TYPE`, `build_living_world_manifest`, and `write_living_world_manifest`.
+3. The canonical view excludes `record_id` / `timestamp` and rewrites `parent_record_ids` as slice-relative `parent_sequences`.
+4. Two fresh kernels seeded identically produce byte-equal canonical dicts and equal SHA-256 digests; the digest is 64-char lowercase hex.
+5. `infra_record_count + per_period_record_count_total == created_record_count` is preserved in both the canonical view and the manifest.
+6. The manifest's `living_world_digest` equals `living_world_digest(kernel, result)` standalone.
+7. The writer produces deterministic JSON (`sort_keys=True`, `indent=2`, `ensure_ascii=False`, trailing newline) byte-identically across consecutive writes; creates parent directories; uses temp-sibling + rename to avoid partial files.
+8. A missing-git environment does not crash the manifest builder; `git_status` reports `"git_unavailable"`.
+9. The CLI's `--manifest path` flag writes a valid manifest with the right digest; default mode is unchanged.
+10. Canonicalize / digest / build / write are read-only against every kernel book and the ledger length.
+11. The full test suite passes (1442 tests = 1407 prior + 16 replay + 19 manifest).
+12. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+
+### 62.6 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.0 Living Reference World Demo | Code (§59). | Shipped |
+| v1.9.1-prep Report Contract Audit | Docs + contract test (§60). | Shipped |
+| v1.9.1 Living World Trace Report | Code (§61). | Shipped |
+| **v1.9.2 Living World Replay / Manifest / Digest** | Code (§62). | **Shipped** |
+| v1.9.x | Report polishing, sparse / performance boundary, public-prototype readiness. | Next |
+| v1.9.last | First lightweight public prototype. | Planned |
+
 
 
 

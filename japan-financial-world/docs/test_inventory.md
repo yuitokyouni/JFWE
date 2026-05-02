@@ -1,18 +1,19 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.1** (`Living World Trace
-Report`): `1407 / 1407 passing` (444 v0 + 188 v1.0-v1.7 frozen
-reference + 775 post-v1.7 additions covering reference demo,
-replay, manifest, catalog-shape, experiment harness, renamed
-WorldID tests, interactions, routines, attention, routine engine,
-the corporate quarterly reporting routine, the world-variable
-storage layer, the exposure / dependency storage layer, the
-observation-menu builder join service, the
+Snapshot of the test suite at **v1.9.2** (`Living World Replay /
+Manifest / Digest`): `1442 / 1442 passing` (444 v0 + 188 v1.0-v1.7
+frozen reference + 810 post-v1.7 additions covering reference
+demo, replay, manifest, catalog-shape, experiment harness,
+renamed WorldID tests, interactions, routines, attention,
+routine engine, the corporate quarterly reporting routine, the
+world-variable storage layer, the exposure / dependency storage
+layer, the observation-menu builder join service, the
 heterogeneous-attention investor / bank demo, the investor /
 bank review routines, the endogenous chain harness, the ledger
 trace report, the multi-period living reference world demo, the
-v1.9.1-prep report contract, and the v1.9.1 living world trace
-report).
+v1.9.1-prep report contract, the v1.9.1 living world trace
+report, and the v1.9.2 living-world replay-determinism + manifest
+helpers).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -279,6 +280,51 @@ no-mutation guarantee.
   determinism; snapshot determinism; ledger emission of
   `RecordType.INTERACTION_ADDED`; kernel wiring; no-mutation
   guarantee against every other v0 / v1 source-of-truth book.
+
+## Living world replay / manifest / digest (v1.9.2)
+
+- `test_living_world_replay.py` (16) —
+  `canonicalize_living_world_result(kernel, result)` returns the
+  documented JSON-friendly dict (`format`, `run_id`,
+  `period_count`, actor id tuples, ledger slice indices,
+  `created_record_count`, `infra_record_count`,
+  `per_period_record_count_total`, `created_record_ids`,
+  sorted `record_type_counts`, per-period summaries,
+  aggregated set differences, per-actor count triples,
+  canonicalised ledger slice, boundary statement); the canonical
+  view excludes volatile `record_id` / `timestamp` and rewrites
+  `parent_record_ids` as slice-relative `parent_sequences`;
+  `infra + per_period == created` algebra preserved;
+  `record_type_counts` sums to `created_record_count`; canonical
+  JSON round-trips through `json.dumps` / `json.loads`
+  byte-identically; `living_world_digest` is 64-char lowercase
+  hex SHA-256; canonical and digest are byte-equal across two
+  fresh runs; the digest matches the explicit
+  `hashlib.sha256(json.dumps(canonical, sort_keys=True,
+  separators=(",", ":"), ensure_ascii=False))` recipe; the
+  digest changes when a canonical field changes;
+  `LIVING_WORLD_BOUNDARY_STATEMENT` matches the v1.9.1 reporter's
+  verbatim string; canonicalize / digest are read-only; defensive
+  errors on `kernel=None` and non-`LivingReferenceWorldResult`
+  inputs.
+- `test_living_world_manifest.py` (19) — manifest carries every
+  required field; `manifest_version == "living_world_manifest.v1"`
+  and `run_type == "living_reference_world"`; manifest's
+  `living_world_digest` equals the standalone digest; counts
+  (period / firm / investor / bank / created / infra /
+  per-period / variable / exposure) match the result;
+  `boundary_statement` matches the replay constant; optional
+  `report_digest` appears only when a v1.9.1 report is supplied;
+  defensive errors on `kernel=None` and non-result inputs;
+  `_git_probe` returns a status dict with the canonical key set;
+  missing-git environments yield `git_status == "git_unavailable"`
+  without crashing; the writer produces deterministic JSON
+  byte-identically across consecutive writes (`sort_keys=True`,
+  `indent=2`, trailing newline); writer creates parent
+  directories; writer leaves no `.tmp` file behind; writer
+  returns the resolved `Path`; building + writing the manifest
+  does not mutate any kernel book or the ledger length; CLI
+  smoke tests for both `--manifest` and default modes.
 
 ## Living world trace report (v1.9.1)
 
@@ -776,7 +822,7 @@ no-mutation guarantee.
 | Reference loop (v1.6)            | 1     | 5     |
 | **v1 subtotal**                  | **7** | **188** |
 
-### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 additions
+### v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 additions
 
 | Component                               | Files | Tests |
 | --------------------------------------- | ----- | ----- |
@@ -801,7 +847,9 @@ no-mutation guarantee.
 | Living reference world (v1.9.0)         | 1     | 27    |
 | Living world report contract (v1.9.1-prep) | 1 | 12    |
 | Living world trace report (v1.9.1)      | 1     | 27    |
-| **post-v1.7 subtotal**                  | **21**| **775** |
+| Living world replay (v1.9.2)            | 1     | 16    |
+| Living world manifest (v1.9.2)          | 1     | 19    |
+| **post-v1.7 subtotal**                  | **23**| **810** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -809,8 +857,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1) | 21 | 775 |
-| **Total**                        | **63**| **1407** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2) | 23 | 810 |
+| **Total**                        | **65**| **1442** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

@@ -194,6 +194,36 @@ new review is performed.
 - [ ] If the answer to any of the above is "no," fix before
   releasing.
 
+## Living-world reproducibility (v1.9.2)
+
+A v1.9.x or v1.9.last public release that includes the multi-
+period demo should also exercise the v1.9.2 reproducibility
+helpers. Each item below mirrors the v1.7-era reference-demo
+manifest gate but for the living-world sweep.
+
+- [ ] `python -m examples.reference_world.run_living_reference_world`
+  produces the canonical `[setup]` / `[period N]` / `[ledger]`
+  trace. Re-running yields byte-identical output.
+- [ ] `python -m examples.reference_world.run_living_reference_world --markdown`
+  appends the v1.9.1 Markdown report. Re-running yields
+  byte-identical output (CLI + Markdown).
+- [ ] `python -m examples.reference_world.run_living_reference_world --manifest /tmp/lw.json`
+  writes a v1.9.2 manifest. Re-running into a different path and
+  diffing the two files shows zero changes (modulo the path).
+- [ ] The manifest's `living_world_digest` matches the digest
+  produced by
+  `examples.reference_world.living_world_replay.living_world_digest(kernel, result)`
+  on the same fixture.
+- [ ] `manifest_version == "living_world_manifest.v1"` and
+  `run_type == "living_reference_world"`.
+- [ ] `infra_record_count + per_period_record_count_total ==
+  created_record_count` (the v1.9.1-prep algebra).
+- [ ] The manifest's `boundary_statement` matches the v1.9.1
+  reporter verbatim and includes "no investment advice."
+- [ ] `git_status` is `"ok"` (or `"git_unavailable"` /
+  `"not_a_repo"` only on environments where that is genuinely
+  the case — never `"error"` on a release machine).
+
 ## Public prototype gate (v1.9.last)
 
 The **v1.9.last public prototype** is allowed to ship when the
