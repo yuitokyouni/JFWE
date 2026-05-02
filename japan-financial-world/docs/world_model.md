@@ -7389,3 +7389,53 @@ v1.12.3 ships **substrate only**: the orchestrator does not call the resolver on
 | v2.0 Japan public-data calibration design gate | — | Not started |
 
 The test count moves from `2456 / 2456` (v1.12.2) to `2540 / 2540` (v1.12.3) — `+84` tests in the new `tests/test_evidence_resolver.py`. The per-period record count, per-run window, and `living_world_digest` are unchanged from v1.12.2 (substrate-only milestone — no new ledger record, no new per-period state).
+
+## 84. v1.x Valuation Protocol — Comps Purpose Separation (docs-only design note)
+
+§84 is a **docs-only advanced design note**. No code, no records, no books, no calculation, no decision lives behind this section. The full design lives in [`v1_valuation_protocol_comps_purpose_separation.md`](v1_valuation_protocol_comps_purpose_separation.md); §84 is the cross-reference and the binding-scope summary inside `world_model.md` so a reader of the model document can see the design's place in the v1 sequence without leaving this file.
+
+### 84.1 Why this exists
+
+A common silent error in valuation software is treating "comparables" as a single, purpose-free data set. The same word *comps* can mean different things depending on what valuation question is being asked, and those different meanings can imply *materially different* valid selection criteria — `beta_estimation`, `debt_capacity`, `discount_rate_support`, `valuation_multiple`, `margin_benchmark` are all "comps" in casual conversation but rarely satisfy each other's selection logic without compromise. §84 records the discipline that the same valuation work **must declare its purpose, comparable-set choice, selection rationale, and warning flags explicitly** so a downstream reader, a future LLM-agent reviewer, or a future attention-conditioned mechanism can see *what the valuer was solving for*.
+
+### 84.2 What the protocol records (vocabulary, no calculation)
+
+The protocol is a vocabulary-and-discipline specification. It defines:
+
+- **`ValuationPurpose`** labels: `impairment_test`, `market_value_claim`, `internal_review`, `credit_support_review`, `strategic_response_review`.
+- **`ComparableSet.purpose`** labels: `beta_estimation`, `debt_capacity`, `discount_rate_support`, `valuation_multiple`, `margin_benchmark`. Different purposes may legitimately populate different comparable lists for the same subject on the same date.
+- **Comps selection dimensions**: `cash_flow_cyclicality`, `operating_risk`, `input_cost_sensitivity`, `asset_collateral_quality`, `asset_redeployability`, `cash_flow_visibility`, `price_cycle_exposure`, `bankability`, `service_potential`, `CGU_risk_profile`. The protocol records *which dimensions the valuer reasoned over*, never thresholds and never numeric scores.
+- **Warning flags**: `purpose_mismatch`, `double_counting_risk`, `cherry_picking_risk`, `target_capital_structure_misuse`, `unexplained_comps_divergence`, `cash_flow_and_discount_rate_risk_overlap`. Warning flags are *recorded concerns*, not vetoes; the audit trail makes the concern explicit, and the protocol does not enforce it.
+
+### 84.3 Boundary (binding)
+
+The protocol records valuation evidence discipline. It does **not** compute a valuation truth, fair value, or target price; **does not** recommend an investment, divestment, or weight; **does not** decide whether an impairment loss should be recognised, at what amount, or against which CGU; **does not** determine a capital structure, leverage band, or debt schedule; **does not** form a credit decision, covenant view, or default opinion; **does not** provide accounting compliance under IFRS / US GAAP / J-GAAP / any jurisdiction-specific standard; **does not** compute beta, WACC, or D/E; **does not** ingest real market / audit / broker / lender / regulator data; **does not** apply Japan-specific calibration; **does not** dispatch to an LLM agent or any external solver; **does not** emit any ledger record, mutate any source-of-truth book, or cross the v1.9.last public-prototype-freeze surface (§69) on the default living-world sweep.
+
+The protocol stores opinions, evidence, and warnings; it does not produce truths.
+
+### 84.4 Future integration (deferred)
+
+The protocol is designed to compose with the v1.12.3 `EvidenceResolver` substrate (§83) via plain-id cross-references — no new resolution helper is required at the FWE level. A future `AdvancedValuationProtocolRecord` would cite the same evidence ids the v1.12.3 resolver surfaces into an `ActorContextFrame` for the actor on the date. Adoption is gated on (a) the v1.12.4 → v1.12.7 attention-conditioned mechanism path landing first, so the protocol has a substrate to attach to, and (b) at least one advanced actor type wanting to record at this discipline level.
+
+### 84.5 Advanced-actor-only adoption (binding)
+
+The protocol is **opt-in for advanced actor types** only. The default v1.9 living reference world's investor and bank profiles must continue to work without the protocol. Adding the protocol to the default path is explicitly out of scope: the default valuation refresh lite is intentionally a thin opinionated synthetic claim, the default bank credit review note is intentionally a thin opinionated synthetic diagnostic, and forcing the default path through the warning-flag vocabulary would import accounting and credit-policy judgements the FWE is explicitly *not* taking.
+
+A future advanced-actor variant (e.g., `investor:reference_advanced_protocol_a`) or a future advanced-mechanism variant (`run_reference_advanced_valuation_review`) would be the adoption path, gated by an opt-in actor-profile flag.
+
+### 84.6 Position in the v1 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.12.0 → v1.12.2 (firm state / investor intent / market environment) | Code (§80 → §82). | Shipped |
+| v1.12.3 EvidenceResolver / ActorContextFrame | Code (§83). | Shipped |
+| **v1.x Valuation Protocol — Comps Purpose Separation** | **Docs-only (§84). Advanced-actor-only.** | **Shipped (this section)** |
+| v1.12.4 Attention-conditioned investor intent (anticipated) | Code. | Planned |
+| v1.12.5 Attention-conditioned valuation lite (anticipated) | Code. | Planned |
+| v1.12.6 Attention-conditioned bank credit review (anticipated) | Code. | Planned |
+| v1.12.7 Next-period attention feedback (anticipated) | Code. | Planned |
+| Advanced valuation protocol record (deferred) | Code. Opt-in advanced-actor variant. | Not started |
+| Valuation assumption audit record (deferred) | Code. | Not started |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count, per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.12.3 — §84 is docs-only and ships no code, no record, no test, no fixture.
