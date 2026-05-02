@@ -27,6 +27,7 @@ from world.routines import RoutineBook
 from world.scheduler import Phase, Scheduler, ScheduledTask, TaskSpec
 from world.signals import SignalBook
 from world.state import State
+from world.stewardship import StewardshipBook
 from world.valuations import ValuationBook, ValuationComparator
 from world.variables import WorldVariableBook
 
@@ -63,6 +64,7 @@ class WorldKernel:
     attention: AttentionBook = field(default_factory=AttentionBook)
     variables: WorldVariableBook = field(default_factory=WorldVariableBook)
     exposures: ExposureBook = field(default_factory=ExposureBook)
+    stewardship: StewardshipBook = field(default_factory=StewardshipBook)
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
 
@@ -82,6 +84,7 @@ class WorldKernel:
             self.attention,
             self.variables,
             self.exposures,
+            self.stewardship,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger

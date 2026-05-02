@@ -1,24 +1,23 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.10.0** (`Universal Engagement /
-Strategic Response Consolidation` — docs-only design /
-consolidation milestone naming the engagement / response layer
-ahead of the v1.10.x code milestones; no test count change from
-v1.9.last): `1626 / 1626 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
-post-v1.7 additions covering reference demo, replay, manifest,
-catalog-shape, experiment harness, renamed WorldID tests,
-interactions, routines, attention, routine engine, the
-corporate quarterly reporting routine, the world-variable
-storage layer, the exposure / dependency storage layer, the
-observation-menu builder join service, the
+Snapshot of the test suite at **v1.10.1** (`Stewardship theme
+signal` — first concrete code milestone of the v1.10 engagement /
+response layer): `1684 / 1684 passing` (444 v0 + 188 v1.0-v1.7
+frozen reference + 1052 post-v1.7 additions covering reference
+demo, replay, manifest, catalog-shape, experiment harness,
+renamed WorldID tests, interactions, routines, attention,
+routine engine, the corporate quarterly reporting routine, the
+world-variable storage layer, the exposure / dependency storage
+layer, the observation-menu builder join service, the
 heterogeneous-attention investor / bank demo, the investor /
 bank review routines, the endogenous chain harness, the ledger
-trace report, the multi-period living reference world demo,
-the v1.9.1-prep report contract, the v1.9.1 living world trace
+trace report, the multi-period living reference world demo, the
+v1.9.1-prep report contract, the v1.9.1 living world trace
 report, the v1.9.2 living-world replay-determinism + manifest
 helpers, the v1.9.3 mechanism interface contract, the v1.9.3.1
-hardening, the CLI argv-isolation pin, and the v1.9.4 firm
-operating pressure assessment mechanism).
+hardening, the CLI argv-isolation pin, the v1.9.4 firm
+operating pressure assessment mechanism, and the v1.10.1
+stewardship theme signal storage / audit layer).
 
 This inventory is grouped by what each component verifies. The numbers in
 parentheses are test counts per file. Run the full suite with:
@@ -1110,7 +1109,8 @@ no-mutation guarantee.
 | Reference bank credit review lite (v1.9.7) | 1 | 29    |
 | Living-world integration (v1.9.7 — added in test_living_reference_world.py) | 0 | 7 |
 | Performance boundary (v1.9.8)           | 1     | 10    |
-| **post-v1.7 subtotal**                  | **29**| **994** |
+| Stewardship theme signal (v1.10.1)      | 1     | 58    |
+| **post-v1.7 subtotal**                  | **30**| **1052** |
 
 ### v0 + v1 + post-v1.7 totals
 
@@ -1118,8 +1118,8 @@ no-mutation guarantee.
 | -------------------------------- | ----- | ----- |
 | v0                               | 35    | 444   |
 | v1.0–v1.7 frozen reference       | 7     | 188   |
-| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8) | 29 | 994 |
-| **Total**                        | **71**| **1626** |
+| post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1) | 30 | 1052 |
+| **Total**                        | **72**| **1684** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

@@ -6061,7 +6061,86 @@ The test count is unchanged at `1626 / 1626`. The CLI surface, the default fixtu
 | Milestone | Scope | Status |
 | --- | --- | --- |
 | v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
-| **v1.10.0 Universal Engagement / Strategic Response Consolidation** | Docs-only (§70). | **In progress** |
-| v1.10.1 → v1.10.5 | Code. | Planned |
+| v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
+| **v1.10.1 Stewardship theme signal** | Code (§71). | **Shipped** |
+| v1.10.2 → v1.10.5 | Code. | Planned |
 | v1.10.last Public engagement layer freeze | Docs-only. | Planned |
 | v2.0 Japan public-data calibration design gate | — | Not started |
+
+## 71. v1.10.1 Stewardship theme signal — storage and audit layer
+
+§71 lands the first concrete primitive of the v1.10 engagement / strategic-response layer named in §70 and in `docs/v1_10_universal_engagement_and_response_design.md`. The deliverable is **storage and audit only** — a small, immutable record shape and an append-only book. The runtime, the per-period flow of v1.9, and every existing mechanism are unchanged. The v1.10 hard boundary (§70.3) and the meta-abstraction deferral rule (§70.4) continue to hold without modification.
+
+### 71.1 What v1.10.1 names
+
+A *stewardship theme* is a monitoring / attention input that an investor, asset owner, or other steward declares it is **prepared to raise** across portfolio companies in a given period. It is not an action: it does not vote, does not engage with any specific portfolio company, does not escalate, does not trade, does not change ownership, does not produce any corporate-response candidate, and does not move any price. It is a named, audit-grade input shape that later v1.10.x milestones (v1.10.2 dialogue records, v1.10.3 escalation / corporate-response candidate mechanisms, v1.10.5 living-world integration) read.
+
+### 71.2 What v1.10.1 ships
+
+- `world/stewardship.py` — `StewardshipThemeRecord` (immutable dataclass) and `StewardshipBook` (append-only store).
+- `world/ledger.py` — `RecordType.STEWARDSHIP_THEME_ADDED`, emitted exactly once per `add_theme` call.
+- `world/kernel.py` — `stewardship: StewardshipBook` wired in `WorldKernel.__post_init__` with the same ledger / clock injection pattern every other source-of-truth book uses.
+- `tests/test_stewardship.py` — 58 tests covering field validation, immutability, duplicate rejection, unknown-id lookup, every list / filter, the active-window predicate semantics, deterministic snapshots, ledger emission of the new record type, kernel wiring, the no-mutation guarantee against every other source-of-truth book, the no-action invariant, and a jurisdiction-neutral identifier scan over both the new module and the test file.
+
+### 71.3 Record shape
+
+`StewardshipThemeRecord` is a frozen dataclass with the following fields. All required strings reject empty values; tuple fields normalize to `tuple[str, ...]` and reject empty entries; cross-references are stored as data and not validated against any other book (per the v0/v1 cross-reference rule already used by `world/attention.py`).
+
+- `theme_id` — stable, unique-within-book id.
+- `owner_id`, `owner_type` — investor / steward identification (free-form strings).
+- `theme_type` — controlled-vocabulary tag (`"capital_allocation_discipline"`, `"governance_structure"`, `"disclosure_quality"`, `"operational_efficiency"`, `"sustainability_practice"`, …); not enforced.
+- `title` — short jurisdiction-neutral label.
+- `description` — optional jurisdiction-neutral prose; defaults to empty string.
+- `target_scope` — controlled-vocabulary tag (`"all_holdings"`, `"top_holdings"`, `"sector_subset"`, `"single_firm"`, …); not enforced.
+- `priority` — small enumerated tag (`"low"` / `"medium"` / `"high"`). **Never** a calibrated probability.
+- `horizon` — free-form label (`"short_term"` / `"medium_term"` / `"long_term"`).
+- `status` — small free-form tag (`"draft"` / `"active"` / `"under_review"` / `"retired"`). `"retired"` themes remain in the book for audit; the active-window predicate handles them via `effective_to`.
+- `effective_from` — required ISO `YYYY-MM-DD` start date.
+- `effective_to` — optional ISO `YYYY-MM-DD` end date. `None` means "no declared end". `effective_to`, when set, must be on or after `effective_from`.
+- `related_variable_ids`, `related_signal_ids` — tuples of free-form ids the steward declares as related; cross-references stored as data and not validated.
+- `metadata` — free-form mapping for provenance.
+
+### 71.4 Active-window semantics
+
+`StewardshipThemeRecord.is_active_on(on_date)` returns `True` iff the theme's `[effective_from, effective_to]` window contains `on_date` inclusive on both ends. `effective_to=None` means "no declared end" (open-ended right side). The check is purely on dates; `status` is **not** consulted, so a record with status `"retired"` and no `effective_to` is still treated as active by date. The book's `list_by_status` filter is the natural complement when callers want status-based semantics. `StewardshipBook.list_active_as_of(as_of)` returns every theme whose window contains `as_of`.
+
+### 71.5 Ledger emission
+
+Every successful `add_theme` call emits exactly one ledger record of type `STEWARDSHIP_THEME_ADDED`, with `object_id = theme_id`, `source = owner_id`, `agent_id = owner_id`, `space_id = "stewardship"`, and a payload that carries the full field set (excluding `metadata`). A duplicate `add_theme` call raises `DuplicateStewardshipThemeError` and emits **no** additional ledger record. A book without a ledger accepts adds silently. No other ledger record type is emitted by the book — the no-action invariant is asserted explicitly in the test suite.
+
+### 71.6 Kernel wiring
+
+`WorldKernel` exposes `kernel.stewardship: StewardshipBook`. The book is constructed via `field(default_factory=StewardshipBook)` and joined to the kernel's ledger and clock in `__post_init__` alongside every other source-of-truth book. The book does not register tasks, does not subscribe to events, and does not participate in `tick()` / `run()` — it is a passive append-only store, mirroring the v1.8.5 `AttentionBook` discipline.
+
+### 71.7 No-behavior boundary (binding)
+
+A `StewardshipThemeRecord` and the `StewardshipBook` storing it are jurisdiction-neutral, signal-only, and behavior-free. v1.10.1 does **not**:
+
+- introduce voting, proxy voting, engagement execution, escalation, corporate-response generation, investment recommendation, trading, price formation, real data ingestion, Japan calibration, jurisdiction-specific stewardship codes, or source-specific behavior probabilities;
+- mutate any other source-of-truth book (the no-mutation test asserts this against ownership, contracts, prices, constraints, signals, valuations, institutions, external_processes, relationships, interactions, routines, attention, variables, and exposures);
+- enforce membership of `theme_type`, `target_scope`, `priority`, `horizon`, or `status` against any controlled vocabulary — the recommended labels are illustrative;
+- emit any ledger record other than `STEWARDSHIP_THEME_ADDED` from a bare `add_theme` call.
+
+### 71.8 What v1.10.1 does not decide
+
+- The exact field schema for `portfolio_company_dialogue_record` (v1.10.2).
+- The `MechanismAdapter` shape for `investor_escalation_candidate` and `corporate_strategic_response_candidate` (v1.10.3).
+- Whether `industry_demand_condition_signal` ships (v1.10.4).
+- Which review routines emit which records (v1.10.5).
+- Any fixture extension to the v1.9.last default living-world demo. v1.10.x demo additions land behind v1.10-scoped fixtures, separate from the v1.9.last default.
+
+### 71.9 Position in the v1.10 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.last Public Prototype Freeze | Docs-only (§69). | Shipped |
+| v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only (§70). | Shipped |
+| **v1.10.1 Stewardship theme signal** | Code (§71). | **Shipped** |
+| v1.10.2 Portfolio-company dialogue record | Code. | Planned |
+| v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code. | Planned |
+| v1.10.4 Optional industry demand condition signal | Code. | Optional |
+| v1.10.5 Living-world integration | Code. | Planned |
+| v1.10.last Public engagement layer freeze | Docs-only. | Planned |
+| v2.0 Japan public-data calibration design gate | — | Not started |
+
+The test count moves from `1626 / 1626` (v1.10.0) to `1684 / 1684` (v1.10.1) — the 58 tests in `tests/test_stewardship.py`. The CLI surface, the default fixture, the per-period flow, the reproducibility surface, and the performance boundary of v1.9.last are all preserved unchanged.

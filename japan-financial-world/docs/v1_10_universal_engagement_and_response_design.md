@@ -49,8 +49,8 @@ the milestone sequence.
 | Milestone | Scope | Status |
 | --- | --- | --- |
 | v1.9.last Public Prototype Freeze | Docs-only (§69 of `world_model.md`). | Shipped |
-| **v1.10.0 Universal Engagement / Strategic Response Consolidation** | **Docs-only — this document + `world_model.md` §70 + boundary updates.** | **In progress** |
-| v1.10.1 Stewardship theme signal | Code. Concrete `signal`-shaped record + minimal book. | Planned |
+| v1.10.0 Universal Engagement / Strategic Response Consolidation | Docs-only — this document + `world_model.md` §70 + boundary updates. | Shipped |
+| **v1.10.1 Stewardship theme signal** | **Code. `StewardshipThemeRecord` + `StewardshipBook` + ledger `STEWARDSHIP_THEME_ADDED` + kernel wiring + 58 tests.** | **Shipped** |
 | v1.10.2 Portfolio-company dialogue record | Code. Concrete dialogue book + record shape. | Planned |
 | v1.10.3 Investor escalation candidate + corporate strategic response candidate | Code. Two concrete `candidate`-shaped records. | Planned |
 | v1.10.4 Optional industry demand context | Code. Optional context-signal shape. | Optional |
@@ -450,14 +450,75 @@ changes none of those numbers. In particular:
 - v1.10 must not weaken the eight-flag hard boundary of the
   reference world README.
 
+## v1.10.1 — what shipped
+
+v1.10.1 lands the first concrete primitive of the v1.10 layer: a
+storage-and-audit shape for *stewardship themes*. The ship is
+deliberately narrow; everything outside the storage layer (review
+routines, attention integration, dialogue records, escalation /
+corporate-response candidates, living-world integration) stays out
+of v1.10.1 and lands at later milestones in the sequence.
+
+**What v1.10.1 adds**
+
+- `world/stewardship.py` — the immutable `StewardshipThemeRecord`
+  dataclass and the append-only `StewardshipBook` store with
+  `add_theme`, `get_theme`, `list_themes`, `list_by_owner`,
+  `list_by_owner_type`, `list_by_theme_type`, `list_by_status`,
+  `list_by_priority`, `list_active_as_of`, and `snapshot`.
+- `world/ledger.py` — a new `RecordType.STEWARDSHIP_THEME_ADDED`
+  enum value, emitted exactly once per `add_theme` call.
+- `world/kernel.py` — wires `stewardship: StewardshipBook` in
+  `WorldKernel`, with the same ledger / clock injection pattern
+  used by every other v0/v1 source-of-truth book.
+- `tests/test_stewardship.py` — 58 tests covering field validation,
+  immutability, duplicate rejection, unknown-id lookup, every
+  list / filter, the active-window predicate semantics
+  (`is_active_on` + `list_active_as_of`), deterministic snapshots,
+  ledger emission of the new record type, kernel wiring, the
+  no-mutation guarantee against every other source-of-truth book in
+  the kernel, the no-action invariant (a bare `add_theme` emits
+  exactly one `STEWARDSHIP_THEME_ADDED` record and nothing else),
+  and a jurisdiction-neutral identifier scan over both the new
+  module and the test file itself.
+
+**What v1.10.1 does not add**
+
+The v1.10 hard boundary is binding. v1.10.1 does **not** add
+voting, proxy voting, engagement execution, escalation, corporate
+response, investment recommendation, trading, price formation, real
+data ingestion, Japan calibration, jurisdiction-specific stewardship
+codes, source-specific behavior probabilities, or any new
+mechanism. A theme record is monitoring / attention storage only.
+
+**Future hooks**
+
+A `StewardshipThemeRecord` is shaped so that later milestones can
+read it without rewriting the storage layer:
+
+- v1.10.2 `portfolio_company_dialogue_record` will reference theme
+  records by `theme_id`.
+- v1.10.3 `investor_escalation_candidate` and
+  `corporate_strategic_response_candidate` `MechanismAdapter`
+  implementations will read theme records as part of their
+  evidence bundle.
+- v1.10.5 living-world integration will wire a review routine that
+  consults `list_active_as_of` to decide which themes are in scope
+  for a given simulation date.
+
+**Test count**
+
+v1.10.1 adds 58 tests. The total test count moves from
+`1626 / 1626` (v1.10.0) to `1684 / 1684` (v1.10.1).
+
 ## v1.10 milestone sequence
 
 1. **v1.10.0 — Universal Engagement / Strategic Response
-   Consolidation Docs.** This document + `world_model.md` §70 +
-   boundary updates + roadmap update. No code, no test count
+   Consolidation Docs.** Shipped. This document + `world_model.md`
+   §70 + boundary updates + roadmap update. No code, no test count
    change.
-2. **v1.10.1 — `stewardship_theme_signal`.** First concrete record
-   shape + minimal book + an investor review-routine emission path.
+2. **v1.10.1 — `stewardship_theme_signal`.** Shipped. First concrete
+   record shape + minimal book + ledger record type + kernel wiring.
    Tests exercise the no-behavior boundary explicitly.
 3. **v1.10.2 — `portfolio_company_dialogue_record`.** Dialogue book
    + record shape + a review-routine emission path that reads
