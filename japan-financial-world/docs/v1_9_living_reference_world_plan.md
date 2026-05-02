@@ -546,6 +546,71 @@ The full suite passes 1626 tests (1616 prior + 10 v1.9.8).
 **Recommended next path.** v1.9.last — the first public
 prototype freeze.
 
+## v1.9.last — what shipped
+
+A **freeze**, not behaviour. v1.9.last consolidates v1.9.0
+through v1.9.8 into a single, runnable, reproducible
+synthetic public prototype. Nothing about the runtime, the
+kernel, or any mechanism changed. What landed at v1.9.last is
+the framing: a coherent reader-facing position on what the
+prototype is and — more importantly — what it does not claim
+to be.
+
+### What landed
+
+- `docs/v1_9_public_prototype_summary.md` — single-page
+  reader summary covering: what is frozen (the CLI surface,
+  the default fixture, the per-period flow, the reproducibility
+  surface, the performance boundary, the test surface, the
+  scope language), what v1.9.last does NOT claim (12-item list
+  including no forecast, no investment advice, no price
+  formation, no trading, no lending decisions, no firm
+  financial-statement updates, no canonical valuation, no
+  Japan calibration, no real data, no scenarios, no production
+  traversal, no native rewrite, no web UI), how to verify
+  locally in a few minutes, and the next path after v1.9.last.
+- `README.md` (repo root) — adds a "Current public prototype
+  (v1.9.last)" section with the one-command demo block, the
+  per-period flow table, the default fixture, the per-period
+  record budget (37 records / period; per-run total `[148,
+  180]` for the default 4-period sweep), and the explicit
+  "what v1.9.last deliberately does NOT do" list. Roadmap row
+  flips to Shipped (1626 tests).
+- `RELEASE_CHECKLIST.md` — refreshed v1.9.last public prototype
+  gate. Renames the headline expected-test count from `725`
+  (v1.8) to `1626` (v1.9.last). Splits the gate into Code
+  health (pytest / compileall / ruff / gitleaks), Demo
+  (operational trace / Markdown / manifest, each with
+  byte-deterministic re-run), and Scope and wording (README
+  scope read, hard-boundary language, public/private
+  agreement, forbidden-token scan, no proprietary content, no
+  investment-advice framings, CI green on the tag commit).
+  v1.8.0's historical readiness snapshot is preserved
+  unchanged.
+- `docs/public_prototype_plan.md` — flipped from "plan-only" to
+  "shipped". `docs/v1_9_living_reference_world_plan.md` —
+  appended this v1.9.last section. `docs/world_model.md` — new
+  §69 covering the freeze surface and anti-scope.
+  `docs/fwe_reference_demo_design.md` — added a v1.9.last
+  update note. `examples/reference_world/README.md` — promoted
+  the living reference world to the headline demo.
+
+### What v1.9.last is NOT
+
+- Not a code change. No new `world/` module, no new mechanism,
+  no new test of new behaviour.
+- Not a tag yet. v1.9.last is a **freeze** of what is on the
+  branch; tagging is a downstream operation gated by
+  `RELEASE_CHECKLIST.md`. The freeze records that the contents
+  are ready to be tagged when CI is green on the commit.
+- Not a v2 milestone. The v2 calibration gate has not started.
+  Japan public-data calibration and per-source license review
+  are out of scope for v1.9.x.
+
+The full suite passes 1626 tests; no test count changes at
+v1.9.last (it is a docs-only freeze). `compileall` and
+`ruff check .` are clean.
+
 ## v1.9 goal
 
 Build a small **synthetic, multi-period, jurisdiction-neutral

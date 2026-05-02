@@ -29,15 +29,79 @@ and
 The reference data is fully synthetic; Japan calibration is v2 / v3
 territory.
 
-The current code is at the **v1.8** milestone (latest sub-release
-**v1.8.16 freeze / readiness**, tagged **`v1.8-public-release`** at
-v1.8.0). v1.8.x layered an endogenous activity stack on top of the
-v1.7 reference financial system: interaction topology, attention,
-routines, world variables, exposures, an investor / bank attention
-demo, two review routines, an orchestration harness, and a
-human-readable ledger-trace report. **No autonomous economic
-behavior is added in v1 / v1.8** — no price formation, no trading,
-no credit decisions, no Japan calibration.
+The current code is at the **v1.9.last public prototype freeze**.
+v1.9 layered three review-only synthetic mechanisms (firm
+operating-pressure assessment, valuation refresh lite, bank credit
+review lite) onto the v1.8 endogenous activity stack and integrated
+them into a deterministic four-quarter sweep over a small synthetic
+fixture. The headline artifact is the **living reference world**:
+3 firms × 2 investors × 2 banks × 4 quarters, runnable from a clean
+clone with a single command, byte-deterministic across runs, and
+fully reconstructable from the kernel's append-only ledger. **No
+autonomous economic behavior is added in v1 / v1.8 / v1.9** — no
+price formation, no trading, no lending decisions, no firm
+financial-statement updates, no Japan calibration.
+
+## Current public prototype (v1.9.last)
+
+The v1.9.last public prototype freezes a **single runnable artifact**:
+the **living reference world** — a deterministic four-quarter sweep
+over a small synthetic fixture. From a clean clone:
+
+```bash
+pip install -e ".[dev]"
+cd japan-financial-world
+
+# Compact operational trace:
+python -m examples.reference_world.run_living_reference_world
+
+# + deterministic Markdown ledger trace report:
+python -m examples.reference_world.run_living_reference_world --markdown
+
+# + reproducibility manifest (JSON, SHA-256 living_world_digest):
+python -m examples.reference_world.run_living_reference_world \
+    --manifest /tmp/fwe_living_world_manifest.json
+```
+
+Each mode is byte-identical across consecutive runs.
+
+**What runs each period:**
+
+| Phase                                       | Source        |
+| ------------------------------------------- | ------------- |
+| Corporate quarterly reporting               | v1.8.7        |
+| Firm operating-pressure assessment          | v1.9.4 mech   |
+| Heterogeneous investor / bank attention     | v1.8.11/12    |
+| Valuation refresh lite                      | v1.9.5 mech   |
+| Bank credit review lite                     | v1.9.7 mech   |
+| Investor / bank review routines             | v1.8.13       |
+| Ledger trace report                         | v1.9.1        |
+| Replay / manifest / digest                  | v1.9.2        |
+| Performance-boundary discipline             | v1.9.8        |
+
+**Default fixture:** 3 firms, 2 investors, 2 banks, 4 quarters.
+Per-period work writes 37 ledger records; a full run total
+sits in `[148, 180]` records (formula + small one-off setup
+allowance). All identifiers follow the `*_reference_*`
+synthetic-only convention.
+
+**What v1.9.last deliberately does NOT do:**
+
+- no price formation, no trading, no order matching;
+- no lending decisions, no loan origination, no covenant
+  enforcement, no contract or constraint mutation;
+- no firm financial-statement updates;
+- no canonical valuations (each `ValuationRecord` is one
+  valuer's opinionated synthetic claim, stamped with
+  `no_price_movement` / `no_investment_advice` / `synthetic_only`);
+- no Japan calibration, no real-data ingestion, no scenarios;
+- no investment advice — direct or indirect.
+
+For the single-page reader-facing summary see
+[`docs/v1_9_public_prototype_summary.md`](japan-financial-world/docs/v1_9_public_prototype_summary.md).
+For the performance boundary that gates production-scale
+traversal see
+[`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md).
 
 ## Current capability
 
@@ -163,8 +227,8 @@ in well under a second, and are deterministic across invocations.
 | v1.9.5        | Reference Valuation Refresh Lite Mechanism (`valuation_mechanism` adapter) | Shipped |
 | v1.9.6        | Living-world Mechanism Integration (wires v1.9.4 + v1.9.5 into the multi-period sweep) | Shipped |
 | v1.9.7        | Reference Bank Credit Review Lite Mechanism (`credit_review_mechanism` adapter; integrated into the multi-period sweep) | Shipped |
-| **v1.9.8**    | **Performance Boundary / Sparse Traversal Discipline** (docs + tests pinning loop shapes; no new behaviour) | **Shipped** |
-| v1.9.last     | First lightweight public prototype (synthetic-only, CLI-first, deterministic, explainability-first) | Planned |
+| v1.9.8        | Performance Boundary / Sparse Traversal Discipline (docs + tests pinning loop shapes; no new behaviour) | Shipped |
+| **v1.9.last** | **Public Prototype Freeze** (synthetic-only, CLI-first, deterministic, explainability-first; living reference world as the headline artifact) | **Shipped** |
 | v2.0          | Japan public-data calibration design gate                 | Not started                  |
 | v3.0          | Proprietary Japan calibration / expert-data layer         | Private                      |
 
@@ -240,10 +304,10 @@ real-world claim.
 | v0.xx   | Jurisdiction-neutral world kernel                                                | **Frozen at v0.16**          |
 | v1.0–v1.7 | Jurisdiction-neutral reference financial system                                | **Frozen at v1.7**           |
 | v1.8.0  | Experiment harness (config-driven driver + manifest + replay gate, no new behavior) | **Tagged `v1.8-public-release`** |
-| v1.8.x  | Endogenous activity infrastructure (interactions / routines / attention / variables / exposures / chain harness / trace report) | Shipped (1341 tests) |
-| v1.8.16 | Freeze / readiness / docs                                                        | **In progress**              |
-| v1.9.0  | Living Reference World Demo (multi-period sweep)                                 | Next                         |
-| v1.9.last | First lightweight public prototype                                             | Planned                      |
+| v1.8.x  | Endogenous activity infrastructure (interactions / routines / attention / variables / exposures / chain harness / trace report) | Shipped |
+| v1.8.16 | Freeze / readiness / docs                                                        | Shipped                      |
+| v1.9.0–v1.9.8 | Living reference world + three review-only mechanisms + performance boundary | Shipped                      |
+| **v1.9.last** | **Public prototype freeze**                                                  | **Shipped (1626 tests)**     |
 | v2.xx   | Japan public calibration                                                         | Not started                  |
 | v3.xx   | Japan proprietary / commercial calibration                                       | Not started                  |
 
@@ -388,8 +452,13 @@ Start here:
   — v1.8 milestone-by-milestone summary
 - [docs/v1_9_living_reference_world_plan.md](japan-financial-world/docs/v1_9_living_reference_world_plan.md)
   — next milestone (Living Reference World Demo)
+- [docs/v1_9_public_prototype_summary.md](japan-financial-world/docs/v1_9_public_prototype_summary.md)
+  — single-page reader summary of what v1.9.last freezes (and
+  what it does not claim)
 - [docs/public_prototype_plan.md](japan-financial-world/docs/public_prototype_plan.md)
-  — v1.9.last public-prototype target
+  — v1.9.last public-prototype target + acceptance criteria
+- [docs/performance_boundary.md](japan-financial-world/docs/performance_boundary.md)
+  — loop shapes, demo discipline, sparse-gating principles
 - [docs/fwe_reference_demo_design.md](japan-financial-world/docs/fwe_reference_demo_design.md)
   — reference demo, replay-determinism gate, manifest design
 - [docs/v1_experiment_harness_design.md](japan-financial-world/docs/v1_experiment_harness_design.md)
@@ -429,7 +498,7 @@ Start here:
 
 **Tests:**
 - [docs/test_inventory.md](japan-financial-world/docs/test_inventory.md)
-  — 1341 tests grouped by component (444 v0 + 188 v1.0–v1.7 + 709 post-v1.7)
+  — 1626 tests grouped by component (444 v0 + 188 v1.0–v1.7 + 994 post-v1.7)
 
 **Long-form / original ambition (kept for reference):**
 - [docs/architecture.md](japan-financial-world/docs/architecture.md) —

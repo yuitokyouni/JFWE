@@ -22,6 +22,35 @@ Each readiness review records its result here so the next reviewer
 can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
+- **Date:** 2026-05-02
+- **Target:** v1.9.last public prototype freeze. The v1.8.0 public
+  release (`v1.8-public-release` at commit `7fa2c42`) remains
+  unchanged; v1.9.last freezes the v1.9 living reference world
+  as the headline runnable artifact on top of that earlier
+  release.
+- **Status:** docs + tests frozen. The freeze is conditional on
+  CI being green on the commit being tagged.
+- **Local results (v1.9.last):**
+  - `pytest -q` → 1626 passed
+  - `compileall world spaces tests examples` → clean
+  - `ruff check .` (repo root) → clean
+  - `python -m examples.reference_world.run_living_reference_world`
+    → produces `[setup]` / `[period N]` / `[ledger]` trace;
+    re-run yields byte-identical output
+  - `... --markdown` → appends v1.9.1 deterministic Markdown report;
+    re-run yields byte-identical output
+  - `... --manifest /tmp/lw.json` → writes
+    `living_world_manifest.v1` JSON; two runs into different
+    paths diff to zero (modulo path)
+  - Forbidden-token scan (word-boundary against
+    `world/experiment.py::_FORBIDDEN_TOKENS`) → no hits in any
+    object id, signal id, or example output
+  - Public-wording audit → no "predicts markets",
+    "production-ready", "Japan market simulator", buyout-target,
+    or similar marketing framings in `README.md` or `docs/*.md`
+
+#### v1.8.0 historical snapshot (unchanged)
+
 - **Date:** 2026-05-01
 - **Tag:** `v1.8-public-release`, pointing at commit `7fa2c42`
   ("ci: trigger workflow on version-tag pushes"). The same commit
@@ -89,9 +118,9 @@ new review is performed.
   use. Adopting PyYAML 7.x is a deliberate version-bump milestone
   and should not happen by an unpinned upgrade.
 - [ ] `pytest -q` from `japan-financial-world/` reports the expected
-  passing total (currently `725 passed` at v1.8 + the post-rc1
-  CI fix, including the replay-determinism, manifest,
-  experiment-harness, and catalog-shape test files).
+  passing total. v1.8 + post-rc1 CI fix: `725 passed`. v1.9.last
+  freeze: `1626 passed`. Use the count of the milestone being
+  tagged; mismatch means the tree is not the freeze tree.
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).
@@ -231,25 +260,79 @@ public-release gate above is fully green *and* the prototype-
 specific items below are all true. v1.9.last is a public *prototype*
 (synthetic-only, CLI-first, explainability-first), not a fresh
 public release of unrelated material — see
-[`japan-financial-world/docs/public_prototype_plan.md`](japan-financial-world/docs/public_prototype_plan.md).
+[`japan-financial-world/docs/public_prototype_plan.md`](japan-financial-world/docs/public_prototype_plan.md)
+and the single-page reader summary at
+[`japan-financial-world/docs/v1_9_public_prototype_summary.md`](japan-financial-world/docs/v1_9_public_prototype_summary.md).
 
-- [ ] **One-command demo.** From a clean clone, after
-  `pip install -e ".[dev]"` and `cd japan-financial-world`,
-  `python -m examples.reference_world.run_endogenous_chain --markdown`
-  produces a complete operational trace plus a deterministic
-  Markdown ledger trace report. The two outputs are byte-identical
-  across consecutive invocations.
+### Code health (v1.9.last)
+
+- [ ] `pytest -q` from `japan-financial-world/` → `1626 passed`.
+- [ ] `python -m compileall world spaces tests examples` → clean.
+- [ ] `ruff check .` from repo root → clean.
+- [ ] `gitleaks detect --redact --log-opts="--all"` (or
+  `--no-git --source .` if the working tree is the artifact)
+  → zero leaks. If gitleaks is not installed locally, document
+  the equivalent CI run.
+
+### Demo gates (v1.9.last)
+
+- [ ] **One-command demo (operational trace).** From a clean
+  clone, after `pip install -e ".[dev]"` and `cd japan-financial-world`:
+
+  ```bash
+  python -m examples.reference_world.run_living_reference_world
+  ```
+
+  produces a `[setup]` / `[period N]` / `[ledger]` trace;
+  two consecutive runs produce byte-identical CLI output.
+
+- [ ] **Markdown report.**
+
+  ```bash
+  python -m examples.reference_world.run_living_reference_world --markdown
+  ```
+
+  appends the v1.9.1 deterministic Markdown ledger trace
+  report; two consecutive runs produce byte-identical CLI +
+  Markdown output. The hard-boundary statement appears verbatim
+  in the Markdown (`no investment advice`).
+
+- [ ] **Manifest generation.**
+
+  ```bash
+  python -m examples.reference_world.run_living_reference_world \
+      --manifest /tmp/fwe_living_world_manifest.json
+  ```
+
+  writes a v1.9.2 `living_world_manifest.v1` JSON; running twice
+  into different paths and diffing yields zero changes (modulo
+  path). `manifest_version == "living_world_manifest.v1"`,
+  `run_type == "living_reference_world"`,
+  `infra_record_count + per_period_record_count_total ==
+  created_record_count`, `git_status` is `"ok"` /
+  `"git_unavailable"` / `"not_a_repo"` (never `"error"`).
+
+### Scope and wording gates (v1.9.last)
+
 - [ ] **README scope read.** The first ~60 seconds of `README.md`
   state, accurately and without marketing language, that the
   project is research software, not a market predictor or
   investment advisor; that all data is synthetic; that Japan
-  calibration is v2 / v3 territory.
+  calibration is v2 / v3 territory. The "Current public
+  prototype (v1.9.last)" section is present and accurate.
+- [ ] **Hard-boundary language present.** README, reference-world
+  README, public-prototype plan, public-prototype summary, and
+  the v1.9.1 Markdown report each state explicitly: no price
+  formation, no trading, no lending decisions, no firm
+  financial-statement updates, no canonical valuation, no
+  Japan calibration, no real data, no investment advice.
 - [ ] **Public / private boundary agreement.** `README.md`,
   `SECURITY.md`,
   [`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md),
   [`docs/v1_8_release_summary.md`](japan-financial-world/docs/v1_8_release_summary.md),
+  [`docs/public_prototype_plan.md`](japan-financial-world/docs/public_prototype_plan.md),
   and
-  [`docs/public_prototype_plan.md`](japan-financial-world/docs/public_prototype_plan.md)
+  [`docs/v1_9_public_prototype_summary.md`](japan-financial-world/docs/v1_9_public_prototype_summary.md)
   agree on what is public, what is private, and where the seam is.
 - [ ] **Forbidden-token scan clean.** A word-boundary scan for the
   canonical token list at `world/experiment.py::_FORBIDDEN_TOKENS`

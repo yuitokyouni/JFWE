@@ -1,8 +1,9 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.9.8** (`Performance Boundary /
-Sparse Traversal Discipline` — discipline milestone, no new
-behaviour): `1626 / 1626 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
+Snapshot of the test suite at **v1.9.last** (`Public Prototype
+Freeze` — docs-only milestone freezing the v1.9 living reference
+world as the public prototype; no test count change from v1.9.8):
+`1626 / 1626 passing` (444 v0 + 188 v1.0-v1.7 frozen reference + 911
 post-v1.7 additions covering reference demo, replay, manifest,
 catalog-shape, experiment harness, renamed WorldID tests,
 interactions, routines, attention, routine engine, the

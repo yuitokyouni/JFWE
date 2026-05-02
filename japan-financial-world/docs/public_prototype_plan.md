@@ -1,8 +1,15 @@
 # Public Prototype Plan — v1.9.last
 
-> **Status:** plan-only. v1.9.last has not been tagged.
+> **Status:** v1.9.last freeze landed 2026-05-02. The repository
+> contents have been frozen as the v1.9 public prototype; tagging
+> is the downstream gate in `RELEASE_CHECKLIST.md` and depends on
+> CI being green on the commit being tagged.
 > This document defines what "public prototype" means for this
-> project and what gates a v1.9.last tag must clear.
+> project, what gates the v1.9.last tag must clear, and how the
+> freeze maps to the runnable surface.
+>
+> For the single-page reader summary see
+> [`v1_9_public_prototype_summary.md`](v1_9_public_prototype_summary.md).
 
 ## What "public prototype" means here
 

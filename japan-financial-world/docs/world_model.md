@@ -5749,8 +5749,8 @@ The budget guard is now ≥ 148 (per-period × 4) and ≤ 280.
 | v1.9.5 Reference Valuation Refresh Lite Mechanism | Code (§65). | Shipped |
 | v1.9.6 Living-world Mechanism Integration | Code (§66). | Shipped |
 | v1.9.7 Reference Bank Credit Review Lite Mechanism | Code (§67). | Shipped |
-| **v1.9.8 Performance Boundary / Sparse Traversal Discipline** | Docs + tests (§68). | **Shipped** |
-| v1.9.last | First lightweight public prototype. | Next |
+| v1.9.8 Performance Boundary / Sparse Traversal Discipline | Docs + tests (§68). | Shipped |
+| **v1.9.last Public Prototype Freeze** | Docs-only (§69). | **Shipped** |
 
 
 
@@ -5864,5 +5864,99 @@ A realistic origination workflow — *firm funding request → bank underwriting
 | --- | --- | --- |
 | v1.9.6 Living-world Mechanism Integration | Code (§66). | Shipped |
 | v1.9.7 Reference Bank Credit Review Lite Mechanism | Code (§67). | Shipped |
-| **v1.9.8 Performance Boundary / Sparse Traversal Discipline** | Docs + tests (§68). | **Shipped** |
-| v1.9.last | First lightweight public prototype. | Next |
+| v1.9.8 Performance Boundary / Sparse Traversal Discipline | Docs + tests (§68). | Shipped |
+| **v1.9.last Public Prototype Freeze** | Docs-only (§69). | **Shipped** |
+
+
+## 69. v1.9.last Public Prototype Freeze
+
+### 69.1 Purpose
+
+§69 is a **freeze**, not a behaviour milestone. The runtime, the kernel, and every mechanism are unchanged. v1.9.last consolidates v1.9.0 through v1.9.8 into a coherent reader-facing public prototype: synthetic-only, CLI-first, deterministic, explainability-first, and explicitly *not* a forecasting or investment-advice tool.
+
+The motivation is simple. Through v1.9.0 → v1.9.8 the project added enough capability that a first-time reader can now *run* the engine end-to-end and see meaningful ledger activity — corporate reports, pressure assessments, valuations, credit-review notes, attention divergence, review routines — all reconstructable from a single append-only ledger. v1.9.last is the milestone that says: *that is the public prototype*. Stop adding capability sideways; freeze the framing; document what is and is not claimed; let CI verify the freeze.
+
+### 69.2 What lands at v1.9.last
+
+- `docs/v1_9_public_prototype_summary.md` — single-page reader-facing summary covering: what v1.9.last *is* (the lightweight public prototype), what is frozen (CLI surface, default fixture, per-period flow, reproducibility surface, performance boundary, test surface, scope language), what v1.9.last does **not** claim (12-item normative list), how to verify locally in a few minutes, and the next path after v1.9.last.
+- `README.md` (repo root) — adds a "Current public prototype (v1.9.last)" section near the top with the one-command demo block, the per-period flow table, the default fixture, the per-period and per-run record budgets, and the explicit "what v1.9.last deliberately does NOT do" list. Roadmap row flips to Shipped (1626 tests).
+- `RELEASE_CHECKLIST.md` — refreshed v1.9.last public prototype gate. Splits the gate into Code health (pytest 1626 / compileall / ruff / gitleaks), Demo (operational trace / Markdown / manifest, each byte-deterministic across runs), and Scope and wording (README scope read, hard-boundary language, public/private agreement, forbidden-token scan, no proprietary content, no investment-advice framings, CI green on the tag commit). Renames the headline expected-test count from `725` to `1626`. v1.8.0's historical readiness snapshot is preserved unchanged.
+- `docs/public_prototype_plan.md` — flipped from "plan-only" to "v1.9.last freeze landed".
+- `docs/v1_9_living_reference_world_plan.md` — appended a "v1.9.last — what shipped" section.
+- `docs/fwe_reference_demo_design.md` — added a v1.9.last update note clarifying that the headline runnable artifact is now `run_living_reference_world.py`, not the v1.7-era one-shot demo.
+- `examples/reference_world/README.md` — promoted the living reference world to the headline demo, with the per-period flow table and the eight-flag hard boundary.
+- `docs/test_inventory.md` — bumped the headline to v1.9.last (test count unchanged at 1626).
+
+### 69.3 What is frozen by v1.9.last
+
+The freeze surface is intentionally narrow:
+
+- **The CLI surface.** Three reproducible entry points:
+  ```bash
+  python -m examples.reference_world.run_living_reference_world
+  python -m examples.reference_world.run_living_reference_world --markdown
+  python -m examples.reference_world.run_living_reference_world --manifest /tmp/fwe_living_world_manifest.json
+  ```
+  Two consecutive runs are byte-identical for each mode.
+- **The default fixture.** 3 firms × 2 investors × 2 banks × 4 periods. All identifiers `*_reference_*`. All numbers illustrative round numbers.
+- **The per-period flow.** corporate quarterly reporting → firm operating-pressure assessment (v1.9.4) → heterogeneous investor / bank attention → valuation refresh lite (v1.9.5) → bank credit review lite (v1.9.7) → investor / bank review routines.
+- **The reproducibility surface.** v1.9.1 Markdown report and v1.9.2 `living_world_manifest.v1` JSON manifest with SHA-256 `living_world_digest`. Both byte-deterministic.
+- **The performance boundary.** Per-period 37 records, per-run total `[148, 180]`. Bounded all-pairs loops `O(P × I × F)` and `O(P × B × F)` allowed only because the fixture is small and synthetic. Production-scale traversal must be sparse and gated; see §68.
+- **The test surface.** 1626 / 1626 passing. `compileall` clean. `ruff check .` clean.
+- **The scope language.** README, reference-world README, public-prototype plan, public-prototype summary, performance-boundary doc, and `RELEASE_CHECKLIST.md` all agree on what the prototype is and is not.
+
+### 69.4 What v1.9.last does NOT claim
+
+Normative; the freeze is conditional on every line remaining true:
+
+- **Not a forecast.** No prediction of markets, prices, returns, defaults, or any real-world quantity.
+- **Not investment advice.** No direct ("buy X") or indirect ("a portfolio with exposure E would experience O") framing in code, docs, or demo output.
+- **No price formation.** No order matching, no microstructure, no `PRICE_UPDATED` records.
+- **No trading.** Investor portfolios are static. No `ORDER_SUBMITTED` records.
+- **No lending decisions.** v1.9.7 produces *bank credit review notes* — diagnostic signals, not loan approvals, rejections, or originations. No `CONTRACT_CREATED` / `CONTRACT_STATUS_UPDATED` / `CONTRACT_COVENANT_BREACHED` / `OWNERSHIP_TRANSFERRED` records on the default sweep.
+- **No firm financial-statement updates.** v1.9.4 is pressure assessment, not bookkeeping.
+- **No canonical valuations.** v1.9.5 produces one valuer's opinionated synthetic claim per `(investor, firm, period)`, stamped `no_price_movement` / `no_investment_advice` / `synthetic_only`.
+- **No Japan calibration.** Forbidden-token scan against `world/experiment.py::_FORBIDDEN_TOKENS` is clean. v2 has not started.
+- **No real data.** No public-data feeds wired. No paid feeds. No expert-interview content. Every fixture is a constant.
+- **No scenarios.** No stress logic, no shock injection, no scenario branching, no policy reaction function.
+- **No production-scale traversal.** Demo-bounded all-pairs loops only. See §68.
+- **No native rewrite.** Python is adequate. No C++ / Julia / Rust / GPU work in scope.
+- **No web UI.** CLI is the interface. No hosted service.
+
+### 69.5 Position vs prior v1.8 release
+
+v1.8.0 was tagged `v1.8-public-release` at commit `7fa2c42` and remains unchanged. v1.9.last is layered on top:
+
+- v1.8.0's public release shipped the v1.7 reference financial system + the v1.8 experiment harness. The endogenous activity stack was v1.8.x in-progress; the demo was a single-day causal trace.
+- v1.9.last ships the **endogenous activity stack as the demo**, with the v1.9 multi-period sweep + three review-only mechanisms in front. A reader visiting the repo at v1.9.last sees `run_living_reference_world.py` as the headline capability, not a record-types tour.
+
+The repo's existing public-release gate covers v1.9.last (its checks are framing-neutral); v1.9.last adds the Public-prototype-specific gate as a separate section in `RELEASE_CHECKLIST.md`.
+
+### 69.6 v1.9.last success criteria
+
+§69 is complete when **all** hold:
+
+1. `docs/v1_9_public_prototype_summary.md` exists and covers the four sections: what v1.9.last *is*, what is frozen, what is NOT claimed, how to verify, position in the version sequence, next path after v1.9.last.
+2. `README.md` has a "Current public prototype (v1.9.last)" section with the one-command demo block, the per-period flow table, the default fixture, and the explicit anti-claim list.
+3. `RELEASE_CHECKLIST.md` has a v1.9.last-specific gate covering Code health, Demo (operational / Markdown / manifest), and Scope and wording.
+4. `docs/public_prototype_plan.md` is no longer "plan-only".
+5. `docs/v1_9_living_reference_world_plan.md` carries a "v1.9.last — what shipped" section.
+6. `docs/world_model.md` carries this §69.
+7. The full test suite passes (`1626 / 1626`).
+8. `compileall world spaces tests examples` is clean and `ruff check .` from the repo root is clean.
+9. The forbidden-token word-boundary scan is clean.
+10. No marketing language ("predicts markets", "production-ready", "Japan market simulator", buyout-target, etc.) appears in `README.md` or any `docs/*.md`.
+
+### 69.7 Anti-scope
+
+§69 deliberately does **not** add: any new economic behaviour, any new mechanism, any new `MechanismAdapter`, any new ledger record type, any new book; price formation, trading, lending decisions, loan origination, covenant enforcement, contract or constraint mutation; native (C++ / Julia / Rust / GPU) rewrites; profiling harnesses or benchmark suites; web UI; Japan calibration; real-data ingestion. v1.9.last is documentation only.
+
+### 69.8 Position in the v1.9 sequence
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| v1.9.6 Living-world Mechanism Integration | Code (§66). | Shipped |
+| v1.9.7 Reference Bank Credit Review Lite Mechanism | Code (§67). | Shipped |
+| v1.9.8 Performance Boundary / Sparse Traversal Discipline | Docs + tests (§68). | Shipped |
+| **v1.9.last Public Prototype Freeze** | Docs-only (§69). | **Shipped** |
+| v2.0 Japan public-data calibration design gate | — | Not started |

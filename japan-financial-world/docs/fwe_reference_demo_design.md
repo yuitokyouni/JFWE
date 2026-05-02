@@ -510,3 +510,23 @@ a v1+ behavioral milestone, not an extension of this demo.
 No file under `world/`, `spaces/`, or any existing test file is
 modified. The 632 / 632 v0 + v1 test count grows by the number of
 new demo tests; no existing test is changed.
+
+### Update — v1.9.last public prototype freeze
+
+> v1.9.last is the **public prototype freeze** of the v1.9 living
+> reference world. It is a docs-only milestone: no `world/`,
+> `spaces/`, or test file is modified. What lands at v1.9.last is
+> a reader-facing freeze of what the public prototype is and what
+> it does not claim to be. The headline runnable artifact for
+> v1.9.last is `run_living_reference_world.py` (the multi-period
+> sweep), not the v1.7-era one-shot demo described in this
+> document. The v1.7-era reference demo, the manifest, and the
+> replay-determinism gate remain unchanged; v1.9.last is layered
+> on top.
+>
+> See [`v1_9_public_prototype_summary.md`](v1_9_public_prototype_summary.md)
+> for the single-page reader summary, [`public_prototype_plan.md`](public_prototype_plan.md)
+> for the gate definitions, [`performance_boundary.md`](performance_boundary.md)
+> for the loop-shape discipline, and `RELEASE_CHECKLIST.md`'s
+> "Public prototype gate (v1.9.last)" section for the local
+> verification commands.

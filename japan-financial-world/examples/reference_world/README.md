@@ -1,34 +1,60 @@
 # FWE Reference Demos
 
-Three synthetic, jurisdiction-neutral demos sit in this directory:
+Three synthetic, jurisdiction-neutral demos sit in this directory.
+The **headline demo at v1.9.last** is the multi-period living
+reference world; the older single-shot demos are kept as smaller
+explainers and as reproducibility baselines for earlier releases.
 
-1. **v1.6 reference loop** (`run_reference_loop.py`) — the original
-   one-shot causal trace: external observation → signal →
-   valuation → comparator → institutional action → follow-up
-   signal → event → next-tick delivery.
+1. **v1.9 living reference world** (`run_living_reference_world.py`)
+   — **the v1.9.last public prototype headline.** A multi-period
+   sweep: 4 quarters × 3 firms / 2 investors / 2 banks. Each
+   period runs corporate quarterly reporting → firm
+   operating-pressure assessment (v1.9.4) → heterogeneous
+   investor / bank attention → valuation refresh lite (v1.9.5) →
+   bank credit review lite (v1.9.7) → investor / bank review
+   routines. Output is a compact `[setup]` / `[period N]` /
+   `[ledger]` trace; `--markdown` appends the v1.9.1
+   deterministic Markdown report; `--manifest path` writes a
+   v1.9.2 reproducibility manifest with a SHA-256
+   `living_world_digest`. Two consecutive runs are byte-identical
+   for each mode. Per-period writes 37 ledger records; a full
+   default 4-period run total sits in `[148, 180]` records.
 2. **v1.8.14 endogenous chain** (`run_endogenous_chain.py`) — the
    non-shock chain shipped by the v1.8 stack: corporate quarterly
    reporting → heterogeneous investor / bank attention → investor /
-   bank review → ledger trace report. **No external observation is
-   required, and no shock is applied.** With `--markdown` the v1.8.15
-   reporter renders a deterministic Markdown summary of every
-   record the chain wrote.
-3. **v1.9.0 living reference world** + **v1.9.1 trace report**
-   (`run_living_reference_world.py`) — the multi-period sweep: 4
-   quarters × 3 firms / 2 investors / 2 banks. Each quarter every
-   firm publishes a synthetic report, the investor and the bank
-   rebuild their menus, their selections diverge, and both run a
-   review routine. Output is a compact `[setup]` / `[period N]` /
-   `[ledger]` trace. With `--markdown` the v1.9.1 reporter
-   appends a deterministic Markdown report covering setup, infra
-   prelude, per-period table, attention divergence, ledger
-   event-type counts, warnings, and the mandatory hard-boundary
-   statement.
+   bank review → ledger trace report. Single-period explainer.
+   With `--markdown` the v1.8.15 reporter renders a deterministic
+   Markdown summary of every record the chain wrote.
+3. **v1.6 reference loop** (`run_reference_loop.py`) — the original
+   one-shot causal trace, kept as the v1.7-era manifest /
+   replay-determinism baseline: external observation → signal →
+   valuation → comparator → institutional action → follow-up
+   signal → event → next-tick delivery.
 
-Both demos are research artifacts. **Neither is a market predictor,
-investment advice, or a calibrated Japan model.** Every entity name
-uses the `*_reference_*` synthetic naming convention. Every numeric
-value is an illustrative round number, not a measurement.
+All three are research artifacts. **None is a market predictor,
+investment advice, or a calibrated Japan model.** Every entity
+name uses the `*_reference_*` synthetic naming convention. Every
+numeric value is an illustrative round number, not a measurement.
+
+**v1.9.last public prototype: what runs each period and what is
+explicitly out of scope.**
+
+| Phase                                       | Source        |
+| ------------------------------------------- | ------------- |
+| Corporate quarterly reporting               | v1.8.7        |
+| Firm operating-pressure assessment          | v1.9.4 mech   |
+| Heterogeneous investor / bank attention     | v1.8.11/12    |
+| Valuation refresh lite                      | v1.9.5 mech   |
+| Bank credit review lite                     | v1.9.7 mech   |
+| Investor / bank review routines             | v1.8.13       |
+| Ledger trace report                         | v1.9.1        |
+| Replay / manifest / digest                  | v1.9.2        |
+
+**Hard boundary (v1.9.last).** No price formation. No trading. No
+lending decisions, loan origination, or covenant enforcement. No
+contract or constraint mutation. No firm financial-statement
+updates. No canonical valuations. No Japan calibration. No real
+data. No scenarios. No investment advice — direct or indirect.
 
 ## What is in this directory
 
