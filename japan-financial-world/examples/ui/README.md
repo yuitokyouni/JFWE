@@ -119,6 +119,55 @@ portfolio allocations / financing approvals / loan approvals /
 real data / Japan calibration / LLM execution / stochastic
 behaviour probabilities / learned models.
 
+### v1.17.0 design pointer (forward look)
+
+v1.17 is the **presentation and inspection layer** designed
+on top of the v1.16 closed loop. The full design lives in
+[`../../docs/v1_17_ui_report_temporal_display_design.md`](../../docs/v1_17_ui_report_temporal_display_design.md).
+v1.17.0 is **docs-only** (no executable code, no tests, no
+new ledger event types, no behavior change); the
+`living_world_digest` and pytest count are unchanged from
+v1.16.last.
+
+The v1.17 sequence introduces three time concepts that must
+be kept strictly separate:
+
+| Concept                | Frequency                | What it represents                                    |
+| ---------------------- | ------------------------ | ----------------------------------------------------- |
+| `simulation_period`    | Quarterly (default)      | The actual living-world update tick (economic state). |
+| `reporting_calendar`   | Monthly / daily-like     | A display-only axis used for inspection.              |
+| `display_series`       | Same axis as `reporting_calendar` | Synthetic UI series derived from existing labels and records. |
+
+The `simulation_period` is the **only** economic clock. The
+monthly / daily-like axis is a **reading aid**, not a
+higher-frequency simulation. A reviewer who asks *"does FWE
+run daily?"* must be able to read off *"no — the daily-like
+axis is a display rendering of the quarterly economic clock"*
+from any v1.17.4 page footer.
+
+The v1.17 sequence will land in this directory in five small
+steps:
+
+| Milestone   | What                                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| v1.17.0     | Design (this pointer + the design doc above). **Shipped (docs-only).**                                      |
+| v1.17.1     | `ReferenceTimelineSeries` / `SyntheticDisplayPath` / `ReportingCalendar` + monthly / daily-like expansion helper. |
+| v1.17.2     | `RegimeComparisonPanel` + side-by-side markdown panels for the v1.11.2 regime presets.                      |
+| v1.17.3     | `EventAnnotationRecord` + `CausalTimelineAnnotation` walking the v1.16 closed-loop citations.               |
+| v1.17.4     | UI workbench polish — wires v1.17.1 / v1.17.2 / v1.17.3 outputs into this mockup; adds Attention "what changed" diff, cross-tab click-through. |
+| v1.17.last  | Inspection-layer freeze (docs-only).                                                                        |
+
+The hard naming boundary is binding from v1.17.0. **Allowed**
+display kinds: `synthetic_display_index` / `reference_timeline` /
+`indicative_pressure_path` / `event_annotation` /
+`causal_timeline` / `regime_comparison` / `attention_focus_density` /
+`display_series` / `reporting_calendar`. **Forbidden** (will be
+test-pinned at v1.17.1+): `market_price` / `predicted_index` /
+`predicted_path` / `expected_return` / `target_price` /
+`forecast_path` / `forecast_index` / `real_price_series` /
+`actual_price` / `quoted_price` / `last_trade` / `nav` /
+`index_value` / `benchmark_value` / `valuation_target`.
+
 These advance independently. The prototype version is
 intentionally lower than the runtime version because the
 prototype shows engine behaviour at a snapshot — not a 1:1

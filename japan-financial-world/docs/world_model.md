@@ -9314,3 +9314,41 @@ v1.16.last freezes the public-FWE endogenous market-intent feedback layer. The n
 - **Future price formation.** Out of scope until the v1.16 market-intent feedback layer is easier to inspect — i.e., until the v1.17 workbench / scenario library make the loop's causal structure operationally legible.
 
 The v1.16 chain stays bounded and label-only forever. Future milestones may *cite* the v1.16 records (plain-id cross-references, additional citation slots), but they may **never** mutate the v1.16 vocabulary, replace the deterministic rule helpers with stochastic ones, or introduce execution paths on top of the closed loop.
+
+## 119. v1.17.0 UI / Report / Temporal Display — design pointer
+
+§119 opens the v1.17 sequence: a **presentation and inspection layer** for the v1.16 closed endogenous-market-intent feedback loop. The v1.17 layer makes the system easier to inspect and demo — it does **not** add new economic behavior, **not** add trading, **not** add price formation, **not** add a daily economic clock, **not** ingest real data, **not** add Japan calibration, **not** run an LLM, **not** introduce learned or stochastic behavior.
+
+The full design is in [`v1_17_ui_report_temporal_display_design.md`](v1_17_ui_report_temporal_display_design.md). The headline points pinned by v1.17.0:
+
+- **Three time concepts kept strictly separate.**
+  - `simulation_period` — the actual living-world update tick (quarterly). Economic state.
+  - `reporting_calendar` — a monthly / daily-like display axis for inspection. **Display-only; no new records, no new decisions.**
+  - `display_series` — synthetic UI series derived deterministically from existing labels and records. **Renderings, not measurements.**
+- **Display-layer object vocabulary** (closed-set, immutable, never registered with the ledger): `ReferenceTimelineSeries`, `SyntheticDisplayPath`, `EventAnnotationRecord`, `CausalTimelineAnnotation`, `RegimeComparisonPanel`. Every display object is an idempotent function of cited kernel records; the display module imports only the read-only book interface (`get_*`, `list_*`, `snapshot`) and never any `add_*` method.
+- **Hard naming boundary.** Allowed: `synthetic_display_index` / `reference_timeline` / `indicative_pressure_path` / `event_annotation` / `causal_timeline` / `regime_comparison` / `attention_focus_density` / `display_series` / `reporting_calendar`. Forbidden (binding): `market_price` / `predicted_index` / `predicted_path` / `expected_return` / `target_price` / `forecast_path` / `forecast_index` / `real_price_series` / `actual_price` / `quoted_price` / `last_trade` / `nav` / `index_value` / `benchmark_value` / `valuation_target`. The forbidden list is disjoint from the v1.16 forbidden trade-instruction verbs.
+- **Per-milestone roadmap.** v1.17.0 design (this); v1.17.1 `ReferenceTimelineSeries` / `SyntheticDisplayPath` / `ReportingCalendar` plus the deterministic monthly / daily-like expansion helper; v1.17.2 `RegimeComparisonPanel` + side-by-side markdown panels for the v1.11.2 regime presets; v1.17.3 `EventAnnotationRecord` + `CausalTimelineAnnotation` walking the v1.16 closed-loop citations; v1.17.4 UI workbench polish (wires v1.17.1 / v1.17.2 / v1.17.3 outputs into [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html), adds the Attention "what changed" diff strip and cross-tab click-through); v1.17.last freeze.
+- **Page-level target.** Every v1.17.4 page must answer five inspection questions: *what happened*, *which actor saw what*, *which evidence changed*, *which intent / review / pressure changed (and why, citing which prior-period record)*, *what changed in the next period*. Attention page renders previous / new / dropped / reinforced focus plus the source of change. Outputs page renders one wide synthetic display index per security plus annotated event ticks plus a causal summary table. Ledger page renders selected record + parent evidence + downstream records + pinned digest. Regime Comparison page renders two or three named regimes side by side with closed-set comparison axes.
+- **Monthly / daily-like display expansion.** Each `simulation_period` is mapped to a contiguous block on the `reporting_calendar`; the display value at each tick is a deterministic interpolation of two adjacent quarterly values that already exist in the kernel records. The expansion is a **reading aid**, not a higher-frequency simulation. A v1.17.1 trip-wire test will pin that running the expansion on the default fixture leaves the kernel byte-identical and that the `living_world_digest` does not move.
+
+### 119.1 Performance boundary at v1.17.0
+
+v1.17.0 is docs-only. Per-period record count, per-run window, default 4-period sweep total, `living_world_digest`, and pytest count are **all unchanged from v1.16.last**:
+
+| Surface                                            | Value (v1.17.0 = v1.16.last)                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------ |
+| Per-period record count (default fixture)          | **108** (period 0) / **110** (periods 1+)                                 |
+| Per-run window (default 4-period fixture)          | **`[432, 480]`**                                                          |
+| Default 4-period sweep                             | **460 records**                                                           |
+| Integration-test `living_world_digest` (canonical) | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**    |
+| Test count (`pytest -q`)                           | **4033 / 4033**                                                          |
+
+### 119.2 Hard boundary (carried forward verbatim from v1.16.last)
+
+This is **inspection, not market trading**. This is **rendering, not price formation**. This is **a reading aid, not a higher-frequency simulation**. This is **synthetic display, not real data**.
+
+No order submission. No buy / sell labels. No order book. No matching. No execution. No clearing. No settlement. No quote dissemination. No bid / ask. No price update. No `PriceBook` mutation. No target price. No expected return. No recommendation. No portfolio allocation. No real exchange mechanics. No financing execution. No loan approval. No bond / equity issuance. No underwriting. No syndication. No pricing. No interest rate. No spread. No coupon. No fee. No offering price. No investment advice. No real data. No Japan calibration. No LLM execution. No stochastic behaviour probabilities. No learned model. **No market price. No predicted index. No expected return. No target price. No forecast path. No real price series.**
+
+### 119.3 Forward pointer
+
+v1.17.last freezes the inspection layer. The next roadmap candidates remain v1.18 (scenario library / exogenous event templates), v2.0 (Japan public calibration in private JFWE only), and a future-price-formation gate that **stays out of scope** until v1.17 / v1.18 make the v1.16 loop's causal structure operationally legible.
