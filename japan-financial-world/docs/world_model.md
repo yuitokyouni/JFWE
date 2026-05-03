@@ -8805,3 +8805,56 @@ v1.15.3 ships per-venue / per-security aggregation. The next milestone is **v1.1
 - **v1.15.5** — living-world integration (digest moves by design).
 - **v1.15.6** — v1.14 feedback wiring (capital-structure-review and financing-path cite pressure ids).
 - **v1.15.last** — freeze.
+
+## 110. v1.15.4 IndicativeMarketPressureRecord — per-security indicative pressure
+
+§110 ships the fourth concrete code milestone in the v1.15 sequence. v1.15.4 is **storage + a deterministic mapping helper**: an append-only `IndicativeMarketPressureBook` that holds immutable `IndicativeMarketPressureRecord` instances summarising one security's market-interest pressure derived from one or more cited `AggregatedMarketInterestRecord` instances, plus a `build_indicative_market_pressure` helper that synthesises the record deterministically. There is **no price formation, no price update, no `PriceBook` mutation, no order book, no order imbalance, no order submission, no bid / ask, no quote dissemination, no matching, no execution, no clearing, no settlement, no target price, no expected return, no recommendation, no investment advice, no real data ingestion, no Japan calibration**.
+
+### 110.1 What v1.15.4 ships
+
+A new module `world/market_pressure.py` containing:
+
+- `IndicativeMarketPressureRecord` (frozen dataclass) — fields: `market_pressure_id`, `security_id`, `as_of_date`, **five closed-set-enforced pressure labels** (`demand_pressure_label` / `liquidity_pressure_label` / `volatility_pressure_label` / `market_access_label` / `financing_relevance_label`), `status`, `visibility`, `confidence` in `[0.0, 1.0]` (booleans rejected), four plain-id source-tuple slots (`source_aggregated_interest_ids`, `source_market_environment_state_ids`, `source_security_ids`, `source_venue_ids`), `metadata`. The `security_id` is a plain-id cross-reference and not validated against any other book.
+- `IndicativeMarketPressureBook` (append-only) — `add_record` / `get_record` / `list_records` / `list_by_security` / `list_by_date` / `list_by_demand_pressure` / `list_by_liquidity_pressure` / `list_by_volatility_pressure` / `list_by_market_access` / `list_by_status` / `list_by_source_aggregated_interest` / `snapshot`.
+- New ledger record type `INDICATIVE_MARKET_PRESSURE_RECORDED`, emitted exactly once per `add_record` call with `source = security_id` so the ledger graph reads as 'security S has indicative market pressure P'.
+- Wired into `WorldKernel.indicative_market_pressure`.
+- Deterministic builder `build_indicative_market_pressure(kernel, security_id, as_of_date, source_aggregated_interest_ids, …)` that synthesises one record from cited ids without iterating the aggregated-interest book globally.
+
+Closed-set label vocabulary (enforced):
+
+- `demand_pressure_label` ∈ { `supportive`, `balanced`, `cautious`, `adverse`, `mixed`, `insufficient_observations`, `unknown` }
+- `liquidity_pressure_label` ∈ { `ample`, `normal`, `thin`, `tight`, `stressed`, `unknown` }
+- `volatility_pressure_label` ∈ { `calm`, `elevated`, `stressed`, `unknown` }
+- `market_access_label` — **same frozenset object as v1.14.3** `CapitalStructureReviewCandidate.MARKET_ACCESS_LABELS` ({ `open`, `selective`, `constrained`, `closed`, `unknown` }). Pinned by an `is`-identity test so any drift between the two layers fails immediately.
+- `financing_relevance_label` ∈ { `supportive_for_equity_access`, `neutral_for_financing`, `caution_for_dilution`, `adverse_for_market_access`, `insufficient_observations`, `unknown` }
+- `status` ∈ { `draft`, `active`, `stale`, `superseded`, `archived`, `unknown` }
+
+### 110.2 Builder synthesis rules
+
+`build_indicative_market_pressure` is a deterministic pure-label synthesiser. The pipeline:
+
+1. Resolve only the cited `aggregated_interest_id` values via `kernel.aggregated_market_interest.get_record`. Mismatched records (different `security_id`) are ignored and counted in `metadata.mismatched_security_id_count`. Unresolved ids are ignored and counted in `metadata.unresolved_aggregated_interest_count`. Pinned by a trip-wire test that monkey-patches every `list_*` and `snapshot` on the cited book.
+2. Sum the seven v1.15.3 count fields across every matched record. Re-derive `aggregated_net_interest_label` and `aggregated_liquidity_interest_label` from the summed counts using the same v1.15.3 thresholds.
+3. Map to v1.15.4 labels via the small deterministic rules below. **No global scan, no mutation of any other book — including the `PriceBook`.**
+
+- **`liquidity_pressure_label`.** `total == 0` → `unknown`; v1.15.3 `liquidity_attention_low` → `normal`; `liquidity_attention_moderate` → `thin`; `liquidity_attention_high` → `stressed` if `total >= 4` (broad attention), else `tight` (concentrated handful).
+- **`demand_pressure_label`.** v1.15.3 `increased_interest` → `supportive`; `reduced_interest` → `adverse` if liquidity is `tight` or `stressed`, else `cautious`; `mixed` → `mixed`; `balanced` → `balanced`; `insufficient_observations` → `insufficient_observations`.
+- **`volatility_pressure_label`.** Derived from `liquidity_pressure_label` (one-step, deterministic): `stressed` → `stressed`; `tight` or `thin` → `elevated`; `normal` or `ample` → `calm`; otherwise `unknown`.
+- **`market_access_label`.** `adverse` demand or `stressed` liquidity → `constrained`; `cautious` demand and `tight` liquidity → `constrained`; `supportive` demand with `ample`/`normal` liquidity → `open`; `mixed` / `cautious` / `balanced` / `supportive` (else) → `selective`; `insufficient_observations` demand → `unknown`.
+- **`financing_relevance_label`.** `open` → `supportive_for_equity_access`; `selective` → `caution_for_dilution` if demand is `cautious`, else `neutral_for_financing`; `constrained` or `closed` → `adverse_for_market_access`; `unknown` → `insufficient_observations`.
+
+### 110.3 Anti-claims
+
+The record carries **no** `price`, `market_price`, `indicative_price`, `target_price`, `expected_return`, `bid`, `ask`, `quote`, `order`, `order_id`, `order_imbalance`, `trade`, `trade_id`, `execution`, `clearing`, `settlement`, `recommendation`, `investment_advice`, or `real_data_value` field. The full v1.14.x anti-field family is also rejected. Tests pin the absence on both the dataclass field set and the ledger payload key set.
+
+The book emits **only** `INDICATIVE_MARKET_PRESSURE_RECORDED` records and refuses to mutate any other source-of-truth book. A dedicated test pins that the helper does not mutate `kernel.prices` even when it synthesises a pressure record from real aggregated-interest data — v1.15.4 is a *labels* layer, not a *price* layer.
+
+### 110.4 Performance boundary
+
+v1.15.4 is storage + helper only and not yet wired into the orchestrator. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.14.last (`3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71`). The orchestrator integration arrives at v1.15.5.
+
+The test count moves from `3731 / 3731` (v1.15.3) to `3849 / 3849` (v1.15.4) — `+118` tests in the new `tests/test_market_pressure.py` covering field validation, closed-set acceptance + rejection + exact pinning across all six label axes, the v1.14.3 `MARKET_ACCESS_LABELS` `is`-identity alignment pin, bounded confidence + bool / non-numeric rejection, immutability, duplicate rejection (no extra ledger record), unknown lookup, every list/filter method including `list_by_source_aggregated_interest`, snapshot determinism, exactly-one ledger emission with `source = security_id`, no anti-field keys on dataclass or payload (with explicit `price` / `quote` / `order_imbalance` pins), kernel wiring, no-mutation invariant against every prior book including a dedicated `PriceBook` no-mutation test through the helper, builder rules across every `demand_pressure` / `liquidity_pressure` / `volatility_pressure` / `market_access` / `financing_relevance` mapping case, builder summing counts across multiple matched records, builder mismatched-security-id handling (metadata count), builder unresolved-id handling (metadata count), builder no-global-scan trip-wire, default-id format, builder determinism across fresh kernels, and jurisdiction-neutral identifier scans on both module and test file.
+
+### 110.5 Forward pointer
+
+v1.15.4 closes the v1.15 storage / helper phase. The next milestone is **v1.15.5 living-world integration** — wires the four-layer chain (`SecurityMarketBook` → `InvestorMarketIntentBook` → `AggregatedMarketInterestBook` → `IndicativeMarketPressureBook`) into the per-period sweep so `living_world_manifest.v1` carries the market-interest aggregation alongside the existing record stream. The `living_world_digest` will move at v1.15.5 by design. **v1.15.6** then folds `IndicativeMarketPressureRecord` ids back into the v1.14.3 `CapitalStructureReviewCandidate` and the v1.14.4 `CorporateFinancingPathRecord` as additional citation slots (the `market_access_label` vocabulary alignment makes this composition mechanical). **v1.15.last** is the docs-only freeze.

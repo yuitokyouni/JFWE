@@ -18,6 +18,7 @@ from world.financing_paths import CorporateFinancingPathBook
 from world.securities import SecurityMarketBook
 from world.market_intents import InvestorMarketIntentBook
 from world.market_interest import AggregatedMarketInterestBook
+from world.market_pressure import IndicativeMarketPressureBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
 from world.constraints import ConstraintBook, ConstraintEvaluator
@@ -147,6 +148,9 @@ class WorldKernel:
     aggregated_market_interest: AggregatedMarketInterestBook = field(
         default_factory=AggregatedMarketInterestBook
     )
+    indicative_market_pressure: IndicativeMarketPressureBook = field(
+        default_factory=IndicativeMarketPressureBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -194,6 +198,7 @@ class WorldKernel:
             self.security_market,
             self.investor_market_intents,
             self.aggregated_market_interest,
+            self.indicative_market_pressure,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger

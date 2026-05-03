@@ -102,6 +102,9 @@ class RecordType(str, Enum):
     AGGREGATED_MARKET_INTEREST_RECORDED = (
         "aggregated_market_interest_recorded"
     )
+    INDICATIVE_MARKET_PRESSURE_RECORDED = (
+        "indicative_market_pressure_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"
