@@ -23,49 +23,63 @@ can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
 - **Date:** 2026-05-03
-- **Target:** v1.14.last corporate financing intent freeze. The
-  v1.13.last settlement-substrate freeze (snapshot below), the
-  v1.12.last endogenous-attention-loop freeze (2026-05-04
+- **Target:** v1.15.last securities market intent aggregation
+  freeze. The v1.14.last corporate-financing-intent freeze
+  (snapshot below), the v1.13.last settlement-substrate freeze,
+  the v1.12.last endogenous-attention-loop freeze (2026-05-04
   snapshot further below), the v1.9.last public-prototype
   freeze, and the v1.8.0 public release (`v1.8-public-release`
-  at commit `7fa2c42`) all remain unchanged; v1.14.last freezes
-  the v1.14 corporate financing reasoning chain (need → funding
-  options → capital structure review → financing path) layered
-  on top of the v1.12 attention loop and the v1.13 settlement
-  substrate. v1.14.last itself is docs-only on top of the
-  v1.14.1 → v1.14.5 code freezes. The chain is **storage /
-  audit / graph-linking only** — no financing execution, no
-  loan approval, no bond / equity issuance, no underwriting,
-  no syndication, no bookbuilding, no allocation, no pricing,
-  no optimal capital structure decision, no real leverage /
-  D/E / WACC, no investment advice, no real data, no Japan
-  calibration.
+  at commit `7fa2c42`) all remain unchanged; v1.15.last freezes
+  the v1.15 securities-market-interest aggregation chain
+  (investor market intent → aggregated market interest →
+  indicative market pressure) plus the v1.15.6 feedback wiring
+  back into the v1.14 corporate-financing chain (capital-
+  structure review and financing path now cite indicative
+  market pressure ids). v1.15.last itself is docs-only on top of
+  the v1.15.1 → v1.15.6 code freezes. The chain is **market-
+  interest aggregation / audit / feedback only** — no order
+  submission, no order book, no matching, no execution, no
+  clearing, no settlement, no quote dissemination, no bid /
+  ask, no price update, no `PriceBook` mutation, no target
+  price, no expected return, no recommendation, no portfolio
+  allocation, no real exchange mechanics, no financing
+  execution, no loan approval, no bond / equity issuance, no
+  underwriting, no syndication, no pricing, no investment
+  advice, no real data, no Japan calibration. Known
+  limitation: v1.15.5 uses a deterministic rotation for
+  `intent_direction_label` instead of evidence-conditioned
+  classification; v1.16 will replace the rotation.
 - **Status:** docs + tests frozen. The freeze is conditional on
   CI being green on the commit being tagged.
-- **Local results (v1.14.last):**
-  - `pytest -q` → 3391 passed
+- **Local results (v1.15.last):**
+  - `pytest -q` → 3883 passed
   - `compileall world spaces tests examples` → clean
   - `ruff check .` (repo root) → clean
   - `python -m examples.reference_world.run_living_reference_world`
     → produces `[setup]` / `[period N]` / `[ledger]` trace with
-    v1.14.5 `financing_needs= / funding_options= / capital_reviews=
-    / financing_paths=` per-period columns; re-run yields
-    byte-identical output. Default 4-period sweep emits 408
-    records (per-period 96 / 98)
+    v1.15.5 `market_intents= / aggregated_interest= /
+    market_pressure=` per-period columns alongside the v1.14.5
+    `financing_needs= / funding_options= / capital_reviews= /
+    financing_paths=` columns; re-run yields byte-identical
+    output. Default 4-period sweep emits 460 records (per-period
+    108 / 110)
   - `... --markdown` → appends v1.9.1 deterministic Markdown
-    report including the v1.14.5 `## Corporate financing`
-    section with five histograms (purpose / option-type /
-    market-access / path-coherence / path-constraint); re-run
-    yields byte-identical output
+    report including the v1.15.5 `## Securities market intent`
+    section with four histograms (intent direction / aggregated
+    net interest / pressure market access / pressure financing
+    relevance) alongside the v1.14.5 `## Corporate financing`
+    section; re-run yields byte-identical output
   - `... --manifest /tmp/lw.json` → writes
     `living_world_manifest.v1` JSON carrying the perf-fixture
     `living_world_digest`. The integration-test fixture digest
-    moved at v1.14.5 to
-    `3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71`
-    (previously `916e410d…cfbebb379` at v1.13.5 / v1.13.6 —
-    unchanged through v1.14.1 → v1.14.4 because those milestones
-    were storage-only); two runs into different paths diff to
-    zero (modulo path)
+    moved twice in the v1.15 sequence — at v1.15.5 from
+    `3df73fd4…6fa2d71` (v1.14.last) to `041686b0…03403a5`
+    (chain on the per-period path), and again at v1.15.6 to
+    `bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`
+    (phase reorder + new citation slots on every review / path
+    payload). Storage-only milestones v1.15.1 → v1.15.4 left
+    the digest byte-identical; two runs into different paths
+    diff to zero (modulo path)
   - `... --market-regime constructive --markdown`,
     `... --market-regime constrained --markdown`, and
     `... --market-regime tightening --markdown` — three
@@ -116,7 +130,33 @@ new review is performed.
     `optimal_option` / `approved` / `executed` / `commitment` /
     `syndication` / `allocation` / `pricing` / `interest_rate` /
     `spread` / `coupon` / `fee` / `offering_price` /
-    `target_price` / `expected_return` / `take_up_probability`
+    `target_price` / `expected_return` / `take_up_probability` /
+    `order_id` / `trade_id` / `bid` / `ask` / `quote` /
+    `market_price` / `indicative_price` / `order_imbalance`
+
+#### v1.14.last historical snapshot (unchanged)
+
+- **Date:** 2026-05-03
+- **Target:** v1.14.last corporate financing intent freeze. The
+  v1.14 chain (need / funding option candidate / capital
+  structure review candidate / financing path) and the v1.14.5
+  living-world integration are **storage / audit / graph-linking
+  only** — no financing execution, no loan approval, no bond /
+  equity issuance, no underwriting, no syndication, no
+  bookbuilding, no allocation, no pricing, no optimal capital
+  structure decision, no real leverage / D/E / WACC, no
+  investment advice, no Japan calibration.
+- **Status:** docs + tests frozen at the v1.14.last commit.
+- **Local results (v1.14.last):**
+  - `pytest -q` → 3391 passed
+  - `compileall world spaces tests examples` → clean
+  - `ruff check .` (repo root) → clean
+  - `python -m examples.reference_world.run_living_reference_world`
+    → per-period 96 / 98 records, run total in `[384, 432]`
+  - integration-test fixture `living_world_digest` =
+    `3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71`
+    (moved at v1.14.5 by design; unchanged at v1.15.1 → v1.15.4
+    because those milestones were storage / helper only)
 
 #### v1.13.last historical snapshot (unchanged)
 
@@ -241,9 +281,9 @@ new review is performed.
 - [ ] `pytest -q` from `japan-financial-world/` reports the expected
   passing total. v1.8 + post-rc1 CI fix: `725 passed`. v1.9.last
   freeze: `1626 passed`. v1.13.last freeze: `2988 passed`.
-  v1.14.last freeze: `3391 passed`. Use the count of the
-  milestone being tagged; mismatch means the tree is not the
-  freeze tree.
+  v1.14.last freeze: `3391 passed`. v1.15.last freeze:
+  `3883 passed`. Use the count of the milestone being tagged;
+  mismatch means the tree is not the freeze tree.
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).

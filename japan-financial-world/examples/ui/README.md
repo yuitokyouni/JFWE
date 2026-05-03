@@ -62,15 +62,21 @@ split that the engine actually maintains:
 
 The bundled sample manifest captures a snapshot of v1.14.1
 (`CorporateFinancingNeedRecord` storage). The latest engine
-freeze is **v1.14.last** — the first FWE milestone where the
-living reference world carries a bounded corporate financing
-reasoning chain (need → funding options → capital structure
-review → financing path), pinned at digest
-`3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71`
+freeze is **v1.15.last** — the first FWE milestone where the
+living reference world carries a bounded **securities-market-
+interest aggregation** chain (investor market intent → aggregated
+market interest → indicative market pressure) layered on top of
+the v1.14 corporate financing chain, with a deterministic
+feedback loop where indicative market pressure is cited by the
+capital-structure review and the financing path. Pinned at digest
+`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`
 on the default 4-period fixture. This UI prototype is
 intentionally lower-frequency than the engine and is bumped
 opportunistically; for the engine narrative see
-[`../../docs/v1_14_corporate_financing_intent_summary.md`](../../docs/v1_14_corporate_financing_intent_summary.md).
+[`../../docs/v1_15_securities_market_intent_summary.md`](../../docs/v1_15_securities_market_intent_summary.md)
+(v1.15) and
+[`../../docs/v1_14_corporate_financing_intent_summary.md`](../../docs/v1_14_corporate_financing_intent_summary.md)
+(v1.14).
 
 These advance independently. The prototype version is
 intentionally lower than the runtime version because the

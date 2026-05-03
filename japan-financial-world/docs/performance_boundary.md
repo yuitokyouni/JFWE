@@ -336,6 +336,32 @@ If any of those pins fails, the demo has either grown the
 fixture (intentional but undocumented) or gained a hidden
 quadratic loop (unintended).
 
+## v1.15.last freeze pins
+
+The v1.15.last freeze (docs-only on top of the v1.15.1 → v1.15.6
+code freezes) pins the following on the default 4-period fixture
+(3 firms, 2 investors, 2 banks):
+
+- per-period record count: **108** (period 0) / **110** (periods 1+),
+  unchanged from v1.15.5 / v1.15.6 (v1.15.6 added citation slots
+  but no new records),
+- per-run window: **`[432, 480]`**, unchanged,
+- default 4-period sweep total: **460 records**,
+- integration-test `living_world_digest`:
+  **`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`**
+  (moved twice in the v1.15 sequence — at v1.15.5 chain
+  integration and at v1.15.6 phase reorder + citation slots;
+  unchanged through v1.15.1 → v1.15.4),
+- pytest count: **3883 / 3883** passing.
+
+The chain itself stays bounded `O(P × I × F + 2 × P × F)` per
+layer — never `P × I × F × venue` or `P × I × F × option`.
+v1.15.5 deliberately did **not** add a new dense shape, and
+v1.15.6 deliberately added zero new records. The v1.15 surface
+composes with the v1.14 corporate-financing chain via citation
+slots only — no execution path, no `PriceBook` mutation, no
+financing approval.
+
 ## v1.15.6 update pins
 
 v1.15.6 wires `IndicativeMarketPressureRecord` ids into the v1.14

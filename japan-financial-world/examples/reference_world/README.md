@@ -169,6 +169,68 @@ investment advice, no real data, no Japan calibration. See
 [`../../docs/v1_14_corporate_financing_intent_summary.md`](../../docs/v1_14_corporate_financing_intent_summary.md)
 for the v1.14 single-page summary.
 
+**v1.15.last securities market intent aggregation.** Layered on
+top of the v1.12.last attention loop and the v1.14.last corporate
+financing chain, the v1.15 sequence ships a bounded securities-
+market-interest aggregation chain on the per-period sweep with a
+deterministic feedback path back into the corporate financing
+review. Per period the orchestrator emits:
+
+```
+investor intent / valuation / firm state / market environment
+  → investor market intent       (v1.15.2 — I × F = 6 records / period)
+  → aggregated market interest   (v1.15.3 — F   = 3 records / period)
+  → indicative market pressure   (v1.15.4 — F   = 3 records / period)
+       │
+       └→ cited by capital-structure review + financing path
+                                  (v1.15.6 — citation slots only)
+```
+
+Setup-once: 1 `MarketVenueRecord` + `F = 3` `ListedSecurityRecord`.
+Bounded by `O(P × I × F + 2 × P × F)` per layer (12 records per
+period in the default 3-firm / 2-investor fixture). The v1.15.5
+chain phase runs **before** the v1.14.5 corporate financing chain
+phase so each firm's review and path can cite the same period's
+pressure record. The v1.15.6 helper override forces the path's
+`constraint_label` to `market_access_constraint` when pressure
+says access is constrained / closed, and upgrades the
+`coherence_label` to `conflicting_evidence` when pressure and
+reviews disagree.
+
+The default 4-period sweep emits **460 records** (unchanged from
+v1.15.5 since v1.15.6 added zero new records — citation slots
+only); the integration-test `living_world_digest` is now
+**`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`**
+(moved at v1.15.5 and v1.15.6 by design). The markdown report
+(`--markdown`) adds a `## Securities market intent` section with
+four histograms (intent direction / aggregated net interest /
+pressure market access / pressure financing relevance).
+
+**Hard boundary preserved bit-for-bit.** Market-interest
+aggregation, not market trading. Indicative pressure, not price
+formation. Feedback to corporate financing review, not financing
+execution. No order submission, no buy / sell labels, no order
+book, no matching, no execution, no clearing, no settlement, no
+quote dissemination, no bid / ask, no price update, no
+`PriceBook` mutation, no target price, no expected return, no
+recommendation, no portfolio allocation, no real exchange
+mechanics, no financing execution, no loan approval, no bond /
+equity issuance, no underwriting, no syndication, no pricing, no
+investment advice, no real data, no Japan calibration. The
+`PriceBook` is byte-equal across the full default sweep — pinned
+by tests at v1.15.5 and v1.15.6.
+
+**Known limitation (v1.15.last).** v1.15.5 currently sets each
+`InvestorMarketIntentRecord.intent_direction_label` via a
+deterministic four-cycle rotation. This is acceptable for bounded
+demo diversity but not yet endogenous in the v1.12 sense. The
+v1.16 sequence will replace the rotation with an
+evidence-conditioned classifier over the upstream investor
+intent / valuation / firm state / market environment / attention
+records. See
+[`../../docs/v1_15_securities_market_intent_summary.md`](../../docs/v1_15_securities_market_intent_summary.md)
+for the v1.15 single-page summary and the v1.16 plan.
+
 ## What is in this directory
 
 | File                    | Purpose                                                     |

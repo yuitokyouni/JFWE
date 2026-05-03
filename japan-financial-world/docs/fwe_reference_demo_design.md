@@ -5,17 +5,23 @@ jurisdiction-neutral demo world that exercises every v0 + v1 record
 type through the existing v1.6 reference loop and produces a complete
 causal ledger trace.
 
-> **Note (v1.14.last freeze).** The headline runnable surface is
+> **Note (v1.15.last freeze).** The headline runnable surface is
 > now the **v1.9.last living reference world** plus the **v1.12
 > endogenous attention-feedback loop** plus the **v1.14 corporate
 > financing reasoning chain** (need → funding options → capital
-> structure review → financing path). The original v1.6 reference
-> loop demo described below is preserved as the single-shot
-> explainer / replay-determinism baseline; the multi-period,
-> attention-conditioned, feedback-bounded, financing-aware living
-> world is the demo a v1.14.last reader should run first. See
+> structure review → financing path) plus the **v1.15 securities
+> market intent aggregation** (investor market intent → aggregated
+> market interest → indicative market pressure) **with v1.15.6
+> feedback** to the v1.14 review and path layers. The original
+> v1.6 reference loop demo described below is preserved as the
+> single-shot explainer / replay-determinism baseline; the
+> multi-period, attention-conditioned, feedback-bounded,
+> financing-aware, market-interest-aggregating living world is the
+> demo a v1.15.last reader should run first. See
+> [`v1_15_securities_market_intent_summary.md`](v1_15_securities_market_intent_summary.md)
+> for the v1.15 single-page summary,
 > [`v1_14_corporate_financing_intent_summary.md`](v1_14_corporate_financing_intent_summary.md)
-> for the v1.14 single-page summary and
+> for the v1.14 single-page summary, and
 > [`v1_12_endogenous_attention_loop_summary.md`](v1_12_endogenous_attention_loop_summary.md)
 > for the v1.12 attention-loop single-page summary.
 

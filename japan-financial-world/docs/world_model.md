@@ -8969,3 +8969,65 @@ The test count moves from `3863 / 3863` (v1.15.5) to `3883 / 3883` (v1.15.6) —
 v1.15.6 closes the first feedback loop. The next milestone is **v1.15.last** — the docs-only freeze that pins the v1.15 surface (4 storage modules + 2 deterministic helpers + 1 living-world integration + 1 feedback loop) as the first FWE milestone where the living world produces a market-interest aggregation **and** that aggregation feeds back into the corporate financing chain. No new code, no new tests; the freeze pins the canonical fixture's record-count + digest and updates `RELEASE_CHECKLIST.md` with a v1.15.last readiness snapshot.
 
 There is also a known gap noted by the user during v1.15.5 review: the v1.15.5 `intent_direction_label` is currently rotated by `(period_idx + investor_idx + firm_idx) % 4`, which produces non-trivial histograms but is not endogenous in the v1.12 sense. A future v1.15.x or v1.16+ milestone should make `intent_direction_label` a deterministic function of the upstream evidence (`InvestorIntentRecord.intent_direction`, `ValuationRecord.confidence`, `FirmFinancialStateRecord.market_access_pressure`, `MarketEnvironmentStateRecord.overall_market_access_regime_label`, and the actor's `ActorAttentionStateRecord` focus labels). The v1.15.6 freeze does not change this — it only wires the downstream feedback.
+
+## 113. v1.15.last Securities Market Intent Aggregation freeze
+
+§113 closes the v1.15 sequence. v1.15.last is **docs-only** on top of the v1.15.1 → v1.15.6 code freezes: no new module, no new test, no new ledger event, no new label vocabulary. The freeze pins the v1.15 surface as the first FWE milestone where the living reference world produces a **bounded securities-market-interest aggregation** *and* that aggregation **feeds back into the corporate financing chain** alongside the v1.12 endogenous attention loop and the v1.14 corporate-financing chain.
+
+The single-page reader-facing summary is [`v1_15_securities_market_intent_summary.md`](v1_15_securities_market_intent_summary.md). It mirrors the structure of [`v1_14_corporate_financing_intent_summary.md`](v1_14_corporate_financing_intent_summary.md) and [`v1_13_generic_settlement_infrastructure_summary.md`](v1_13_generic_settlement_infrastructure_summary.md) — sequence map, what v1.15 ships, what v1.15 explicitly is not, performance boundary, discipline preserved bit-for-bit, known v1.15.5 rotation limitation, what v1.16 does next.
+
+### 113.1 Final living-world chain (v1.15.last)
+
+```
+investor intent (v1.12.1)                                attention (v1.12.8)
+valuation (v1.9.5 / v1.12.5)                                  |
+firm financial state (v1.12.0)                  →   ActorAttentionState
+market environment state (v1.12.2)                            |
+        |                                                     |
+        v                                                     |
+InvestorMarketIntentRecord       (v1.15.2 — per investor / security)
+        |
+        v
+AggregatedMarketInterestRecord   (v1.15.3 — per venue / security)
+        |
+        v
+IndicativeMarketPressureRecord   (v1.15.4 — per security)
+        |
+        +───────────────────────────────────────────────┐
+                                                        |
+                                                        v
+                                CapitalStructureReviewCandidate (v1.14.3 + v1.15.6)
+                                CorporateFinancingPathRecord    (v1.14.4 + v1.15.6)
+```
+
+Bounded by `O(P × I × F + 2 × P × F)` per layer for the v1.15 chain, plus zero new records at v1.15.6 (citation slots only). Storage / aggregation / feedback only. **No order submission, no order matching, no trade execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no securities issuance, no underwriting, no syndication, no pricing, no investment advice, no real data, no Japan calibration.**
+
+### 113.2 Performance-boundary pins (v1.15.last)
+
+| Surface                                            | Value                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------ |
+| Per-period record count (default fixture)          | **108** (period 0) / **110** (periods 1+) — up from 96 / 98 at v1.14.5   |
+| Per-run window (default 4-period fixture)          | **`[432, 480]`** — up from `[384, 432]` at v1.14.last                    |
+| Default 4-period sweep                             | **460 records**                                                          |
+| Integration-test `living_world_digest` (canonical) | **`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`**   |
+| Test count (`pytest -q`)                           | **3883 / 3883**                                                          |
+
+The digest moved twice in the v1.15 sequence (at v1.15.5 — chain on the per-period path; at v1.15.6 — phase reorder + new citation slots). It was unchanged through v1.15.1 → v1.15.4 because those milestones were storage / helper only.
+
+### 113.3 Hard boundary (carried forward verbatim)
+
+This is **market-interest aggregation, not market trading**. This is **indicative pressure, not price formation**. This is **feedback to corporate financing review, not financing execution**.
+
+No order submission. No buy / sell labels. No order book. No matching. No execution. No clearing. No settlement. No quote dissemination. No bid / ask. No price update. No `PriceBook` mutation. No target price. No expected return. No recommendation. No portfolio allocation. No real exchange mechanics. No financing execution. No loan approval. No bond issuance. No equity issuance. No underwriting. No syndication. No pricing. No investment advice. No real data. No Japan calibration.
+
+Every v1.9.x / v1.10.x / v1.11.x / v1.12.x / v1.13.x / v1.14.x anti-claim is preserved unchanged. The v1.9.last public-prototype freeze, the v1.12.last attention-loop freeze, the v1.13.last settlement-substrate freeze, the v1.14.last corporate-financing-intent freeze, and the v1.8.0 public release remain untouched.
+
+### 113.4 Known limitation — v1.15.5 rotation vs endogeneity
+
+v1.15.5 sets each `InvestorMarketIntentRecord.intent_direction_label` via a deterministic four-cycle rotation `(period_idx + investor_idx + firm_idx) % 4`. This is acceptable for bounded demo diversity but is *not yet endogenous in the v1.12 sense*. v1.15.last freezes the rotation state; v1.16 replaces the rotation with a classification function over the cited upstream evidence (`InvestorIntentRecord.intent_direction`, `ValuationRecord.confidence`, `FirmFinancialStateRecord.market_access_pressure`, `MarketEnvironmentStateRecord.overall_market_access_regime_label`, `ActorAttentionStateRecord.focus_labels`). See [`v1_15_securities_market_intent_summary.md`](v1_15_securities_market_intent_summary.md) §"Known limitation" for the full v1.16 plan.
+
+### 113.5 What v1.16 does next
+
+v1.16 begins the **endogenous market intent direction** layer. v1.16.0 is docs-only design; v1.16.1 ships the deterministic classifier (a small label-only function over the five upstream evidence sources listed above) and rewires the v1.15.5 phase to call the classifier instead of the rotation. v1.16.2 wires the classifier into the v1.12.8 attention loop so the v1.12 / v1.15 loops compose. v1.16.3 living-world digest moves by design. v1.16.last freezes the layer.
+
+The classifier must read only the cited evidence ids (no global scan); return one of the v1.15 `SAFE_INTENT_LABELS` plus `unknown`; never call into a calibrated probability model, an LLM, or a real-data source; and preserve byte-identical replay determinism. **No order submission, no order matching, no trade execution, no clearing, no settlement, no real exchange mechanics, no real price formation, no Japan calibration.** v1.16 is the *internal-cause* of the market-intent vocabulary, not a step toward execution.

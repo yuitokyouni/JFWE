@@ -1,6 +1,40 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.14.last** (`Corporate Financing
+Snapshot of the test suite at **v1.15.last** (`Securities Market
+Intent Aggregation freeze` — docs-only milestone that closes the
+v1.15 sequence; ships the single-page reader-facing summary in
+[`v1_15_securities_market_intent_summary.md`](v1_15_securities_market_intent_summary.md),
+the v1.15.last release-readiness snapshot in
+[`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md), and the
+v1.15.last position-in-sequence row in `world_model.md` §113;
+no new code, no new tests, no new ledger event types, no new
+behavior; test count = **3883 / 3883**, per-period record count
+= **108 / 110**, per-run window = **`[432, 480]`**,
+`living_world_digest` =
+**`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`**
+— all unchanged from v1.15.6; the underlying surface is the
+bounded securities-market-interest aggregation
+`investor intent / valuation / firm state / market environment →
+investor market intent → aggregated market interest → indicative
+market pressure → capital-structure review / financing path`,
+layered on top of the v1.12 endogenous attention loop and the
+v1.14 corporate-financing chain; market-interest aggregation /
+audit / feedback only — no order submission, no order book, no
+matching, no execution, no clearing, no settlement, no quote
+dissemination, no bid / ask, no price update, no `PriceBook`
+mutation, no target price, no expected return, no recommendation,
+no portfolio allocation, no real exchange mechanics, no financing
+execution, no loan approval, no bond / equity issuance, no
+underwriting, no syndication, no pricing, no investment advice,
+no real data, no Japan calibration. Known limitation: v1.15.5
+uses a deterministic rotation for `intent_direction_label`
+instead of evidence-conditioned classification; v1.16 will
+replace the rotation. The v1.14.last historical snapshot below
+is preserved unchanged.)
+
+---
+
+Earlier snapshot at **v1.14.last** (`Corporate Financing
 Intent freeze` — docs-only milestone that closes the v1.14
 sequence; ships the single-page reader-facing summary in
 [`v1_14_corporate_financing_intent_summary.md`](v1_14_corporate_financing_intent_summary.md),
