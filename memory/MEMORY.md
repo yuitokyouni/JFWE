@@ -1,0 +1,1 @@
+- [Auto commit & push after edits in JFWE](feedback_auto_commit_push.md) — finish each change by committing + pushing to origin/main so CI runs; match existing commit-message style.
