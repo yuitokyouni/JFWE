@@ -672,13 +672,156 @@
       color: var(--muted);
     }
 
-    /* v1.17.4 — Mock-run highlight */
+    /* v1.17.4 — Mock-run highlight (intentionally a no-op as of
+       the post-v1.17.last UX pass: the previous full-page
+       box-shadow flash made the viewport look like it was
+       zooming/jumping when several `.mock-run-glow` elements lit
+       up across hidden sheets at once. The class is kept in the
+       DOM for backwards-compatibility with `Validate` and any
+       future highlighter that respects the no-jump discipline). */
     .mock-run-glow {
-      transition: box-shadow 0.6s ease-out;
+      /* No transition. No flash side-effect. */
+    }
+    .mock-run-glow.flash {
+      /* deliberately empty — see comment above */
     }
 
-    .mock-run-glow.flash {
-      box-shadow: 0 0 0 2px var(--blue-tint);
+    /* v1.17.4 (post-v1.17.last UX) — executive-summary hero on
+       the Overview sheet. The hero is the first thing a reader
+       sees. Stable min-heights on every Overview block prevent
+       Run mock from reflowing the page when the new fixture
+       text is longer than the previous one. */
+    .exec-summary {
+      background: var(--paper);
+      border: 1px solid #e3e0d8;
+      border-radius: 8px;
+      padding: 22px 22px 18px 22px;
+      margin: 4px 0 14px 0;
+      position: relative;
+      min-height: 130px;
+    }
+    .exec-summary .exec-badge {
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 10px;
+      letter-spacing: 0.10em;
+      padding: 3px 9px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .exec-summary .exec-headline {
+      font-size: 18px;
+      line-height: 1.45;
+      color: var(--ink);
+      margin: 4px 0 0 0;
+      font-weight: 600;
+    }
+    .exec-summary .exec-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      font-family: var(--font-mono);
+    }
+    .exec-summary .exec-sub strong {
+      color: var(--blue-2);
+    }
+
+    .summary-section {
+      margin: 0 0 16px 0;
+    }
+    .summary-section h3.summary-section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--blue-2);
+      margin: 0 0 8px 0;
+      font-weight: 700;
+    }
+
+    .summary-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .driver-card,
+    .response-card {
+      background: var(--paper);
+      border: 1px solid #e3e0d8;
+      border-radius: 6px;
+      padding: 12px 14px;
+      min-height: 132px;
+    }
+    .driver-card .small-label,
+    .response-card .small-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .driver-card .driver-headline,
+    .response-card .response-headline {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--blue-2);
+      margin-top: 4px;
+      line-height: 1.3;
+    }
+    .driver-card .meta-row,
+    .response-card .meta-row {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+      font-family: var(--font-mono);
+    }
+    .driver-card .effect,
+    .response-card .response-summary {
+      font-size: 12px;
+      color: var(--ink);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    ul.what-changed {
+      margin: 0;
+      padding-left: 18px;
+    }
+    ul.what-changed li {
+      font-size: 13px;
+      color: var(--ink);
+      margin-bottom: 4px;
+      line-height: 1.45;
+    }
+
+    .evidence-cta {
+      background: var(--ivory);
+      border-left: 3px solid var(--blue);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--ink);
+      margin: 10px 0 16px 0;
+    }
+    .evidence-cta button.linkish {
+      background: none;
+      border: none;
+      color: var(--blue);
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+      text-decoration: underline;
+    }
+    .evidence-cta button.linkish:hover {
+      color: var(--blue-2);
+    }
+
+    /* Stabilize overview KPI card heights so Run mock cannot
+       reflow the page even with longer fixture strings. */
+    .overview-cards .overview-card {
+      min-height: 88px;
     }
 
     /* v1.17.4 redesign — Overview KPI cards + closed-loop diagram */
@@ -1778,8 +1921,109 @@
           <div class="subband">One-screen answer to: what happened, why, who reacted, what changed next. Closed-loop inspection view — not a market simulator.</div>
           <div class="panel-body">
 
-            <!-- Closed-loop diagram -->
-            <section class="loop-diagram mock-run-glow">
+            <!-- ===========================================================
+                 v1.17.4 (post-v1.17.last UX pass) — Executive summary lead.
+                 The Overview answers the four reader questions in this order:
+                   1. What happened?      → Main message hero
+                   2. Why did it happen?  → Top 3 drivers
+                   3. Who reacted?        → Top 3 actor responses
+                   4. What changed next?  → bullet list
+                 followed by the evidence-trail CTA pointing to the Ledger.
+                 The closed-loop diagram and compact KPI cards are demoted
+                 below the summary content.
+                 =========================================================== -->
+
+            <!-- 1. Main message hero -->
+            <section class="exec-summary">
+              <span class="exec-badge">Executive summary</span>
+              <h2 class="exec-headline" id="ov-main-message">
+                In the constrained regime, prior-period market pressure
+                tightened next-period attention toward funding and risk;
+                financing paths held coherent but reviews flagged
+                market-access pressure for forward audit.
+              </h2>
+              <p class="exec-sub">
+                Active regime · <strong id="ov-active-regime">constrained</strong>
+                · digest <span id="ov-digest">cf05a1ac…1d0e43</span>
+                · sample fixture · no engine execution
+              </p>
+            </section>
+
+            <!-- 2. Top 3 drivers — why it happened -->
+            <section class="summary-section">
+              <h3 class="summary-section-title">Top 3 drivers · why it happened</h3>
+              <div class="summary-grid-3" id="ov-drivers">
+                <div class="driver-card">
+                  <div class="small-label">Driver 1</div>
+                  <div class="driver-headline">Market environment turned constrained</div>
+                  <div class="meta-row">source · MarketEnvironmentState</div>
+                  <div class="meta-row">affected · investors, banks</div>
+                  <div class="effect">overall_market_access_label = selective_or_constrained · credit=stressed · funding=normal · refi=open</div>
+                </div>
+                <div class="driver-card">
+                  <div class="small-label">Driver 2</div>
+                  <div class="driver-headline">Indicative pressure stayed selective with cautious demand</div>
+                  <div class="meta-row">source · IndicativeMarketPressure</div>
+                  <div class="meta-row">affected · firms with listed equity</div>
+                  <div class="effect">market_access_label = selective · liquidity_pressure = normal · financing_relevance = neutral</div>
+                </div>
+                <div class="driver-card">
+                  <div class="small-label">Driver 3</div>
+                  <div class="driver-headline">Financing paths held coherent but cited current pressure</div>
+                  <div class="meta-row">source · CorporateFinancingPath</div>
+                  <div class="meta-row">affected · firms reviewing financing</div>
+                  <div class="effect">constraint_label = no_obvious_constraint · coherence_label = coherent · pressure cited per firm</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 3. Top 3 actor responses — who reacted -->
+            <section class="summary-section">
+              <h3 class="summary-section-title">Top 3 actor responses · who reacted</h3>
+              <div class="summary-grid-3" id="ov-responses">
+                <div class="response-card">
+                  <div class="small-label">Investors</div>
+                  <div class="response-headline">Risk-reduction posture across firms</div>
+                  <div class="meta-row">v1.16.1 classifier · priority_3a_risk_flag_watch</div>
+                  <div class="response-summary">intent_direction_label = risk_reduction_review across all (investor × security) pairs.</div>
+                </div>
+                <div class="response-card">
+                  <div class="small-label">Banks</div>
+                  <div class="response-headline">Credit-review attention widened</div>
+                  <div class="meta-row">v1.12.6 watch labels + v1.16.3 fresh focus</div>
+                  <div class="response-summary">credit / liquidity / market_access / refinancing_window saturated next-period attention.</div>
+                </div>
+                <div class="response-card">
+                  <div class="small-label">Firms</div>
+                  <div class="response-headline">Financing posture stayed coherent</div>
+                  <div class="meta-row">v1.14 chain · v1.15.6 pressure citation</div>
+                  <div class="response-summary">no_obvious_constraint paths recorded but capital-structure reviews now cite indicative pressure for forward audit.</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 4. What changed next -->
+            <section class="summary-section">
+              <h3 class="summary-section-title">What changed next · period N+1 consequences</h3>
+              <ul class="what-changed" id="ov-what-changed">
+                <li>Next-period attention focus widened to <code>market_access</code>, <code>financing</code>, and <code>risk</code>; <code>engagement</code> dropped, <code>liquidity</code> and <code>funding</code> were reinforced.</li>
+                <li>v1.16.3 deterministic mapping cited the prior-period <code>IndicativeMarketPressureRecord</code> ids on every period-1+ <code>ActorAttentionStateRecord</code>.</li>
+                <li>Capital-structure reviews and financing paths now cite the same period's pressure ids — review labels held, but causal trace is preserved for audit.</li>
+                <li>Display path endpoint settled at <code><span id="ov-endpoint-bullet">0.41</span></code> (synthetic display value, not a price).</li>
+              </ul>
+            </section>
+
+            <!-- 5. Evidence trail CTA -->
+            <div class="evidence-cta">
+              Need the full evidence trail behind these summaries?
+              <button class="linkish" type="button" data-go-to="ledger">See Ledger</button>
+              · the Ledger tab keeps every record id, parent evidence, and
+              downstream record visible. The Overview is executive summary
+              first, evidence second.
+            </div>
+
+            <!-- Demoted: closed-loop diagram (kept for shape, not the lead) -->
+            <section class="loop-diagram">
               <svg viewBox="0 0 1200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="v1.16 closed-loop diagram">
                 <defs>
                   <marker id="loop-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -1835,11 +2079,11 @@
               <div class="loop-caption">attention → market intent → aggregated interest → indicative pressure → financing path → next-period attention</div>
             </section>
 
-            <!-- Compact KPI cards -->
-            <div class="overview-cards mock-run-glow">
+            <!-- Demoted: compact KPI cards (kept for inspection drill-down) -->
+            <div class="overview-cards">
               <div class="overview-card">
                 <div class="label">Active regime</div>
-                <div class="value" id="ov-active-regime">constrained</div>
+                <div class="value" id="ov-active-regime-kpi">constrained</div>
                 <div class="note">v1.11.2 preset</div>
               </div>
               <div class="overview-card">
@@ -1872,7 +2116,7 @@
             <div class="overview-cards" style="grid-template-columns: 1fr 1fr;">
               <div class="overview-card">
                 <div class="label">Digest <span class="muted">(sample fixture)</span></div>
-                <div class="value" id="ov-digest">cf05a1ac…1d0e43</div>
+                <div class="value" id="ov-digest-kpi">cf05a1ac…1d0e43</div>
                 <div class="note">canonical SHA-256 over the run's ledger view</div>
               </div>
               <div class="overview-card">
@@ -3706,7 +3950,28 @@
           diff_new:        'engagement, dialogue, stewardship',
           diff_dropped:    '—',
           diff_reinforced: '—',
-          diff_why:        'Constructive regime fires the v1.12.8 engagement_intent_observed branch only; the v1.16.3 fresh-focus union contributes no new labels.'
+          diff_why:        'Constructive regime fires the v1.12.8 engagement_intent_observed branch only; the v1.16.3 fresh-focus union contributes no new labels.',
+          main_message:
+            'In the constructive regime, supportive market environment ' +
+            'kept attention on engagement and stewardship; market intent ' +
+            'leaned toward engagement-linked review and financing paths ' +
+            'recorded no new constraint.',
+          drivers: [
+            { label: 'Driver 1', headline: 'Market environment held supportive', source: 'MarketEnvironmentState', affected: 'investors, banks', effect: 'overall_market_access_label = open_or_constructive · credit=neutral · funding=normal · refi=open' },
+            { label: 'Driver 2', headline: 'Indicative pressure mostly open', source: 'IndicativeMarketPressure', affected: 'firms with listed equity', effect: 'market_access_label = open · liquidity_pressure = ample · financing_relevance = supportive_for_equity_access' },
+            { label: 'Driver 3', headline: 'Financing paths recorded no obstacle', source: 'CorporateFinancingPath', affected: 'firms reviewing financing', effect: 'constraint_label = no_obvious_constraint · coherence_label = coherent' }
+          ],
+          responses: [
+            { actor_class: 'Investors', headline: 'Engagement-linked review posture', meta: 'v1.16.1 classifier · priority_2_engagement_linked_review', summary: 'intent_direction_label leans engagement_linked_review across investor × security pairs.' },
+            { actor_class: 'Banks',     headline: 'Routine credit-review attention', meta: 'v1.12.6 watch labels · routine_observed', summary: 'credit / firm_state baseline focus; no v1.16.3 fresh focus added.' },
+            { actor_class: 'Firms',     headline: 'Financing posture stayed neutral', meta: 'v1.14 chain · v1.15.6 pressure citation', summary: 'no_obvious_constraint paths recorded; pressure ids cited but reviews unchanged.' }
+          ],
+          what_changed_next: [
+            'Next-period attention focus reinforced engagement / dialogue / stewardship; no v1.16.3 fresh focus introduced.',
+            'v1.16.3 deterministic mapping idle — no restrictive pressure to widen attention.',
+            'Capital-structure reviews and financing paths still cited the same period\'s pressure ids for audit, but no label drift occurred.',
+            'Display path endpoint settled at 0.62 (synthetic display value, not a price).'
+          ]
         },
         mixed: {
           regime_label: 'mixed',
@@ -3726,7 +3991,28 @@
           diff_new:        'firm_state, market_environment, market_access',
           diff_dropped:    'engagement, dialogue, stewardship',
           diff_reinforced: 'memory',
-          diff_why:        'Mixed regime widens v1.12.8 risk-intent + restrictive-market focus; v1.16.3 contributes market_access via prior pressure citation.'
+          diff_why:        'Mixed regime widens v1.12.8 risk-intent + restrictive-market focus; v1.16.3 contributes market_access via prior pressure citation.',
+          main_message:
+            'In the mixed regime, the market environment turned selective ' +
+            'and pressure widened next-period attention to market_access; ' +
+            'financing paths held coherent at the top level but reviews ' +
+            'recorded partial-coherence flags.',
+          drivers: [
+            { label: 'Driver 1', headline: 'Market environment turned selective', source: 'MarketEnvironmentState', affected: 'investors, banks', effect: 'overall_market_access_label = selective_or_constrained · credit=tightening · funding=selective · refi=open' },
+            { label: 'Driver 2', headline: 'Indicative pressure stayed selective', source: 'IndicativeMarketPressure', affected: 'firms with listed equity', effect: 'market_access_label = selective · liquidity_pressure = normal · financing_relevance = neutral_for_financing' },
+            { label: 'Driver 3', headline: 'Financing paths flagged partial coherence', source: 'CorporateFinancingPath', affected: 'firms with reviews', effect: 'coherence_label = partially_coherent · constraint_label = no_obvious_constraint' }
+          ],
+          responses: [
+            { actor_class: 'Investors', headline: 'Mixed hold-review posture',     meta: 'v1.16.1 classifier · priority_8_default',                                summary: 'intent_direction_label = hold_review across investor × security pairs.' },
+            { actor_class: 'Banks',     headline: 'Watchful credit-review tone',  meta: 'v1.12.6 watch labels · liquidity_or_refinancing_credit_review',          summary: 'firm_state / market_environment / market_access widened in next-period attention.' },
+            { actor_class: 'Firms',     headline: 'Financing review flagged for follow-up', meta: 'v1.14.3 review · v1.15.6 pressure citation', summary: 'capital structure review attached partial-coherence note pending evidence in N+1.' }
+          ],
+          what_changed_next: [
+            'Next-period attention dropped engagement / dialogue / stewardship and widened to firm_state / market_environment / market_access.',
+            'v1.16.3 deterministic mapping fired on the env-change rule.',
+            'Financing reviews recorded partial-coherence flags but constraints did not escalate.',
+            'Display path endpoint settled at 0.55 (synthetic display value, not a price).'
+          ]
         },
         constrained: {
           regime_label: 'constrained',
@@ -3746,7 +4032,28 @@
           diff_new:        'market_access, financing, risk',
           diff_dropped:    'engagement',
           diff_reinforced: 'liquidity, funding',
-          diff_why:        'Prior-period market pressure (selective + cautious demand) and the v1.15.6 financing-path constraint flowed into next-period attention. The v1.16.3 fresh focus set is unioned with the v1.12.8 inherited focus before the v1.12.9 budget pipeline runs, so pressure-driven labels crowd out stale prior focus.'
+          diff_why:        'Prior-period market pressure (selective + cautious demand) and the v1.15.6 financing-path constraint flowed into next-period attention. The v1.16.3 fresh focus set is unioned with the v1.12.8 inherited focus before the v1.12.9 budget pipeline runs, so pressure-driven labels crowd out stale prior focus.',
+          main_message:
+            'In the constrained regime, prior-period market pressure ' +
+            'tightened next-period attention toward funding and risk; ' +
+            'financing paths held coherent but reviews flagged ' +
+            'market-access pressure for forward audit.',
+          drivers: [
+            { label: 'Driver 1', headline: 'Market environment turned constrained',                       source: 'MarketEnvironmentState',     affected: 'investors, banks',         effect: 'overall_market_access_label = selective_or_constrained · credit=stressed · funding=normal · refi=open' },
+            { label: 'Driver 2', headline: 'Indicative pressure stayed selective with cautious demand',   source: 'IndicativeMarketPressure',   affected: 'firms with listed equity', effect: 'market_access_label = selective · liquidity_pressure = normal · financing_relevance = neutral_for_financing' },
+            { label: 'Driver 3', headline: 'Financing paths held coherent but cited current pressure',    source: 'CorporateFinancingPath',     affected: 'firms reviewing financing', effect: 'constraint_label = no_obvious_constraint · coherence_label = coherent · pressure cited per firm' }
+          ],
+          responses: [
+            { actor_class: 'Investors', headline: 'Risk-reduction posture across firms', meta: 'v1.16.1 classifier · priority_3a_risk_flag_watch',                summary: 'intent_direction_label = risk_reduction_review across all (investor × security) pairs.' },
+            { actor_class: 'Banks',     headline: 'Credit-review attention widened',     meta: 'v1.12.6 watch labels + v1.16.3 fresh focus',                       summary: 'credit / liquidity / market_access / refinancing_window saturated next-period attention.' },
+            { actor_class: 'Firms',     headline: 'Financing posture stayed coherent',  meta: 'v1.14 chain · v1.15.6 pressure citation',                          summary: 'no_obvious_constraint paths recorded but capital-structure reviews now cite indicative pressure for forward audit.' }
+          ],
+          what_changed_next: [
+            'Next-period attention focus widened to market_access, financing, and risk; engagement dropped, liquidity and funding were reinforced.',
+            'v1.16.3 deterministic mapping cited the prior-period IndicativeMarketPressureRecord ids on every period-1+ ActorAttentionStateRecord.',
+            'Capital-structure reviews and financing paths now cite the same period\'s pressure ids — review labels held, but causal trace is preserved for audit.',
+            'Display path endpoint settled at 0.41 (synthetic display value, not a price).'
+          ]
         },
         tightening: {
           regime_label: 'tightening',
@@ -3766,7 +4073,28 @@
           diff_new:        'market_access, financing, risk, refinancing_window',
           diff_dropped:    'engagement',
           diff_reinforced: 'liquidity, funding, credit',
-          diff_why:        'Tightening regime carries different env subfields than constrained even when the top-level label collides. v1.17.3 surfaces credit=tightening + funding=expensive + refi=selective; the v1.16.3 mapping widens attention to refinancing_window in addition to the constrained-regime baseline.'
+          diff_why:        'Tightening regime carries different env subfields than constrained even when the top-level label collides. v1.17.3 surfaces credit=tightening + funding=expensive + refi=selective; the v1.16.3 mapping widens attention to refinancing_window in addition to the constrained-regime baseline.',
+          main_message:
+            'In the tightening regime, expensive funding and selective ' +
+            'refinancing widened next-period attention to refinancing_window ' +
+            'in addition to the constrained-regime baseline; financing ' +
+            'paths held coherent but reviews flagged the subfield-led shift.',
+          drivers: [
+            { label: 'Driver 1', headline: 'Market environment turned tightening',                       source: 'MarketEnvironmentState',     affected: 'investors, banks',         effect: 'overall_market_access_label = selective_or_constrained · credit=tightening · funding=expensive · refi=selective' },
+            { label: 'Driver 2', headline: 'Indicative pressure leaned adverse on demand',               source: 'IndicativeMarketPressure',   affected: 'firms with listed equity', effect: 'market_access_label = selective · demand = cautious · financing_relevance = neutral_for_financing' },
+            { label: 'Driver 3', headline: 'Financing paths held coherent but cited the subfield shift', source: 'CorporateFinancingPath',     affected: 'firms reviewing financing', effect: 'constraint_label = no_obvious_constraint · coherence_label = coherent · refinancing_window=selective recorded' }
+          ],
+          responses: [
+            { actor_class: 'Investors', headline: 'Risk-reduction posture across firms',         meta: 'v1.16.1 classifier · priority_3a_risk_flag_watch', summary: 'intent_direction_label = risk_reduction_review across all (investor × security) pairs.' },
+            { actor_class: 'Banks',     headline: 'Refinancing-aware credit-review attention', meta: 'v1.12.6 watch labels + v1.16.3 fresh focus',          summary: 'credit / liquidity / market_access / refinancing_window saturated next-period attention.' },
+            { actor_class: 'Firms',     headline: 'Refinancing posture flagged for follow-up',  meta: 'v1.14 chain · v1.15.6 pressure citation',           summary: 'no_obvious_constraint paths recorded; refinancing_window=selective surfaced under capital-structure review.' }
+          ],
+          what_changed_next: [
+            'Next-period attention added refinancing_window in addition to the constrained-regime baseline (market_access, financing, risk).',
+            'v1.16.3 deterministic mapping cited the prior-period IndicativeMarketPressureRecord and CorporateFinancingPathRecord ids on every period-1+ ActorAttentionStateRecord.',
+            'Capital-structure reviews recorded the credit=tightening / funding=expensive / refi=selective subfield set for forward audit.',
+            'Display path endpoint settled at 0.38 (synthetic display value, not a price).'
+          ]
         }
       };
 
@@ -3775,41 +4103,133 @@
         if (el && value != null) el.textContent = value;
       }
 
-      function flashMockRunGlow() {
-        var glows = Array.prototype.slice.call(
-          document.querySelectorAll('.mock-run-glow')
-        );
-        glows.forEach(function (g) { g.classList.add('flash'); });
-        window.setTimeout(function () {
-          glows.forEach(function (g) { g.classList.remove('flash'); });
-        }, 700);
+      // ----------------------------------------------------------------
+      // No-jump discipline (post-v1.17.last UX pass).
+      //
+      // The previous flashMockRunGlow() helper added a `.flash` class
+      // to every `.mock-run-glow` element across all sheets — including
+      // the giant Overview SVG and grids on hidden sheets. The
+      // synchronised box-shadow paint, plus minor card-height
+      // reflows when fixture text grew, looked to the user like the
+      // viewport was zooming or jumping on every Run mock click.
+      //
+      // The replacement pattern is:
+      //   1. content-only mutation (textContent, innerHTML on
+      //      well-scoped slots);
+      //   2. min-height stabilisation on every Overview / KPI card
+      //      so longer fixture strings can't reflow the page;
+      //   3. capture (scrollX, scrollY, activeSheetId) before
+      //      mutations and restore them after, in case any rule we
+      //      missed fires;
+      //   4. no scrollIntoView, no .focus(), no location.hash, no
+      //      transform/zoom/font-size, no class toggles outside the
+      //      well-scoped slots;
+      //   5. status update only — the user sees confirmation in the
+      //      top ribbon.
+      // ----------------------------------------------------------------
+      function rebuildDriverCards(targetId, drivers) {
+        var host = $id(targetId);
+        if (!host || !drivers) return;
+        host.innerHTML = '';
+        drivers.forEach(function (d) {
+          var card = document.createElement('div');
+          card.className = 'driver-card';
+          card.innerHTML = ''
+            + '<div class="small-label"></div>'
+            + '<div class="driver-headline"></div>'
+            + '<div class="meta-row"></div>'
+            + '<div class="meta-row meta-row-affected"></div>'
+            + '<div class="effect"></div>';
+          card.querySelector('.small-label').textContent = d.label || '';
+          card.querySelector('.driver-headline').textContent = d.headline || '';
+          card.querySelector('.meta-row').textContent = 'source · ' + (d.source || '');
+          card.querySelector('.meta-row-affected').textContent = 'affected · ' + (d.affected || '');
+          card.querySelector('.effect').textContent = d.effect || '';
+          host.appendChild(card);
+        });
+      }
+
+      function rebuildResponseCards(targetId, responses) {
+        var host = $id(targetId);
+        if (!host || !responses) return;
+        host.innerHTML = '';
+        responses.forEach(function (r) {
+          var card = document.createElement('div');
+          card.className = 'response-card';
+          card.innerHTML = ''
+            + '<div class="small-label"></div>'
+            + '<div class="response-headline"></div>'
+            + '<div class="meta-row"></div>'
+            + '<div class="response-summary"></div>';
+          card.querySelector('.small-label').textContent = r.actor_class || '';
+          card.querySelector('.response-headline').textContent = r.headline || '';
+          card.querySelector('.meta-row').textContent = r.meta || '';
+          card.querySelector('.response-summary').textContent = r.summary || '';
+          host.appendChild(card);
+        });
+      }
+
+      function rebuildWhatChangedList(targetId, items) {
+        var host = $id(targetId);
+        if (!host || !items) return;
+        host.innerHTML = '';
+        items.forEach(function (it) {
+          var li = document.createElement('li');
+          li.textContent = it;
+          host.appendChild(li);
+        });
       }
 
       function runMock() {
+        // No-jump discipline (see comment block above):
+        //   1. capture scroll position + active sheet id BEFORE
+        //      mutations;
+        //   2. mutate only well-scoped content slots;
+        //   3. restore scroll position AFTER mutations if any
+        //      side-effect we missed shifted it;
+        //   4. assert active sheet id is unchanged.
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+        var activeSheet = document.querySelector('article.sheet.active');
+        var activeId = activeSheet ? activeSheet.id : null;
+
         var regime = selectedRegime();
         var fixture = SAMPLE_RUNS[regime] || SAMPLE_RUNS.constrained;
-        // Timeline KPIs (v1.17.4 renamed from Outputs).
-        setText('kpi-endpoint', fixture.endpoint);
-        setText('kpi-risk-intents', fixture.risk_intents);
-        setText('kpi-credit-watches', fixture.credit_watches);
-        setText('kpi-attention-shifts', fixture.attention_shifts);
-        setText('kpi-unresolved', fixture.unresolved_refs);
-        setText('kpi-digest', fixture.digest_short);
-        // Top-ribbon digest hint.
+
+        // Top ribbon · digest hint.
         setText('digest-short', fixture.digest_short);
         // Settings active-regime cell.
         setText('regime-active', fixture.regime_label);
         // Timeline + Overview header regime labels.
         setText('timeline-active-regime', fixture.regime_label);
         setText('overview-active-regime', fixture.regime_label);
-        // Overview compact KPI cards.
-        setText('ov-active-regime',  fixture.regime_label);
-        setText('ov-top-event',      fixture.top_event);
-        setText('ov-top-pressure',   fixture.market_pressure);
-        setText('ov-top-financing',  fixture.financing_constraint);
-        setText('ov-top-attention',  fixture.attention_summary);
-        setText('ov-endpoint',       fixture.endpoint);
-        setText('ov-digest',         fixture.digest_short);
+
+        // Overview · executive summary block (post-v1.17.last UX).
+        setText('ov-main-message', fixture.main_message);
+        setText('ov-active-regime', fixture.regime_label);
+        setText('ov-digest', fixture.digest_short);
+        rebuildDriverCards('ov-drivers', fixture.drivers);
+        rebuildResponseCards('ov-responses', fixture.responses);
+        rebuildWhatChangedList('ov-what-changed', fixture.what_changed_next);
+        setText('ov-endpoint-bullet', fixture.endpoint);
+
+        // Overview · demoted compact KPI cards.
+        setText('ov-active-regime-kpi', fixture.regime_label);
+        setText('ov-digest-kpi',        fixture.digest_short);
+        setText('ov-top-event',     fixture.top_event);
+        setText('ov-top-pressure',  fixture.market_pressure);
+        setText('ov-top-financing', fixture.financing_constraint);
+        setText('ov-top-attention', fixture.attention_summary);
+        setText('ov-endpoint',      fixture.endpoint);
+
+        // Timeline KPIs (v1.17.4 renamed from Outputs).
+        setText('kpi-endpoint',         fixture.endpoint);
+        setText('kpi-risk-intents',     fixture.risk_intents);
+        setText('kpi-credit-watches',   fixture.credit_watches);
+        setText('kpi-attention-shifts', fixture.attention_shifts);
+        setText('kpi-unresolved',       fixture.unresolved_refs);
+        setText('kpi-digest',           fixture.digest_short);
+
         // Attention diff strip (v1.17.4).
         setText('diff-previous',   fixture.diff_previous);
         setText('diff-trigger',    fixture.diff_trigger);
@@ -3817,13 +4237,35 @@
         setText('diff-dropped',    fixture.diff_dropped);
         setText('diff-reinforced', fixture.diff_reinforced);
         setText('diff-why',        fixture.diff_why);
-        // Update the regime-compare card heading hint, if present.
-        flashMockRunGlow();
+
+        // No flash, no scrollIntoView, no focus(), no
+        // location.hash mutation. The user sees confirmation in
+        // the top-ribbon status only.
         setStatus(
           'mock UI run · ' + fixture.regime_label
           + ' · static fixture · no engine execution',
           'ok'
         );
+
+        // Defensive restore: if any rule we missed shifted the
+        // scroll or swapped the active sheet, undo it.
+        if (window.scrollX !== sx || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+        var activeAfter = document.querySelector('article.sheet.active');
+        var activeIdAfter = activeAfter ? activeAfter.id : null;
+        if (activeId !== null && activeIdAfter !== activeId) {
+          // Run mock must never change the active sheet. If it
+          // did, something added a click() / activateSheet() side
+          // effect — flag it via the status line so a reviewer
+          // notices.
+          setStatus(
+            'run mock · WARNING · active sheet shifted from '
+              + activeId + ' to ' + activeIdAfter
+              + ' (please report)',
+            'warn'
+          );
+        }
       }
 
       function validate() {
@@ -3895,9 +4337,50 @@
           && !document.querySelector('#sheet-ledger table')) {
           failures.push('ledger records table missing');
         }
-        // Regime compare card present.
+        // g) Regime compare card present.
         if (!$id('card-regime-compare')) {
           failures.push('regime compare card missing');
+        }
+        // h) Required Overview executive-summary blocks
+        //    (post-v1.17.last UX pass).
+        [
+          'ov-main-message', 'ov-active-regime', 'ov-digest',
+          'ov-drivers', 'ov-responses', 'ov-what-changed',
+          'ov-endpoint-bullet'
+        ].forEach(function (slot) {
+          if (!$id(slot)) {
+            failures.push('overview summary slot missing: ' + slot);
+          }
+        });
+        // i) Evidence-trail CTA present.
+        if (!document.querySelector('.evidence-cta button.linkish[data-go-to="ledger"]')) {
+          failures.push('evidence-trail CTA (See Ledger) missing');
+        }
+        // j) Run mock no-jump invariant: dry-run the handler
+        //    and confirm the active sheet id and scroll position
+        //    are unchanged. (No fixture mutation is permanent —
+        //    this is harmless because Run mock only sets text.)
+        try {
+          var beforeActive = document.querySelector('article.sheet.active');
+          var beforeId = beforeActive ? beforeActive.id : null;
+          var beforeSx = window.scrollX || window.pageXOffset || 0;
+          var beforeSy = window.scrollY || window.pageYOffset || 0;
+          if (typeof runMock === 'function') {
+            runMock();
+          }
+          var afterActive = document.querySelector('article.sheet.active');
+          var afterId = afterActive ? afterActive.id : null;
+          if (beforeId !== afterId) {
+            failures.push(
+              'Run mock changed active sheet (' + beforeId
+                + ' → ' + afterId + ')'
+            );
+          }
+          if (window.scrollX !== beforeSx || window.scrollY !== beforeSy) {
+            failures.push('Run mock changed scroll position');
+          }
+        } catch (e) {
+          failures.push('Run mock dry-run threw: ' + e.message);
         }
         if (failures.length === 0) {
           setStatus('validation passed · static UI', 'ok');
@@ -3953,6 +4436,25 @@
       if (btnValid) btnValid.addEventListener('click', validate);
       if (btnCompare) btnCompare.addEventListener('click', compareRegimes);
       if (btnExport) btnExport.addEventListener('click', exportHtml);
+
+      // v1.17.4 (post-v1.17.last UX) — Overview "See Ledger"
+      // CTA button. Click goes to the Ledger sheet via the
+      // existing tab-switch IIFE (no scrollIntoView, no
+      // location.hash mutation beyond what the tab handler
+      // already does).
+      var ledgerLinks = Array.prototype.slice.call(
+        document.querySelectorAll('button.linkish[data-go-to]')
+      );
+      ledgerLinks.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var target = btn.getAttribute('data-go-to');
+          if (!target) return;
+          var tab = document.querySelector(
+            '.sheet-tab[data-sheet="' + target + '"]'
+          );
+          if (tab) tab.click();
+        });
+      });
     })();
   </script>
 </body>

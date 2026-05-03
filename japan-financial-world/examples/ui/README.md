@@ -16,30 +16,67 @@ The prototype has two states:
 Both states are 100% synthetic, jurisdiction-neutral, and
 non-binding.
 
-### Top-ribbon buttons (v1.17.4)
+### Top-ribbon buttons (v1.17.4 + post-v1.17.last UX pass)
 
 - **Load sample run** — parses the inline JSON manifest and fills
   the data-bound tables.
 - **Run mock** — reads the regime pill currently selected on the
   Inputs sheet (`constructive` / `mixed` / `constrained` /
-  `tightening`) and updates the Outputs KPIs, the top-ribbon
-  digest, and the Settings active-regime cell from a deterministic
-  in-page `SAMPLE_RUNS` fixture. **The Python engine is not
-  invoked.** The status strip updates to `mock UI run · <regime>
-  · static fixture · no engine execution`. Same regime → same UI
-  state across two clicks.
-- **Validate** — runs client-side checks (inline JSON parses, all
-  bottom tabs reference real sheet ids, required sheets present,
-  ledger records table present, regime-compare card present).
-  Status strip updates to `validation passed · static UI` or names
-  the first failure.
-- **Compare Regimes** — activates the Outputs sheet and scrolls
-  to the **Regime compare snapshot** card (a side-by-side surface
-  of the v1.17.2 / v1.17.3 axes). The card highlights briefly so
-  it's easy to spot.
+  `tightening`) and updates the Overview executive summary, the
+  Timeline KPIs, the Attention diff strip, the top-ribbon digest,
+  and the Settings active-regime cell from a deterministic in-page
+  `SAMPLE_RUNS` fixture. **The Python engine is not invoked.** The
+  status strip updates to `mock UI run · <regime> · static fixture
+  · no engine execution`. Same regime → same UI state across two
+  clicks.
+  - **No-jump discipline.** Run mock captures
+    `(scrollX, scrollY, activeSheetId)` before mutating any slot
+    and asserts they are unchanged afterward. Run mock never
+    calls `scrollIntoView()`, never calls `.focus()`, never
+    mutates `location.hash`, never toggles classes outside
+    well-scoped slots, and never changes root font-size /
+    transform / zoom. Card heights have stable `min-height` so
+    longer fixture strings cannot reflow the page.
+- **Validate** — runs strict client-side checks: inline JSON
+  parses; tab/sheet count match; every tab points to a real sheet;
+  every sheet has a tab; no duplicates; all 10 required sheet
+  ids present; ledger records table present; regime-compare card
+  present; **all Overview executive-summary slots present**
+  (`ov-main-message` / `ov-active-regime` / `ov-digest` /
+  `ov-drivers` / `ov-responses` / `ov-what-changed` /
+  `ov-endpoint-bullet`); **evidence-trail CTA present**;
+  **Run-mock-no-jump invariant** (dry-runs `runMock()` and
+  asserts active sheet id + scroll position are unchanged).
+  Status strip updates to `validation passed · static UI` or
+  names the first failure.
+- **Compare Regimes** — activates the dedicated Regime Compare
+  tab and flashes the comparison card. (No scroll behavior on
+  the home tab; the tab switch handles its own activation.)
 - **Export HTML** — non-destructive. Updates the status strip to
   `export not implemented in static prototype · use browser Save
   Page / Print`. There is no file-system API.
+
+### Overview = executive summary first, evidence second
+
+The Overview sheet leads with five reader-facing blocks before
+the closed-loop diagram is even in view:
+
+1. **Main message** — one-sentence summary of the regime's
+   dominant implication.
+2. **Top 3 drivers · why it happened** — three driver cards
+   (label · source type · affected actors · downstream effect).
+3. **Top 3 actor responses · who reacted** — Investors / Banks
+   / Firms response cards.
+4. **What changed next** — three-to-four bullets describing
+   period-N+1 consequences.
+5. **Evidence trail CTA** — `See Ledger` button that drills into
+   the audit surface; the Overview is summary-first, evidence-
+   second by design.
+
+The closed-loop SVG diagram and the compact KPI cards are
+still rendered, but **demoted below** the executive summary so
+the first thing a reader sees is the "so what", not the
+implementation map.
 
 The status strip below the load-status line always reads
 `static fixture only · no backend execution` so the
