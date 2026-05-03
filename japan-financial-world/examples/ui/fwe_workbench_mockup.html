@@ -27,8 +27,10 @@
     --ok:          #166534;
 
     /* dimensions */
-    --tab-h:       36px;
+    --tab-h:       44px;
     --ribbon-h:    40px;
+    --grid-col:    64px;
+    --grid-row:    24px;
 
     /* type */
     --font-ui:     "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
@@ -117,11 +119,12 @@
   .sheet {
     display: none;
     min-height: calc(100vh - var(--ribbon-h) - var(--tab-h));
-    padding: 18px 24px 28px;
+    /* B2-cell origin: one grid row top + bottom, one grid column left + right */
+    padding: var(--grid-row) var(--grid-col);
   }
   .sheet.active { display: block; }
   .sheet-inner {
-    max-width: 1500px;
+    max-width: none;
     margin: 0 auto;
     background: rgba(255,255,255,0.98);
     border: 1px solid #d6d4cd;
@@ -129,41 +132,87 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* Bottom tabs                                                        */
+  /* Bottom tabs — packed Excel-style strip with category-coded         */
+  /* top stripes. Active tab swaps the stripe to the brand blue.        */
   /* ------------------------------------------------------------------ */
   .bottom-tabs {
     display: flex;
-    align-items: flex-end;
-    gap: 1px;
+    align-items: stretch;
+    gap: 0;
     border-top: 1px solid #a8a8a8;
     background: #e3e2dd;
-    padding: 3px 8px 0;
+    padding: 0;
     overflow-x: auto;
   }
   .sheet-tab {
-    min-width: 96px;
-    max-width: 180px;
-    height: 30px;
-    padding: 6px 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+    padding: 0 12px;
     border: 1px solid #aeb4bc;
     border-bottom: none;
-    border-radius: 4px 4px 0 0;
+    border-left: none;
+    border-radius: 0;
+    border-top: 3px solid #c8c8c5;
     background: #f5f4ef;
     color: #333;
     font: inherit;
-    font-size: 12px;
-    text-align: left;
+    font-size: 13px;
+    text-align: center;
     cursor: pointer;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .sheet-tab:first-child { border-left: 1px solid #aeb4bc; }
   .sheet-tab:hover { background: #fafaf6; }
   .sheet-tab.active {
     background: #fff;
     color: var(--blue);
     font-weight: 700;
-    border-top: 3px solid var(--blue);
-    padding-top: 3px;
+    border-top-color: var(--blue);
   }
+  /* Category-coded top stripes for inactive tabs. Active state
+     overrides via the rule above so the brand blue always wins. */
+  .sheet-tab[data-category="setup"]    { border-top-color: #d8a55b; }
+  .sheet-tab[data-category="state"]    { border-top-color: #b1b6c2; }
+  .sheet-tab[data-category="output"]   { border-top-color: #4ca56e; }
+  .sheet-tab[data-category="meta"]     { border-top-color: #8da0bf; }
+  .sheet-tab[data-category="cover"]    { border-top-color: #c8c8c5; }
+  /* Group separators — slightly thicker vertical line between
+     category groups so the input → state → output → meta arc is
+     legible at a glance. */
+  .sheet-tab.group-start {
+    border-left: 2px solid #94999f;
+  }
+
+  /* Page-type chip injected by JS into each .band — makes
+     INPUT / STATE / OUTPUT / META legible on the page itself. */
+  .page-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 9px;
+    margin-left: 12px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+    vertical-align: middle;
+    background: rgba(255,255,255,0.18);
+  }
+  .page-tag.setup   { color: #ffe1b6; border-color: #ffd9a3; }
+  .page-tag.state   { color: #e3e6ee; border-color: #d6d9e3; }
+  .page-tag.output  { color: #c5f0d6; border-color: #b3e8c8; }
+  .page-tag.meta    { color: #d3deef; border-color: #c2d2e6; }
 
   /* ------------------------------------------------------------------ */
   /* Cover                                                              */
@@ -196,11 +245,14 @@
     position: relative;
     margin-top: 110px;
     text-align: center;
-    font-family: "Palace Script MT", "Monotype Corsiva", "Apple Chancery", "Snell Roundhand", cursive;
-    font-size: 132px;
+    /* Preferred order: Zapfino (most ornate cursive on macOS) →
+       Snell Roundhand (also macOS) → Palace Script MT (Windows) →
+       Monotype Corsiva → Apple Chancery → generic cursive. */
+    font-family: "Zapfino", "Snell Roundhand", "Palace Script MT", "Monotype Corsiva", "Apple Chancery", cursive;
+    font-size: 116px;
     font-weight: 400;
-    line-height: 1.0;
-    letter-spacing: 0.01em;
+    line-height: 1.15;
+    letter-spacing: 0.005em;
     color: #050505;
   }
   .cover-subtitle {
@@ -259,7 +311,7 @@
   .band {
     background: var(--blue);
     color: #fff;
-    padding: 14px 22px;
+    padding: 16px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -267,26 +319,26 @@
   }
   .band h1 {
     margin: 0;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     letter-spacing: 0.01em;
   }
   .band .chapter {
     font-family: var(--font-serif);
     font-style: italic;
-    font-size: 12px;
+    font-size: 13px;
     opacity: 0.78;
     margin-bottom: 2px;
   }
   .subband {
     background: var(--lilac);
     color: var(--blue-2);
-    padding: 7px 22px;
+    padding: 9px 28px;
     font-family: var(--font-serif);
     font-style: italic;
-    font-size: 13px;
+    font-size: 14px;
   }
-  .panel-body { padding: 18px 22px 22px; background: var(--sheet); }
+  .panel-body { padding: 22px 28px 26px; background: var(--sheet); }
 
   /* ------------------------------------------------------------------ */
   /* Layout primitives                                                  */
@@ -309,7 +361,7 @@
     color: var(--blue-2);
     font-family: var(--font-serif);
     font-style: italic;
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 500;
     display: flex;
     justify-content: space-between;
@@ -403,18 +455,18 @@
   /* ------------------------------------------------------------------ */
   /* Tables                                                             */
   /* ------------------------------------------------------------------ */
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th {
     text-align: left;
     color: var(--blue-2);
     font-weight: 700;
     border-bottom: 1px solid var(--blue);
-    padding: 5px 7px;
+    padding: 7px 9px;
     white-space: nowrap;
   }
   td {
     border-bottom: 1px solid #ebe9e2;
-    padding: 5px 7px;
+    padding: 7px 9px;
     vertical-align: top;
   }
   td.num, th.num { text-align: right; font-family: var(--font-mono); }
@@ -431,7 +483,7 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
     margin-top: 9px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .event-chip {
     border-left: 3px solid var(--danger);
@@ -451,25 +503,25 @@
     border-bottom: 1px solid #ddd;
     padding: 9px 10px;
   }
-  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .kpi .value { color: var(--blue); font-size: 19px; font-family: var(--font-mono); font-weight: 700; margin-top: 3px; }
-  .kpi .note  { color: var(--muted); font-size: 10px; margin-top: 2px; }
+  .kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .kpi .value { color: var(--blue); font-size: 22px; font-family: var(--font-mono); font-weight: 700; margin-top: 3px; }
+  .kpi .note  { color: var(--muted); font-size: 11px; margin-top: 2px; }
 
   .mini-chart { width: 100%; height: auto; background: #fbfbfa; border: 1px solid #e1e1e1; }
 
   .boundary-box {
     border-left: 4px solid var(--danger);
     background: #fff7f8;
-    padding: 11px 13px;
-    font-size: 12px;
-    line-height: 1.45;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
   }
   .note-box {
     border-left: 4px solid var(--blue);
     background: #f5f8ff;
-    padding: 11px 13px;
-    font-size: 12px;
-    line-height: 1.45;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
   }
 
   /* ------------------------------------------------------------------ */
@@ -1398,16 +1450,16 @@
   <!-- Bottom tabs                                                    -->
   <!-- ============================================================== -->
   <nav class="bottom-tabs" aria-label="Workbook sheets">
-    <button class="sheet-tab active" data-sheet="cover" type="button">Cover</button>
-    <button class="sheet-tab" data-sheet="settings" type="button">Settings</button>
-    <button class="sheet-tab" data-sheet="market" type="button">Market State</button>
-    <button class="sheet-tab" data-sheet="attention" type="button">Attention</button>
-    <button class="sheet-tab" data-sheet="firms" type="button">Firms</button>
-    <button class="sheet-tab" data-sheet="investors" type="button">Investors</button>
-    <button class="sheet-tab" data-sheet="banks" type="button">Banks</button>
-    <button class="sheet-tab" data-sheet="outputs" type="button">Outputs</button>
-    <button class="sheet-tab" data-sheet="ledger" type="button">Ledger</button>
-    <button class="sheet-tab" data-sheet="appendix" type="button">Appendix</button>
+    <button class="sheet-tab active" data-sheet="cover" data-category="cover" type="button">Cover</button>
+    <button class="sheet-tab group-start" data-sheet="settings" data-category="setup" type="button">Inputs</button>
+    <button class="sheet-tab group-start" data-sheet="market" data-category="state" type="button">Market State</button>
+    <button class="sheet-tab" data-sheet="attention" data-category="state" type="button">Attention</button>
+    <button class="sheet-tab" data-sheet="firms" data-category="state" type="button">Firms</button>
+    <button class="sheet-tab" data-sheet="investors" data-category="state" type="button">Investors</button>
+    <button class="sheet-tab" data-sheet="banks" data-category="state" type="button">Banks</button>
+    <button class="sheet-tab group-start" data-sheet="outputs" data-category="output" type="button">Outputs</button>
+    <button class="sheet-tab" data-sheet="ledger" data-category="output" type="button">Ledger</button>
+    <button class="sheet-tab group-start" data-sheet="appendix" data-category="meta" type="button">Appendix</button>
   </nav>
 </main>
 
@@ -1757,6 +1809,37 @@
     if (initial && document.getElementById('sheet-' + initial)) {
       activateSheet(initial);
     }
+  })();
+
+  // -----------------------------------------------------------------
+  // Page-type chips — inject INPUT / STATE / OUTPUT / META into
+  // each sheet's title band so a reader can see at a glance which
+  // pages they are configuring vs reading vs auditing.
+  // -----------------------------------------------------------------
+  (function () {
+    var sheetCategories = {
+      'sheet-settings':  { label: 'INPUT',  cls: 'setup'  },
+      'sheet-market':    { label: 'STATE',  cls: 'state'  },
+      'sheet-attention': { label: 'STATE',  cls: 'state'  },
+      'sheet-firms':     { label: 'STATE',  cls: 'state'  },
+      'sheet-investors': { label: 'STATE',  cls: 'state'  },
+      'sheet-banks':     { label: 'STATE',  cls: 'state'  },
+      'sheet-outputs':   { label: 'OUTPUT', cls: 'output' },
+      'sheet-ledger':    { label: 'OUTPUT', cls: 'output' },
+      'sheet-appendix':  { label: 'META',   cls: 'meta'   }
+    };
+    Object.keys(sheetCategories).forEach(function (id) {
+      var sheet = document.getElementById(id);
+      if (!sheet) return;
+      var h1 = sheet.querySelector('.band h1');
+      if (!h1) return;
+      var info = sheetCategories[id];
+      var tag = document.createElement('span');
+      tag.className = 'page-tag ' + info.cls;
+      tag.textContent = info.label;
+      h1.appendChild(document.createTextNode(' '));
+      h1.appendChild(tag);
+    });
   })();
 
   // -----------------------------------------------------------------
