@@ -9390,3 +9390,64 @@ The test count moves from `4033 / 4033` (v1.16.last) to `4099 / 4099` (v1.17.1) 
 ### 120.5 Forward pointer
 
 v1.17.2 lands the first concrete report rendering — `RegimeComparisonPanel` and side-by-side markdown panels for the v1.11.2 regime presets (`constructive` / `selective` / `constrained` / `tightening`). v1.17.3 lands `EventAnnotationRecord` + `CausalTimelineAnnotation` walking the v1.16 closed-loop citations. v1.17.4 polishes the workbench prototype. v1.17.last freezes the inspection layer (docs-only).
+
+## 121. v1.17.2 Regime Comparison Report
+
+§121 ships the first concrete **report rendering** in the v1.17 inspection layer. v1.17.2 adds two new immutable display dataclasses to `world/display_timeline.py` (`NamedRegimePanel`, `RegimeComparisonPanel`), three deterministic helpers (`build_named_regime_panel`, `build_regime_comparison_panel`, `render_regime_comparison_markdown`), and a new kernel-reading driver at `examples/reference_world/regime_comparison_report.py` that runs each v1.11.2 regime preset on a fresh kernel and walks the read-only book interface to extract closed-loop label histograms. The output is a **side-by-side markdown table** that lets a reader see how regime choice changes the v1.16 closed loop without reading the ledger line by line.
+
+### 121.1 Closed-set comparison axes
+
+`COMPARISON_AXIS_LABELS` is the closed-set frozenset of supported axes. Eight axes are defined; `_DEFAULT_COMPARISON_AXES` walks all eight:
+
+| Axis                          | Source                                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| `attention_focus`             | `ActorAttentionStateRecord.focus_labels` across the run                                  |
+| `market_intent_direction`     | `InvestorMarketIntentRecord.intent_direction_label` across the run                       |
+| `aggregated_market_interest`  | `AggregatedMarketInterestRecord.net_interest_label` across the run                       |
+| `indicative_market_pressure`  | `IndicativeMarketPressureRecord.market_access_label` across the run                      |
+| `financing_path_constraint`   | `CorporateFinancingPathRecord.constraint_label` across the run                           |
+| `financing_path_coherence`    | `CorporateFinancingPathRecord.coherence_label` across the run                            |
+| `unresolved_refs`             | sum of `classifier_unresolved_or_missing_count` + helper `unresolved_*` / `mismatched_*` metadata across the chain books |
+| `record_count_digest`         | `len(kernel.ledger.records)` + `living_world_digest(kernel, result)`                     |
+
+Every axis is a **pre-existing closed-set field** on records the v1.16 closed loop already emits — v1.17.2 adds no new economic vocabulary, no new ledger event, and no new source-of-truth book.
+
+### 121.2 New display-layer dataclasses
+
+- **`NamedRegimePanel`** — per-regime histogram bundle. Carries `regime_id`, optional `digest`, `record_count`, `unresolved_refs_count`, six histograms (one per histogram axis above), and an opaque `metadata` mapping. Rejects bool / negative integer counts. Same inputs → byte-identical `to_dict`.
+- **`RegimeComparisonPanel`** — bundles two or three `NamedRegimePanel`s, plus the closed-set `comparison_axes` tuple, plus an optional `reporting_calendar_id`. Validates duplicate `regime_id` rejection and closed-set axis membership. Same inputs → byte-identical `to_dict`.
+
+`DisplayTimelineBook` gains `add_/get_/list_regime_comparison_panels` and the `regime_comparison_panels` key in `snapshot()`.
+
+### 121.3 Helpers + markdown rendering
+
+- `build_named_regime_panel(...)` accepts pre-extracted label tuples and computes deterministic histograms internally. The helper takes no kernel argument; it cannot mutate any source-of-truth book.
+- `build_regime_comparison_panel(...)` bundles the named panels with the default axis tuple.
+- `render_regime_comparison_markdown(panel)` returns a deterministic markdown string with a top-level `## Regime comparison — <panel_id>` header, an axis-by-regime grid, and a closing `_Synthetic display only — Not a forecast, not a price, not a recommendation._` disclaimer. Histograms are rendered as a sorted `label count, label count, …` cell so two runs of the same panel produce byte-identical output.
+
+### 121.4 Kernel-reading driver
+
+`examples/reference_world/regime_comparison_report.py` is the bridge between the runtime-book-free `world/display_timeline.py` module and the v1.9.x living reference world. It exposes:
+
+- `run_regime_for_comparison(regime_id, …)` — runs one regime preset on a fresh kernel and returns a deterministic `_RegimeRunSnapshot`.
+- `extract_regime_run_snapshot(...)` — walks the kernel's `attention_feedback`, `investor_market_intents`, `aggregated_market_interest`, `indicative_market_pressure`, and `financing_paths` books via `list_*` only.
+- `build_regime_comparison_report(panel_id, regime_ids, …)` — runs every requested regime preset and returns a `RegimeComparisonPanel`.
+- `regime_comparison_markdown(...)` — convenience wrapper that builds the default panel and renders it.
+
+The driver is **read-only against the kernel after each run finishes**. A test pins that re-running the snapshot extraction is byte-identical and that `kernel.prices.snapshot()` is byte-equal pre/post.
+
+### 121.5 Anti-claims
+
+This is **comparison rendering, not market behaviour**. v1.17.2 does **not** introduce: orders / order book / matching / execution / clearing / settlement / quote dissemination / price formation / `PriceBook` mutation / target prices / expected returns / recommendations / portfolio allocations / forecast paths / predicted indices / real price series / real-data ingestion / Japan calibration / LLM execution / stochastic behaviour probabilities / learned models / new economic source-of-truth records. Histogram counts are counts — never prices, returns, or NAV. The driver does not introduce a new economic decision; it observes the same v1.16 closed-loop output under different regime presets.
+
+A regression test in `tests/test_regime_comparison_report.py::test_no_forbidden_event_types_across_regime_runs` walks every default regime preset and pins that no `order_submitted` / `trade_executed` / `price_updated` / `quote_disseminated` / `clearing_completed` / `settlement_completed` / `ownership_transferred` / `loan_approved` / `security_issued` / `underwriting_executed` event leaks into the kernel ledger.
+
+### 121.6 Performance boundary
+
+The integration-test `living_world_digest` is **unchanged** at **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (v1.16.last / v1.17.0 / v1.17.1 / v1.17.2). v1.17.2 adds zero records to the per-period sweep; the regime-comparison driver runs each preset on its own freshly-seeded kernel and never touches the default-fixture kernel that the digest is computed against.
+
+The test count moves from `4099 / 4099` (v1.17.1) to `4136 / 4136` (v1.17.2) — `+37` tests across `tests/test_display_timeline.py` (+18: closed-set comparison axes; panel construction + immutability + `to_dict`; histogram correctness; bool / negative count rejection; duplicate regime-id rejection; closed-set axis rejection; markdown determinism + headline + disclaimer + no-forbidden-name + empty-panel handling; book add / get / list / duplicate / unknown / snapshot-key-presence) and the new `tests/test_regime_comparison_report.py` (+19: per-regime determinism; regime distinguishability; non-zero record count; replay-determinism for record count across two runs; default-args panel determinism; panel order preservation; two-regime support; closed-set axes; `NamedRegimePanel` instance type; regime distinguishability across at least one axis; markdown default-args determinism; markdown contains every default-axis row + headline + disclaimer; markdown no-forbidden-display-name; markdown jurisdiction-neutral; kernel read-only across re-extraction; no-forbidden-event-types across all regimes; module-text no-forbidden-display-name).
+
+### 121.7 Forward pointer
+
+v1.17.3 lands `EventAnnotationRecord` and `CausalTimelineAnnotation` walking the v1.16 closed-loop plain-id citations — annotations rendered *below* the timeline plus a small deterministic helper that materialises the kernel's existing causal edges into display objects. v1.17.4 polishes the workbench prototype with the v1.17.1 / v1.17.2 / v1.17.3 outputs as first-class views (Attention "what changed" diff strip, cross-tab click-through, regime-comparison panel embedded in the report sheet). v1.17.last freezes the inspection layer (docs-only).

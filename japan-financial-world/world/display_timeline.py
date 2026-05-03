@@ -848,6 +848,9 @@ class DisplayTimelineBook:
     _causal_annotations: dict[str, CausalTimelineAnnotation] = field(
         default_factory=dict
     )
+    _regime_comparison_panels: dict[str, "RegimeComparisonPanel"] = field(
+        default_factory=dict
+    )
 
     # --- ReportingCalendar -------------------------------------------------
 
@@ -997,6 +1000,33 @@ class DisplayTimelineBook:
         )
         return events + causals
 
+    # --- RegimeComparisonPanel --------------------------------------------
+
+    def add_regime_comparison_panel(
+        self, panel: "RegimeComparisonPanel"
+    ) -> "RegimeComparisonPanel":
+        if panel.panel_id in self._regime_comparison_panels:
+            raise DuplicateRegimeComparisonPanelError(
+                f"Duplicate panel_id: {panel.panel_id}"
+            )
+        self._regime_comparison_panels[panel.panel_id] = panel
+        return panel
+
+    def get_regime_comparison_panel(
+        self, panel_id: str
+    ) -> "RegimeComparisonPanel":
+        try:
+            return self._regime_comparison_panels[panel_id]
+        except KeyError as exc:
+            raise UnknownRegimeComparisonPanelError(
+                f"regime comparison panel not found: {panel_id!r}"
+            ) from exc
+
+    def list_regime_comparison_panels(
+        self,
+    ) -> tuple["RegimeComparisonPanel", ...]:
+        return tuple(self._regime_comparison_panels.values())
+
     def snapshot(self) -> dict[str, Any]:
         return {
             "calendars": [c.to_dict() for c in self._calendars.values()],
@@ -1009,6 +1039,10 @@ class DisplayTimelineBook:
             ],
             "causal_annotations": [
                 a.to_dict() for a in self._causal_annotations.values()
+            ],
+            "regime_comparison_panels": [
+                p.to_dict()
+                for p in self._regime_comparison_panels.values()
             ],
         }
 
@@ -1325,3 +1359,462 @@ def build_synthetic_display_path(
         visibility=visibility,
         metadata=dict(metadata or {}),
     )
+
+
+# ---------------------------------------------------------------------------
+# v1.17.2 — Regime comparison panel
+#
+# Display-only side-by-side comparison of the v1.16 closed-loop
+# outcomes for two or three named regime presets (typically
+# ``constructive`` / ``selective`` / ``constrained`` /
+# ``tightening``). The two dataclasses below are immutable and
+# closed-set; the helpers compute deterministic histograms from
+# pre-extracted label tuples — they do **not** import any
+# source-of-truth book. The kernel-reading driver lives in
+# ``examples/reference_world/regime_comparison_report.py``.
+#
+# The panel is a rendering of records that already exist in the
+# kernel; it does not invent a new economic edge, mutate any
+# book, write to the ledger, or move ``living_world_digest``.
+# ---------------------------------------------------------------------------
+
+
+COMPARISON_AXIS_LABELS: frozenset[str] = frozenset(
+    {
+        "attention_focus",
+        "market_intent_direction",
+        "aggregated_market_interest",
+        "indicative_market_pressure",
+        "financing_path_constraint",
+        "financing_path_coherence",
+        "unresolved_refs",
+        "record_count_digest",
+    }
+)
+
+
+class DuplicateRegimeComparisonPanelError(DisplayTimelineError):
+    """Raised when a panel_id is added twice."""
+
+
+class UnknownRegimeComparisonPanelError(DisplayTimelineError, KeyError):
+    """Raised when a panel_id is not found."""
+
+
+def _validate_label_count_mapping(
+    value: Mapping[str, Any], *, field_name: str
+) -> Mapping[str, int]:
+    """Coerce a label → count mapping into a deterministic int
+    mapping. Bool counts and negative counts are rejected."""
+    coerced: dict[str, int] = {}
+    for label, count in dict(value).items():
+        if not isinstance(label, str) or not label:
+            raise ValueError(
+                f"{field_name} keys must be non-empty strings"
+            )
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise ValueError(
+                f"{field_name} values must be non-negative ints"
+            )
+        if count < 0:
+            raise ValueError(
+                f"{field_name} values must be non-negative"
+            )
+        coerced[label] = count
+    return coerced
+
+
+@dataclass(frozen=True)
+class NamedRegimePanel:
+    """Immutable per-regime panel.
+
+    Carries the deterministic histograms used by the v1.17.2
+    regime comparison report. Every histogram is a label →
+    int-count mapping. ``digest`` is optional — when present, it
+    is the upstream ``living_world_digest`` of the regime's run
+    (sample fixture in v1.17.2; production digest if the caller
+    chooses to wire it).
+    """
+
+    regime_id: str
+    digest: str | None = None
+    record_count: int = 0
+    unresolved_refs_count: int = 0
+    attention_focus_histogram: Mapping[str, int] = field(default_factory=dict)
+    market_intent_direction_histogram: Mapping[str, int] = field(
+        default_factory=dict
+    )
+    aggregated_market_interest_histogram: Mapping[str, int] = field(
+        default_factory=dict
+    )
+    indicative_market_pressure_histogram: Mapping[str, int] = field(
+        default_factory=dict
+    )
+    financing_path_constraint_histogram: Mapping[str, int] = field(
+        default_factory=dict
+    )
+    financing_path_coherence_histogram: Mapping[str, int] = field(
+        default_factory=dict
+    )
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    HISTOGRAM_FIELDS: ClassVar[tuple[str, ...]] = (
+        "attention_focus_histogram",
+        "market_intent_direction_histogram",
+        "aggregated_market_interest_histogram",
+        "indicative_market_pressure_histogram",
+        "financing_path_constraint_histogram",
+        "financing_path_coherence_histogram",
+    )
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.regime_id, str) or not self.regime_id:
+            raise ValueError("regime_id is required")
+        if self.digest is not None and (
+            not isinstance(self.digest, str) or not self.digest
+        ):
+            raise ValueError("digest must be a non-empty string or None")
+        for name in ("record_count", "unresolved_refs_count"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(
+                    f"{name} must be a non-negative int"
+                )
+            if value < 0:
+                raise ValueError(f"{name} must be non-negative")
+        for name in self.HISTOGRAM_FIELDS:
+            object.__setattr__(
+                self,
+                name,
+                _validate_label_count_mapping(
+                    getattr(self, name), field_name=name
+                ),
+            )
+        object.__setattr__(self, "metadata", dict(self.metadata))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "regime_id": self.regime_id,
+            "digest": self.digest,
+            "record_count": self.record_count,
+            "unresolved_refs_count": self.unresolved_refs_count,
+            "attention_focus_histogram": dict(
+                self.attention_focus_histogram
+            ),
+            "market_intent_direction_histogram": dict(
+                self.market_intent_direction_histogram
+            ),
+            "aggregated_market_interest_histogram": dict(
+                self.aggregated_market_interest_histogram
+            ),
+            "indicative_market_pressure_histogram": dict(
+                self.indicative_market_pressure_histogram
+            ),
+            "financing_path_constraint_histogram": dict(
+                self.financing_path_constraint_histogram
+            ),
+            "financing_path_coherence_histogram": dict(
+                self.financing_path_coherence_histogram
+            ),
+            "metadata": dict(self.metadata),
+        }
+
+
+@dataclass(frozen=True)
+class RegimeComparisonPanel:
+    """Immutable panel that collects two or three
+    :class:`NamedRegimePanel` instances side-by-side, plus the
+    closed-set comparison axes the report should walk."""
+
+    panel_id: str
+    regime_panels: tuple[NamedRegimePanel, ...] = field(default_factory=tuple)
+    comparison_axes: tuple[str, ...] = field(default_factory=tuple)
+    reporting_calendar_id: str = ""
+    status: str = "active"
+    visibility: str = "internal_only"
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
+        "panel_id",
+        "status",
+        "visibility",
+    )
+
+    def __post_init__(self) -> None:
+        for name in self.REQUIRED_STRING_FIELDS:
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{name} is required")
+        if not isinstance(self.reporting_calendar_id, str):
+            raise ValueError(
+                "reporting_calendar_id must be a string (use \"\" if none)"
+            )
+        _validate_label(
+            self.status, STATUS_LABELS, field_name="status"
+        )
+        _validate_label(
+            self.visibility,
+            VISIBILITY_LABELS,
+            field_name="visibility",
+        )
+        normalized_panels: list[NamedRegimePanel] = []
+        seen_regime_ids: set[str] = set()
+        for entry in self.regime_panels:
+            if not isinstance(entry, NamedRegimePanel):
+                raise ValueError(
+                    "regime_panels entries must be NamedRegimePanel "
+                    "instances"
+                )
+            if entry.regime_id in seen_regime_ids:
+                raise ValueError(
+                    f"duplicate regime_id in regime_panels: "
+                    f"{entry.regime_id!r}"
+                )
+            seen_regime_ids.add(entry.regime_id)
+            normalized_panels.append(entry)
+        object.__setattr__(
+            self, "regime_panels", tuple(normalized_panels)
+        )
+        normalized_axes = tuple(self.comparison_axes)
+        for axis in normalized_axes:
+            _validate_label(
+                axis,
+                COMPARISON_AXIS_LABELS,
+                field_name="comparison_axes",
+            )
+        object.__setattr__(self, "comparison_axes", normalized_axes)
+        object.__setattr__(self, "metadata", dict(self.metadata))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "panel_id": self.panel_id,
+            "regime_panels": [p.to_dict() for p in self.regime_panels],
+            "comparison_axes": list(self.comparison_axes),
+            "reporting_calendar_id": self.reporting_calendar_id,
+            "status": self.status,
+            "visibility": self.visibility,
+            "metadata": dict(self.metadata),
+        }
+
+
+# ---------------------------------------------------------------------------
+# build_named_regime_panel
+# ---------------------------------------------------------------------------
+
+
+def _histogram(labels: Iterable[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for label in labels:
+        if not isinstance(label, str) or not label:
+            raise ValueError(
+                "histogram labels must be non-empty strings"
+            )
+        counts[label] = counts.get(label, 0) + 1
+    return counts
+
+
+def build_named_regime_panel(
+    *,
+    regime_id: str,
+    digest: str | None = None,
+    record_count: int = 0,
+    unresolved_refs_count: int = 0,
+    attention_focus_labels: Iterable[str] = (),
+    market_intent_direction_labels: Iterable[str] = (),
+    aggregated_market_interest_labels: Iterable[str] = (),
+    indicative_market_pressure_labels: Iterable[str] = (),
+    financing_path_constraint_labels: Iterable[str] = (),
+    financing_path_coherence_labels: Iterable[str] = (),
+    metadata: Mapping[str, Any] | None = None,
+) -> NamedRegimePanel:
+    """Deterministic helper. Builds a :class:`NamedRegimePanel`
+    from pre-extracted label tuples; the caller is responsible
+    for walking the kernel books and supplying those tuples
+    (typically the
+    ``examples.reference_world.regime_comparison_report`` driver).
+
+    Same inputs → byte-identical :class:`NamedRegimePanel`."""
+    if not isinstance(regime_id, str) or not regime_id:
+        raise ValueError("regime_id is required")
+    return NamedRegimePanel(
+        regime_id=regime_id,
+        digest=digest,
+        record_count=record_count,
+        unresolved_refs_count=unresolved_refs_count,
+        attention_focus_histogram=_histogram(attention_focus_labels),
+        market_intent_direction_histogram=_histogram(
+            market_intent_direction_labels
+        ),
+        aggregated_market_interest_histogram=_histogram(
+            aggregated_market_interest_labels
+        ),
+        indicative_market_pressure_histogram=_histogram(
+            indicative_market_pressure_labels
+        ),
+        financing_path_constraint_histogram=_histogram(
+            financing_path_constraint_labels
+        ),
+        financing_path_coherence_histogram=_histogram(
+            financing_path_coherence_labels
+        ),
+        metadata=dict(metadata or {}),
+    )
+
+
+# ---------------------------------------------------------------------------
+# build_regime_comparison_panel
+# ---------------------------------------------------------------------------
+
+
+_DEFAULT_COMPARISON_AXES: tuple[str, ...] = (
+    "attention_focus",
+    "market_intent_direction",
+    "aggregated_market_interest",
+    "indicative_market_pressure",
+    "financing_path_constraint",
+    "financing_path_coherence",
+    "unresolved_refs",
+    "record_count_digest",
+)
+
+
+def build_regime_comparison_panel(
+    *,
+    panel_id: str,
+    regime_panels: Iterable[NamedRegimePanel],
+    comparison_axes: Iterable[str] = _DEFAULT_COMPARISON_AXES,
+    reporting_calendar_id: str = "",
+    status: str = "active",
+    visibility: str = "internal_only",
+    metadata: Mapping[str, Any] | None = None,
+) -> RegimeComparisonPanel:
+    """Deterministic helper. Bundles a set of
+    :class:`NamedRegimePanel` instances into a
+    :class:`RegimeComparisonPanel`. Comparison axes are
+    closed-set (see :data:`COMPARISON_AXIS_LABELS`).
+
+    Same inputs → byte-identical
+    :class:`RegimeComparisonPanel`."""
+    return RegimeComparisonPanel(
+        panel_id=panel_id,
+        regime_panels=tuple(regime_panels),
+        comparison_axes=tuple(comparison_axes),
+        reporting_calendar_id=reporting_calendar_id,
+        status=status,
+        visibility=visibility,
+        metadata=dict(metadata or {}),
+    )
+
+
+# ---------------------------------------------------------------------------
+# render_regime_comparison_markdown
+# ---------------------------------------------------------------------------
+
+
+_AXIS_TITLES: Mapping[str, str] = {
+    "attention_focus": "Attention focus",
+    "market_intent_direction": "Investor market intent direction",
+    "aggregated_market_interest": "Aggregated market interest",
+    "indicative_market_pressure": "Indicative market pressure",
+    "financing_path_constraint": "Financing path constraint",
+    "financing_path_coherence": "Financing path coherence",
+    "unresolved_refs": "Unresolved refs",
+    "record_count_digest": "Record count / digest",
+}
+
+
+_AXIS_TO_HISTOGRAM_FIELD: Mapping[str, str] = {
+    "attention_focus": "attention_focus_histogram",
+    "market_intent_direction": "market_intent_direction_histogram",
+    "aggregated_market_interest": "aggregated_market_interest_histogram",
+    "indicative_market_pressure": "indicative_market_pressure_histogram",
+    "financing_path_constraint": "financing_path_constraint_histogram",
+    "financing_path_coherence": "financing_path_coherence_histogram",
+}
+
+
+def _format_histogram_cell(hist: Mapping[str, int]) -> str:
+    """Render a label → count mapping as a deterministic
+    sorted-key list for the markdown cell."""
+    if not hist:
+        return "—"
+    return ", ".join(
+        f"{label} {count}" for label, count in sorted(hist.items())
+    )
+
+
+def _short_digest(digest: str | None) -> str:
+    if digest is None:
+        return "—"
+    if len(digest) <= 16:
+        return digest
+    return digest[:8] + "…" + digest[-6:]
+
+
+def render_regime_comparison_markdown(
+    panel: RegimeComparisonPanel,
+) -> str:
+    """Render a :class:`RegimeComparisonPanel` as a deterministic
+    markdown section. Same panel → byte-identical markdown
+    string. The section is **synthetic display only** —
+    histograms are counts of the labels actually emitted by the
+    v1.16 closed-loop records; no economic claim is made about
+    the values.
+    """
+    if not isinstance(panel, RegimeComparisonPanel):
+        raise TypeError(
+            "render_regime_comparison_markdown expects a "
+            "RegimeComparisonPanel"
+        )
+
+    # Stable column order: panel order is the input order.
+    regime_panels = panel.regime_panels
+    if not regime_panels:
+        return (
+            f"## Regime comparison — {panel.panel_id}\n"
+            "\n"
+            "_No regime panels supplied._\n"
+        )
+
+    header_cells = ["Axis"] + [p.regime_id for p in regime_panels]
+    sep_cells = ["---"] + ["---" for _ in regime_panels]
+    lines = [
+        f"## Regime comparison — {panel.panel_id}",
+        "",
+        "| " + " | ".join(header_cells) + " |",
+        "| " + " | ".join(sep_cells) + " |",
+    ]
+
+    axes = panel.comparison_axes or _DEFAULT_COMPARISON_AXES
+    for axis in axes:
+        title = _AXIS_TITLES.get(axis, axis)
+        if axis == "unresolved_refs":
+            cells = [str(p.unresolved_refs_count) for p in regime_panels]
+        elif axis == "record_count_digest":
+            cells = [
+                f"{p.record_count} · {_short_digest(p.digest)}"
+                for p in regime_panels
+            ]
+        else:
+            histogram_field = _AXIS_TO_HISTOGRAM_FIELD.get(axis)
+            if histogram_field is None:
+                cells = ["—" for _ in regime_panels]
+            else:
+                cells = [
+                    _format_histogram_cell(
+                        getattr(p, histogram_field)
+                    )
+                    for p in regime_panels
+                ]
+        row = [title] + cells
+        lines.append("| " + " | ".join(row) + " |")
+
+    lines.append("")
+    lines.append(
+        "_Synthetic display only — counts of the labels emitted "
+        "by the v1.16 closed-loop records under each regime "
+        "preset. Not a forecast, not a price, not a "
+        "recommendation._"
+    )
+    lines.append("")
+    return "\n".join(lines)

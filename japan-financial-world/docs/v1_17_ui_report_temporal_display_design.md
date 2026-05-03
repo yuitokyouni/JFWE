@@ -249,8 +249,8 @@ construction — neither set leaks into the other.
 | Milestone   | What                                                                                                                                                                   | Status                  |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | v1.17.0     | UI / Report / Temporal Display design (this document) — three-concept separation; safe object vocabulary; hard naming boundary; per-milestone roadmap; success condition | Shipped (docs-only)     |
-| **v1.17.1** | **`world/display_timeline.py`** — `ReportingCalendar`, `ReferenceTimelineSeries`, `SyntheticDisplayPath`, `EventAnnotationRecord`, `CausalTimelineAnnotation` immutable dataclasses + `DisplayTimelineBook` (standalone — not registered with `WorldKernel` in v1.17.1) + deterministic helpers `build_reporting_calendar(...)` and `build_synthetic_display_path(...)` (linear / step / hold_forward / event_weighted (defers to v1.17.3) interpolation kernels; quarter-end-anchored monthly / daily_like expansion; same inputs → byte-identical `to_dict`); +66 unit tests covering closed-set vocabularies, hard naming boundary disjointness, deterministic date-points generation, interpolation correctness, immutability, `to_dict` round-trip, book add/get/list semantics, no-source-of-truth-book imports, no-PriceBook-mutation, no-`living_world_digest`-move, jurisdiction-neutral scan over both module and test text | **Shipped**             |
-| v1.17.2     | `RegimeComparisonPanel` and a small markdown-report extension that renders side-by-side panels for the v1.11.2 regime presets (`constructive` / `selective` / `constrained` / `tightening`); attention focus / market intent / pressure / financing constraint compared per period | Planned                 |
+| v1.17.1     | `world/display_timeline.py` — `ReportingCalendar`, `ReferenceTimelineSeries`, `SyntheticDisplayPath`, `EventAnnotationRecord`, `CausalTimelineAnnotation` immutable dataclasses + `DisplayTimelineBook` (standalone — not registered with `WorldKernel` in v1.17.1) + deterministic helpers `build_reporting_calendar(...)` and `build_synthetic_display_path(...)` (linear / step / hold_forward / event_weighted (defers to v1.17.3) interpolation kernels; quarter-end-anchored monthly / daily_like expansion; same inputs → byte-identical `to_dict`); +66 unit tests | Shipped                 |
+| **v1.17.2** | **Regime Comparison Report** — adds `NamedRegimePanel` + `RegimeComparisonPanel` immutable dataclasses to `world/display_timeline.py`, three deterministic helpers (`build_named_regime_panel(...)`, `build_regime_comparison_panel(...)`, `render_regime_comparison_markdown(...)`), and a new `examples/reference_world/regime_comparison_report.py` driver that runs each v1.11.2 regime preset on a fresh kernel and walks the read-only book interface to extract closed-loop label histograms; `DisplayTimelineBook` gains `add_/get_/list_regime_comparison_panel(s)` and the `regime_comparison_panels` snapshot key; closed-set `COMPARISON_AXIS_LABELS` (8 axes: attention focus / market intent direction / aggregated market interest / indicative market pressure / financing path constraint / financing path coherence / unresolved refs / record count + digest); markdown rendering is deterministic, byte-identical across two calls, includes a "_Synthetic display only — Not a forecast, not a price, not a recommendation_" disclaimer, and contains no forbidden display name; the driver is read-only against the kernel (`PriceBook` byte-equal pre/post; `living_world_digest` unchanged for the default fixture; no economic-event leak across regimes); +18 panel tests in `tests/test_display_timeline.py` + 19 driver tests in new `tests/test_regime_comparison_report.py` covering panel determinism, regime distinguishability, closed-set axes, immutability, markdown determinism, no-forbidden-display-name in rendered markdown, jurisdiction-neutral scan over rendered markdown, kernel read-only discipline, no forbidden ledger event types across all regime runs; `living_world_digest` unchanged from v1.17.1 by design | **Shipped**             |
 | v1.17.3     | `EventAnnotationRecord` + `CausalTimelineAnnotation`; deterministic helper that walks the v1.16 closed loop's plain-id citations and emits annotations + causal links; unit tests pin that every annotation cites a reachable record | Planned                 |
 | v1.17.4     | UI workbench polish — wire the v1.17.1 / v1.17.2 / v1.17.3 outputs into [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html); add the §6 page-level views; cross-tab click-through; "what changed" diff strip on Attention; jurisdiction-neutral scan over the rendered HTML | Planned                 |
 | v1.17.last  | Endogenous-market-intent feedback loop **inspection-layer freeze** (docs-only): single-page reader-facing summary, §119 in `world_model.md`, `RELEASE_CHECKLIST.md` snapshot, `performance_boundary.md` update, `test_inventory.md` header note, `examples/ui/README.md` v1.17 sub-section | Planned                 |
@@ -428,12 +428,18 @@ v1.16.last:
 - integration-test `living_world_digest`:
   **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
   (unchanged — pinned by
-  `tests/test_display_timeline.py::test_default_living_world_run_does_not_create_display_records`);
-- pytest count: **4099 / 4099** passing — up from 4033 / 4033
-  at v1.16.last. The +66 tests are all in
-  `tests/test_display_timeline.py`.
+  `tests/test_display_timeline.py::test_default_living_world_run_does_not_create_display_records`
+  and additionally by
+  `tests/test_regime_comparison_report.py::test_extract_regime_run_snapshot_does_not_mutate_kernel`
+  at v1.17.2);
+- pytest count: **4136 / 4136** passing — up from 4033 / 4033
+  at v1.16.last. The v1.17.1 milestone added +66 tests in
+  `tests/test_display_timeline.py`; v1.17.2 adds +37 more
+  (+18 in `tests/test_display_timeline.py` for the regime-
+  panel data model and +19 in
+  `tests/test_regime_comparison_report.py` for the driver).
 
-v1.17.2 → v1.17.4 are display-layer additions; their tests
+v1.17.3 → v1.17.4 are display-layer additions; their tests
 will **not** change `living_world_digest` because the display
 layer runs *after* the per-period sweep and never writes to
 any kernel book.

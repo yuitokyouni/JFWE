@@ -43,16 +43,19 @@ import pytest
 from world.display_timeline import (
     ANNOTATION_TYPE_LABELS,
     CausalTimelineAnnotation,
+    COMPARISON_AXIS_LABELS,
     DisplayTimelineBook,
     DuplicateCausalTimelineAnnotationError,
     DuplicateEventAnnotationError,
     DuplicateReferenceTimelineSeriesError,
+    DuplicateRegimeComparisonPanelError,
     DuplicateReportingCalendarError,
     DuplicateSyntheticDisplayPathError,
     EventAnnotationRecord,
     FORBIDDEN_DISPLAY_NAMES,
     FREQUENCY_LABELS,
     INTERPOLATION_LABELS,
+    NamedRegimePanel,
     ReferenceTimelineSeries,
     ReportingCalendar,
     SEVERITY_LABELS,
@@ -61,11 +64,15 @@ from world.display_timeline import (
     UnknownCausalTimelineAnnotationError,
     UnknownEventAnnotationError,
     UnknownReferenceTimelineSeriesError,
+    UnknownRegimeComparisonPanelError,
     UnknownReportingCalendarError,
     UnknownSyntheticDisplayPathError,
     VISIBILITY_LABELS,
+    build_named_regime_panel,
+    build_regime_comparison_panel,
     build_reporting_calendar,
     build_synthetic_display_path,
+    render_regime_comparison_markdown,
 )
 
 
@@ -1179,3 +1186,319 @@ def test_test_file_jurisdiction_neutral_identifier_scan():
         assert re.search(pattern, text) is None, (
             f"forbidden token {token!r} appears in test_display_timeline.py"
         )
+
+
+# ---------------------------------------------------------------------------
+# v1.17.2 — Regime comparison panel
+# ---------------------------------------------------------------------------
+
+
+def test_comparison_axis_labels_closed_set():
+    assert COMPARISON_AXIS_LABELS == frozenset(
+        {
+            "attention_focus",
+            "market_intent_direction",
+            "aggregated_market_interest",
+            "indicative_market_pressure",
+            "financing_path_constraint",
+            "financing_path_coherence",
+            "unresolved_refs",
+            "record_count_digest",
+        }
+    )
+
+
+def test_named_regime_panel_helper_builds_histogram():
+    p = build_named_regime_panel(
+        regime_id="constructive",
+        digest="abc123",
+        record_count=460,
+        unresolved_refs_count=2,
+        attention_focus_labels=(
+            "memory",
+            "firm_state",
+            "firm_state",
+        ),
+        market_intent_direction_labels=(
+            "hold_review",
+            "engagement_linked_review",
+        ),
+        aggregated_market_interest_labels=(
+            "balanced",
+            "supportive",
+        ),
+        indicative_market_pressure_labels=("open",),
+        financing_path_constraint_labels=("no_obvious_constraint",),
+        financing_path_coherence_labels=("coherent",),
+    )
+    assert p.attention_focus_histogram == {"firm_state": 2, "memory": 1}
+    assert p.market_intent_direction_histogram == {
+        "engagement_linked_review": 1,
+        "hold_review": 1,
+    }
+    assert p.aggregated_market_interest_histogram == {
+        "balanced": 1,
+        "supportive": 1,
+    }
+    assert p.indicative_market_pressure_histogram == {"open": 1}
+    assert p.financing_path_constraint_histogram == {
+        "no_obvious_constraint": 1
+    }
+    assert p.financing_path_coherence_histogram == {"coherent": 1}
+    assert p.record_count == 460
+    assert p.unresolved_refs_count == 2
+    assert p.digest == "abc123"
+
+
+def test_named_regime_panel_immutable():
+    p = build_named_regime_panel(regime_id="constructive")
+    with pytest.raises(Exception):
+        p.regime_id = "other"  # type: ignore[misc]
+
+
+def test_named_regime_panel_to_dict_round_trip_byte_identical():
+    a = build_named_regime_panel(
+        regime_id="constrained",
+        digest="def456",
+        record_count=460,
+        unresolved_refs_count=5,
+        attention_focus_labels=("risk", "funding"),
+        market_intent_direction_labels=("liquidity_watch",),
+        aggregated_market_interest_labels=("cautious",),
+        indicative_market_pressure_labels=("constrained",),
+        financing_path_constraint_labels=("market_access_constraint",),
+        financing_path_coherence_labels=("conflicting_evidence",),
+    )
+    b = build_named_regime_panel(
+        regime_id="constrained",
+        digest="def456",
+        record_count=460,
+        unresolved_refs_count=5,
+        attention_focus_labels=("risk", "funding"),
+        market_intent_direction_labels=("liquidity_watch",),
+        aggregated_market_interest_labels=("cautious",),
+        indicative_market_pressure_labels=("constrained",),
+        financing_path_constraint_labels=("market_access_constraint",),
+        financing_path_coherence_labels=("conflicting_evidence",),
+    )
+    assert a.to_dict() == b.to_dict()
+
+
+def test_named_regime_panel_rejects_negative_counts():
+    with pytest.raises(ValueError):
+        NamedRegimePanel(regime_id="constructive", record_count=-1)
+    with pytest.raises(ValueError):
+        NamedRegimePanel(regime_id="constructive", unresolved_refs_count=-1)
+
+
+def test_named_regime_panel_rejects_bool_counts():
+    with pytest.raises(ValueError):
+        NamedRegimePanel(
+            regime_id="constructive",
+            record_count=True,  # type: ignore[arg-type]
+        )
+
+
+def test_named_regime_panel_rejects_negative_histogram_counts():
+    with pytest.raises(ValueError):
+        NamedRegimePanel(
+            regime_id="constructive",
+            attention_focus_histogram={"memory": -1},
+        )
+
+
+def test_named_regime_panel_rejects_empty_regime_id():
+    with pytest.raises(ValueError):
+        NamedRegimePanel(regime_id="")
+
+
+def test_regime_comparison_panel_helper_bundles_two_regimes():
+    p1 = build_named_regime_panel(regime_id="constructive")
+    p2 = build_named_regime_panel(regime_id="constrained")
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(p1, p2),
+    )
+    assert panel.panel_id == "regime_comparison:test"
+    assert tuple(p.regime_id for p in panel.regime_panels) == (
+        "constructive",
+        "constrained",
+    )
+
+
+def test_regime_comparison_panel_default_axes_full_closed_set():
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(build_named_regime_panel(regime_id="x"),),
+    )
+    assert set(panel.comparison_axes) <= COMPARISON_AXIS_LABELS
+    # Default axes hit every label except unknowns.
+    assert "attention_focus" in panel.comparison_axes
+    assert "record_count_digest" in panel.comparison_axes
+
+
+def test_regime_comparison_panel_rejects_unknown_axis():
+    with pytest.raises(ValueError):
+        build_regime_comparison_panel(
+            panel_id="regime_comparison:test",
+            regime_panels=(build_named_regime_panel(regime_id="x"),),
+            comparison_axes=("alpha_call",),
+        )
+
+
+def test_regime_comparison_panel_rejects_duplicate_regime_ids():
+    p = build_named_regime_panel(regime_id="constructive")
+    with pytest.raises(ValueError):
+        build_regime_comparison_panel(
+            panel_id="regime_comparison:test",
+            regime_panels=(p, p),
+        )
+
+
+def test_regime_comparison_panel_immutable():
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(build_named_regime_panel(regime_id="constructive"),),
+    )
+    with pytest.raises(Exception):
+        panel.panel_id = "other"  # type: ignore[misc]
+
+
+def test_regime_comparison_panel_to_dict_round_trip():
+    panel_a = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(
+            build_named_regime_panel(
+                regime_id="constructive",
+                attention_focus_labels=("memory", "memory"),
+            ),
+            build_named_regime_panel(
+                regime_id="constrained",
+                attention_focus_labels=("risk",),
+            ),
+        ),
+    )
+    panel_b = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(
+            build_named_regime_panel(
+                regime_id="constructive",
+                attention_focus_labels=("memory", "memory"),
+            ),
+            build_named_regime_panel(
+                regime_id="constrained",
+                attention_focus_labels=("risk",),
+            ),
+        ),
+    )
+    assert panel_a.to_dict() == panel_b.to_dict()
+
+
+def test_regime_comparison_markdown_deterministic():
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(
+            build_named_regime_panel(
+                regime_id="constructive",
+                digest="abc",
+                record_count=460,
+                attention_focus_labels=("memory", "engagement"),
+                market_intent_direction_labels=("hold_review",),
+                aggregated_market_interest_labels=("balanced",),
+                indicative_market_pressure_labels=("open",),
+                financing_path_constraint_labels=("no_obvious_constraint",),
+                financing_path_coherence_labels=("coherent",),
+            ),
+            build_named_regime_panel(
+                regime_id="constrained",
+                digest="def",
+                record_count=460,
+                attention_focus_labels=("risk", "funding"),
+                market_intent_direction_labels=("reduce_interest",),
+                aggregated_market_interest_labels=("cautious",),
+                indicative_market_pressure_labels=("constrained",),
+                financing_path_constraint_labels=(
+                    "market_access_constraint",
+                ),
+                financing_path_coherence_labels=("conflicting_evidence",),
+            ),
+        ),
+    )
+    md_a = render_regime_comparison_markdown(panel)
+    md_b = render_regime_comparison_markdown(panel)
+    assert md_a == md_b
+    # Headline + columns
+    assert "## Regime comparison — regime_comparison:test" in md_a
+    assert "| constructive | constrained |" in md_a
+    # Per-axis rows render
+    assert "| Attention focus |" in md_a
+    assert "| Record count / digest |" in md_a
+    # Boundary disclaimer present
+    assert "Synthetic display only" in md_a
+
+
+def test_regime_comparison_markdown_handles_empty_panel():
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:empty",
+        regime_panels=(),
+    )
+    md = render_regime_comparison_markdown(panel)
+    assert "regime_comparison:empty" in md
+    assert "No regime panels supplied" in md
+
+
+def test_regime_comparison_markdown_no_forbidden_display_names():
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(
+            build_named_regime_panel(
+                regime_id="constructive",
+                attention_focus_labels=("memory",),
+                market_intent_direction_labels=("hold_review",),
+            ),
+        ),
+    )
+    md = render_regime_comparison_markdown(panel)
+    md_lower = md.lower()
+    for forbidden in FORBIDDEN_DISPLAY_NAMES:
+        assert forbidden not in md_lower, (
+            f"forbidden display name {forbidden!r} in markdown"
+        )
+
+
+def test_book_add_get_list_regime_comparison_panel():
+    book = DisplayTimelineBook()
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:reference_run:default",
+        regime_panels=(
+            build_named_regime_panel(regime_id="constructive"),
+            build_named_regime_panel(regime_id="constrained"),
+        ),
+    )
+    book.add_regime_comparison_panel(panel)
+    assert (
+        book.get_regime_comparison_panel(panel.panel_id) is panel
+    )
+    assert book.list_regime_comparison_panels() == (panel,)
+    snap = book.snapshot()
+    assert "regime_comparison_panels" in snap
+    assert len(snap["regime_comparison_panels"]) == 1
+
+
+def test_book_duplicate_regime_panel_id_raises():
+    book = DisplayTimelineBook()
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:dup",
+        regime_panels=(
+            build_named_regime_panel(regime_id="constructive"),
+        ),
+    )
+    book.add_regime_comparison_panel(panel)
+    with pytest.raises(DuplicateRegimeComparisonPanelError):
+        book.add_regime_comparison_panel(panel)
+
+
+def test_book_unknown_regime_panel_raises():
+    book = DisplayTimelineBook()
+    with pytest.raises(UnknownRegimeComparisonPanelError):
+        book.get_regime_comparison_panel("missing")
