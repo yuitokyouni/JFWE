@@ -252,17 +252,18 @@
     font-size: 110px;
     font-weight: 400;
     /* Zapfino's descenders extend far below the baseline (the
-       "g" in "Engine" reaches well into the next line). Pad
-       with extra line-height + bottom margin so the subtitle
-       does not collide with the descender. */
-    line-height: 1.5;
+       "g" in "Engine" reaches well into the next line). Reserve
+       the descender's vertical space inside the title block
+       itself via margin-bottom, so the subtitle does not have
+       to compensate with its own large margin-top. */
+    line-height: 1.4;
     letter-spacing: 0.005em;
     color: #050505;
-    margin-bottom: 24px;
+    margin-bottom: 72px;
   }
   .cover-subtitle {
     position: relative;
-    margin-top: 56px;
+    margin-top: 0;
     text-align: center;
     font-family: var(--font-serif);
     font-style: italic;
