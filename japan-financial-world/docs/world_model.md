@@ -9451,3 +9451,75 @@ The test count moves from `4099 / 4099` (v1.17.1) to `4136 / 4136` (v1.17.2) —
 ### 121.7 Forward pointer
 
 v1.17.3 lands `EventAnnotationRecord` and `CausalTimelineAnnotation` walking the v1.16 closed-loop plain-id citations — annotations rendered *below* the timeline plus a small deterministic helper that materialises the kernel's existing causal edges into display objects. v1.17.4 polishes the workbench prototype with the v1.17.1 / v1.17.2 / v1.17.3 outputs as first-class views (Attention "what changed" diff strip, cross-tab click-through, regime-comparison panel embedded in the report sheet). v1.17.last freezes the inspection layer (docs-only).
+
+## 122. v1.17.3 Event Annotation + Causal Timeline Inspector
+
+§122 ships the third concrete code milestone of the v1.17 inspection layer. v1.17.3 makes the v1.16 closed-loop **causally inspectable**: each closed-loop record can be turned into a deterministic display annotation, and the plain-id citations that already exist on those records can be turned into causal arrows. The motivation is a real shortcoming of the v1.17.2 histogram-only comparison — when two regimes (e.g. `constrained` vs `tightening`) emit the same coarse labels (`risk_reduction_review 24` etc.), the histograms collide and a reader cannot tell the regimes apart by histogram alone. v1.17.3 surfaces concrete record ids, per-record dates, and (for `market_environment_change`) the env's full closed-set subfield labels (`credit_regime` / `funding_regime` / `liquidity_regime` / `volatility_regime` / `refinancing_window`) so the difference between `constrained` (`credit=stressed, funding=normal, refi=open`) and `tightening` (`credit=tightening, funding=expensive, refi=selective`) is immediately visible.
+
+### 122.1 Two new pure-function helpers in `world/display_timeline.py`
+
+`build_event_annotations_from_closed_loop_data(...)` reads **anonymous record-like inputs** (duck-typed via `getattr`; no source-of-truth book imports) and emits a deterministic tuple of `EventAnnotationRecord` instances using a closed-set rule table:
+
+| Rule | Trigger                                                                                                                         | Annotation type              | Severity                  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------- |
+| 1    | `MarketEnvironmentStateRecord.overall_market_access_label = selective_or_constrained`                                            | `market_environment_change`  | `medium`                  |
+| 2    | `IndicativeMarketPressureRecord.market_access_label ∈ {constrained, closed}`                                                     | `market_pressure_change`     | `high` if `closed` else `medium` |
+| 3    | `CorporateFinancingPathRecord.constraint_label = market_access_constraint`                                                       | `financing_constraint`       | `medium`                  |
+| 4    | `CorporateFinancingPathRecord.coherence_label = conflicting_evidence`                                                            | `causal_checkpoint`          | `medium`                  |
+| 5    | `ActorAttentionStateRecord.focus_labels` contains any of `{risk, financing, market_access, information_gap, dilution}`           | `attention_shift`            | `low`                     |
+
+`build_causal_timeline_annotations_from_closed_loop_data(...)` walks the **plain-id citations already present on the closed-loop records** and renders three causal-arrow kinds:
+
+| Cause                                                   | Effect                                          | Cited via                                                    |
+| ------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| `MarketEnvironmentStateRecord` (when pressure restrictive) | `IndicativeMarketPressureRecord`               | `source_market_environment_state_ids` (v1.15.4)               |
+| `IndicativeMarketPressureRecord` (when constraint applied) | `CorporateFinancingPathRecord`                  | `indicative_market_pressure_ids` (v1.15.6)                    |
+| Prior-period `IndicativeMarketPressureRecord` / `CorporateFinancingPathRecord` (when v1.16.3 fresh focus appears) | next-period `ActorAttentionStateRecord`         | `source_indicative_market_pressure_ids` + `source_corporate_financing_path_ids` (v1.16.3) |
+
+Both helpers are pure functions over their inputs; same inputs → byte-identical tuple. Records that do not match any rule are silently skipped. Neither helper imports a source-of-truth book; the test scan that pins this regression at v1.17.1 still passes at v1.17.3.
+
+### 122.2 Subfield enrichment on `market_environment_change`
+
+The `market_environment_change` annotation is the differentiator that makes regimes whose top-level label collides still distinguishable. The annotation captures the full closed-set env-regime subfield set:
+
+- `credit_regime`, `liquidity_regime`, `funding_regime`, `volatility_regime`, `risk_appetite_regime`, `rate_environment`, `refinancing_window`, `equity_valuation_regime` — all recorded in `metadata`.
+- The first five are also embedded in the human-readable `annotation_label` so the markdown surfaces them at a glance: e.g. `market environment selective_or_constrained · credit=tightening, funding=expensive, liquidity=tight, volatility=unknown, refi=selective`.
+
+A test pins that `constrained` and `tightening` differ on at least one of `credit_regime` / `funding_regime` / `refinancing_window` in the default fixture.
+
+### 122.3 `NamedRegimePanel` extension + markdown rendering
+
+`NamedRegimePanel` gains two new tuple fields:
+
+- `event_annotations: tuple[EventAnnotationRecord, ...]`
+- `causal_annotations: tuple[CausalTimelineAnnotation, ...]`
+
+Both are validated to contain only the appropriate dataclass instance. `to_dict` serialises them as lists of payload dicts. `build_named_regime_panel(...)` accepts both as kwargs.
+
+`render_regime_comparison_markdown(...)` adds three new rows to the comparison table when any panel carries annotations:
+
+- **Event annotations (by type)** — sorted-key per-type histogram cell.
+- **Top events (date · type · source)** — up to 6 events sorted by `(date, type, id)`, each cell carrying date + annotation type + first source record id (truncated for layout).
+- **Causal arrows (by kind)** — sorted-key per-`causal_summary_label` histogram cell.
+
+A per-regime "Events & causal trace" block is appended below the table for any regime that carries annotations. It lists up to 6 top events and 6 top causal arrows with concrete record ids, dates, severities, and the human-readable annotation label, formatted as bullet lists with monospace ids. The whole render is deterministic; same panel → byte-identical markdown.
+
+### 122.4 Driver wiring
+
+`examples/reference_world/regime_comparison_report.py` extends `_RegimeRunSnapshot` with `event_annotations` and `causal_annotations`. `extract_regime_run_snapshot(...)` walks `kernel.market_environments.list_states()`, `kernel.indicative_market_pressure.list_records()`, `kernel.financing_paths.list_paths()`, and `kernel.attention_feedback.list_attention_states()`, passes them to the v1.17.3 helpers, and stores the resulting tuples on the snapshot. `named_regime_panel_from_snapshot(...)` threads them into the panel.
+
+The driver is still **read-only against the kernel after each run finishes**; the existing v1.17.2 trip-wire test (re-extraction byte-identical, `kernel.prices.snapshot()` byte-equal pre/post) continues to pass.
+
+### 122.5 Anti-claims
+
+This is **annotation rendering, not market behaviour**. v1.17.3 does **not** introduce: orders / order book / matching / execution / clearing / settlement / quote dissemination / price formation / `PriceBook` mutation / target prices / expected returns / recommendations / portfolio allocations / forecast paths / predicted indices / real price series / real-data ingestion / Japan calibration / LLM execution / stochastic behaviour probabilities / learned models / new economic source-of-truth records. The annotations are renderings of plain-id citations the kernel already carries; the helpers invent no new economic edge. The disclaimer line in the markdown explicitly negates `recommendation` / `forecast` / `price`, and a test scrubs that line then scans for forbidden trade payload keys.
+
+### 122.6 Performance boundary
+
+The integration-test `living_world_digest` is **unchanged** at **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (v1.16.last / v1.17.0 / v1.17.1 / v1.17.2 / v1.17.3). v1.17.3 adds zero records to the per-period sweep; the new helpers and the driver run only when the report is requested.
+
+The test count moves from `4136 / 4136` (v1.17.2) to `4165 / 4165` (v1.17.3) — `+29` tests across `tests/test_display_timeline.py` (+26: closed-set vocabularies still hold; per-rule firing including the env subfield differentiator; helper determinism; no-fire on `open` / coherent inputs; bool / empty-id robustness; `NamedRegimePanel` accepts and validates the two new annotation tuple fields; `to_dict` includes them; markdown renders the new event / causal sections when annotations are present and skips them when absent; markdown still has no forbidden display name) and `tests/test_regime_comparison_report.py` (+3: snapshot carries event/causal annotations; env-change metadata distinguishes `constrained` vs `tightening` on subfield labels; default-args markdown renders the event section + per-regime trace block; collision regimes show distinct trace blocks; no-forbidden-trade-keys in default-args markdown).
+
+### 122.7 Forward pointer
+
+v1.17.4 polishes the workbench prototype with the v1.17.1 / v1.17.2 / v1.17.3 outputs as first-class views — the Attention "what changed" diff strip, cross-tab click-through (clicking an event annotation jumps to the cited record), and a regime-comparison panel embedded in the report sheet that surfaces the per-regime causal trace block. v1.17.last freezes the inspection layer (docs-only).

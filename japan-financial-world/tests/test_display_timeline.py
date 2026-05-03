@@ -1502,3 +1502,525 @@ def test_book_unknown_regime_panel_raises():
     book = DisplayTimelineBook()
     with pytest.raises(UnknownRegimeComparisonPanelError):
         book.get_regime_comparison_panel("missing")
+
+
+# ---------------------------------------------------------------------------
+# v1.17.3 — Event annotation + causal timeline helpers
+# ---------------------------------------------------------------------------
+
+
+from dataclasses import dataclass as _dc  # noqa: E402
+
+from world.display_timeline import (  # noqa: E402
+    build_causal_timeline_annotations_from_closed_loop_data,
+    build_event_annotations_from_closed_loop_data,
+)
+
+
+@_dc
+class _FakeEnv:
+    environment_state_id: str
+    as_of_date: str
+    overall_market_access_label: str = "open_or_constructive"
+    credit_regime: str = "neutral"
+    liquidity_regime: str = "normal"
+    funding_regime: str = "normal"
+    volatility_regime: str = "calm"
+    risk_appetite_regime: str = "balanced"
+    rate_environment: str = "neutral"
+    refinancing_window: str = "open"
+    equity_valuation_regime: str = "neutral"
+
+
+@_dc
+class _FakePressure:
+    market_pressure_id: str
+    as_of_date: str
+    market_access_label: str = "open"
+    liquidity_pressure_label: str = "normal"
+    financing_relevance_label: str = "neutral_for_financing"
+    source_market_environment_state_ids: tuple[str, ...] = ()
+
+
+@_dc
+class _FakeFinancingPath:
+    financing_path_id: str
+    as_of_date: str
+    firm_id: str = "firm:test"
+    constraint_label: str = "no_obvious_constraint"
+    coherence_label: str = "coherent"
+    indicative_market_pressure_ids: tuple[str, ...] = ()
+
+
+@_dc
+class _FakeAttention:
+    attention_state_id: str
+    as_of_date: str
+    actor_id: str = "investor:test"
+    focus_labels: tuple[str, ...] = ()
+    source_indicative_market_pressure_ids: tuple[str, ...] = ()
+    source_corporate_financing_path_ids: tuple[str, ...] = ()
+
+
+def test_event_helper_market_environment_change_fires_on_selective_or_constrained():
+    env = _FakeEnv(
+        environment_state_id="market_environment:test:2026-03-31",
+        as_of_date="2026-03-31",
+        overall_market_access_label="selective_or_constrained",
+        credit_regime="tightening",
+        funding_regime="expensive",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        market_environment_states=(env,)
+    )
+    matching = [
+        a for a in annotations
+        if a.annotation_type_label == "market_environment_change"
+    ]
+    assert len(matching) == 1
+    a = matching[0]
+    assert a.annotation_date == "2026-03-31"
+    assert a.severity_label == "medium"
+    assert a.source_record_ids == (env.environment_state_id,)
+    # Subfield differentiators land in metadata + label.
+    assert a.metadata["credit_regime"] == "tightening"
+    assert a.metadata["funding_regime"] == "expensive"
+    assert "credit=tightening" in a.annotation_label
+    assert "funding=expensive" in a.annotation_label
+
+
+def test_event_helper_market_environment_change_does_not_fire_on_open():
+    env = _FakeEnv(
+        environment_state_id="market_environment:test:2026-03-31",
+        as_of_date="2026-03-31",
+        overall_market_access_label="open_or_constructive",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        market_environment_states=(env,)
+    )
+    assert not any(
+        a.annotation_type_label == "market_environment_change"
+        for a in annotations
+    )
+
+
+def test_event_helper_market_pressure_change_fires_on_constrained():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+        liquidity_pressure_label="tight",
+        financing_relevance_label="adverse_for_market_access",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    matching = [
+        a for a in annotations
+        if a.annotation_type_label == "market_pressure_change"
+    ]
+    assert len(matching) == 1
+    a = matching[0]
+    assert a.severity_label == "medium"
+    assert a.metadata["market_access_label"] == "constrained"
+    assert a.metadata["liquidity_pressure_label"] == "tight"
+    assert (
+        a.metadata["financing_relevance_label"]
+        == "adverse_for_market_access"
+    )
+
+
+def test_event_helper_market_pressure_change_severity_high_when_closed():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="closed",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    matching = [
+        a for a in annotations
+        if a.annotation_type_label == "market_pressure_change"
+    ]
+    assert len(matching) == 1
+    assert matching[0].severity_label == "high"
+
+
+def test_event_helper_market_pressure_change_does_not_fire_on_open():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="open",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    assert not any(
+        a.annotation_type_label == "market_pressure_change"
+        for a in annotations
+    )
+
+
+def test_event_helper_financing_constraint_fires_on_market_access_constraint():
+    fp = _FakeFinancingPath(
+        financing_path_id="corporate_financing_path:firm:test:2026-03-31",
+        as_of_date="2026-03-31",
+        firm_id="firm:test",
+        constraint_label="market_access_constraint",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        financing_paths=(fp,)
+    )
+    matching = [
+        a for a in annotations
+        if a.annotation_type_label == "financing_constraint"
+    ]
+    assert len(matching) == 1
+    a = matching[0]
+    assert a.source_record_ids == (fp.financing_path_id,)
+    assert a.metadata["firm_id"] == "firm:test"
+
+
+def test_event_helper_financing_coherence_conflict_emits_causal_checkpoint():
+    fp = _FakeFinancingPath(
+        financing_path_id="corporate_financing_path:firm:test:2026-03-31",
+        as_of_date="2026-03-31",
+        coherence_label="conflicting_evidence",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        financing_paths=(fp,)
+    )
+    matching = [
+        a for a in annotations
+        if a.annotation_type_label == "causal_checkpoint"
+    ]
+    assert len(matching) == 1
+    assert (
+        matching[0].metadata["coherence_label"] == "conflicting_evidence"
+    )
+
+
+def test_event_helper_attention_shift_fires_on_v1_16_3_focus_label():
+    s = _FakeAttention(
+        attention_state_id="attention_state:investor:test:2026-03-31",
+        as_of_date="2026-03-31",
+        focus_labels=("memory", "risk", "market_access"),
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        attention_states=(s,)
+    )
+    matching = [
+        a for a in annotations
+        if a.annotation_type_label == "attention_shift"
+    ]
+    assert len(matching) == 1
+    a = matching[0]
+    assert a.severity_label == "low"
+    # Sorted v1.16.3 fresh labels in metadata.
+    assert a.metadata["v1_16_3_focus_present"] == [
+        "market_access",
+        "risk",
+    ]
+
+
+def test_event_helper_attention_shift_does_not_fire_on_v1_12_8_focus_only():
+    s = _FakeAttention(
+        attention_state_id="attention_state:investor:test:2026-03-31",
+        as_of_date="2026-03-31",
+        focus_labels=("memory", "engagement", "dialogue"),
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        attention_states=(s,)
+    )
+    assert not any(
+        a.annotation_type_label == "attention_shift"
+        for a in annotations
+    )
+
+
+def test_event_helper_deterministic_same_inputs_byte_identical():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+    )
+    fp = _FakeFinancingPath(
+        financing_path_id="corporate_financing_path:firm:test:2026-03-31",
+        as_of_date="2026-03-31",
+        constraint_label="market_access_constraint",
+    )
+    a = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,),
+        financing_paths=(fp,),
+    )
+    b = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,),
+        financing_paths=(fp,),
+    )
+    assert tuple(x.to_dict() for x in a) == tuple(
+        x.to_dict() for x in b
+    )
+
+
+def test_event_helper_skips_records_with_missing_id_or_date():
+    bad_pressure = _FakePressure(
+        market_pressure_id="",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+    )
+    annotations = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(bad_pressure,)
+    )
+    assert annotations == ()
+
+
+def test_causal_helper_env_to_pressure_fires_on_constrained():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+        source_market_environment_state_ids=(
+            "market_environment:test:2026-03-31",
+        ),
+    )
+    causals = build_causal_timeline_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    env_to_pressure = [
+        c for c in causals
+        if c.causal_summary_label == "market_pressure_change"
+    ]
+    assert len(env_to_pressure) == 1
+    c = env_to_pressure[0]
+    assert c.source_record_ids == (
+        "market_environment:test:2026-03-31",
+    )
+    assert c.downstream_record_ids == (pressure.market_pressure_id,)
+
+
+def test_causal_helper_env_to_pressure_skips_when_open():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="open",
+        source_market_environment_state_ids=(
+            "market_environment:test:2026-03-31",
+        ),
+    )
+    causals = build_causal_timeline_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    assert causals == ()
+
+
+def test_causal_helper_pressure_to_financing_fires_on_market_access_constraint():
+    fp = _FakeFinancingPath(
+        financing_path_id="corporate_financing_path:firm:test:2026-06-30",
+        as_of_date="2026-06-30",
+        firm_id="firm:test",
+        constraint_label="market_access_constraint",
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:firm:test:2026-03-31",
+        ),
+    )
+    causals = build_causal_timeline_annotations_from_closed_loop_data(
+        financing_paths=(fp,)
+    )
+    matching = [
+        c for c in causals
+        if c.causal_summary_label == "financing_constraint"
+    ]
+    assert len(matching) == 1
+    c = matching[0]
+    assert c.source_record_ids == (
+        "indicative_market_pressure:firm:test:2026-03-31",
+    )
+    assert c.downstream_record_ids == (fp.financing_path_id,)
+    assert c.affected_actor_ids == ("firm:test",)
+
+
+def test_causal_helper_prior_to_attention_fires_when_pressure_cited_and_focus_widened():
+    s = _FakeAttention(
+        attention_state_id="attention_state:investor:test:2026-06-30",
+        as_of_date="2026-06-30",
+        actor_id="investor:test",
+        focus_labels=("memory", "risk"),
+        source_indicative_market_pressure_ids=(
+            "indicative_market_pressure:firm:test:2026-03-31",
+        ),
+    )
+    causals = build_causal_timeline_annotations_from_closed_loop_data(
+        attention_states=(s,)
+    )
+    matching = [
+        c for c in causals
+        if c.causal_summary_label == "attention_shift"
+    ]
+    assert len(matching) == 1
+    c = matching[0]
+    assert c.source_record_ids == (
+        "indicative_market_pressure:firm:test:2026-03-31",
+    )
+    assert c.downstream_record_ids == (s.attention_state_id,)
+    assert c.affected_actor_ids == ("investor:test",)
+
+
+def test_causal_helper_prior_to_attention_skips_without_v1_16_3_focus():
+    s = _FakeAttention(
+        attention_state_id="attention_state:investor:test:2026-06-30",
+        as_of_date="2026-06-30",
+        focus_labels=("memory",),
+        source_indicative_market_pressure_ids=(
+            "indicative_market_pressure:firm:test:2026-03-31",
+        ),
+    )
+    causals = build_causal_timeline_annotations_from_closed_loop_data(
+        attention_states=(s,)
+    )
+    assert causals == ()
+
+
+def test_causal_helper_deterministic():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+        source_market_environment_state_ids=(
+            "market_environment:test:2026-03-31",
+        ),
+    )
+    a = build_causal_timeline_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    b = build_causal_timeline_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    assert tuple(x.to_dict() for x in a) == tuple(
+        x.to_dict() for x in b
+    )
+
+
+def test_named_regime_panel_accepts_event_and_causal_annotations():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+    )
+    events = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    panel = build_named_regime_panel(
+        regime_id="constrained",
+        event_annotations=events,
+    )
+    assert panel.event_annotations == events
+    assert panel.causal_annotations == ()
+
+
+def test_named_regime_panel_rejects_non_event_annotation_in_event_slot():
+    with pytest.raises(ValueError):
+        build_named_regime_panel(
+            regime_id="constrained",
+            event_annotations=("not an event",),  # type: ignore[arg-type]
+        )
+
+
+def test_named_regime_panel_rejects_non_causal_annotation_in_causal_slot():
+    with pytest.raises(ValueError):
+        build_named_regime_panel(
+            regime_id="constrained",
+            causal_annotations=("not a causal",),  # type: ignore[arg-type]
+        )
+
+
+def test_named_regime_panel_to_dict_includes_event_and_causal_annotations():
+    fp = _FakeFinancingPath(
+        financing_path_id="corporate_financing_path:firm:test:2026-03-31",
+        as_of_date="2026-03-31",
+        constraint_label="market_access_constraint",
+    )
+    events = build_event_annotations_from_closed_loop_data(
+        financing_paths=(fp,)
+    )
+    panel = build_named_regime_panel(
+        regime_id="constrained",
+        event_annotations=events,
+    )
+    payload = panel.to_dict()
+    assert "event_annotations" in payload
+    assert "causal_annotations" in payload
+    assert len(payload["event_annotations"]) == 1
+
+
+def test_regime_comparison_markdown_renders_event_section_when_present():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+        source_market_environment_state_ids=(
+            "market_environment:test:2026-03-31",
+        ),
+    )
+    events = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    causals = build_causal_timeline_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(
+            build_named_regime_panel(
+                regime_id="constrained",
+                event_annotations=events,
+                causal_annotations=causals,
+            ),
+            build_named_regime_panel(regime_id="constructive"),
+        ),
+    )
+    md = render_regime_comparison_markdown(panel)
+    assert "Event annotations (by type)" in md
+    assert "Top events (date · type · source)" in md
+    assert "Causal arrows (by kind)" in md
+    assert "constrained — events & causal trace" in md
+    assert "market_pressure_change" in md
+    assert "Causal arrows:" in md
+
+
+def test_regime_comparison_markdown_skips_event_section_when_absent():
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(
+            build_named_regime_panel(regime_id="constrained"),
+            build_named_regime_panel(regime_id="constructive"),
+        ),
+    )
+    md = render_regime_comparison_markdown(panel)
+    assert "Event annotations (by type)" not in md
+    assert "events & causal trace" not in md
+
+
+def test_regime_comparison_markdown_with_events_no_forbidden_display_names():
+    pressure = _FakePressure(
+        market_pressure_id="indicative_market_pressure:test:2026-03-31",
+        as_of_date="2026-03-31",
+        market_access_label="constrained",
+    )
+    events = build_event_annotations_from_closed_loop_data(
+        indicative_market_pressures=(pressure,)
+    )
+    panel = build_regime_comparison_panel(
+        panel_id="regime_comparison:test",
+        regime_panels=(
+            build_named_regime_panel(
+                regime_id="constrained",
+                event_annotations=events,
+            ),
+        ),
+    )
+    md = render_regime_comparison_markdown(panel).lower()
+    for forbidden in FORBIDDEN_DISPLAY_NAMES:
+        assert forbidden not in md, (
+            f"forbidden display name {forbidden!r} in event-enriched markdown"
+        )

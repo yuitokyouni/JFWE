@@ -327,6 +327,109 @@ def test_no_forbidden_event_types_across_regime_runs():
         )
 
 
+def test_regime_run_snapshot_carries_event_and_causal_annotations():
+    """v1.17.3: every regime snapshot carries event /causal
+    annotations extracted from the run's closed-loop records."""
+    snap = run_regime_for_comparison("constrained")
+    assert isinstance(snap.event_annotations, tuple)
+    assert isinstance(snap.causal_annotations, tuple)
+    # The default fixture emits a market_environment_change at
+    # period 0 under constrained / tightening (env overall =
+    # selective_or_constrained); attention shifts widen too.
+    types_seen = {a.annotation_type_label for a in snap.event_annotations}
+    assert "market_environment_change" in types_seen
+    assert "attention_shift" in types_seen
+
+
+def test_regime_run_snapshot_event_annotations_carry_subfield_metadata():
+    """The market_environment_change events must surface
+    credit / funding / liquidity / volatility regime subfields
+    so two regimes whose ``overall_market_access_label``
+    collide still differ visibly."""
+    constrained = run_regime_for_comparison("constrained")
+    tightening = run_regime_for_comparison("tightening")
+
+    def _env_change_meta(snap):
+        for a in snap.event_annotations:
+            if a.annotation_type_label == "market_environment_change":
+                return dict(a.metadata)
+        return None
+
+    constrained_md = _env_change_meta(constrained)
+    tightening_md = _env_change_meta(tightening)
+    assert constrained_md is not None
+    assert tightening_md is not None
+    # The subfield labels must differentiate the two regimes
+    # even when ``overall_market_access_label`` is identical.
+    assert (
+        constrained_md["credit_regime"]
+        != tightening_md["credit_regime"]
+        or constrained_md["funding_regime"]
+        != tightening_md["funding_regime"]
+        or constrained_md["refinancing_window"]
+        != tightening_md["refinancing_window"]
+    )
+
+
+def test_regime_comparison_markdown_includes_event_section_under_default_args():
+    md = regime_comparison_markdown()
+    assert "Event annotations (by type)" in md
+    assert "Top events (date · type · source)" in md
+    assert "events & causal trace" in md
+    # The enriched env-change line must include subfield labels.
+    assert "credit=" in md
+    assert "funding=" in md
+
+
+def test_regime_comparison_markdown_two_collision_regimes_show_distinct_traces():
+    """Even when the headline histogram for ``constrained`` and
+    ``tightening`` collides (both produce
+    ``risk_reduction_review 24`` in the default fixture), the
+    v1.17.3 event-and-causal block must surface a visible
+    difference — at minimum, the per-regime
+    ``credit_regime`` / ``funding_regime`` /
+    ``refinancing_window`` subfields differ."""
+    md = regime_comparison_markdown(
+        regime_ids=("constrained", "tightening"),
+    )
+    # Pull the per-regime trace blocks.
+    constrained_idx = md.find("### constrained — events & causal trace")
+    tightening_idx = md.find("### tightening — events & causal trace")
+    assert constrained_idx >= 0 and tightening_idx >= 0
+    constrained_block = md[constrained_idx:tightening_idx]
+    tightening_block = md[tightening_idx:]
+    assert constrained_block != tightening_block, (
+        "regime trace blocks must differ — v1.17.3 must surface "
+        "subfield differences even when histograms collide"
+    )
+
+
+def test_regime_comparison_markdown_no_forbidden_event_keys_under_default_args():
+    """Default-args markdown must not leak any forbidden trade
+    payload key as a positive claim. The disclaimer line that
+    explicitly negates ``recommendation`` is scrubbed before the
+    scan so the negation does not self-trigger."""
+    md = regime_comparison_markdown().lower()
+    # Strip the explicit-negation disclaimer line so words like
+    # ``recommendation`` in "Not a forecast, not a price, not a
+    # recommendation." do not trip the scan.
+    md = re.sub(
+        r"_synthetic display only.*?recommendation\._",
+        "",
+        md,
+        flags=re.DOTALL,
+    )
+    forbidden_trading = (
+        "buy", "sell",
+        "order_id", "trade_id", "bid", "ask",
+        "investment_advice", "recommendation",
+    )
+    for term in forbidden_trading:
+        assert (
+            re.search(rf"\b{re.escape(term)}\b", md) is None
+        ), term
+
+
 def test_regime_comparison_report_module_no_forbidden_display_names_in_text():
     """The driver module must not name any forbidden display
     type in module text outside imports."""

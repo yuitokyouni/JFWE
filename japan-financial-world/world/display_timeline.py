@@ -1456,6 +1456,16 @@ class NamedRegimePanel:
     financing_path_coherence_histogram: Mapping[str, int] = field(
         default_factory=dict
     )
+    # v1.17.3 — display-only event / causal annotations attached
+    # to the regime panel. These let two regimes whose histograms
+    # collide (e.g. constrained vs tightening) still differ
+    # visibly through their per-regime causal trace.
+    event_annotations: tuple["EventAnnotationRecord", ...] = field(
+        default_factory=tuple
+    )
+    causal_annotations: tuple["CausalTimelineAnnotation", ...] = field(
+        default_factory=tuple
+    )
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     HISTOGRAM_FIELDS: ClassVar[tuple[str, ...]] = (
@@ -1490,6 +1500,22 @@ class NamedRegimePanel:
                     getattr(self, name), field_name=name
                 ),
             )
+        events = tuple(self.event_annotations)
+        for entry in events:
+            if not isinstance(entry, EventAnnotationRecord):
+                raise ValueError(
+                    "event_annotations entries must be "
+                    "EventAnnotationRecord instances"
+                )
+        object.__setattr__(self, "event_annotations", events)
+        causals = tuple(self.causal_annotations)
+        for entry in causals:
+            if not isinstance(entry, CausalTimelineAnnotation):
+                raise ValueError(
+                    "causal_annotations entries must be "
+                    "CausalTimelineAnnotation instances"
+                )
+        object.__setattr__(self, "causal_annotations", causals)
         object.__setattr__(self, "metadata", dict(self.metadata))
 
     def to_dict(self) -> dict[str, Any]:
@@ -1516,6 +1542,12 @@ class NamedRegimePanel:
             "financing_path_coherence_histogram": dict(
                 self.financing_path_coherence_histogram
             ),
+            "event_annotations": [
+                a.to_dict() for a in self.event_annotations
+            ],
+            "causal_annotations": [
+                a.to_dict() for a in self.causal_annotations
+            ],
             "metadata": dict(self.metadata),
         }
 
@@ -1625,13 +1657,18 @@ def build_named_regime_panel(
     indicative_market_pressure_labels: Iterable[str] = (),
     financing_path_constraint_labels: Iterable[str] = (),
     financing_path_coherence_labels: Iterable[str] = (),
+    event_annotations: Iterable[EventAnnotationRecord] = (),
+    causal_annotations: Iterable[CausalTimelineAnnotation] = (),
     metadata: Mapping[str, Any] | None = None,
 ) -> NamedRegimePanel:
     """Deterministic helper. Builds a :class:`NamedRegimePanel`
-    from pre-extracted label tuples; the caller is responsible
-    for walking the kernel books and supplying those tuples
-    (typically the
-    ``examples.reference_world.regime_comparison_report`` driver).
+    from pre-extracted label tuples and (optionally)
+    pre-built v1.17.3 :class:`EventAnnotationRecord` /
+    :class:`CausalTimelineAnnotation` tuples. The caller is
+    responsible for walking the kernel books and supplying
+    those tuples (typically the
+    ``examples.reference_world.regime_comparison_report``
+    driver).
 
     Same inputs → byte-identical :class:`NamedRegimePanel`."""
     if not isinstance(regime_id, str) or not regime_id:
@@ -1657,6 +1694,8 @@ def build_named_regime_panel(
         financing_path_coherence_histogram=_histogram(
             financing_path_coherence_labels
         ),
+        event_annotations=tuple(event_annotations),
+        causal_annotations=tuple(causal_annotations),
         metadata=dict(metadata or {}),
     )
 
@@ -1751,6 +1790,494 @@ def _short_digest(digest: str | None) -> str:
     return digest[:8] + "…" + digest[-6:]
 
 
+# ---------------------------------------------------------------------------
+# v1.17.3 — Event annotation + causal timeline helpers
+#
+# The two helpers below read **anonymous record-like inputs** (duck-typed
+# via ``getattr``) and emit deterministic display annotations using the
+# v1.17.3 closed-set rule set. They do not import any source-of-truth
+# book; the caller (typically
+# ``examples/reference_world/regime_comparison_report.py``) is
+# responsible for walking the kernel and supplying the records.
+#
+# The rules are:
+#
+# - Rule 1: ``MarketEnvironmentStateRecord.overall_market_access_label``
+#   ∈ ``selective_or_constrained`` →
+#   :data:`event_annotation: market_environment_change`.
+# - Rule 2: ``IndicativeMarketPressureRecord.market_access_label`` ∈
+#   ``{constrained, closed}`` →
+#   :data:`event_annotation: market_pressure_change`.
+# - Rule 3: ``CorporateFinancingPathRecord.constraint_label ==
+#   market_access_constraint`` →
+#   :data:`event_annotation: financing_constraint`.
+# - Rule 4: ``CorporateFinancingPathRecord.coherence_label ==
+#   conflicting_evidence`` →
+#   :data:`event_annotation: causal_checkpoint` (kind = conflicting
+#   financing evidence).
+# - Rule 5: ``ActorAttentionStateRecord.focus_labels`` contains any of
+#   ``{risk, financing, market_access, information_gap, dilution}`` →
+#   :data:`event_annotation: attention_shift`.
+#
+# The causal helper renders three kinds of plain-id arrows that already
+# exist in the kernel:
+#
+# - ``MarketEnvironmentState`` → ``IndicativeMarketPressure``  (cited
+#   via the v1.15.4 ``source_market_environment_state_ids`` slot)
+# - ``IndicativeMarketPressure`` → ``CorporateFinancingPath``  (cited
+#   via the v1.15.6 ``indicative_market_pressure_ids`` slot)
+# - prior-period ``IndicativeMarketPressure`` /
+#   ``CorporateFinancingPath`` → next-period ``ActorAttentionState``
+#   (cited via the v1.16.3 ``source_*_ids`` slots)
+#
+# Both helpers are pure functions over their inputs; same inputs →
+# byte-identical tuple. Neither helper mutates any kernel book or
+# writes to the ledger.
+# ---------------------------------------------------------------------------
+
+
+_RESTRICTIVE_ENV_OVERALL_LABELS: frozenset[str] = frozenset(
+    {"selective_or_constrained"}
+)
+_RESTRICTIVE_PRESSURE_MARKET_ACCESS_LABELS: frozenset[str] = frozenset(
+    {"constrained", "closed"}
+)
+_V1_16_3_FRESH_FOCUS_LABELS: frozenset[str] = frozenset(
+    {"risk", "financing", "market_access", "information_gap", "dilution"}
+)
+
+
+def _coerce_iso_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    try:
+        return _coerce_iso_date(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def build_event_annotations_from_closed_loop_data(
+    *,
+    market_environment_states: Iterable[Any] = (),
+    indicative_market_pressures: Iterable[Any] = (),
+    financing_paths: Iterable[Any] = (),
+    attention_states: Iterable[Any] = (),
+    annotation_id_prefix: str = "event_annotation",
+) -> tuple[EventAnnotationRecord, ...]:
+    """Render closed-loop records into a deterministic tuple of
+    :class:`EventAnnotationRecord` instances using the v1.17.3
+    rule set.
+
+    All inputs are anonymous record-like objects accessed via
+    ``getattr``; the helper imports no source-of-truth book and
+    is therefore safe under the v1.17.0 standalone-display
+    discipline. Records that do not match any rule are silently
+    skipped.
+
+    Same inputs → byte-identical tuple.
+    """
+    annotations: list[EventAnnotationRecord] = []
+
+    # Rule 1 — restrictive market environment. Capture the
+    # env's full closed-set label set in metadata + label so two
+    # regimes whose ``overall_market_access_label`` collide
+    # (e.g. ``constrained`` vs ``tightening`` both at
+    # ``selective_or_constrained``) still differ visibly through
+    # subfield labels (``credit_regime`` /
+    # ``funding_regime`` / ``volatility_regime`` / ...).
+    for env in market_environment_states:
+        env_id = getattr(env, "environment_state_id", None)
+        env_date = _coerce_iso_or_none(getattr(env, "as_of_date", None))
+        env_label = getattr(env, "overall_market_access_label", "unknown")
+        if not isinstance(env_id, str) or not env_id or env_date is None:
+            continue
+        if env_label in _RESTRICTIVE_ENV_OVERALL_LABELS:
+            credit_regime = getattr(env, "credit_regime", "unknown")
+            liquidity_regime = getattr(env, "liquidity_regime", "unknown")
+            funding_regime = getattr(env, "funding_regime", "unknown")
+            volatility_regime = getattr(
+                env, "volatility_regime", "unknown"
+            )
+            risk_appetite_regime = getattr(
+                env, "risk_appetite_regime", "unknown"
+            )
+            rate_environment = getattr(env, "rate_environment", "unknown")
+            refinancing_window = getattr(
+                env, "refinancing_window", "unknown"
+            )
+            equity_valuation_regime = getattr(
+                env, "equity_valuation_regime", "unknown"
+            )
+            annotations.append(
+                EventAnnotationRecord(
+                    annotation_id=(
+                        f"{annotation_id_prefix}:market_environment_change:"
+                        f"{env_id}"
+                    ),
+                    annotation_date=env_date,
+                    annotation_label=(
+                        f"market environment {env_label}"
+                        f" · credit={credit_regime}"
+                        f", funding={funding_regime}"
+                        f", liquidity={liquidity_regime}"
+                        f", volatility={volatility_regime}"
+                        f", refi={refinancing_window}"
+                    ),
+                    annotation_type_label="market_environment_change",
+                    severity_label="medium",
+                    source_record_ids=(env_id,),
+                    display_lane_label="market_environment",
+                    metadata={
+                        "overall_market_access_label": env_label,
+                        "credit_regime": credit_regime,
+                        "liquidity_regime": liquidity_regime,
+                        "funding_regime": funding_regime,
+                        "volatility_regime": volatility_regime,
+                        "risk_appetite_regime": risk_appetite_regime,
+                        "rate_environment": rate_environment,
+                        "refinancing_window": refinancing_window,
+                        "equity_valuation_regime": (
+                            equity_valuation_regime
+                        ),
+                    },
+                )
+            )
+
+    # Rule 2 — restrictive indicative market pressure.
+    for p in indicative_market_pressures:
+        pid = getattr(p, "market_pressure_id", None)
+        pdate = _coerce_iso_or_none(getattr(p, "as_of_date", None))
+        plabel = getattr(p, "market_access_label", "unknown")
+        if not isinstance(pid, str) or not pid or pdate is None:
+            continue
+        if plabel in _RESTRICTIVE_PRESSURE_MARKET_ACCESS_LABELS:
+            severity = "high" if plabel == "closed" else "medium"
+            annotations.append(
+                EventAnnotationRecord(
+                    annotation_id=(
+                        f"{annotation_id_prefix}:market_pressure_change:"
+                        f"{pid}"
+                    ),
+                    annotation_date=pdate,
+                    annotation_label=(
+                        f"indicative market pressure access = {plabel}"
+                    ),
+                    annotation_type_label="market_pressure_change",
+                    severity_label=severity,
+                    source_record_ids=(pid,),
+                    display_lane_label="market_pressure",
+                    metadata={
+                        "market_access_label": plabel,
+                        "liquidity_pressure_label": getattr(
+                            p, "liquidity_pressure_label", "unknown"
+                        ),
+                        "financing_relevance_label": getattr(
+                            p, "financing_relevance_label", "unknown"
+                        ),
+                    },
+                )
+            )
+
+    # Rule 3 + Rule 4 — financing path constraint / coherence.
+    for fp in financing_paths:
+        fpid = getattr(fp, "financing_path_id", None)
+        fpdate = _coerce_iso_or_none(getattr(fp, "as_of_date", None))
+        constraint = getattr(fp, "constraint_label", "unknown")
+        coherence = getattr(fp, "coherence_label", "unknown")
+        firm_id = getattr(fp, "firm_id", None)
+        if not isinstance(fpid, str) or not fpid or fpdate is None:
+            continue
+        if constraint == "market_access_constraint":
+            annotations.append(
+                EventAnnotationRecord(
+                    annotation_id=(
+                        f"{annotation_id_prefix}:financing_constraint:"
+                        f"{fpid}"
+                    ),
+                    annotation_date=fpdate,
+                    annotation_label=(
+                        "financing path constraint = "
+                        "market_access_constraint"
+                    ),
+                    annotation_type_label="financing_constraint",
+                    severity_label="medium",
+                    source_record_ids=(fpid,),
+                    display_lane_label="financing_path",
+                    metadata={
+                        "constraint_label": constraint,
+                        "firm_id": firm_id or "unknown",
+                    },
+                )
+            )
+        if coherence == "conflicting_evidence":
+            annotations.append(
+                EventAnnotationRecord(
+                    annotation_id=(
+                        f"{annotation_id_prefix}:financing_coherence_conflict:"
+                        f"{fpid}"
+                    ),
+                    annotation_date=fpdate,
+                    annotation_label=(
+                        "financing path coherence = conflicting_evidence"
+                    ),
+                    annotation_type_label="causal_checkpoint",
+                    severity_label="medium",
+                    source_record_ids=(fpid,),
+                    display_lane_label="financing_path",
+                    metadata={
+                        "coherence_label": coherence,
+                        "firm_id": firm_id or "unknown",
+                    },
+                )
+            )
+
+    # Rule 5 — attention focus widened to v1.16.3 fresh labels.
+    for s in attention_states:
+        sid = getattr(s, "attention_state_id", None)
+        sdate = _coerce_iso_or_none(getattr(s, "as_of_date", None))
+        focus = tuple(getattr(s, "focus_labels", ()))
+        actor = getattr(s, "actor_id", None)
+        if not isinstance(sid, str) or not sid or sdate is None:
+            continue
+        v1163_present = sorted(
+            _V1_16_3_FRESH_FOCUS_LABELS & set(focus)
+        )
+        if v1163_present:
+            annotations.append(
+                EventAnnotationRecord(
+                    annotation_id=(
+                        f"{annotation_id_prefix}:attention_shift:{sid}"
+                    ),
+                    annotation_date=sdate,
+                    annotation_label=(
+                        "attention focus widened: "
+                        + ", ".join(v1163_present)
+                    ),
+                    annotation_type_label="attention_shift",
+                    severity_label="low",
+                    source_record_ids=(sid,),
+                    display_lane_label="attention",
+                    metadata={
+                        "actor_id": actor or "unknown",
+                        "v1_16_3_focus_present": list(v1163_present),
+                    },
+                )
+            )
+
+    return tuple(annotations)
+
+
+def build_causal_timeline_annotations_from_closed_loop_data(
+    *,
+    indicative_market_pressures: Iterable[Any] = (),
+    financing_paths: Iterable[Any] = (),
+    attention_states: Iterable[Any] = (),
+    annotation_id_prefix: str = "causal_timeline",
+) -> tuple[CausalTimelineAnnotation, ...]:
+    """Render plain-id citations already present on closed-loop
+    records into deterministic
+    :class:`CausalTimelineAnnotation` arrows.
+
+    Three causal kinds are emitted:
+
+    - ``MarketEnvironmentState`` → ``IndicativeMarketPressure``
+      (when the pressure becomes restrictive);
+    - ``IndicativeMarketPressure`` → ``CorporateFinancingPath``
+      (when the financing path picks up the
+      ``market_access_constraint`` constraint);
+    - prior-period ``IndicativeMarketPressure`` /
+      ``CorporateFinancingPath`` → next-period
+      ``ActorAttentionState`` (when v1.16.3 fresh focus labels
+      appear).
+
+    Same inputs → byte-identical tuple.
+    """
+    annotations: list[CausalTimelineAnnotation] = []
+
+    # Causal 1 — env → pressure.
+    for p in indicative_market_pressures:
+        pid = getattr(p, "market_pressure_id", None)
+        pdate = _coerce_iso_or_none(getattr(p, "as_of_date", None))
+        plabel = getattr(p, "market_access_label", "unknown")
+        env_ids = tuple(
+            getattr(p, "source_market_environment_state_ids", ())
+        )
+        if (
+            not isinstance(pid, str)
+            or not pid
+            or pdate is None
+            or not env_ids
+        ):
+            continue
+        if plabel in _RESTRICTIVE_PRESSURE_MARKET_ACCESS_LABELS:
+            annotations.append(
+                CausalTimelineAnnotation(
+                    causal_annotation_id=(
+                        f"{annotation_id_prefix}:env_to_pressure:{pid}"
+                    ),
+                    annotation_date=pdate,
+                    event_label=(
+                        f"market environment -> indicative pressure "
+                        f"({plabel})"
+                    ),
+                    affected_actor_ids=(),
+                    source_record_ids=env_ids,
+                    downstream_record_ids=(pid,),
+                    causal_summary_label="market_pressure_change",
+                    metadata={
+                        "effect_market_access_label": plabel,
+                    },
+                )
+            )
+
+    # Causal 2 — pressure → financing path constraint.
+    for fp in financing_paths:
+        fpid = getattr(fp, "financing_path_id", None)
+        fpdate = _coerce_iso_or_none(getattr(fp, "as_of_date", None))
+        constraint = getattr(fp, "constraint_label", "unknown")
+        firm = getattr(fp, "firm_id", None)
+        pressure_ids = tuple(
+            getattr(fp, "indicative_market_pressure_ids", ())
+        )
+        if (
+            not isinstance(fpid, str)
+            or not fpid
+            or fpdate is None
+            or not pressure_ids
+        ):
+            continue
+        if constraint == "market_access_constraint":
+            annotations.append(
+                CausalTimelineAnnotation(
+                    causal_annotation_id=(
+                        f"{annotation_id_prefix}:pressure_to_financing:"
+                        f"{fpid}"
+                    ),
+                    annotation_date=fpdate,
+                    event_label=(
+                        "indicative pressure -> financing path "
+                        "(market_access_constraint)"
+                    ),
+                    affected_actor_ids=((firm,) if firm else ()),
+                    source_record_ids=pressure_ids,
+                    downstream_record_ids=(fpid,),
+                    causal_summary_label="financing_constraint",
+                    metadata={
+                        "effect_constraint_label": constraint,
+                    },
+                )
+            )
+
+    # Causal 3 — prior pressure / path → next-period attention.
+    for s in attention_states:
+        sid = getattr(s, "attention_state_id", None)
+        sdate = _coerce_iso_or_none(getattr(s, "as_of_date", None))
+        focus = set(getattr(s, "focus_labels", ()))
+        actor = getattr(s, "actor_id", None)
+        prior_pressure_ids = tuple(
+            getattr(s, "source_indicative_market_pressure_ids", ())
+        )
+        prior_path_ids = tuple(
+            getattr(s, "source_corporate_financing_path_ids", ())
+        )
+        if not isinstance(sid, str) or not sid or sdate is None:
+            continue
+        v1163_present = sorted(_V1_16_3_FRESH_FOCUS_LABELS & focus)
+        if not v1163_present:
+            continue
+        if not prior_pressure_ids and not prior_path_ids:
+            continue
+        annotations.append(
+            CausalTimelineAnnotation(
+                causal_annotation_id=(
+                    f"{annotation_id_prefix}:prior_to_attention:{sid}"
+                ),
+                annotation_date=sdate,
+                event_label=(
+                    "prior-period pressure / financing path -> "
+                    "attention shift"
+                ),
+                affected_actor_ids=((actor,) if actor else ()),
+                source_record_ids=prior_pressure_ids + prior_path_ids,
+                downstream_record_ids=(sid,),
+                causal_summary_label="attention_shift",
+                metadata={
+                    "v1_16_3_focus_present": v1163_present,
+                },
+            )
+        )
+
+    return tuple(annotations)
+
+
+_MAX_EVENTS_PER_REGIME_IN_MARKDOWN: int = 6
+
+
+def _format_events_summary_cell(
+    events: tuple[EventAnnotationRecord, ...],
+) -> str:
+    """Render an event-type histogram cell — sorted by type
+    then count. Stable across runs."""
+    if not events:
+        return "—"
+    by_type: dict[str, int] = {}
+    for ev in events:
+        by_type[ev.annotation_type_label] = (
+            by_type.get(ev.annotation_type_label, 0) + 1
+        )
+    return ", ".join(
+        f"{label} {count}" for label, count in sorted(by_type.items())
+    )
+
+
+def _format_top_event_cell(
+    events: tuple[EventAnnotationRecord, ...],
+    *,
+    limit: int = _MAX_EVENTS_PER_REGIME_IN_MARKDOWN,
+) -> str:
+    """Render a short list of the regime's first ``limit``
+    annotations sorted by ``(date, type)``, each cell carrying
+    date + type + first source id (truncated)."""
+    if not events:
+        return "—"
+    sorted_events = sorted(
+        events,
+        key=lambda e: (
+            e.annotation_date,
+            e.annotation_type_label,
+            e.annotation_id,
+        ),
+    )[:limit]
+    fragments: list[str] = []
+    for ev in sorted_events:
+        first_src = (
+            ev.source_record_ids[0] if ev.source_record_ids else "—"
+        )
+        if len(first_src) > 28:
+            first_src = first_src[:14] + "…" + first_src[-12:]
+        fragments.append(
+            f"{ev.annotation_date} {ev.annotation_type_label} "
+            f"[{first_src}]"
+        )
+    return "; ".join(fragments)
+
+
+def _format_causal_summary_cell(
+    causal: tuple[CausalTimelineAnnotation, ...],
+) -> str:
+    """Render a causal_summary histogram cell."""
+    if not causal:
+        return "—"
+    by_kind: dict[str, int] = {}
+    for c in causal:
+        by_kind[c.causal_summary_label] = (
+            by_kind.get(c.causal_summary_label, 0) + 1
+        )
+    return ", ".join(
+        f"{label} {count}" for label, count in sorted(by_kind.items())
+    )
+
+
 def render_regime_comparison_markdown(
     panel: RegimeComparisonPanel,
 ) -> str:
@@ -1760,6 +2287,14 @@ def render_regime_comparison_markdown(
     histograms are counts of the labels actually emitted by the
     v1.16 closed-loop records; no economic claim is made about
     the values.
+
+    v1.17.3: when the panel's :class:`NamedRegimePanel` instances
+    carry ``event_annotations`` and / or ``causal_annotations``,
+    the renderer appends a per-regime "Events & causal trace"
+    block below the histogram table. This makes two regimes
+    whose histograms collide (e.g. ``constrained`` vs
+    ``tightening``) still differ visibly, since the events and
+    causal arrows cite specific record ids and dates.
     """
     if not isinstance(panel, RegimeComparisonPanel):
         raise TypeError(
@@ -1809,6 +2344,33 @@ def render_regime_comparison_markdown(
         row = [title] + cells
         lines.append("| " + " | ".join(row) + " |")
 
+    # v1.17.3 — events / causal-trace summary rows.
+    has_events = any(p.event_annotations for p in regime_panels)
+    has_causal = any(p.causal_annotations for p in regime_panels)
+    if has_events:
+        events_summary = [
+            _format_events_summary_cell(p.event_annotations)
+            for p in regime_panels
+        ]
+        lines.append(
+            "| " + " | ".join(["Event annotations (by type)"] + events_summary) + " |"
+        )
+        top_events = [
+            _format_top_event_cell(p.event_annotations)
+            for p in regime_panels
+        ]
+        lines.append(
+            "| " + " | ".join(["Top events (date · type · source)"] + top_events) + " |"
+        )
+    if has_causal:
+        causal_summary = [
+            _format_causal_summary_cell(p.causal_annotations)
+            for p in regime_panels
+        ]
+        lines.append(
+            "| " + " | ".join(["Causal arrows (by kind)"] + causal_summary) + " |"
+        )
+
     lines.append("")
     lines.append(
         "_Synthetic display only — counts of the labels emitted "
@@ -1816,5 +2378,72 @@ def render_regime_comparison_markdown(
         "preset. Not a forecast, not a price, not a "
         "recommendation._"
     )
+
+    # v1.17.3 — per-regime causal-trace block under the table.
+    if has_events or has_causal:
+        for regime_panel in regime_panels:
+            if (
+                not regime_panel.event_annotations
+                and not regime_panel.causal_annotations
+            ):
+                continue
+            lines.append("")
+            lines.append(
+                f"### {regime_panel.regime_id} — events & causal trace"
+            )
+            if regime_panel.event_annotations:
+                lines.append("")
+                lines.append("Top events:")
+                lines.append("")
+                top_n = sorted(
+                    regime_panel.event_annotations,
+                    key=lambda e: (
+                        e.annotation_date,
+                        e.annotation_type_label,
+                        e.annotation_id,
+                    ),
+                )[: _MAX_EVENTS_PER_REGIME_IN_MARKDOWN]
+                for ev in top_n:
+                    src = (
+                        ev.source_record_ids[0]
+                        if ev.source_record_ids
+                        else "—"
+                    )
+                    lines.append(
+                        f"- {ev.annotation_date} · "
+                        f"{ev.annotation_type_label} · "
+                        f"{ev.severity_label} · "
+                        f"`{src}` — {ev.annotation_label}"
+                    )
+            if regime_panel.causal_annotations:
+                lines.append("")
+                lines.append("Causal arrows:")
+                lines.append("")
+                top_n_causal = sorted(
+                    regime_panel.causal_annotations,
+                    key=lambda c: (
+                        c.annotation_date,
+                        c.causal_summary_label,
+                        c.causal_annotation_id,
+                    ),
+                )[: _MAX_EVENTS_PER_REGIME_IN_MARKDOWN]
+                for ca in top_n_causal:
+                    first_src = (
+                        ca.source_record_ids[0]
+                        if ca.source_record_ids
+                        else "—"
+                    )
+                    first_dst = (
+                        ca.downstream_record_ids[0]
+                        if ca.downstream_record_ids
+                        else "—"
+                    )
+                    lines.append(
+                        f"- {ca.annotation_date} · "
+                        f"{ca.causal_summary_label} · "
+                        f"`{first_src}` → `{first_dst}` — "
+                        f"{ca.event_label}"
+                    )
+
     lines.append("")
     return "\n".join(lines)

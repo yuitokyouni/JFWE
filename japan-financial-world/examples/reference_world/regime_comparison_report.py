@@ -39,8 +39,12 @@ from examples.reference_world.living_world_replay import (
 )
 from world.clock import Clock
 from world.display_timeline import (
+    CausalTimelineAnnotation,
+    EventAnnotationRecord,
     NamedRegimePanel,
     RegimeComparisonPanel,
+    build_causal_timeline_annotations_from_closed_loop_data,
+    build_event_annotations_from_closed_loop_data,
     build_named_regime_panel,
     build_regime_comparison_panel,
     render_regime_comparison_markdown,
@@ -113,6 +117,8 @@ class _RegimeRunSnapshot:
     indicative_market_pressure_labels: tuple[str, ...]
     financing_path_constraint_labels: tuple[str, ...]
     financing_path_coherence_labels: tuple[str, ...]
+    event_annotations: tuple[EventAnnotationRecord, ...]
+    causal_annotations: tuple[CausalTimelineAnnotation, ...]
 
 
 def _sum_unresolved_refs(kernel: WorldKernel) -> int:
@@ -191,6 +197,32 @@ def extract_regime_run_snapshot(
     record_count = len(kernel.ledger.records)
     unresolved_refs_count = _sum_unresolved_refs(kernel)
 
+    # v1.17.3 — extract closed-loop records for the event /
+    # causal annotation helpers. Read-only.
+    env_states = tuple(kernel.market_environments.list_states())
+    pressure_records = tuple(
+        kernel.indicative_market_pressure.list_records()
+    )
+    path_records = tuple(kernel.financing_paths.list_paths())
+    attention_records = tuple(
+        kernel.attention_feedback.list_attention_states()
+    )
+    event_annotations = build_event_annotations_from_closed_loop_data(
+        market_environment_states=env_states,
+        indicative_market_pressures=pressure_records,
+        financing_paths=path_records,
+        attention_states=attention_records,
+        annotation_id_prefix=f"event_annotation:{regime_id}",
+    )
+    causal_annotations = (
+        build_causal_timeline_annotations_from_closed_loop_data(
+            indicative_market_pressures=pressure_records,
+            financing_paths=path_records,
+            attention_states=attention_records,
+            annotation_id_prefix=f"causal_timeline:{regime_id}",
+        )
+    )
+
     return _RegimeRunSnapshot(
         regime_id=regime_id,
         digest=digest,
@@ -202,6 +234,8 @@ def extract_regime_run_snapshot(
         indicative_market_pressure_labels=tuple(indicative_market_pressure),
         financing_path_constraint_labels=tuple(financing_path_constraint),
         financing_path_coherence_labels=tuple(financing_path_coherence),
+        event_annotations=event_annotations,
+        causal_annotations=causal_annotations,
     )
 
 
@@ -231,6 +265,8 @@ def named_regime_panel_from_snapshot(
         financing_path_coherence_labels=(
             snapshot.financing_path_coherence_labels
         ),
+        event_annotations=snapshot.event_annotations,
+        causal_annotations=snapshot.causal_annotations,
         metadata=metadata or {},
     )
 
