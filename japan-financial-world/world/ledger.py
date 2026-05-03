@@ -96,6 +96,8 @@ class RecordType(str, Enum):
         "capital_structure_review_candidate_recorded"
     )
     CORPORATE_FINANCING_PATH_RECORDED = "corporate_financing_path_recorded"
+    LISTED_SECURITY_REGISTERED = "listed_security_registered"
+    MARKET_VENUE_REGISTERED = "market_venue_registered"
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

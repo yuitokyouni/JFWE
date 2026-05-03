@@ -8652,3 +8652,57 @@ v1.15.0 is docs-only design (see [`v1_15_securities_market_intent_aggregation_de
 The premise: investor intents do not directly update prices. They are first aggregated by a broker / exchange / market-venue abstraction into security-level market pressure. That pressure can later feed back into equity-issuance accessibility, dilution concern, market access, and the capital-structure review.
 
 This is **market interest aggregation, not market trading**. It creates audit records, not trades or prices. v1.15.0 is docs-only — no code, no tests, no `living_world_digest` change, no per-run window change.
+
+## 107. v1.15.1 ListedSecurityRecord + MarketVenueRecord — securities / venue surface storage
+
+§107 ships the first concrete code milestone in the v1.15 sequence. v1.15.1 is **storage only**: an append-only `SecurityMarketBook` that holds two new immutable record types — `ListedSecurityRecord` and `MarketVenueRecord` — naming the static market surface (listed / tradable securities and the venues that host or observe them) the v1.15.2+ trading-intent and aggregation layers will reference. There is **no order submission, no order matching, no trade execution, no clearing, no settlement, no price formation, no quote dissemination, no real exchange mechanics, no target prices, no expected returns, no investment recommendations, no real data ingestion, no Japan calibration**.
+
+### 107.1 What v1.15.1 ships
+
+A new module `world/securities.py` containing:
+
+- `ListedSecurityRecord` (frozen dataclass) — fields: `security_id`, `issuer_firm_id`, five **closed-set-enforced** label fields (`security_type_label` / `listing_status_label` / `issue_profile_label` / `liquidity_profile_label` / `investor_access_label`), `primary_market_venue_id`, `currency_label` (free-form synthetic — never an ISO 4217 code), `status`, `visibility`, `metadata`. The `issuer_firm_id` and `primary_market_venue_id` are plain-id cross-references and not validated against any other book per the v0/v1 cross-reference rule.
+- `MarketVenueRecord` (frozen dataclass) — fields: `venue_id`, three **closed-set-enforced** label fields (`venue_type_label` / `venue_role_label` / `status`), `visibility`, two closed-set tuple slots (`supported_security_type_labels` — every entry must be a `SECURITY_TYPE_LABELS` value; `supported_intent_labels` — every entry must be a v1.15 **safe intent label**), `metadata`.
+- `SecurityMarketBook` (append-only) — `add_security` / `get_security` / `list_securities` / `list_by_issuer` / `list_by_security_type` / `list_by_listing_status` / `list_by_primary_venue` / `add_venue` / `get_venue` / `list_venues` / `list_by_venue_type` / `list_by_venue_role` / `snapshot`.
+- Two new ledger record types: `LISTED_SECURITY_REGISTERED` and `MARKET_VENUE_REGISTERED`. Adding one record emits exactly one ledger record of the matching type.
+- Wired into `WorldKernel.security_market`.
+
+Closed-set label vocabulary (enforced):
+
+- `security_type_label` ∈ { `equity`, `corporate_bond`, `convertible`, `preferred_equity`, `fund_unit`, `loan_claim`, `hybrid`, `unknown` }
+- `listing_status_label` ∈ { `listed`, `private`, `suspended`, `delisted`, `proposed`, `unknown` }
+- `issue_profile_label` ∈ { `seasoned`, `newly_issued`, `proposed`, `legacy`, `unknown` }
+- `liquidity_profile_label` ∈ { `liquid`, `moderate`, `thin`, `illiquid`, `unknown` }
+- `investor_access_label` ∈ { `broad`, `qualified_only`, `restricted`, `private`, `unknown` }
+- `venue_type_label` ∈ { `exchange`, `broker`, `dealer`, `otc_network`, `dark_pool`, `primary_market_platform`, `internal_crossing`, `unknown` }
+- `venue_role_label` ∈ { `listing_venue`, `intent_aggregator`, `quote_collector`, `primary_distribution_context`, `secondary_market_context`, `unknown` }
+- `MarketVenueRecord.status` ∈ { `active`, `inactive`, `proposed`, `archived`, `unknown` }
+
+Safe intent vocabulary (enforced on `MarketVenueRecord.supported_intent_labels`):
+
+- `SAFE_INTENT_LABELS` = { `increase_interest`, `reduce_interest`, `hold_review`, `liquidity_watch`, `rebalance_review`, `risk_reduction_review`, `engagement_linked_review` }
+
+### 107.2 Anti-claims
+
+Neither record carries `order_id`, `trade_id`, `buy`, `sell`, `bid`, `ask`, `quote`, `execution`, `clearing`, `settlement`, `price`, `target_price`, `expected_return`, `recommendation`, `investment_advice`, or `real_data_value` field. The full v1.14.x anti-field family (rate / spread / fee / coupon / yield / etc.) is also rejected. Tests pin the absence on both the dataclass field set and the ledger payload key set.
+
+The `MarketVenueRecord.supported_intent_labels` slot **rejects** the forbidden trading verbs `buy`, `sell`, `order`, `target_weight`, `overweight`, `underweight`, `execution` by closed-set membership — a parametrised test pins each rejection. The venue surface is a **review-posture aggregator**, never a trade-instruction surface.
+
+The book emits **only** `LISTED_SECURITY_REGISTERED` and `MARKET_VENUE_REGISTERED` records and refuses to mutate any other source-of-truth book. Cross-references (issuer firm id, primary venue id) are stored as plain ids per the v0/v1 cross-reference rule.
+
+### 107.3 Performance boundary
+
+v1.15.1 is storage-only and not yet wired into the orchestrator. Per-period record count, per-run window, and `living_world_digest` are **unchanged** from v1.14.last (`3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71`). The orchestrator integration arrives at v1.15.5.
+
+The test count moves from `3391 / 3391` (v1.14.last) to `3523 / 3523` (v1.15.1) — `+132` tests in the new `tests/test_securities.py` covering field validation, closed-set enforcement on all eight label axes (accept + reject + exact pin), `supported_security_type_labels` closed-set membership, `supported_intent_labels` safe-only enforcement (acceptance of all seven safe labels + rejection of every forbidden trading verb), immutability, duplicate rejection (no extra ledger record), unknown lookup, every list/filter method on both records, snapshot determinism, exactly-one ledger emission per add for each record type, no anti-field keys on dataclass or payload, kernel wiring, no-mutation invariant against every prior book, plain-id citation of issuer firm id, and jurisdiction-neutral identifier scans on both module and test file.
+
+### 107.4 Forward pointer
+
+v1.15.1 ships the static market surface — *what is listed, where*. The next milestones are:
+
+- **v1.15.2 `InvestorTradingIntentRecord`** — per-investor / per-security non-binding trading-interest posture, citing `evidence_investor_intent_ids` (v1.12.1), `evidence_valuation_ids` (v1.9.5 / v1.12.5), and `evidence_market_environment_state_ids` (v1.12.2). Same safe-label vocabulary, same forbidden trading verbs.
+- **v1.15.3 `AggregatedMarketInterestRecord`** — per-venue / per-security aggregation of trading intents (positive / negative / neutral counts + net-interest and liquidity-interest labels).
+- **v1.15.4 `IndicativeMarketPressureRecord`** — per-security pressure summary (demand / liquidity / volatility pressure labels + `market_access_label` shared with v1.14.3 capital-structure review).
+- **v1.15.5** — living-world integration; `living_world_digest` moves by design.
+- **v1.15.6** — v1.14 feedback wiring (capital-structure-review and financing-path cite pressure ids).
+- **v1.15.last** — freeze.

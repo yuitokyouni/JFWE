@@ -15,6 +15,7 @@ from world.corporate_financing import CorporateFinancingNeedBook
 from world.funding_options import FundingOptionCandidateBook
 from world.capital_structure import CapitalStructureReviewBook
 from world.financing_paths import CorporateFinancingPathBook
+from world.securities import SecurityMarketBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
 from world.constraints import ConstraintBook, ConstraintEvaluator
@@ -135,6 +136,9 @@ class WorldKernel:
     financing_paths: CorporateFinancingPathBook = field(
         default_factory=CorporateFinancingPathBook
     )
+    security_market: SecurityMarketBook = field(
+        default_factory=SecurityMarketBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -179,6 +183,7 @@ class WorldKernel:
             self.funding_options,
             self.capital_structure_reviews,
             self.financing_paths,
+            self.security_market,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
