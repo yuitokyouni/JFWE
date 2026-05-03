@@ -179,6 +179,9 @@ from world.market_pressure import (
     DuplicateIndicativeMarketPressureError,
     build_indicative_market_pressure,
 )
+from world.market_intent_classifier import (
+    classify_market_intent_direction,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -643,27 +646,44 @@ _CORPORATE_FINANCING_MARKET_ACCESS_BY_FIRM_INDEX: tuple[str, ...] = (
 )
 
 
-# v1.15.5 — securities-market-intent setup defaults + rotation
-# tables. The default fixture registers one generic exchange-shaped
-# venue and one equity-like security per firm. The 4-cycle rotation
-# below assigns one of four safe `intent_direction_label` values to
-# each (period, investor, firm) tuple so the per-period histogram
-# stays non-trivial without ever using the forbidden trading verbs.
+# v1.15.5 / v1.16.2 — securities-market-intent setup defaults.
+# The default fixture registers one generic exchange-shaped venue
+# and one equity-like security per firm. v1.16.2 replaced the
+# v1.15.5 four-cycle ``(period_idx + investor_idx + firm_idx) %
+# 4`` rotation with the v1.16.1
+# ``classify_market_intent_direction(...)`` pure function — see
+# §116 in ``docs/world_model.md``. The classifier reads cited
+# evidence (investor intent direction, valuation confidence,
+# firm market-access pressure, market-environment overall access
+# label, attention focus labels) and returns one of
+# ``SAFE_INTENT_LABELS ∪ {"unknown"}`` along with an audit
+# (``rule_id``, ``status``, ``confidence``,
+# ``unresolved_or_missing_count``) carried in the record's
+# ``metadata``. The forbidden trade-instruction verbs (``buy`` /
+# ``sell`` / ``order`` / ``target_weight`` / ``overweight`` /
+# ``underweight`` / ``execution``) are disjoint from
+# ``INTENT_DIRECTION_LABELS`` and rejected at construction.
 _DEFAULT_PRIMARY_MARKET_VENUE_ID: str = "venue:reference_exchange_a"
 
-_SAFE_INTENT_DIRECTION_BY_ROTATION: tuple[str, ...] = (
-    "increase_interest",
-    "reduce_interest",
-    "hold_review",
-    "liquidity_watch",
-)
-
-_MARKET_INTENT_INTENSITY_BY_ROTATION: tuple[str, ...] = (
-    "moderate",
-    "elevated",
-    "low",
-    "moderate",
-)
+# v1.16.2 classifier-confidence → intensity mapping. The
+# classifier returns a synthetic ``[0.0, 1.0]`` confidence —
+# ``0.0`` for evidence-deficient outcomes, ``0.3`` for the
+# default fallback, and ``0.5 + 0.05 × evidence_count`` clamped
+# to ``[0.5, 0.75]`` when a specific rule fires. The mapping
+# below is deterministic and lives in
+# ``world.market_intents.INTENSITY_LABELS``.
+def _intensity_label_for_classifier_confidence(
+    classifier_status: str, classifier_confidence: float
+) -> str:
+    if classifier_status == "evidence_deficient":
+        return "unknown"
+    if classifier_status == "default_fallback":
+        return "low"
+    if classifier_confidence >= 0.7:
+        return "elevated"
+    if classifier_confidence >= 0.6:
+        return "moderate"
+    return "low"
 
 
 def _listed_security_id_for(firm_id: str) -> str:
@@ -2457,7 +2477,7 @@ def run_living_reference_world(
         ibl_ids_period = tuple(interbank_liquidity_state_id_by_bank.values())
 
         # ------------------------------------------------------------------
-        # v1.15.5 — securities market intent chain phase.
+        # v1.15.5 / v1.16.2 — securities market intent chain phase.
         #
         # Per investor × listed security: emit one
         # ``InvestorMarketIntentRecord`` (v1.15.2). Per listed
@@ -2466,6 +2486,19 @@ def run_living_reference_world(
         # (v1.15.4) via their deterministic helpers. Bounded by
         # ``P × I × F + 2 × P × F``. No `P × I × F × venue` or
         # `P × I × F × option_count` dense loop.
+        #
+        # v1.16.2 replaces the v1.15.5 ``(period_idx + inv_idx +
+        # firm_idx) % 4`` rotation with the v1.16.1 pure-function
+        # ``classify_market_intent_direction(...)`` classifier.
+        # The chosen ``intent_direction_label`` is now derived
+        # from cited evidence: the investor's intent direction,
+        # valuation confidence, firm market-access pressure, the
+        # period's market-environment overall access label, and
+        # the investor's actor-attention focus labels — all read
+        # from records already created earlier in the same
+        # period. No global scan; no kernel mutation outside the
+        # books listed below; no new record types; per-period
+        # record count unchanged.
         #
         # Storage / aggregation only. There is **no order
         # submission, no buy / sell labels, no order book, no
@@ -2479,7 +2512,8 @@ def run_living_reference_world(
         # The synthesis uses safe-only labels — the forbidden
         # trading verbs (``buy`` / ``sell`` / ``order`` /
         # ``target_weight`` / ``overweight`` / ``underweight`` /
-        # ``execution``) are rejected by closed-set membership at
+        # ``execution``) are disjoint from
+        # ``INTENT_DIRECTION_LABELS`` and rejected at
         # construction.
         # ------------------------------------------------------------------
         investor_market_intent_ids: list[str] = []
@@ -2487,16 +2521,44 @@ def run_living_reference_world(
             sid: [] for sid in listed_security_id_by_firm.values()
         }
 
+        # v1.16.2 — resolve the period's market-environment
+        # overall access label once per period from the first
+        # cited MES id (typically the only one in the default
+        # fixture). Permissive: the classifier only checks small
+        # fixed-set membership.
+        period_market_access_label: str = "unknown"
+        if mes_ids_period:
+            mes_record = kernel.market_environments.get_state(
+                mes_ids_period[0]
+            )
+            period_market_access_label = (
+                mes_record.overall_market_access_label
+            )
+
         for inv_idx, investor_id in enumerate(investors):
+            # v1.16.2 — resolve attention focus labels for this
+            # investor in this period. The id format is the
+            # default ``attention_state:{actor_id}:{as_of_date}``
+            # built by the v1.12.8 helper. If the actor has no
+            # attention state for this period, fall back to ``()``.
+            attention_focus_labels: tuple[str, ...] = ()
+            attention_state_id = f"attention_state:{investor_id}:{iso_date}"
+            try:
+                attention_state_record = (
+                    kernel.attention_feedback.get_attention_state(
+                        attention_state_id
+                    )
+                )
+                attention_focus_labels = tuple(
+                    attention_state_record.focus_labels
+                )
+            except Exception:
+                attention_focus_labels = ()
+
             for firm_idx, firm_id in enumerate(firms):
                 security_id = listed_security_id_by_firm.get(firm_id)
                 if security_id is None:
                     continue
-                rotation = (
-                    period_idx + inv_idx + firm_idx
-                ) % len(_SAFE_INTENT_DIRECTION_BY_ROTATION)
-                intent_direction = _SAFE_INTENT_DIRECTION_BY_ROTATION[rotation]
-                intensity = _MARKET_INTENT_INTENSITY_BY_ROTATION[rotation]
 
                 # Filter upstream evidence to this (investor, firm)
                 # pair. Existing v1.12.1 / v1.9.5 ids embed both
@@ -2516,6 +2578,64 @@ def run_living_reference_world(
                     (firm_state_for_pair,) if firm_state_for_pair else ()
                 )
 
+                # v1.16.2 — resolve the four remaining classifier
+                # inputs by reading the cited records.
+                investor_intent_direction: str = "unknown"
+                if pair_intent_evidence:
+                    intent_record = kernel.investor_intents.get_intent(
+                        pair_intent_evidence[0]
+                    )
+                    investor_intent_direction = (
+                        intent_record.intent_direction
+                    )
+
+                valuation_confidence: float | None = None
+                if pair_valuation_evidence:
+                    valuation_record = kernel.valuations.get_valuation(
+                        pair_valuation_evidence[0]
+                    )
+                    valuation_confidence = float(valuation_record.confidence)
+
+                firm_market_access_pressure: float | None = None
+                if firm_state_for_pair:
+                    firm_state_record = (
+                        kernel.firm_financial_states.get_state(
+                            firm_state_for_pair
+                        )
+                    )
+                    firm_market_access_pressure = float(
+                        firm_state_record.market_access_pressure
+                    )
+
+                classifier_result = classify_market_intent_direction(
+                    investor_intent_direction=investor_intent_direction,
+                    valuation_confidence=valuation_confidence,
+                    firm_market_access_pressure=firm_market_access_pressure,
+                    market_environment_access_label=(
+                        period_market_access_label
+                    ),
+                    attention_focus_labels=attention_focus_labels,
+                )
+
+                intent_direction = classifier_result.intent_direction_label
+                intensity = _intensity_label_for_classifier_confidence(
+                    classifier_result.status,
+                    classifier_result.confidence,
+                )
+
+                classifier_metadata: dict[str, Any] = {
+                    "classifier_version": "v1.16.1",
+                    "classifier_rule_id": classifier_result.rule_id,
+                    "classifier_status": classifier_result.status,
+                    "classifier_confidence": classifier_result.confidence,
+                    "classifier_unresolved_or_missing_count": (
+                        classifier_result.unresolved_or_missing_count
+                    ),
+                    "classifier_evidence_summary": dict(
+                        classifier_result.evidence_summary
+                    ),
+                }
+
                 market_intent_id = (
                     f"market_intent:{investor_id}:{security_id}:{iso_date}"
                 )
@@ -2531,7 +2651,7 @@ def run_living_reference_world(
                             horizon_label="near_term",
                             status="active",
                             visibility="internal_only",
-                            confidence=0.5,
+                            confidence=classifier_result.confidence,
                             evidence_investor_intent_ids=(
                                 pair_intent_evidence
                             ),
@@ -2542,6 +2662,7 @@ def run_living_reference_world(
                             evidence_firm_state_ids=firm_state_evidence,
                             evidence_security_ids=(security_id,),
                             evidence_venue_ids=(primary_market_venue_id,),
+                            metadata=classifier_metadata,
                         )
                     )
                 except DuplicateInvestorMarketIntentError:

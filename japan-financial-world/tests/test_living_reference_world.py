@@ -2621,6 +2621,20 @@ def test_v1_12_9_living_world_digest_pinned():
     graph-linking only — never an order, trade, allocation,
     loan approval, security issuance, pricing, or
     recommendation.
+
+    v1.16.2 moves the digest by design: the v1.15.5
+    investor-market-intent phase now calls the v1.16.1
+    ``classify_market_intent_direction(...)`` pure function
+    instead of the four-cycle ``(period_idx + inv_idx + firm_idx)
+    % 4`` rotation. ``InvestorMarketIntentRecord`` payloads now
+    carry classifier-derived ``intent_direction_label`` /
+    ``intensity_label`` / ``confidence`` and a classifier-audit
+    ``metadata`` block (``classifier_version`` /
+    ``classifier_rule_id`` / ``classifier_status`` /
+    ``classifier_confidence`` /
+    ``classifier_unresolved_or_missing_count`` /
+    ``classifier_evidence_summary``). Record count and per-run
+    window are **unchanged**.
     """
     from examples.reference_world.living_world_replay import (
         living_world_digest,
@@ -2629,10 +2643,10 @@ def test_v1_12_9_living_world_digest_pinned():
     k = _seed_kernel()
     r = _run_default(k)
     expected = (
-        "bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8"
+        "0b75e95ad8f157df5e938c1318817c07f00798179c3d11b8629452d30d9398fa"
     )
     assert living_world_digest(k, r) == expected, (
-        "v1.15.6 living_world_digest moved unexpectedly. If the "
+        "v1.16.2 living_world_digest moved unexpectedly. If the "
         "shift is intentional, update the pinned value here AND "
         "in docs/world_model.md and docs/test_inventory.md."
     )
@@ -4033,3 +4047,353 @@ def test_v1_15_5_chain_record_ids_are_synthetic_only():
             assert search(rf"\b{escape(token)}\b", lower) is None, (
                 f"forbidden token {token!r} appears in id {id_str!r}"
             )
+
+
+# ---------------------------------------------------------------------------
+# v1.16.2 — endogenous market-intent classifier rewire of the living world.
+#
+# These tests pin the success condition of v1.16.2: the living-world
+# investor-market-intent phase derives ``intent_direction_label`` from
+# cited evidence via the v1.16.1 pure-function classifier instead of
+# the v1.15.5 four-cycle ``(period_idx + investor_idx + firm_idx) %
+# 4`` rotation. Record count, per-run window, and the public-FWE
+# anti-trading boundaries are preserved; the digest moved by design
+# (pin tested above).
+# ---------------------------------------------------------------------------
+
+
+def test_v1_16_2_market_intent_labels_use_classifier_vocabulary():
+    from world.market_intents import INTENT_DIRECTION_LABELS
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    forbidden_verbs = {
+        "buy",
+        "sell",
+        "order",
+        "target_weight",
+        "overweight",
+        "underweight",
+        "execution",
+    }
+    assert not (forbidden_verbs & INTENT_DIRECTION_LABELS)
+    seen_labels: set[str] = set()
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            assert rec.intent_direction_label in INTENT_DIRECTION_LABELS
+            assert rec.intent_direction_label not in forbidden_verbs
+            seen_labels.add(rec.intent_direction_label)
+    assert seen_labels, "no labels emitted"
+
+
+def test_v1_16_2_market_intent_metadata_carries_classifier_audit():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            md = rec.metadata
+            assert md.get("classifier_version") == "v1.16.1"
+            assert isinstance(md.get("classifier_rule_id"), str)
+            assert md["classifier_rule_id"]
+            assert md.get("classifier_status") in {
+                "evidence_deficient",
+                "default_fallback",
+                "classified",
+            }
+            cc = md.get("classifier_confidence")
+            assert isinstance(cc, (int, float))
+            assert 0.0 <= float(cc) <= 1.0
+            uc = md.get("classifier_unresolved_or_missing_count")
+            assert isinstance(uc, int)
+            assert 0 <= uc <= 5
+            es = md.get("classifier_evidence_summary")
+            assert isinstance(es, dict)
+            assert set(es.keys()) >= {
+                "investor_intent_direction",
+                "valuation_confidence",
+                "firm_market_access_pressure",
+                "market_environment_access_label",
+                "attention_focus_labels",
+            }
+
+
+def test_v1_16_2_record_confidence_matches_classifier_confidence():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            md_cc = float(rec.metadata["classifier_confidence"])
+            assert rec.confidence == md_cc
+
+
+def test_v1_16_2_no_index_rotation_with_default_evidence():
+    """The classifier rewire success condition: the per-pair
+    label sequence across periods is no longer the v1.15.5
+    four-cycle rotation. Counted strictly: at least one
+    (investor, firm) pair must produce a sequence that is
+    **not** the rotation."""
+    rotation = (
+        "increase_interest",
+        "reduce_interest",
+        "hold_review",
+        "liquidity_watch",
+    )
+    k = _seed_kernel()
+    r = _run_default(k)
+    per_pair_labels: dict[tuple[str, str], list[str]] = {}
+    for period_idx, ps in enumerate(r.per_period_summaries):
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            sec_id = rec.security_id
+            firm_id = sec_id.split(":")[1]
+            key = (rec.investor_id, firm_id)
+            per_pair_labels.setdefault(
+                key, [""] * len(r.per_period_summaries)
+            )[period_idx] = rec.intent_direction_label
+    matches_rotation_count = 0
+    for inv_idx, investor_id in enumerate(_INVESTOR_IDS):
+        for firm_idx, firm_id in enumerate(_FIRM_IDS):
+            key = (investor_id, firm_id)
+            if key not in per_pair_labels:
+                continue
+            sequence = tuple(per_pair_labels[key])
+            shifted = tuple(
+                rotation[(p + inv_idx + firm_idx) % len(rotation)]
+                for p in range(len(r.per_period_summaries))
+            )
+            if sequence == shifted:
+                matches_rotation_count += 1
+    total_pairs = len(_INVESTOR_IDS) * len(_FIRM_IDS)
+    assert matches_rotation_count < total_pairs, (
+        "every (investor, firm) pair still follows the v1.15.5 "
+        "four-cycle rotation — classifier rewire did not take effect"
+    )
+
+
+def test_v1_16_2_classifier_is_deterministic_across_two_runs():
+    k1 = _seed_kernel()
+    r1 = _run_default(k1)
+    k2 = _seed_kernel()
+    r2 = _run_default(k2)
+    for ps1, ps2 in zip(r1.per_period_summaries, r2.per_period_summaries):
+        for mid1, mid2 in zip(
+            ps1.investor_market_intent_ids,
+            ps2.investor_market_intent_ids,
+        ):
+            assert mid1 == mid2
+            rec1 = k1.investor_market_intents.get_intent(mid1)
+            rec2 = k2.investor_market_intents.get_intent(mid2)
+            assert rec1.to_dict() == rec2.to_dict()
+
+
+def test_v1_16_2_intensity_label_in_closed_vocabulary():
+    from world.market_intents import INTENSITY_LABELS
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            assert rec.intensity_label in INTENSITY_LABELS
+
+
+def test_v1_16_2_record_count_unchanged_from_v1_15_6():
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected_per_period = len(_INVESTOR_IDS) * len(_FIRM_IDS)
+    for ps in r.per_period_summaries:
+        assert len(ps.investor_market_intent_ids) == expected_per_period
+        assert len(ps.aggregated_market_interest_ids) == len(_FIRM_IDS)
+        assert len(ps.indicative_market_pressure_ids) == len(_FIRM_IDS)
+
+
+def test_v1_16_2_does_not_mutate_pricebook():
+    k = _seed_kernel()
+    prices_before = k.prices.snapshot()
+    _run_default(k)
+    assert k.prices.snapshot() == prices_before
+
+
+def test_v1_16_2_evidence_ids_preserved():
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected_security_ids = set(r.listed_security_ids)
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            assert rec.evidence_security_ids
+            assert set(rec.evidence_security_ids) <= expected_security_ids
+            assert rec.evidence_venue_ids == ("venue:reference_exchange_a",)
+            assert rec.evidence_market_environment_state_ids
+
+
+def test_v1_16_2_no_forbidden_payload_keys_in_classifier_metadata():
+    forbidden = {
+        "buy",
+        "sell",
+        "order",
+        "order_id",
+        "trade",
+        "trade_id",
+        "bid",
+        "ask",
+        "quote",
+        "price",
+        "market_price",
+        "indicative_price",
+        "target_price",
+        "expected_return",
+        "execution",
+        "clearing",
+        "settlement",
+        "target_weight",
+        "overweight",
+        "underweight",
+        "recommendation",
+        "investment_advice",
+        "real_data_value",
+    }
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            md_keys = set(rec.metadata.keys())
+            assert not (md_keys & forbidden)
+            es = rec.metadata.get("classifier_evidence_summary", {})
+            assert not (set(es.keys()) & forbidden)
+
+
+def test_v1_16_2_classifier_rule_ids_in_known_namespace():
+    """Every fired ``rule_id`` must be one of the eight v1.16.1
+    classifier priorities — never the v1.15.5 rotation tag."""
+    known_rule_id_prefixes = (
+        "priority_1_",
+        "priority_2_",
+        "priority_3a_",
+        "priority_3b_",
+        "priority_4a_",
+        "priority_4b_",
+        "priority_5a_",
+        "priority_5b_",
+        "priority_6_",
+        "priority_7_",
+        "priority_8_",
+    )
+    k = _seed_kernel()
+    r = _run_default(k)
+    seen_rule_ids: set[str] = set()
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            rid = rec.metadata["classifier_rule_id"]
+            assert rid.startswith(known_rule_id_prefixes), (
+                f"unknown classifier rule_id {rid!r}"
+            )
+            seen_rule_ids.add(rid)
+    assert seen_rule_ids, "no rule_ids observed"
+
+
+def test_v1_16_2_no_forbidden_chain_event_types():
+    from world.ledger import RecordType
+
+    k = _seed_kernel()
+    _run_default(k)
+    forbidden_record_types = {
+        RecordType.ORDER_SUBMITTED,
+        RecordType.PRICE_UPDATED,
+        RecordType.OWNERSHIP_TRANSFERRED,
+    }
+    seen = {rec.record_type for rec in k.ledger.records}
+    assert not (seen & forbidden_record_types)
+    forbidden_names = {
+        "trade_executed",
+        "quote_disseminated",
+        "clearing_completed",
+        "settlement_completed",
+        "order_submitted",
+        "ownership_transferred",
+    }
+    seen_names = {rec.record_type.value for rec in k.ledger.records}
+    assert not (seen_names & forbidden_names)
+
+
+def test_v1_16_2_canonical_replay_byte_identical_two_runs():
+    k1 = _seed_kernel()
+    r1 = _run_default(k1)
+    k2 = _seed_kernel()
+    r2 = _run_default(k2)
+    for ps1, ps2 in zip(r1.per_period_summaries, r2.per_period_summaries):
+        ids_1 = list(ps1.investor_market_intent_ids)
+        ids_2 = list(ps2.investor_market_intent_ids)
+        assert ids_1 == ids_2
+        for mid1, mid2 in zip(ids_1, ids_2):
+            d1 = k1.investor_market_intents.get_intent(mid1).to_dict()
+            d2 = k2.investor_market_intents.get_intent(mid2).to_dict()
+            assert d1 == d2
+
+
+def test_v1_16_2_jurisdiction_neutral_in_metadata():
+    from re import escape, search
+
+    k = _seed_kernel()
+    r = _run_default(k)
+    forbidden = (
+        "toyota",
+        "mufg",
+        "smbc",
+        "mizuho",
+        "boj",
+        "fsa",
+        "jpx",
+        "gpif",
+        "tse",
+        "nikkei",
+        "topix",
+        "sony",
+        "nyse",
+        "japan",
+        "tokyo",
+    )
+    for ps in r.per_period_summaries:
+        for mid in ps.investor_market_intent_ids:
+            rec = k.investor_market_intents.get_intent(mid)
+            payload_text = repr(rec.metadata).lower()
+            for token in forbidden:
+                assert (
+                    search(rf"\b{escape(token)}\b", payload_text) is None
+                ), f"forbidden token {token!r} in metadata: {rec.metadata!r}"
+
+
+def test_v1_16_2_classifier_module_no_runtime_books_imported():
+    import world.market_intent_classifier as mic
+
+    src = open(mic.__file__).read()
+    forbidden_imports = (
+        "from world.ledger import",
+        "from world.kernel import",
+        "from world.investor_intent import",
+        "from world.valuations import",
+        "from world.firm_state import",
+        "from world.market_environment import",
+        "from world.attention_feedback import",
+        "from world.attention import",
+    )
+    for needle in forbidden_imports:
+        assert needle not in src, (
+            f"classifier module should not import a runtime book: "
+            f"{needle!r}"
+        )
+
+
+def test_v1_16_2_living_world_imports_classifier():
+    import world.reference_living_world as rlw
+
+    src = open(rlw.__file__).read()
+    assert "from world.market_intent_classifier import" in src
+    assert "classify_market_intent_direction" in src
+    assert "_SAFE_INTENT_DIRECTION_BY_ROTATION" not in src
+    assert "_MARKET_INTENT_INTENSITY_BY_ROTATION" not in src
