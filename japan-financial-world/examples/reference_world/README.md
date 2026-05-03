@@ -231,6 +231,86 @@ records. See
 [`../../docs/v1_15_securities_market_intent_summary.md`](../../docs/v1_15_securities_market_intent_summary.md)
 for the v1.15 single-page summary and the v1.16 plan.
 
+**v1.16.last endogenous market intent feedback freeze.** Layered
+on top of the v1.15.last freeze, the v1.16 sequence replaces the
+v1.15.5 rotation with an **evidence-conditioned classifier** and
+closes the v1.12 attention loop with the v1.15 securities-market-
+pressure / financing-path loop. Per period the orchestrator now
+runs:
+
+```
+period N
+  ActorAttentionState.focus_labels        (v1.12.8 ∪ v1.16.3)
+        │
+        v
+  InvestorMarketIntentRecord              (v1.15.2 — directed by the
+                                           v1.16.1 pure-function
+                                           classifier rewired in v1.16.2)
+        │
+        v
+  AggregatedMarketInterestRecord          (v1.15.3)
+        │
+        v
+  IndicativeMarketPressureRecord          (v1.15.4)
+        │
+        v
+  CapitalStructureReviewCandidate         (v1.14.3 + v1.15.6)
+  CorporateFinancingPathRecord            (v1.14.4 + v1.15.6)
+        │
+        v
+period N+1
+  ActorAttentionState.focus_labels widened by the v1.16.3
+  deterministic mapping over the period-N pressure / path records
+        │
+        v
+  ... back into the v1.16.1 classifier at period N+1
+```
+
+The loop is **closed**, **deterministic**, and **replayable**.
+Same default-fixture seed → byte-identical canonical view,
+byte-identical `living_world_digest`, byte-identical ledger
+payloads across two consecutive runs.
+
+The default 4-period sweep still emits **460 records**
+(unchanged from v1.15.6 — every v1.16 milestone added zero new
+records; only payload bytes changed); the integration-test
+`living_world_digest` is now
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+(moved at v1.16.2 with the rotation → classifier rewire and at
+v1.16.3 with the attention-feedback union; v1.16.0 docs-only and
+v1.16.1 pure-function module left it byte-identical).
+
+**Hard boundary preserved bit-for-bit at v1.16.last.** Market-
+interest feedback, not trading. Indicative pressure, not price
+formation. Financing-review feedback, not financing execution.
+Attention adaptation, not stochastic behaviour learning. No
+order submission, no buy / sell labels, no order book, no
+matching, no execution, no clearing, no settlement, no quote
+dissemination, no bid / ask, no price update, no `PriceBook`
+mutation, no target price, no expected return, no
+recommendation, no portfolio allocation, no real exchange
+mechanics, no financing execution, no loan approval, no bond /
+equity issuance, no underwriting, no syndication, no pricing,
+no interest rate, no spread, no coupon, no fee, no offering
+price, no investment advice, no real data, no Japan
+calibration, no LLM execution, no stochastic behaviour
+probabilities, no learned model. The `PriceBook` is byte-equal
+across the full default sweep — pinned by tests at v1.15.5 /
+v1.15.6 / v1.16.2 / v1.16.3.
+
+**Known limitation (v1.16.last).** The v1.16 classifier and
+attention-feedback rule helpers are **deterministic and rule-
+based**. They are **not learned from real market behaviour**,
+**not calibrated** against any real-world dataset, and **do not
+claim predictive validity**. The value of v1.16 is **auditability**
+(every label is justified by a single named priority rule + cited
+evidence ids) and **replayable causal structure**. Future
+calibration, if attempted, would happen in private JFWE (v2 / v3)
+and would *replace* the rule table with a separate audited
+surface, not mutate the public-FWE one. See
+[`../../docs/v1_16_endogenous_market_intent_feedback_summary.md`](../../docs/v1_16_endogenous_market_intent_feedback_summary.md)
+for the v1.16 single-page summary.
+
 ## What is in this directory
 
 | File                    | Purpose                                                     |

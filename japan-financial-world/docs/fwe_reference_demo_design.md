@@ -5,19 +5,28 @@ jurisdiction-neutral demo world that exercises every v0 + v1 record
 type through the existing v1.6 reference loop and produces a complete
 causal ledger trace.
 
-> **Note (v1.15.last freeze).** The headline runnable surface is
+> **Note (v1.16.last freeze).** The headline runnable surface is
 > now the **v1.9.last living reference world** plus the **v1.12
 > endogenous attention-feedback loop** plus the **v1.14 corporate
 > financing reasoning chain** (need → funding options → capital
 > structure review → financing path) plus the **v1.15 securities
 > market intent aggregation** (investor market intent → aggregated
 > market interest → indicative market pressure) **with v1.15.6
-> feedback** to the v1.14 review and path layers. The original
-> v1.6 reference loop demo described below is preserved as the
+> feedback** to the v1.14 review and path layers, **closed at
+> v1.16** by an evidence-conditioned market-intent classifier
+> (v1.16.1 / v1.16.2) and securities-market-pressure → next-period
+> attention feedback (v1.16.3). The full loop now reads
+> `attention → market intent → aggregated interest → indicative
+> pressure → financing review / path → next-period attention`,
+> closed deterministically and replayably. The original v1.6
+> reference loop demo described below is preserved as the
 > single-shot explainer / replay-determinism baseline; the
 > multi-period, attention-conditioned, feedback-bounded,
-> financing-aware, market-interest-aggregating living world is the
-> demo a v1.15.last reader should run first. See
+> financing-aware, market-interest-aggregating, **endogenous-
+> market-intent-feeding-back-into-attention** living world is the
+> demo a v1.16.last reader should run first. See
+> [`v1_16_endogenous_market_intent_feedback_summary.md`](v1_16_endogenous_market_intent_feedback_summary.md)
+> for the v1.16 single-page summary,
 > [`v1_15_securities_market_intent_summary.md`](v1_15_securities_market_intent_summary.md)
 > for the v1.15 single-page summary,
 > [`v1_14_corporate_financing_intent_summary.md`](v1_14_corporate_financing_intent_summary.md)

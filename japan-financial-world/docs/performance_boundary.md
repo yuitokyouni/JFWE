@@ -336,6 +336,41 @@ If any of those pins fails, the demo has either grown the
 fixture (intentional but undocumented) or gained a hidden
 quadratic loop (unintended).
 
+## v1.16.last freeze pins
+
+The v1.16.last freeze (docs-only on top of the v1.16.0 → v1.16.3
+code freezes) closes the v1.16 sequence as the **first FWE
+milestone where the living reference world has a closed
+deterministic endogenous-market-intent feedback loop** —
+attention → market intent (v1.16.1 classifier) → aggregated
+interest → indicative pressure → financing review → next-period
+attention. On the default 4-period fixture (3 firms, 2
+investors, 2 banks):
+
+- per-period record count: **108** (period 0) / **110** (periods 1+),
+  unchanged from v1.15.6 / v1.16.1 / v1.16.2 / v1.16.3 (every
+  v1.16 milestone added zero new records — only payload bytes
+  changed),
+- per-run window: **`[432, 480]`**, unchanged,
+- default 4-period sweep total: **460 records**, unchanged,
+- integration-test `living_world_digest` (v1.16.last):
+  **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+  (moved twice in the v1.16 sequence — at v1.16.2 with the
+  rotation → classifier rewire, and at v1.16.3 with the
+  attention-feedback union; unchanged at v1.16.0 and v1.16.1),
+- pytest count: **4033 / 4033** passing.
+
+The v1.16 changes are bounded `O(P × I × F)` for the per-pair
+classifier call and `O(P × (I + B))` for the per-actor attention
+build — exactly the loop shapes already used by v1.15.5 and
+v1.12.8. **No new dense shape was introduced.** The v1.12.9
+attention-budget discipline (`per_dimension_budget`,
+`decay_horizon`, `saturation_policy`) is preserved bit-for-bit:
+v1.16.3 fresh focus labels are unioned into the v1.12.8 fresh
+set **before** decay / saturation runs. The `PriceBook` is
+byte-equal across the full default sweep — pinned by tests at
+every v1.15 / v1.16 milestone.
+
 ## v1.16.3 update pins
 
 v1.16.3 closes the v1.12 endogenous-attention loop with the v1.15

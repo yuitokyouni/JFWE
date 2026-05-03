@@ -9238,4 +9238,79 @@ The test count moves from `3999 / 3999` (v1.16.2) to `4033 / 4033` (v1.16.3) —
 
 ### 117.7 Forward pointer
 
-v1.16.last freezes the v1.16 sequence: closed-set vocabulary lock (the eight v1.16.1 priority rule ids + the v1.15 `INTENT_DIRECTION_LABELS` + the v1.12.8 ∪ v1.16.3 focus labels), per-record budget pin, canonical-view byte-stability across all v1.16 milestones, and a single-page reader-facing summary in `docs/v1_16_endogenous_market_intent_direction_summary.md`. v1.16.last is **docs-only** on top of the v1.16.0 → v1.16.3 code freezes.
+v1.16.last freezes the v1.16 sequence: closed-set vocabulary lock (the eight v1.16.1 priority rule ids + the v1.15 `INTENT_DIRECTION_LABELS` + the v1.12.8 ∪ v1.16.3 focus labels), per-record budget pin, canonical-view byte-stability across all v1.16 milestones, and a single-page reader-facing summary in `docs/v1_16_endogenous_market_intent_feedback_summary.md`. v1.16.last is **docs-only** on top of the v1.16.0 → v1.16.3 code freezes.
+
+## 118. v1.16.last Endogenous Market Intent Feedback freeze
+
+§118 closes the v1.16 sequence. v1.16.last is **docs-only** on top of the v1.16.0 → v1.16.3 code freezes: no new module, no new test, no new ledger event, no new label vocabulary. The freeze pins the v1.16 surface as the first FWE milestone where the living reference world has a **closed deterministic endogenous-market-intent feedback loop** — attention → market intent → aggregated interest → indicative pressure → financing review → next-period attention.
+
+The single-page reader-facing summary is [`v1_16_endogenous_market_intent_feedback_summary.md`](v1_16_endogenous_market_intent_feedback_summary.md). It mirrors the structure of [`v1_15_securities_market_intent_summary.md`](v1_15_securities_market_intent_summary.md), [`v1_14_corporate_financing_intent_summary.md`](v1_14_corporate_financing_intent_summary.md), [`v1_13_generic_settlement_infrastructure_summary.md`](v1_13_generic_settlement_infrastructure_summary.md), and [`v1_12_endogenous_attention_loop_summary.md`](v1_12_endogenous_attention_loop_summary.md) — sequence map, what v1.16 ships, what v1.16 explicitly is not, performance boundary, discipline preserved bit-for-bit, known limitations (the classifier is deterministic and rule-based — auditable, not calibrated), and what v1.17+ does next.
+
+### 118.1 Final living-world loop (v1.16.last)
+
+```
+period N
+  ActorAttentionState.focus_labels                  (v1.12.8 ∪ v1.16.3)
+        │
+        v
+  InvestorMarketIntentRecord                        (v1.15.2 — directed by
+                                                     the v1.16.1 classifier
+                                                     rewired in v1.16.2)
+        │
+        v
+  AggregatedMarketInterestRecord                    (v1.15.3)
+        │
+        v
+  IndicativeMarketPressureRecord                    (v1.15.4)
+        │
+        v
+  CapitalStructureReviewCandidate                   (v1.14.3 + v1.15.6)
+  CorporateFinancingPathRecord                      (v1.14.4 + v1.15.6)
+        │
+        v
+period N+1
+  ActorAttentionState.focus_labels widened by       (v1.16.3)
+   _classify_market_pressure_focus + _classify_financing_path_focus
+   over the period-N pressure / path records, then passed through the
+   v1.12.9 budget / decay / saturation pipeline
+        │
+        v
+  ... back into the v1.16.1 classifier at period N+1
+```
+
+The loop is **closed**, **deterministic**, **replayable**, and stays bounded `O(P × I × F)` per layer. The same default-fixture seed produces byte-identical canonical view, byte-identical `living_world_digest`, and byte-identical ledger payloads across two consecutive runs.
+
+### 118.2 Performance-boundary pins (v1.16.last)
+
+| Surface                                            | Value                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------ |
+| Per-period record count (default fixture)          | **108** (period 0) / **110** (periods 1+) — unchanged from v1.15.6       |
+| Per-run window (default 4-period fixture)          | **`[432, 480]`** — unchanged from v1.15.6                                |
+| Default 4-period sweep                             | **460 records** — unchanged from v1.15.6                                  |
+| Integration-test `living_world_digest` (canonical) | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**   |
+| Test count (`pytest -q`)                           | **4033 / 4033**                                                          |
+
+The digest moved twice in the v1.16 sequence (at v1.16.2 — rotation → classifier; new classifier-audit metadata bytes on every `InvestorMarketIntentRecord`; at v1.16.3 — new source-id slots and label widenings on every period-1+ `ActorAttentionStateRecord`). It was unchanged at v1.16.0 (docs-only) and v1.16.1 (pure-function module — no living-world wiring).
+
+### 118.3 Hard boundary (carried forward verbatim)
+
+This is **market-interest feedback, not trading**. This is **indicative pressure, not price formation**. This is **financing-review feedback, not financing execution**. This is **attention adaptation, not stochastic behaviour learning**.
+
+No order submission. No buy / sell labels. No order book. No matching. No execution. No clearing. No settlement. No quote dissemination. No bid / ask. No price update. No `PriceBook` mutation. No target price. No expected return. No recommendation. No portfolio allocation. No real exchange mechanics. No financing execution. No loan approval. No bond issuance. No equity issuance. No underwriting. No syndication. No pricing. No interest rate. No spread. No coupon. No fee. No offering price. No investment advice. No real data. No Japan calibration. No LLM execution. No stochastic behaviour probabilities. No learned model.
+
+Every v1.9.x / v1.10.x / v1.11.x / v1.12.x / v1.13.x / v1.14.x / v1.15.x anti-claim is preserved unchanged. The v1.9.last public-prototype freeze, the v1.12.last attention-loop freeze, the v1.13.last settlement-substrate freeze, the v1.14.last corporate-financing-intent freeze, the v1.15.last securities-market-intent freeze, and the v1.8.0 public release remain untouched.
+
+### 118.4 Known limitations
+
+The v1.16 layer is **deterministic and rule-based**. It is **not learned from real market behaviour**, **not calibrated** against any real-world dataset, and **does not claim predictive validity**. The value of the v1.16 surface is **auditability** (every label is justified by a single named priority rule + cited evidence ids) and **replayable causal structure** (byte-identical canonical view across runs of the default fixture). The classifier rule table is illustrative only — its job is to make the loop's causal structure inspectable, not to be correct against ground truth. Future calibration, if ever attempted, would happen in private JFWE (v2 / v3) and would **replace** the rule table with a separate audited surface, not mutate the public-FWE one.
+
+### 118.5 What v1.17+ does next
+
+v1.16.last freezes the public-FWE endogenous market-intent feedback layer. The next roadmap candidates:
+
+- **v1.17 — UI / report / regime-comparison polish.** The workbench prototype in `examples/ui/` should expose the v1.16 loop as a first-class view: per-period attention focus, market intent direction + classifier rule id, aggregated market interest, indicative market pressure, financing path outcome, and the next-period attention focus widening.
+- **v1.18 — scenario library / exogenous event templates.** A small library of named, deterministic, reproducible scenario templates that compose with the existing `--regime` presets.
+- **v2.0 — Japan public calibration in private JFWE.** Real-venue / real-issuer / real-regulator calibration moves to private JFWE only.
+- **Future price formation.** Out of scope until the v1.16 market-intent feedback layer is easier to inspect — i.e., until the v1.17 workbench / scenario library make the loop's causal structure operationally legible.
+
+The v1.16 chain stays bounded and label-only forever. Future milestones may *cite* the v1.16 records (plain-id cross-references, additional citation slots), but they may **never** mutate the v1.16 vocabulary, replace the deterministic rule helpers with stochastic ones, or introduce execution paths on top of the closed loop.

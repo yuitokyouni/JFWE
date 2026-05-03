@@ -1,6 +1,42 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.15.last** (`Securities Market
+Snapshot of the test suite at **v1.16.last** (`Endogenous
+Market Intent Feedback freeze` — docs-only milestone that closes
+the v1.16 sequence; ships the single-page reader-facing summary
+in [`v1_16_endogenous_market_intent_feedback_summary.md`](v1_16_endogenous_market_intent_feedback_summary.md),
+the v1.16.last release-readiness snapshot in
+[`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md), and the
+v1.16.last position-in-sequence row in `world_model.md` §118;
+no new code, no new tests, no new ledger event types, no new
+behavior; test count = **4033 / 4033**, per-period record count
+= **108 / 110**, per-run window = **`[432, 480]`**,
+`living_world_digest` =
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+— all unchanged from v1.16.3; the v1.16 surface is the **first
+public-FWE closed endogenous-market-intent feedback loop**
+(attention → InvestorMarketIntent via the v1.16.1 evidence-
+conditioned classifier → AggregatedMarketInterest →
+IndicativeMarketPressure → CapitalStructureReview /
+CorporateFinancingPath → next-period ActorAttentionState focus
+labels via the v1.16.3 deterministic mapping); market-interest
+feedback / audit / replay only — no order submission, no order
+book, no matching, no execution, no clearing, no settlement, no
+quote dissemination, no bid / ask, no price update, no
+`PriceBook` mutation, no target price, no expected return, no
+recommendation, no portfolio allocation, no real exchange
+mechanics, no financing execution, no loan approval, no bond /
+equity issuance, no underwriting, no syndication, no pricing, no
+investment advice, no real data, no Japan calibration, no LLM
+execution, no stochastic behaviour probabilities, no learned
+model. Known limitation: the v1.16 classifier and attention-
+feedback rule helpers are **deterministic and rule-based** —
+illustrative for auditability and replayable causal structure,
+not calibrated and not predictive. The v1.15.last historical
+snapshot below is preserved unchanged.)
+
+---
+
+Earlier snapshot at **v1.15.last** (`Securities Market
 Intent Aggregation freeze` — docs-only milestone that closes the
 v1.15 sequence; ships the single-page reader-facing summary in
 [`v1_15_securities_market_intent_summary.md`](v1_15_securities_market_intent_summary.md),

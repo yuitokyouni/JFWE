@@ -62,21 +62,62 @@ split that the engine actually maintains:
 
 The bundled sample manifest captures a snapshot of v1.14.1
 (`CorporateFinancingNeedRecord` storage). The latest engine
-freeze is **v1.15.last** — the first FWE milestone where the
-living reference world carries a bounded **securities-market-
-interest aggregation** chain (investor market intent → aggregated
-market interest → indicative market pressure) layered on top of
-the v1.14 corporate financing chain, with a deterministic
-feedback loop where indicative market pressure is cited by the
-capital-structure review and the financing path. Pinned at digest
-`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`
-on the default 4-period fixture. This UI prototype is
-intentionally lower-frequency than the engine and is bumped
-opportunistically; for the engine narrative see
+freeze is **v1.16.last** — the first FWE milestone where the
+living reference world has a **closed deterministic endogenous-
+market-intent feedback loop**: attention →
+`InvestorMarketIntent` (via the v1.16.1 evidence-conditioned
+classifier rewired into the orchestrator at v1.16.2) →
+`AggregatedMarketInterest` → `IndicativeMarketPressure` →
+`CapitalStructureReview` / `CorporateFinancingPath` → next-period
+`ActorAttentionState.focus_labels` (via the v1.16.3 deterministic
+mapping). Pinned at digest
+`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+on the default 4-period fixture. The v1.15.last freeze
+(`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`)
+remains the prior engine freeze and is preserved unchanged. This
+UI prototype is intentionally lower-frequency than the engine and
+is bumped opportunistically; for the engine narrative see
+[`../../docs/v1_16_endogenous_market_intent_feedback_summary.md`](../../docs/v1_16_endogenous_market_intent_feedback_summary.md)
+(v1.16),
 [`../../docs/v1_15_securities_market_intent_summary.md`](../../docs/v1_15_securities_market_intent_summary.md)
 (v1.15) and
 [`../../docs/v1_14_corporate_financing_intent_summary.md`](../../docs/v1_14_corporate_financing_intent_summary.md)
 (v1.14).
+
+### What the workbench should expose for the v1.16.last loop
+
+The Attention / Investors / Firms / Outputs / Ledger tabs
+together carry the v1.16 loop. A v1.17+ workbench polish should
+make each of the following first-class views (all of these are
+already in the manifest payload — they just need a sheet-level
+narrative):
+
+| v1.16 layer                                                   | Surfaced via                                                                                  |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Per-period **`ActorAttentionState.focus_labels`** + weights   | Attention tab: focus-label chips (with v1.16.3 additions `risk` / `financing` / `dilution` / `market_interest` / `information_gap`), per-dimension stale-count heatmap |
+| Per-`(investor, security)` **`InvestorMarketIntentRecord`** + classifier audit | Investors tab: market-intent table with `intent_direction_label`, `intensity_label`, `confidence`, and the metadata `classifier_rule_id` / `classifier_status` / `classifier_unresolved_or_missing_count` columns |
+| Per-security **`AggregatedMarketInterestRecord`**             | Outputs tab (or new "Securities" tab): venue × security grid with net / liquidity / concentration labels and per-period histogram |
+| Per-security **`IndicativeMarketPressureRecord`**             | Outputs tab: pressure card per security with five label fields (`demand_pressure_label` / `liquidity_pressure_label` / `volatility_pressure_label` / `market_access_label` / `financing_relevance_label`) |
+| Per-firm **`CorporateFinancingPathRecord`** outcome           | Firms tab: financing-path card with `coherence_label`, `constraint_label`, `next_review_label`, plus citations to that period's pressure ids |
+| **Next-period attention widening** (the closed loop)          | Attention tab: a small "what changed because of last period's pressure / path" sub-panel showing the v1.16.3 fresh focus labels and the prior pressure / path ids that triggered them (`source_indicative_market_pressure_ids` / `source_corporate_financing_path_ids`) |
+
+The Ledger tab already supports plain-id click-through; v1.17
+should add cross-sheet click-through so an analyst can trace
+"why does this investor's focus include `dilution` at period 2"
+back to "because period-1 pressure for security X had
+`financing_relevance_label = caution_for_dilution`".
+
+**Workbench scope reminder.** The workbench is a *post-hoc
+inspector* of a deterministic synthetic run. It is **not** a
+trading dashboard, **not** an order management interface, **not**
+an investment-recommendation surface, **not** a Japan-specific
+view. The v1.16 hard boundary applies bit-for-bit: no order
+submission / matching / execution / clearing / settlement / quote
+dissemination / bid / ask / price formation / `PriceBook`
+mutation / target prices / expected returns / recommendations /
+portfolio allocations / financing approvals / loan approvals /
+real data / Japan calibration / LLM execution / stochastic
+behaviour probabilities / learned models.
 
 These advance independently. The prototype version is
 intentionally lower than the runtime version because the

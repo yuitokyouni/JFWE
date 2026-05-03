@@ -22,6 +22,122 @@ Each readiness review records its result here so the next reviewer
 can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
+- **Date:** 2026-05-04
+- **Target:** v1.16.last endogenous market intent feedback
+  freeze. The v1.15.last securities-market-intent aggregation
+  freeze (snapshot below), the v1.14.last corporate-financing-
+  intent freeze, the v1.13.last settlement-substrate freeze,
+  the v1.12.last endogenous-attention-loop freeze, the
+  v1.9.last public-prototype freeze, and the v1.8.0 public
+  release (`v1.8-public-release` at commit `7fa2c42`) all
+  remain unchanged; v1.16.last freezes the v1.16 endogenous-
+  market-intent feedback loop — the **first public-FWE closed
+  deterministic loop** in which the actor's prior-period
+  attention focus shapes this period's evidence-conditioned
+  market intent (via the v1.16.1 pure-function classifier
+  rewired in v1.16.2), the resulting market intent flows
+  through the v1.15 aggregation chain to indicative pressure
+  and the v1.14 financing review, and the same period's
+  pressure / financing path then re-shape the next period's
+  attention focus (v1.16.3 deterministic rule helpers + new
+  source-id slots on `ActorAttentionStateRecord`). v1.16.last
+  itself is docs-only on top of the v1.16.0 → v1.16.3 code
+  freezes. The chain is **market-interest feedback,
+  indicative pressure, financing-review feedback, and
+  attention adaptation** — no order submission, no order
+  book, no matching, no execution, no clearing, no
+  settlement, no quote dissemination, no bid / ask, no price
+  update, no `PriceBook` mutation, no target price, no
+  expected return, no recommendation, no portfolio
+  allocation, no real exchange mechanics, no financing
+  execution, no loan approval, no bond / equity issuance, no
+  underwriting, no syndication, no pricing, no interest rate,
+  no spread, no coupon, no fee, no offering price, no
+  investment advice, no real data, no Japan calibration, no
+  LLM execution, no stochastic behaviour probabilities, no
+  learned model. Known limitation: the v1.16 classifier and
+  attention-feedback rule helpers are **deterministic and
+  rule-based** — illustrative for auditability and replayable
+  causal structure, not calibrated and not predictive.
+- **Status:** docs + tests frozen. The freeze is conditional on
+  CI being green on the commit being tagged.
+- **Local results (v1.16.last):**
+  - `pytest -q` → 4033 passed
+  - `compileall world spaces tests examples` → clean
+  - `ruff check .` (repo root) → clean
+  - `python -m examples.reference_world.run_living_reference_world`
+    → produces `[setup]` / `[period N]` / `[ledger]` trace with
+    v1.15.5 `market_intents= / aggregated_interest= /
+    market_pressure=` per-period columns and v1.14.5
+    `financing_needs= / funding_options= / capital_reviews= /
+    financing_paths=` columns; every `InvestorMarketIntentRecord`
+    now carries the v1.16.1 classifier-audit metadata block
+    (`classifier_version` / `classifier_rule_id` /
+    `classifier_status` / `classifier_confidence` /
+    `classifier_unresolved_or_missing_count` /
+    `classifier_evidence_summary`); period 1+
+    `ActorAttentionStateRecord` payloads now carry the v1.16.3
+    `source_indicative_market_pressure_ids` and
+    `source_corporate_financing_path_ids` slots citing the
+    previous period's full pressure / path id sets; re-run
+    yields byte-identical output. Default 4-period sweep emits
+    460 records (per-period 108 / 110, **unchanged** from
+    v1.15.6 — every v1.16 milestone added zero new records)
+  - `... --markdown` → appends v1.9.1 deterministic Markdown
+    report including the v1.15.5 `## Securities market intent`
+    section (now showing classifier-derived directions instead
+    of rotation-derived ones) alongside the v1.14.5
+    `## Corporate financing` section; re-run yields byte-
+    identical output
+  - `... --manifest /tmp/lw.json` → writes
+    `living_world_manifest.v1` JSON carrying the perf-fixture
+    `living_world_digest`. The integration-test fixture digest
+    moved twice in the v1.16 sequence — at v1.16.2 from
+    `bd7abdb9…58baf8` (v1.15.6 / v1.16.1) to `0b75e95a…d9398fa`
+    (rotation → classifier rewire), and again at v1.16.3 to
+    **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+    (attention-feedback union with new source-id slots and
+    label widenings). v1.16.0 (docs-only) and v1.16.1 (pure-
+    function module) left the digest byte-identical
+  - `... --market-regime constructive --markdown`,
+    `... --market-regime constrained --markdown`, and
+    `... --market-regime tightening --markdown` — three
+    regime-preset modes; each pair of consecutive runs of the
+    same regime is byte-identical; runs across regimes produce
+    different reports deterministically, with classifier-
+    derived intent directions now varying with cited evidence
+    rather than with positional indices
+  - Forbidden-token scan (word-boundary against
+    `world/experiment.py::_FORBIDDEN_TOKENS` plus the v1.12.x
+    closed-set vocabulary scans for `ALL_FOCUS_LABELS`,
+    `ALL_WATCH_LABELS`, intent direction labels, trigger
+    labels, and the v1.16.1 classifier rule_id namespace)
+    → no hits in any object id, signal id, payload key,
+    metadata key, or example output
+  - Public-wording audit → no "predicts markets",
+    "production-ready", "Japan market simulator", "alpha",
+    "buy / sell", "rating", "PD", "LGD", "EAD", "investment
+    advice", "buyout-target", or any similar marketing /
+    binding-signal framing in `README.md`,
+    `docs/v1_16_endogenous_market_intent_feedback_summary.md`,
+    `docs/world_model.md`, or
+    `examples/reference_world/README.md`
+  - Public / private boundary review → no real-system
+    identifier in any public-FWE module, test, doc, or
+    fixture; jurisdiction-neutral metadata scan passes on
+    every `InvestorMarketIntentRecord` and
+    `ActorAttentionStateRecord` produced by the default sweep
+  - No-confidential-content audit → unchanged from v1.15.last
+  - No-real-data audit → unchanged from v1.15.last
+  - No-behavior-probability audit → unchanged from v1.15.last;
+    additionally the v1.16.1 classifier is deterministic and
+    rule-based (no learned model, no probabilistic output —
+    the synthetic `confidence` field carries an ordering on
+    evidence-deficient / classified / default-fallback paths
+    only)
+
+#### v1.15.last historical snapshot (unchanged)
+
 - **Date:** 2026-05-03
 - **Target:** v1.15.last securities market intent aggregation
   freeze. The v1.14.last corporate-financing-intent freeze
@@ -282,8 +398,9 @@ new review is performed.
   passing total. v1.8 + post-rc1 CI fix: `725 passed`. v1.9.last
   freeze: `1626 passed`. v1.13.last freeze: `2988 passed`.
   v1.14.last freeze: `3391 passed`. v1.15.last freeze:
-  `3883 passed`. Use the count of the milestone being tagged;
-  mismatch means the tree is not the freeze tree.
+  `3883 passed`. v1.16.last freeze: `4033 passed`. Use the count
+  of the milestone being tagged; mismatch means the tree is not
+  the freeze tree.
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).
