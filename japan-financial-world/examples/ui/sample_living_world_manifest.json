@@ -1,0 +1,307 @@
+{
+  "manifest": {
+    "schema": "living_world_manifest.v1",
+    "ui_prototype_version": "v0",
+    "runtime_engine_version": "v1.14.1",
+    "evidence_substrate_version": "v1.13.6",
+    "frozen_attention_loop_version": "v1.12.last",
+    "digest": "916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379",
+    "as_of_period": "2026-Q3",
+    "per_period_record_count": 83,
+    "per_run_window": [324, 372],
+    "synthetic_only": true
+  },
+  "market_state": {
+    "kpis": [
+      {"title": "Liquidity",     "label": "regime", "value": "tight",       "note": "from liquidity market + readout"},
+      {"title": "Credit",        "label": "regime", "value": "tightening",  "note": "spread environment"},
+      {"title": "Funding",       "label": "window", "value": "selective",   "note": "no DCM execution"},
+      {"title": "Risk appetite", "label": "regime", "value": "risk_off",    "note": "synthetic label"}
+    ],
+    "quarterly": [
+      {"period": "2026-Q1", "rates": "rising", "credit": "tightening", "funding": "selective", "liquidity": "normal", "volatility": "elevated", "overall": "mixed"},
+      {"period": "2026-Q2", "rates": "rising", "credit": "tightening", "funding": "selective", "liquidity": "tight",  "volatility": "elevated", "overall": "selective"},
+      {"period": "2026-Q3", "rates": "high",   "credit": "stressed",   "funding": "closed",    "liquidity": "tight",  "volatility": "stressed", "overall": "constrained"},
+      {"period": "2026-Q4", "rates": "high",   "credit": "tightening", "funding": "selective", "liquidity": "tight",  "volatility": "elevated", "overall": "selective"}
+    ],
+    "lineage": [
+      {"record": "env:2026Q1",  "reads": "market conditions, readout",                    "consumed_by": "firm state, investor intent"},
+      {"record": "readout:Q1",  "reads": "rates, credit, equity, funding, liquidity",      "consumed_by": "market environment state"},
+      {"record": "cond:credit", "reads": "synthetic spread tone",                          "consumed_by": "readout + evidence resolver"},
+      {"record": "env:2026Q3",  "reads": "+ interbank liquidity (v1.13.5)",                "consumed_by": "bank credit review citation"}
+    ]
+  },
+  "attention": {
+    "actors": [
+      {"actor_id": "investor:a", "title": "Investor A · ActorAttentionState", "selected_evidence": "market env, firm state",       "memory_selection": "mem:investor_a:Q3 (5 refs)", "intent_label": "intent",      "intent_value": "deepen_due_diligence", "next_focus": "market_access, liquidity",   "budget_dim_cap": "12 / 3"},
+      {"actor_id": "investor:b", "title": "Investor B · ActorAttentionState", "selected_evidence": "dialogue, stewardship",        "memory_selection": "mem:investor_b:Q3 (4 refs)", "intent_label": "intent",      "intent_value": "engagement_watch",     "next_focus": "dialogue, escalation",       "budget_dim_cap": "12 / 3"},
+      {"actor_id": "bank:c",     "title": "Bank C · ActorAttentionState",     "selected_evidence": "liquidity, firm state",        "memory_selection": "mem:bank_c:Q3 (6 refs)",     "intent_label": "watch_label", "intent_value": "refinancing_watch",    "next_focus": "funding, market environment", "budget_dim_cap": "12 / 3"}
+    ],
+    "discipline": [
+      {"discipline": "Budget",            "rule": "max 12 selected refs per actor / period",                           "boundary": "finite, deterministic"},
+      {"discipline": "Per-dimension cap", "rule": "3 refs / focus dimension",                                          "boundary": "prevents single-axis dominance"},
+      {"discipline": "Decay",             "rule": "inherited focus weight halves each period without reinforcement",    "boundary": "integer-counted, never stochastic"},
+      {"discipline": "Crowding",          "rule": "new high-weight focus displaces lowest-weight inherited focus",      "boundary": "deterministic priority order"},
+      {"discipline": "Saturation",        "rule": "above 8 focus labels → drop_oldest",                                "boundary": "cap on simultaneous attention"}
+    ]
+  },
+  "firms": {
+    "latent_state": [
+      {"firm_id": "firm:1", "liquidity_pressure": 0.42, "funding_need": 0.30, "debt_service_pressure": 0.55, "market_access_pressure": 0.48, "confidence": 0.50},
+      {"firm_id": "firm:2", "liquidity_pressure": 0.71, "funding_need": 0.74, "debt_service_pressure": 0.66, "market_access_pressure": 0.62, "confidence": 0.55},
+      {"firm_id": "firm:3", "liquidity_pressure": 0.38, "funding_need": 0.28, "debt_service_pressure": 0.40, "market_access_pressure": 0.36, "confidence": 0.50}
+    ],
+    "financing_need": [
+      {"firm_id": "firm:1", "horizon": "near_term",   "purpose": "working_capital", "urgency": "moderate", "size_label": "reference_size_medium"},
+      {"firm_id": "firm:2", "horizon": "immediate",   "purpose": "refinancing",     "urgency": "elevated", "size_label": "reference_size_large"},
+      {"firm_id": "firm:3", "horizon": "medium_term", "purpose": "growth_capex",    "urgency": "low",      "size_label": "reference_size_small"}
+    ],
+    "strategic_response": [
+      {"firm_id": "firm:1", "posture": "watch",                "trigger": "routine review",              "status": "candidate"},
+      {"firm_id": "firm:2", "posture": "defensive_review",     "trigger": "liquidity pressure",          "status": "candidate"},
+      {"firm_id": "firm:3", "posture": "opportunistic_capex",  "trigger": "cheap funding signal (lagged)", "status": "candidate"}
+    ]
+  },
+  "investors": {
+    "valuation": [
+      {"pair": "investor:a → firm:1", "method": "multiples", "estimate": 102.4, "confidence": 0.55},
+      {"pair": "investor:a → firm:2", "method": "multiples", "estimate":  96.1, "confidence": 0.45},
+      {"pair": "investor:a → firm:3", "method": "multiples", "estimate": 108.3, "confidence": 0.60},
+      {"pair": "investor:b → firm:1", "method": "scenario",  "estimate": 100.7, "confidence": 0.50},
+      {"pair": "investor:b → firm:2", "method": "scenario",  "estimate":  94.0, "confidence": 0.40},
+      {"pair": "investor:b → firm:3", "method": "scenario",  "estimate": 109.5, "confidence": 0.55}
+    ],
+    "intent": [
+      {"investor": "investor:a", "firm": "firm:1", "direction": "routine",                "trigger": "baseline"},
+      {"investor": "investor:a", "firm": "firm:2", "direction": "deepen_due_diligence",    "trigger": "liquidity pressure ≥ 0.65"},
+      {"investor": "investor:a", "firm": "firm:3", "direction": "routine",                "trigger": "baseline"},
+      {"investor": "investor:b", "firm": "firm:1", "direction": "routine",                "trigger": "baseline"},
+      {"investor": "investor:b", "firm": "firm:2", "direction": "request_dialogue",        "trigger": "refinancing_window selective"},
+      {"investor": "investor:b", "firm": "firm:3", "direction": "routine",                "trigger": "baseline"}
+    ],
+    "stewardship": [
+      {"investor": "investor:a", "theme": "capital_discipline",    "type": "cross-portfolio"},
+      {"investor": "investor:a", "theme": "governance_review",     "type": "cross-portfolio"},
+      {"investor": "investor:b", "theme": "climate_disclosure",    "type": "cross-portfolio"},
+      {"investor": "investor:b", "theme": "capital_discipline",    "type": "cross-portfolio"}
+    ],
+    "dialogue": [
+      {"from": "investor:a", "to": "firm:2", "type": "portfolio_company_dialogue",   "status": "candidate"},
+      {"from": "investor:b", "to": "firm:2", "type": "investor_escalation_candidate", "status": "candidate"},
+      {"from": "investor:a", "to": "firm:3", "type": "portfolio_company_dialogue",   "status": "candidate"}
+    ]
+  },
+  "banks": {
+    "credit_review": [
+      {"pair": "bank:c → firm:1", "watch_label": "routine_monitoring", "pressure": 0.32, "confidence": 0.60},
+      {"pair": "bank:c → firm:2", "watch_label": "refinancing_watch",  "pressure": 0.74, "confidence": 0.62},
+      {"pair": "bank:c → firm:3", "watch_label": "routine_monitoring", "pressure": 0.28, "confidence": 0.55},
+      {"pair": "bank:d → firm:1", "watch_label": "routine_monitoring", "pressure": 0.30, "confidence": 0.58},
+      {"pair": "bank:d → firm:2", "watch_label": "liquidity_watch",    "pressure": 0.71, "confidence": 0.60},
+      {"pair": "bank:d → firm:3", "watch_label": "routine_monitoring", "pressure": 0.26, "confidence": 0.55}
+    ],
+    "interbank_liquidity": [
+      {"bank": "bank:c", "liquidity": "normal", "settlement_pressure": "low", "reserve_access": "available", "funding_stress": "low"},
+      {"bank": "bank:d", "liquidity": "normal", "settlement_pressure": "low", "reserve_access": "available", "funding_stress": "low"}
+    ],
+    "v1_13_substrate": [
+      {"layer": "v1.13.1", "record": "SettlementAccountRecord",                                "status": "storage",            "boundary": "no payment execution"},
+      {"layer": "v1.13.2", "record": "PaymentInstructionRecord / SettlementEventRecord",       "status": "storage",            "boundary": "no clearing, no settlement"},
+      {"layer": "v1.13.3", "record": "InterbankLiquidityStateRecord",                          "status": "storage + per-period","boundary": "no calibrated liquidity model"},
+      {"layer": "v1.13.4", "record": "CentralBankOperationSignal / CollateralEligibilitySignal","status": "storage",            "boundary": "tier labels — never percentages"}
+    ]
+  },
+  "outputs": {
+    "index_path": [
+      {"date": "2026-01-01", "value": 100.0},
+      {"date": "2026-02-01", "value":  99.6},
+      {"date": "2026-03-01", "value": 101.4},
+      {"date": "2026-04-01", "value": 103.2},
+      {"date": "2026-05-01", "value": 104.0},
+      {"date": "2026-06-01", "value": 102.8},
+      {"date": "2026-07-01", "value": 101.0},
+      {"date": "2026-08-01", "value":  97.5},
+      {"date": "2026-09-01", "value":  98.4},
+      {"date": "2026-10-01", "value":  99.8},
+      {"date": "2026-10-15", "value": 100.6},
+      {"date": "2026-11-01", "value": 102.3},
+      {"date": "2026-12-01", "value": 103.4},
+      {"date": "2026-12-31", "value": 103.8}
+    ],
+    "fundamental_baseline": [
+      {"date": "2026-01-01", "value":  99.0},
+      {"date": "2026-04-01", "value": 100.5},
+      {"date": "2026-07-01", "value": 100.0},
+      {"date": "2026-10-01", "value": 100.4},
+      {"date": "2026-12-31", "value": 101.0}
+    ],
+    "events": [
+      {"date": "2026-04-01", "label": "Rate repricing",         "kind": "warning", "note": "market environment shifts to rising-rate context"},
+      {"date": "2026-08-01", "label": "Market stress event",    "kind": "warning", "note": "risk appetite turns risk-off; attention budget reallocates"},
+      {"date": "2026-10-15", "label": "Funding window",         "kind": "info",    "note": "selective reopening; credit review stays cautious"},
+      {"date": "2026-12-31", "label": "Year-end digest",        "kind": "info",    "note": "canonical replay pinned for audit"}
+    ],
+    "kpis": [
+      {"label": "final index",      "value": "103.8",    "note": "synthetic"},
+      {"label": "risk intents",     "value": "14",       "note": "non-binding"},
+      {"label": "credit watches",   "value": "8",        "note": "no lending decision"},
+      {"label": "attention shifts", "value": "22",       "note": "budgeted"},
+      {"label": "unresolved refs",  "value": "0",        "note": "context frame"},
+      {"label": "digest",           "value": "916e…b379","note": "canonical"}
+    ],
+    "causal_summary": [
+      {"date": "2026-04-01", "event": "Rate repricing",        "actors": "bank:c, bank:d",                "evidence": "env:rates:rising",                                  "downstream_records": "credit_review_note · attention_feedback",   "explanation": "Banks moved to refinancing watch because the rate environment shifted to a rising tone, conditioning next-period attention on funding access."},
+      {"date": "2026-08-01", "event": "Market stress event",   "actors": "investor:a, investor:b, firm:2","evidence": "env:risk_off · firm_state:liquidity_pressure≥0.65", "downstream_records": "investor_intent_signal · dialogue_candidate","explanation": "Risk appetite turned risk-off and firm 2's liquidity pressure crossed the watch threshold; investors deepened due diligence and queued dialogue candidates."},
+      {"date": "2026-10-15", "event": "Funding window selective","actors": "firm:2",                       "evidence": "readout:funding:selective",                          "downstream_records": "corporate_strategic_response_candidate",     "explanation": "Firm 2 recorded a defensive posture candidate as the funding window reopened only selectively, changing valuation context for the next period."},
+      {"date": "2026-12-31", "event": "Year-end digest pin",   "actors": "world",                          "evidence": "manifest · seed=42",                                "downstream_records": "living_world_digest 916e…b379",              "explanation": "Canonical SHA-256 over the run's ledger view; two replays from the same seed produce byte-identical output."}
+    ]
+  },
+  "ledger": {
+    "stream_period": "2026-Q3",
+    "records": [
+      {
+        "record_id": "env:2026Q3",
+        "seq": 188, "type": "market_environment_state_added", "source": "market", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",    "env:2026Q3"],
+          ["Type",         "market_environment_state_added"],
+          ["Actor context","ctx:market:2026Q3"],
+          ["Visibility",   "internal_only"],
+          ["Confidence",   "0.55"],
+          ["Boundary",     "context regime, not price formation"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_conditions",    "refs": "cond:Q3"},
+          {"bucket": "capital_market_readout","refs": "readout:Q3"}
+        ],
+        "downstream": [
+          {"type": "firm_latent_state_updated",         "object": "firm_state:firm_2:2026Q3",     "effect": "input"},
+          {"type": "investor_intent_signal_added",       "object": "intent:investor_a:firm_2:Q3", "effect": "input"}
+        ]
+      },
+      {
+        "record_id": "firm_state:firm_2:2026Q3",
+        "seq": 201, "type": "firm_latent_state_updated", "source": "firm:2", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",      "firm_state:firm_2:2026Q3"],
+          ["Type",           "firm_latent_state_updated"],
+          ["Liquidity pressure","0.71"],
+          ["Funding need",   "0.74"],
+          ["Visibility",     "internal_only"],
+          ["Boundary",       "label-only, not a financial-statement update"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_environment_state","refs": "env:2026Q3"},
+          {"bucket": "signal (corporate report)","refs": "corp:firm_2:Q3"}
+        ],
+        "downstream": [
+          {"type": "investor_intent_signal_added",      "object": "intent:investor_a:firm_2:Q3","effect": "input"},
+          {"type": "bank_credit_review_signal_added",   "object": "credit:bank_c:firm_2:Q3",    "effect": "input"}
+        ]
+      },
+      {
+        "record_id": "interbank_liquidity:bank_c:2026Q3",
+        "seq": 214, "type": "interbank_liquidity_state_recorded", "source": "bank:c", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",         "interbank_liquidity:bank_c:2026Q3"],
+          ["Type",              "interbank_liquidity_state_recorded"],
+          ["Liquidity",         "normal"],
+          ["Settlement pressure","low"],
+          ["Confidence",        "0.50"],
+          ["Boundary",          "placeholder labels, no calibrated liquidity model"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_environment_state","refs": "env:2026Q3"}
+        ],
+        "downstream": [
+          {"type": "bank_credit_review_signal_added", "object": "credit:bank_c:firm_2:Q3", "effect": "evidence"}
+        ]
+      },
+      {
+        "record_id": "intent:investor_a:firm_2:2026Q3",
+        "seq": 215, "type": "investor_intent_signal_added", "source": "investor:a", "target": "firm:2", "status": "completed",
+        "selected": [
+          ["Record ID",     "intent:investor_a:firm_2:2026Q3"],
+          ["Type",          "investor_intent_signal_added"],
+          ["Actor context", "ctx:investor_a:2026Q3"],
+          ["Intent label",  "deepen_due_diligence"],
+          ["Visibility",    "internal_only"],
+          ["Confidence",    "0.55"],
+          ["Boundary",      "not an order, not a recommendation"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_environment_state",  "refs": "env:2026Q3"},
+          {"bucket": "firm_financial_state",      "refs": "firm_state:firm_2:2026Q3"},
+          {"bucket": "capital_market_readout",    "refs": "readout:Q3"},
+          {"bucket": "signal (corporate report)", "refs": "corp:firm_2:Q3"},
+          {"bucket": "signal (firm pressure)",    "refs": "pressure:firm_2:Q3"}
+        ],
+        "downstream": [
+          {"type": "portfolio_company_dialogue_recorded",  "object": "dlg:investor_a:firm_2:Q3", "effect": "candidate"},
+          {"type": "investor_escalation_candidate_added",  "object": "esc:investor_a:firm_2:Q3", "effect": "candidate"},
+          {"type": "attention_feedback_recorded",          "object": "feedback:investor_a:Q4",   "effect": "focus shift"}
+        ]
+      },
+      {
+        "record_id": "credit:bank_c:firm_2:2026Q3",
+        "seq": 227, "type": "bank_credit_review_signal_added", "source": "bank:c", "target": "firm:2", "status": "completed",
+        "selected": [
+          ["Record ID",  "credit:bank_c:firm_2:2026Q3"],
+          ["Type",       "bank_credit_review_signal_added"],
+          ["Watch label","refinancing_watch"],
+          ["Pressure",   "0.74"],
+          ["Confidence", "0.62"],
+          ["Boundary",   "no_lending_decision · no_internal_rating · no_probability_of_default · synthetic_only"]
+        ],
+        "parent_evidence": [
+          {"bucket": "firm_financial_state",     "refs": "firm_state:firm_2:2026Q3"},
+          {"bucket": "interbank_liquidity_state","refs": "interbank_liquidity:bank_c:2026Q3"},
+          {"bucket": "market_environment_state", "refs": "env:2026Q3"}
+        ],
+        "downstream": [
+          {"type": "attention_feedback_recorded", "object": "feedback:bank_c:Q4", "effect": "focus shift"}
+        ]
+      },
+      {
+        "record_id": "feedback:investor_a:2026Q4",
+        "seq": 240, "type": "attention_feedback_recorded", "source": "investor:a", "target": "period+1", "status": "completed",
+        "selected": [
+          ["Record ID",      "feedback:investor_a:2026Q4"],
+          ["Type",           "attention_feedback_recorded"],
+          ["Decay applied",  "halve unreinforced focus weights"],
+          ["Crowding",       "1 displacement"],
+          ["Saturation",     "no drop"],
+          ["Boundary",       "bookkeeping rule, not a behavior probability"]
+        ],
+        "parent_evidence": [
+          {"bucket": "investor_intent_signal", "refs": "intent:investor_a:firm_2:2026Q3"}
+        ],
+        "downstream": [
+          {"type": "attention_state_created", "object": "ctx:investor_a:2026Q4", "effect": "next-period selection"}
+        ]
+      },
+      {
+        "record_id": "corporate_financing_need:firm_2:2026Q3",
+        "seq": 252, "type": "corporate_financing_need_recorded", "source": "firm:2", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",            "corporate_financing_need:firm_2:2026Q3"],
+          ["Type",                 "corporate_financing_need_recorded"],
+          ["funding_horizon_label","immediate"],
+          ["funding_purpose_label","refinancing"],
+          ["urgency_label",        "elevated"],
+          ["synthetic_size_label", "reference_size_large"],
+          ["Confidence",           "0.55"],
+          ["Boundary",             "no application, no underwriting, no allocation, no rating"]
+        ],
+        "parent_evidence": [
+          {"bucket": "firm_financial_state",     "refs": "firm_state:firm_2:2026Q3"},
+          {"bucket": "market_environment_state", "refs": "env:2026Q3"},
+          {"bucket": "signal (corporate report)","refs": "corp:firm_2:Q3"}
+        ],
+        "downstream": [
+          {"type": "(planned v1.14.2)", "object": "funding_option_candidate:firm_2:bank_loan:Q3", "effect": "synthesis input"}
+        ]
+      }
+    ]
+  }
+}

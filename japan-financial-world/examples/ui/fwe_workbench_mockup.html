@@ -342,6 +342,65 @@
   .tag.amber  { border-color: var(--amber);  color: var(--amber);  background: #fff8eb; }
 
   /* ------------------------------------------------------------------ */
+  /* Version strip + primary action button                              */
+  /* ------------------------------------------------------------------ */
+  .version-strip {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid #c7c7c7;
+    background: #fff;
+    border-radius: 2px;
+    overflow: hidden;
+    height: 24px;
+  }
+  .version-pill {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 9px;
+    border-right: 1px solid #e2e2e2;
+    font-size: 10px;
+    line-height: 1.05;
+    color: #2d2d2d;
+  }
+  .version-pill:last-child { border-right: none; }
+  .version-pill .label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .version-pill .value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--blue);
+  }
+  .ribbon-btn.primary {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+    font-weight: 600;
+  }
+  .ribbon-btn.primary:hover { background: var(--blue-2); }
+  .load-status {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .load-status.ok { color: var(--ok); }
+
+  /* ------------------------------------------------------------------ */
+  /* Ledger row interactivity                                           */
+  /* ------------------------------------------------------------------ */
+  tr.clickable-record { cursor: pointer; }
+  tr.clickable-record:hover { background: #f4f4ee; }
+  tr.clickable-record.active {
+    background: #eef4ff;
+    box-shadow: inset 3px 0 0 var(--blue);
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Tables                                                             */
   /* ------------------------------------------------------------------ */
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -465,6 +524,7 @@
   <header class="top-ribbon">
     <div class="brand-chip">FWE</div>
     <div class="ribbon-group">
+      <button id="btn-load-sample" class="ribbon-btn primary" type="button">Load sample run</button>
       <button class="ribbon-btn" type="button">Run</button>
       <button class="ribbon-btn" type="button">Validate</button>
       <button class="ribbon-btn" type="button">Compare Regimes</button>
@@ -473,10 +533,18 @@
     <div class="ribbon-group">
       <span class="muted">Mode</span>
       <span class="tag blue">Synthetic · no real data</span>
-      <span class="tag">v1.14.1</span>
+    </div>
+    <div class="ribbon-group">
+      <div class="version-strip" role="status" aria-label="Version split">
+        <div class="version-pill"><span class="label">UI prototype</span>    <span class="value">v0</span></div>
+        <div class="version-pill"><span class="label">Runtime engine</span>  <span class="value">v1.14.1</span></div>
+        <div class="version-pill"><span class="label">Evidence substrate</span><span class="value">v1.13.6</span></div>
+        <div class="version-pill"><span class="label">Frozen attn loop</span><span class="value">v1.12.last</span></div>
+      </div>
     </div>
     <div class="ribbon-spacer"></div>
-    <div class="digest">digest · 916e410d…</div>
+    <span id="load-status" class="load-status">no sample loaded</span>
+    <div class="digest">digest · <span id="digest-short">—</span></div>
   </header>
 
   <!-- ============================================================== -->
@@ -643,7 +711,7 @@
         <div class="subband">Market state is recorded context, not price formation. Labels are designed for actor attention frames.</div>
         <div class="panel-body">
 
-          <div class="grid cols-4">
+          <div id="grid-market-kpis" class="grid cols-4">
             <section class="card">
               <h3 class="card-title">Liquidity</h3>
               <div class="kpi"><div class="label">regime</div><div class="value">tight</div><div class="note">from liquidity market + readout</div></div>
@@ -669,7 +737,7 @@
                 <thead>
                   <tr><th>Period</th><th>Rates</th><th>Credit</th><th>Funding</th><th>Liquidity</th><th>Volatility</th><th>Overall</th></tr>
                 </thead>
-                <tbody>
+                <tbody id="tbody-market-quarterly">
                   <tr><td>2026-Q1</td><td>rising</td><td>tightening</td><td>selective</td><td>normal</td><td>elevated</td><td>mixed</td></tr>
                   <tr><td>2026-Q2</td><td>rising</td><td>tightening</td><td>selective</td><td>tight</td><td>elevated</td><td>selective</td></tr>
                   <tr><td>2026-Q3</td><td>high</td><td>stressed</td><td>closed</td><td>tight</td><td>stressed</td><td>constrained</td></tr>
@@ -681,7 +749,7 @@
               <h3 class="card-title">State lineage</h3>
               <table>
                 <thead><tr><th>Record</th><th>Reads</th><th>Consumed by</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-market-lineage">
                   <tr><td class="mono">env:2026Q1</td><td>market conditions, readout</td><td>firm state, investor intent</td></tr>
                   <tr><td class="mono">readout:Q1</td><td>rates, credit, equity, funding, liquidity</td><td>market environment state</td></tr>
                   <tr><td class="mono">cond:credit</td><td>synthetic spread tone</td><td>readout + evidence resolver</td></tr>
@@ -705,7 +773,7 @@
         <div class="subband">What an actor saw in period N changes what it attends to in period N+1.</div>
         <div class="panel-body">
 
-          <div class="grid cols-3">
+          <div id="cards-attention-actors" class="grid cols-3">
             <section class="card">
               <h3 class="card-title">Investor A · ActorAttentionState</h3>
               <table>
@@ -743,7 +811,7 @@
               <h3 class="card-title">Budget · decay · crowding · saturation</h3>
               <table>
                 <thead><tr><th>Discipline</th><th>Rule</th><th>Boundary</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-attention-discipline">
                   <tr><td>Budget</td><td><span class="mono">max 12 selected refs</span> per actor / period</td><td>finite, deterministic</td></tr>
                   <tr><td>Per-dimension cap</td><td><span class="mono">3 refs / focus dimension</span></td><td>prevents single-axis dominance</td></tr>
                   <tr><td>Decay</td><td>inherited focus weight halves each period without reinforcement</td><td>integer-counted, never stochastic</td></tr>
@@ -817,7 +885,7 @@
                   <th>Confidence</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="tbody-firms-latent">
                 <tr><td>firm:1</td><td class="num">0.42</td><td class="num">0.30</td><td class="num">0.55</td><td class="num">0.48</td><td class="num">0.50</td></tr>
                 <tr><td>firm:2</td><td class="num">0.71</td><td class="num">0.74</td><td class="num">0.66</td><td class="num">0.62</td><td class="num">0.55</td></tr>
                 <tr><td>firm:3</td><td class="num">0.38</td><td class="num">0.28</td><td class="num">0.40</td><td class="num">0.36</td><td class="num">0.50</td></tr>
@@ -832,7 +900,7 @@
                 <thead>
                   <tr><th>Firm</th><th>Horizon</th><th>Purpose</th><th>Urgency</th><th>Size label</th></tr>
                 </thead>
-                <tbody>
+                <tbody id="tbody-firms-financing-need">
                   <tr><td>firm:1</td><td>near_term</td><td>working_capital</td><td>moderate</td><td>reference_size_medium</td></tr>
                   <tr><td>firm:2</td><td>immediate</td><td>refinancing</td><td>elevated</td><td>reference_size_large</td></tr>
                   <tr><td>firm:3</td><td>medium_term</td><td>growth_capex</td><td>low</td><td>reference_size_small</td></tr>
@@ -848,7 +916,7 @@
               <h3 class="card-title">Corporate strategic response candidates</h3>
               <table>
                 <thead><tr><th>Firm</th><th>Posture</th><th>Trigger</th><th>Status</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-firms-strategic">
                   <tr><td>firm:1</td><td>watch</td><td>routine review</td><td>candidate</td></tr>
                   <tr><td>firm:2</td><td>defensive_review</td><td>liquidity pressure</td><td>candidate</td></tr>
                   <tr><td>firm:3</td><td>opportunistic_capex</td><td>cheap funding signal (lagged)</td><td>candidate</td></tr>
@@ -883,7 +951,7 @@
                 <thead>
                   <tr><th>Investor → Firm</th><th>Method</th><th>Synthetic estimate</th><th>Confidence</th></tr>
                 </thead>
-                <tbody>
+                <tbody id="tbody-investors-valuation">
                   <tr><td>investor:a → firm:1</td><td>multiples</td><td class="num">102.4</td><td class="num">0.55</td></tr>
                   <tr><td>investor:a → firm:2</td><td>multiples</td><td class="num">96.1</td><td class="num">0.45</td></tr>
                   <tr><td>investor:a → firm:3</td><td>multiples</td><td class="num">108.3</td><td class="num">0.60</td></tr>
@@ -903,7 +971,7 @@
               <h3 class="card-title">Investor intent signal (v1.12.1)</h3>
               <table>
                 <thead><tr><th>Investor</th><th>Firm</th><th>Direction</th><th>Trigger</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-investors-intent">
                   <tr><td>investor:a</td><td>firm:1</td><td>routine</td><td>baseline</td></tr>
                   <tr><td>investor:a</td><td>firm:2</td><td>deepen_due_diligence</td><td>liquidity pressure ≥ 0.65</td></tr>
                   <tr><td>investor:a</td><td>firm:3</td><td>routine</td><td>baseline</td></tr>
@@ -920,7 +988,7 @@
               <h3 class="card-title">Stewardship themes</h3>
               <table>
                 <thead><tr><th>Investor</th><th>Theme</th><th>Type</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-investors-stewardship">
                   <tr><td>investor:a</td><td>capital_discipline</td><td>cross-portfolio</td></tr>
                   <tr><td>investor:a</td><td>governance_review</td><td>cross-portfolio</td></tr>
                   <tr><td>investor:b</td><td>climate_disclosure</td><td>cross-portfolio</td></tr>
@@ -932,7 +1000,7 @@
               <h3 class="card-title">Dialogue / escalation candidates</h3>
               <table>
                 <thead><tr><th>From</th><th>To</th><th>Type</th><th>Status</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-investors-dialogue">
                   <tr><td>investor:a</td><td>firm:2</td><td>portfolio_company_dialogue</td><td>candidate</td></tr>
                   <tr><td>investor:b</td><td>firm:2</td><td>investor_escalation_candidate</td><td>candidate</td></tr>
                   <tr><td>investor:a</td><td>firm:3</td><td>portfolio_company_dialogue</td><td>candidate</td></tr>
@@ -966,7 +1034,7 @@
                 <thead>
                   <tr><th>Bank → Firm</th><th>Watch label</th><th>Pressure</th><th>Confidence</th></tr>
                 </thead>
-                <tbody>
+                <tbody id="tbody-banks-credit-review">
                   <tr><td>bank:c → firm:1</td><td>routine_monitoring</td><td class="num">0.32</td><td class="num">0.60</td></tr>
                   <tr><td>bank:c → firm:2</td><td>refinancing_watch</td><td class="num">0.74</td><td class="num">0.62</td></tr>
                   <tr><td>bank:c → firm:3</td><td>routine_monitoring</td><td class="num">0.28</td><td class="num">0.55</td></tr>
@@ -991,7 +1059,7 @@
                 <thead>
                   <tr><th>Bank</th><th>Liquidity</th><th>Settlement pressure</th><th>Reserve access</th><th>Funding stress</th></tr>
                 </thead>
-                <tbody>
+                <tbody id="tbody-banks-interbank-liquidity">
                   <tr><td>bank:c</td><td>normal</td><td>low</td><td>available</td><td>low</td></tr>
                   <tr><td>bank:d</td><td>normal</td><td>low</td><td>available</td><td>low</td></tr>
                 </tbody>
@@ -1011,7 +1079,7 @@
               <thead>
                 <tr><th>Layer</th><th>Record</th><th>Status</th><th>Boundary</th></tr>
               </thead>
-              <tbody>
+              <tbody id="tbody-banks-substrate">
                 <tr><td>v1.13.1</td><td>SettlementAccountRecord</td><td>storage</td><td>no payment execution</td></tr>
                 <tr><td>v1.13.2</td><td>PaymentInstructionRecord / SettlementEventRecord</td><td>storage</td><td>no clearing, no settlement</td></tr>
                 <tr><td>v1.13.3</td><td>InterbankLiquidityStateRecord</td><td>storage + per-period</td><td>no calibrated liquidity model</td></tr>
@@ -1059,12 +1127,14 @@
               <text x="940"  y="348" font-family="Consolas" font-size="12" fill="#6b7280">Oct</text>
               <text x="1230" y="348" font-family="Consolas" font-size="12" fill="#6b7280" text-anchor="end">Dec</text>
 
-              <path d="M70 230 C120 214, 160 226, 210 205 S310 183, 360 170 S455 155, 505 178 S605 210, 650 238 S760 272, 820 244 S900 210, 940 225 S1045 188, 1100 174 S1190 162, 1240 172"
-                    fill="none" stroke="#034694" stroke-width="3"/>
-              <path d="M70 240 C160 230, 260 210, 360 195 S560 205, 650 230 S820 250, 940 235 S1110 205, 1240 198"
+              <path id="path-index-baseline"
+                    d="M70 240 C160 230, 260 210, 360 195 S560 205, 650 230 S820 250, 940 235 S1110 205, 1240 198"
                     fill="none" stroke="#b7bfdb" stroke-width="2" stroke-dasharray="7 5"/>
+              <path id="path-index"
+                    d="M70 230 C120 214, 160 226, 210 205 S310 183, 360 170 S455 155, 505 178 S605 210, 650 238 S760 272, 820 244 S900 210, 940 225 S1045 188, 1100 174 S1190 162, 1240 172"
+                    fill="none" stroke="#034694" stroke-width="3"/>
 
-              <g font-family="Inter" font-size="12">
+              <g id="g-event-annotations" font-family="Inter" font-size="12">
                 <line x1="360" y1="40" x2="360" y2="322" stroke="#7c1d2c" stroke-width="1.2" stroke-dasharray="4 3"/>
                 <text x="365" y="36" fill="#7c1d2c">↑ 2026-04-01 · Rate repricing</text>
                 <line x1="650" y1="40" x2="650" y2="322" stroke="#7c1d2c" stroke-width="1.2" stroke-dasharray="4 3"/>
@@ -1078,7 +1148,7 @@
               <text x="90"  y="56" font-family="Inter" font-size="12" fill="#034694">index</text>
               <text x="142" y="56" font-family="Inter" font-size="12" fill="#6b7280">fundamental / context baseline</text>
             </svg>
-            <div class="event-row">
+            <div id="event-row-outputs" class="event-row">
               <div class="event-chip"><div class="event-date">2026-04-01</div><strong>Rate repricing</strong><br/>market environment shifts to rising-rate context</div>
               <div class="event-chip"><div class="event-date">2026-08-01</div><strong>Market stress event</strong><br/>risk appetite turns risk-off; attention budget reallocates</div>
               <div class="event-chip blue"><div class="event-date">2026-10-15</div><strong>Funding window</strong><br/>selective reopening; credit review stays cautious</div>
@@ -1086,7 +1156,7 @@
             </div>
           </div>
 
-          <div class="kpi-row" style="margin-top:14px;">
+          <div id="kpi-row-outputs" class="kpi-row" style="margin-top:14px;">
             <div class="kpi"><div class="label">final index</div><div class="value">103.8</div><div class="note">synthetic</div></div>
             <div class="kpi"><div class="label">risk intents</div><div class="value">14</div><div class="note">non-binding</div></div>
             <div class="kpi"><div class="label">credit watches</div><div class="value">8</div><div class="note">no lending decision</div></div>
@@ -1108,7 +1178,7 @@
                   <th>LLM-readable explanation</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="tbody-outputs-causal">
                 <tr>
                   <td>2026-04-01</td>
                   <td>Rate repricing</td>
@@ -1191,7 +1261,7 @@
               <h3 class="card-title">Record stream <span class="tag">period 2026-Q3</span></h3>
               <table>
                 <thead><tr><th>Seq</th><th>Type</th><th>Source</th><th>Target</th><th>Status</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-ledger-stream">
                   <tr><td class="num">188</td><td>market_environment_state_added</td><td>market</td><td>world</td><td>completed</td></tr>
                   <tr><td class="num">201</td><td>firm_latent_state_updated</td><td>firm:2</td><td>world</td><td>completed</td></tr>
                   <tr><td class="num">214</td><td>interbank_liquidity_state_recorded</td><td>bank:c</td><td>world</td><td>completed</td></tr>
@@ -1205,13 +1275,15 @@
             <section class="card">
               <h3 class="card-title">Selected record</h3>
               <table>
-                <tr><td>Record ID</td><td class="mono">intent:investor_a:firm_2:2026Q3</td></tr>
-                <tr><td>Type</td><td class="mono">investor_intent_signal_added</td></tr>
-                <tr><td>Actor context</td><td class="mono">ctx:investor_a:2026Q3</td></tr>
-                <tr><td>Intent label</td><td>deepen_due_diligence</td></tr>
-                <tr><td>Visibility</td><td>internal_only</td></tr>
-                <tr><td>Confidence</td><td class="num">0.55</td></tr>
-                <tr><td>Boundary</td><td>not an order, not a recommendation</td></tr>
+                <tbody id="tbody-ledger-selected">
+                  <tr><td>Record ID</td><td class="mono">intent:investor_a:firm_2:2026Q3</td></tr>
+                  <tr><td>Type</td><td class="mono">investor_intent_signal_added</td></tr>
+                  <tr><td>Actor context</td><td class="mono">ctx:investor_a:2026Q3</td></tr>
+                  <tr><td>Intent label</td><td>deepen_due_diligence</td></tr>
+                  <tr><td>Visibility</td><td>internal_only</td></tr>
+                  <tr><td>Confidence</td><td class="num">0.55</td></tr>
+                  <tr><td>Boundary</td><td>not an order, not a recommendation</td></tr>
+                </tbody>
               </table>
             </section>
           </div>
@@ -1221,7 +1293,7 @@
               <h3 class="card-title">Parent evidence <span class="tag">resolved</span></h3>
               <table>
                 <thead><tr><th>Bucket</th><th>Refs</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-ledger-parent">
                   <tr><td>market_environment_state</td><td class="mono">env:2026Q3</td></tr>
                   <tr><td>firm_financial_state</td><td class="mono">firm_state:firm_2:2026Q3</td></tr>
                   <tr><td>capital_market_readout</td><td class="mono">readout:Q3</td></tr>
@@ -1234,7 +1306,7 @@
               <h3 class="card-title">Downstream records</h3>
               <table>
                 <thead><tr><th>Type</th><th>Object</th><th>Effect</th></tr></thead>
-                <tbody>
+                <tbody id="tbody-ledger-downstream">
                   <tr><td>portfolio_company_dialogue_recorded</td><td class="mono">dlg:investor_a:firm_2:Q3</td><td>candidate</td></tr>
                   <tr><td>investor_escalation_candidate_added</td><td class="mono">esc:investor_a:firm_2:Q3</td><td>candidate</td></tr>
                   <tr><td>attention_feedback_recorded</td><td class="mono">feedback:investor_a:Q4</td><td>focus shift</td></tr>
@@ -1339,6 +1411,322 @@
   </nav>
 </main>
 
+<!-- ================================================================ -->
+<!-- Inline sample manifest (used when opened directly from file://). -->
+<!-- A canonical copy lives at sample_living_world_manifest.json next  -->
+<!-- to this file. The two are intentional duplicates so the button   -->
+<!-- works without a server. See examples/ui/README.md.               -->
+<!-- ================================================================ -->
+<script type="application/json" id="fwe-sample-manifest">
+{
+  "manifest": {
+    "schema": "living_world_manifest.v1",
+    "ui_prototype_version": "v0",
+    "runtime_engine_version": "v1.14.1",
+    "evidence_substrate_version": "v1.13.6",
+    "frozen_attention_loop_version": "v1.12.last",
+    "digest": "916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379",
+    "as_of_period": "2026-Q3",
+    "per_period_record_count": 83,
+    "per_run_window": [324, 372],
+    "synthetic_only": true
+  },
+  "market_state": {
+    "kpis": [
+      {"title": "Liquidity",     "label": "regime", "value": "tight",       "note": "from liquidity market + readout"},
+      {"title": "Credit",        "label": "regime", "value": "tightening",  "note": "spread environment"},
+      {"title": "Funding",       "label": "window", "value": "selective",   "note": "no DCM execution"},
+      {"title": "Risk appetite", "label": "regime", "value": "risk_off",    "note": "synthetic label"}
+    ],
+    "quarterly": [
+      {"period": "2026-Q1", "rates": "rising", "credit": "tightening", "funding": "selective", "liquidity": "normal", "volatility": "elevated", "overall": "mixed"},
+      {"period": "2026-Q2", "rates": "rising", "credit": "tightening", "funding": "selective", "liquidity": "tight",  "volatility": "elevated", "overall": "selective"},
+      {"period": "2026-Q3", "rates": "high",   "credit": "stressed",   "funding": "closed",    "liquidity": "tight",  "volatility": "stressed", "overall": "constrained"},
+      {"period": "2026-Q4", "rates": "high",   "credit": "tightening", "funding": "selective", "liquidity": "tight",  "volatility": "elevated", "overall": "selective"}
+    ],
+    "lineage": [
+      {"record": "env:2026Q1",  "reads": "market conditions, readout",                    "consumed_by": "firm state, investor intent"},
+      {"record": "readout:Q1",  "reads": "rates, credit, equity, funding, liquidity",      "consumed_by": "market environment state"},
+      {"record": "cond:credit", "reads": "synthetic spread tone",                          "consumed_by": "readout + evidence resolver"},
+      {"record": "env:2026Q3",  "reads": "+ interbank liquidity (v1.13.5)",                "consumed_by": "bank credit review citation"}
+    ]
+  },
+  "attention": {
+    "actors": [
+      {"actor_id": "investor:a", "title": "Investor A · ActorAttentionState", "selected_evidence": "market env, firm state",       "memory_selection": "mem:investor_a:Q3 (5 refs)", "intent_label": "intent",      "intent_value": "deepen_due_diligence", "next_focus": "market_access, liquidity",   "budget_dim_cap": "12 / 3"},
+      {"actor_id": "investor:b", "title": "Investor B · ActorAttentionState", "selected_evidence": "dialogue, stewardship",        "memory_selection": "mem:investor_b:Q3 (4 refs)", "intent_label": "intent",      "intent_value": "engagement_watch",     "next_focus": "dialogue, escalation",       "budget_dim_cap": "12 / 3"},
+      {"actor_id": "bank:c",     "title": "Bank C · ActorAttentionState",     "selected_evidence": "liquidity, firm state",        "memory_selection": "mem:bank_c:Q3 (6 refs)",     "intent_label": "watch_label", "intent_value": "refinancing_watch",    "next_focus": "funding, market environment", "budget_dim_cap": "12 / 3"}
+    ],
+    "discipline": [
+      {"discipline": "Budget",            "rule": "max 12 selected refs per actor / period",                           "boundary": "finite, deterministic"},
+      {"discipline": "Per-dimension cap", "rule": "3 refs / focus dimension",                                          "boundary": "prevents single-axis dominance"},
+      {"discipline": "Decay",             "rule": "inherited focus weight halves each period without reinforcement",    "boundary": "integer-counted, never stochastic"},
+      {"discipline": "Crowding",          "rule": "new high-weight focus displaces lowest-weight inherited focus",      "boundary": "deterministic priority order"},
+      {"discipline": "Saturation",        "rule": "above 8 focus labels → drop_oldest",                                "boundary": "cap on simultaneous attention"}
+    ]
+  },
+  "firms": {
+    "latent_state": [
+      {"firm_id": "firm:1", "liquidity_pressure": 0.42, "funding_need": 0.30, "debt_service_pressure": 0.55, "market_access_pressure": 0.48, "confidence": 0.50},
+      {"firm_id": "firm:2", "liquidity_pressure": 0.71, "funding_need": 0.74, "debt_service_pressure": 0.66, "market_access_pressure": 0.62, "confidence": 0.55},
+      {"firm_id": "firm:3", "liquidity_pressure": 0.38, "funding_need": 0.28, "debt_service_pressure": 0.40, "market_access_pressure": 0.36, "confidence": 0.50}
+    ],
+    "financing_need": [
+      {"firm_id": "firm:1", "horizon": "near_term",   "purpose": "working_capital", "urgency": "moderate", "size_label": "reference_size_medium"},
+      {"firm_id": "firm:2", "horizon": "immediate",   "purpose": "refinancing",     "urgency": "elevated", "size_label": "reference_size_large"},
+      {"firm_id": "firm:3", "horizon": "medium_term", "purpose": "growth_capex",    "urgency": "low",      "size_label": "reference_size_small"}
+    ],
+    "strategic_response": [
+      {"firm_id": "firm:1", "posture": "watch",                "trigger": "routine review",              "status": "candidate"},
+      {"firm_id": "firm:2", "posture": "defensive_review",     "trigger": "liquidity pressure",          "status": "candidate"},
+      {"firm_id": "firm:3", "posture": "opportunistic_capex",  "trigger": "cheap funding signal (lagged)", "status": "candidate"}
+    ]
+  },
+  "investors": {
+    "valuation": [
+      {"pair": "investor:a → firm:1", "method": "multiples", "estimate": 102.4, "confidence": 0.55},
+      {"pair": "investor:a → firm:2", "method": "multiples", "estimate":  96.1, "confidence": 0.45},
+      {"pair": "investor:a → firm:3", "method": "multiples", "estimate": 108.3, "confidence": 0.60},
+      {"pair": "investor:b → firm:1", "method": "scenario",  "estimate": 100.7, "confidence": 0.50},
+      {"pair": "investor:b → firm:2", "method": "scenario",  "estimate":  94.0, "confidence": 0.40},
+      {"pair": "investor:b → firm:3", "method": "scenario",  "estimate": 109.5, "confidence": 0.55}
+    ],
+    "intent": [
+      {"investor": "investor:a", "firm": "firm:1", "direction": "routine",                "trigger": "baseline"},
+      {"investor": "investor:a", "firm": "firm:2", "direction": "deepen_due_diligence",    "trigger": "liquidity pressure ≥ 0.65"},
+      {"investor": "investor:a", "firm": "firm:3", "direction": "routine",                "trigger": "baseline"},
+      {"investor": "investor:b", "firm": "firm:1", "direction": "routine",                "trigger": "baseline"},
+      {"investor": "investor:b", "firm": "firm:2", "direction": "request_dialogue",        "trigger": "refinancing_window selective"},
+      {"investor": "investor:b", "firm": "firm:3", "direction": "routine",                "trigger": "baseline"}
+    ],
+    "stewardship": [
+      {"investor": "investor:a", "theme": "capital_discipline",    "type": "cross-portfolio"},
+      {"investor": "investor:a", "theme": "governance_review",     "type": "cross-portfolio"},
+      {"investor": "investor:b", "theme": "climate_disclosure",    "type": "cross-portfolio"},
+      {"investor": "investor:b", "theme": "capital_discipline",    "type": "cross-portfolio"}
+    ],
+    "dialogue": [
+      {"from": "investor:a", "to": "firm:2", "type": "portfolio_company_dialogue",   "status": "candidate"},
+      {"from": "investor:b", "to": "firm:2", "type": "investor_escalation_candidate", "status": "candidate"},
+      {"from": "investor:a", "to": "firm:3", "type": "portfolio_company_dialogue",   "status": "candidate"}
+    ]
+  },
+  "banks": {
+    "credit_review": [
+      {"pair": "bank:c → firm:1", "watch_label": "routine_monitoring", "pressure": 0.32, "confidence": 0.60},
+      {"pair": "bank:c → firm:2", "watch_label": "refinancing_watch",  "pressure": 0.74, "confidence": 0.62},
+      {"pair": "bank:c → firm:3", "watch_label": "routine_monitoring", "pressure": 0.28, "confidence": 0.55},
+      {"pair": "bank:d → firm:1", "watch_label": "routine_monitoring", "pressure": 0.30, "confidence": 0.58},
+      {"pair": "bank:d → firm:2", "watch_label": "liquidity_watch",    "pressure": 0.71, "confidence": 0.60},
+      {"pair": "bank:d → firm:3", "watch_label": "routine_monitoring", "pressure": 0.26, "confidence": 0.55}
+    ],
+    "interbank_liquidity": [
+      {"bank": "bank:c", "liquidity": "normal", "settlement_pressure": "low", "reserve_access": "available", "funding_stress": "low"},
+      {"bank": "bank:d", "liquidity": "normal", "settlement_pressure": "low", "reserve_access": "available", "funding_stress": "low"}
+    ],
+    "v1_13_substrate": [
+      {"layer": "v1.13.1", "record": "SettlementAccountRecord",                                "status": "storage",            "boundary": "no payment execution"},
+      {"layer": "v1.13.2", "record": "PaymentInstructionRecord / SettlementEventRecord",       "status": "storage",            "boundary": "no clearing, no settlement"},
+      {"layer": "v1.13.3", "record": "InterbankLiquidityStateRecord",                          "status": "storage + per-period","boundary": "no calibrated liquidity model"},
+      {"layer": "v1.13.4", "record": "CentralBankOperationSignal / CollateralEligibilitySignal","status": "storage",            "boundary": "tier labels — never percentages"}
+    ]
+  },
+  "outputs": {
+    "index_path": [
+      {"date": "2026-01-01", "value": 100.0},
+      {"date": "2026-02-01", "value":  99.6},
+      {"date": "2026-03-01", "value": 101.4},
+      {"date": "2026-04-01", "value": 103.2},
+      {"date": "2026-05-01", "value": 104.0},
+      {"date": "2026-06-01", "value": 102.8},
+      {"date": "2026-07-01", "value": 101.0},
+      {"date": "2026-08-01", "value":  97.5},
+      {"date": "2026-09-01", "value":  98.4},
+      {"date": "2026-10-01", "value":  99.8},
+      {"date": "2026-10-15", "value": 100.6},
+      {"date": "2026-11-01", "value": 102.3},
+      {"date": "2026-12-01", "value": 103.4},
+      {"date": "2026-12-31", "value": 103.8}
+    ],
+    "fundamental_baseline": [
+      {"date": "2026-01-01", "value":  99.0},
+      {"date": "2026-04-01", "value": 100.5},
+      {"date": "2026-07-01", "value": 100.0},
+      {"date": "2026-10-01", "value": 100.4},
+      {"date": "2026-12-31", "value": 101.0}
+    ],
+    "events": [
+      {"date": "2026-04-01", "label": "Rate repricing",         "kind": "warning", "note": "market environment shifts to rising-rate context"},
+      {"date": "2026-08-01", "label": "Market stress event",    "kind": "warning", "note": "risk appetite turns risk-off; attention budget reallocates"},
+      {"date": "2026-10-15", "label": "Funding window",         "kind": "info",    "note": "selective reopening; credit review stays cautious"},
+      {"date": "2026-12-31", "label": "Year-end digest",        "kind": "info",    "note": "canonical replay pinned for audit"}
+    ],
+    "kpis": [
+      {"label": "final index",      "value": "103.8",    "note": "synthetic"},
+      {"label": "risk intents",     "value": "14",       "note": "non-binding"},
+      {"label": "credit watches",   "value": "8",        "note": "no lending decision"},
+      {"label": "attention shifts", "value": "22",       "note": "budgeted"},
+      {"label": "unresolved refs",  "value": "0",        "note": "context frame"},
+      {"label": "digest",           "value": "916e…b379","note": "canonical"}
+    ],
+    "causal_summary": [
+      {"date": "2026-04-01", "event": "Rate repricing",        "actors": "bank:c, bank:d",                "evidence": "env:rates:rising",                                  "downstream_records": "credit_review_note · attention_feedback",   "explanation": "Banks moved to refinancing watch because the rate environment shifted to a rising tone, conditioning next-period attention on funding access."},
+      {"date": "2026-08-01", "event": "Market stress event",   "actors": "investor:a, investor:b, firm:2","evidence": "env:risk_off · firm_state:liquidity_pressure≥0.65", "downstream_records": "investor_intent_signal · dialogue_candidate","explanation": "Risk appetite turned risk-off and firm 2's liquidity pressure crossed the watch threshold; investors deepened due diligence and queued dialogue candidates."},
+      {"date": "2026-10-15", "event": "Funding window selective","actors": "firm:2",                       "evidence": "readout:funding:selective",                          "downstream_records": "corporate_strategic_response_candidate",     "explanation": "Firm 2 recorded a defensive posture candidate as the funding window reopened only selectively, changing valuation context for the next period."},
+      {"date": "2026-12-31", "event": "Year-end digest pin",   "actors": "world",                          "evidence": "manifest · seed=42",                                "downstream_records": "living_world_digest 916e…b379",              "explanation": "Canonical SHA-256 over the run's ledger view; two replays from the same seed produce byte-identical output."}
+    ]
+  },
+  "ledger": {
+    "stream_period": "2026-Q3",
+    "records": [
+      {
+        "record_id": "env:2026Q3",
+        "seq": 188, "type": "market_environment_state_added", "source": "market", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",    "env:2026Q3"],
+          ["Type",         "market_environment_state_added"],
+          ["Actor context","ctx:market:2026Q3"],
+          ["Visibility",   "internal_only"],
+          ["Confidence",   "0.55"],
+          ["Boundary",     "context regime, not price formation"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_conditions",    "refs": "cond:Q3"},
+          {"bucket": "capital_market_readout","refs": "readout:Q3"}
+        ],
+        "downstream": [
+          {"type": "firm_latent_state_updated",         "object": "firm_state:firm_2:2026Q3",     "effect": "input"},
+          {"type": "investor_intent_signal_added",       "object": "intent:investor_a:firm_2:Q3", "effect": "input"}
+        ]
+      },
+      {
+        "record_id": "firm_state:firm_2:2026Q3",
+        "seq": 201, "type": "firm_latent_state_updated", "source": "firm:2", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",      "firm_state:firm_2:2026Q3"],
+          ["Type",           "firm_latent_state_updated"],
+          ["Liquidity pressure","0.71"],
+          ["Funding need",   "0.74"],
+          ["Visibility",     "internal_only"],
+          ["Boundary",       "label-only, not a financial-statement update"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_environment_state","refs": "env:2026Q3"},
+          {"bucket": "signal (corporate report)","refs": "corp:firm_2:Q3"}
+        ],
+        "downstream": [
+          {"type": "investor_intent_signal_added",      "object": "intent:investor_a:firm_2:Q3","effect": "input"},
+          {"type": "bank_credit_review_signal_added",   "object": "credit:bank_c:firm_2:Q3",    "effect": "input"}
+        ]
+      },
+      {
+        "record_id": "interbank_liquidity:bank_c:2026Q3",
+        "seq": 214, "type": "interbank_liquidity_state_recorded", "source": "bank:c", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",         "interbank_liquidity:bank_c:2026Q3"],
+          ["Type",              "interbank_liquidity_state_recorded"],
+          ["Liquidity",         "normal"],
+          ["Settlement pressure","low"],
+          ["Confidence",        "0.50"],
+          ["Boundary",          "placeholder labels, no calibrated liquidity model"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_environment_state","refs": "env:2026Q3"}
+        ],
+        "downstream": [
+          {"type": "bank_credit_review_signal_added", "object": "credit:bank_c:firm_2:Q3", "effect": "evidence"}
+        ]
+      },
+      {
+        "record_id": "intent:investor_a:firm_2:2026Q3",
+        "seq": 215, "type": "investor_intent_signal_added", "source": "investor:a", "target": "firm:2", "status": "completed",
+        "selected": [
+          ["Record ID",     "intent:investor_a:firm_2:2026Q3"],
+          ["Type",          "investor_intent_signal_added"],
+          ["Actor context", "ctx:investor_a:2026Q3"],
+          ["Intent label",  "deepen_due_diligence"],
+          ["Visibility",    "internal_only"],
+          ["Confidence",    "0.55"],
+          ["Boundary",      "not an order, not a recommendation"]
+        ],
+        "parent_evidence": [
+          {"bucket": "market_environment_state",  "refs": "env:2026Q3"},
+          {"bucket": "firm_financial_state",      "refs": "firm_state:firm_2:2026Q3"},
+          {"bucket": "capital_market_readout",    "refs": "readout:Q3"},
+          {"bucket": "signal (corporate report)", "refs": "corp:firm_2:Q3"},
+          {"bucket": "signal (firm pressure)",    "refs": "pressure:firm_2:Q3"}
+        ],
+        "downstream": [
+          {"type": "portfolio_company_dialogue_recorded",  "object": "dlg:investor_a:firm_2:Q3", "effect": "candidate"},
+          {"type": "investor_escalation_candidate_added",  "object": "esc:investor_a:firm_2:Q3", "effect": "candidate"},
+          {"type": "attention_feedback_recorded",          "object": "feedback:investor_a:Q4",   "effect": "focus shift"}
+        ]
+      },
+      {
+        "record_id": "credit:bank_c:firm_2:2026Q3",
+        "seq": 227, "type": "bank_credit_review_signal_added", "source": "bank:c", "target": "firm:2", "status": "completed",
+        "selected": [
+          ["Record ID",  "credit:bank_c:firm_2:2026Q3"],
+          ["Type",       "bank_credit_review_signal_added"],
+          ["Watch label","refinancing_watch"],
+          ["Pressure",   "0.74"],
+          ["Confidence", "0.62"],
+          ["Boundary",   "no_lending_decision · no_internal_rating · no_probability_of_default · synthetic_only"]
+        ],
+        "parent_evidence": [
+          {"bucket": "firm_financial_state",     "refs": "firm_state:firm_2:2026Q3"},
+          {"bucket": "interbank_liquidity_state","refs": "interbank_liquidity:bank_c:2026Q3"},
+          {"bucket": "market_environment_state", "refs": "env:2026Q3"}
+        ],
+        "downstream": [
+          {"type": "attention_feedback_recorded", "object": "feedback:bank_c:Q4", "effect": "focus shift"}
+        ]
+      },
+      {
+        "record_id": "feedback:investor_a:2026Q4",
+        "seq": 240, "type": "attention_feedback_recorded", "source": "investor:a", "target": "period+1", "status": "completed",
+        "selected": [
+          ["Record ID",      "feedback:investor_a:2026Q4"],
+          ["Type",           "attention_feedback_recorded"],
+          ["Decay applied",  "halve unreinforced focus weights"],
+          ["Crowding",       "1 displacement"],
+          ["Saturation",     "no drop"],
+          ["Boundary",       "bookkeeping rule, not a behavior probability"]
+        ],
+        "parent_evidence": [
+          {"bucket": "investor_intent_signal", "refs": "intent:investor_a:firm_2:2026Q3"}
+        ],
+        "downstream": [
+          {"type": "attention_state_created", "object": "ctx:investor_a:2026Q4", "effect": "next-period selection"}
+        ]
+      },
+      {
+        "record_id": "corporate_financing_need:firm_2:2026Q3",
+        "seq": 252, "type": "corporate_financing_need_recorded", "source": "firm:2", "target": "world", "status": "completed",
+        "selected": [
+          ["Record ID",            "corporate_financing_need:firm_2:2026Q3"],
+          ["Type",                 "corporate_financing_need_recorded"],
+          ["funding_horizon_label","immediate"],
+          ["funding_purpose_label","refinancing"],
+          ["urgency_label",        "elevated"],
+          ["synthetic_size_label", "reference_size_large"],
+          ["Confidence",           "0.55"],
+          ["Boundary",             "no application, no underwriting, no allocation, no rating"]
+        ],
+        "parent_evidence": [
+          {"bucket": "firm_financial_state",     "refs": "firm_state:firm_2:2026Q3"},
+          {"bucket": "market_environment_state", "refs": "env:2026Q3"},
+          {"bucket": "signal (corporate report)","refs": "corp:firm_2:Q3"}
+        ],
+        "downstream": [
+          {"type": "(planned v1.14.2)", "object": "funding_option_candidate:firm_2:bank_loan:Q3", "effect": "synthesis input"}
+        ]
+      }
+    ]
+  }
+}
+</script>
+
 <script>
   // -----------------------------------------------------------------
   // Tab switching (vanilla JS, no build, no external deps)
@@ -1386,6 +1774,459 @@
         if (active) active.textContent = pill.dataset.regime;
       });
     });
+  })();
+
+  // -----------------------------------------------------------------
+  // Data binding: Load sample run
+  //
+  // Reads the inline JSON (id="fwe-sample-manifest") and fills the
+  // tab tables. No fetch — deliberately works under file://. The
+  // canonical .json file next to this HTML mirrors the inline copy.
+  // -----------------------------------------------------------------
+  (function () {
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+
+    function $id(id) { return document.getElementById(id); }
+
+    function clear(el) { if (el) el.innerHTML = ''; }
+
+    function makeCell(value, cls) {
+      var td = document.createElement('td');
+      if (cls) td.className = cls;
+      td.textContent = (value == null) ? '' : value;
+      return td;
+    }
+
+    function rowFromCells(cells) {
+      var tr = document.createElement('tr');
+      cells.forEach(function (c) {
+        if (c && typeof c === 'object' && 'text' in c) {
+          tr.appendChild(makeCell(c.text, c.cls));
+        } else {
+          tr.appendChild(makeCell(c));
+        }
+      });
+      return tr;
+    }
+
+    // -- index chart geometry ----------------------------------------
+    var X_LEFT = 70, X_RIGHT = 1240, Y_TOP = 40, Y_BOTTOM = 320;
+
+    function dateToX(iso) {
+      var d = new Date(iso + 'T00:00:00Z');
+      var t0 = Date.UTC(2026, 0, 1);
+      var t1 = Date.UTC(2026, 11, 31);
+      var f = (d.getTime() - t0) / (t1 - t0);
+      if (f < 0) f = 0;
+      if (f > 1) f = 1;
+      return X_LEFT + f * (X_RIGHT - X_LEFT);
+    }
+
+    function valueToY(v, vmin, vmax) {
+      if (vmax === vmin) return (Y_TOP + Y_BOTTOM) / 2;
+      var f = (v - vmin) / (vmax - vmin);
+      if (f < 0) f = 0;
+      if (f > 1) f = 1;
+      return Y_BOTTOM - f * (Y_BOTTOM - Y_TOP);
+    }
+
+    function buildPath(points, vmin, vmax) {
+      if (!points.length) return '';
+      return points.map(function (p, i) {
+        var cmd = i === 0 ? 'M' : 'L';
+        return cmd + dateToX(p.date).toFixed(1) + ' ' + valueToY(p.value, vmin, vmax).toFixed(1);
+      }).join(' ');
+    }
+
+    // -- per-tab populators ------------------------------------------
+    function populateMarketState(d) {
+      if (!d.market_state) return;
+      var grid = $id('grid-market-kpis');
+      if (grid && d.market_state.kpis) {
+        clear(grid);
+        d.market_state.kpis.forEach(function (k) {
+          var sec = document.createElement('section');
+          sec.className = 'card';
+          var h = document.createElement('h3');
+          h.className = 'card-title';
+          h.textContent = k.title;
+          var kpi = document.createElement('div');
+          kpi.className = 'kpi';
+          var lab = document.createElement('div');
+          lab.className = 'label';
+          lab.textContent = k.label;
+          var val = document.createElement('div');
+          val.className = 'value';
+          val.textContent = k.value;
+          var note = document.createElement('div');
+          note.className = 'note';
+          note.textContent = k.note || '';
+          kpi.appendChild(lab); kpi.appendChild(val); kpi.appendChild(note);
+          sec.appendChild(h); sec.appendChild(kpi);
+          grid.appendChild(sec);
+        });
+      }
+      var t = $id('tbody-market-quarterly');
+      if (t && d.market_state.quarterly) {
+        clear(t);
+        d.market_state.quarterly.forEach(function (q) {
+          t.appendChild(rowFromCells([q.period, q.rates, q.credit, q.funding, q.liquidity, q.volatility, q.overall]));
+        });
+      }
+      var l = $id('tbody-market-lineage');
+      if (l && d.market_state.lineage) {
+        clear(l);
+        d.market_state.lineage.forEach(function (r) {
+          l.appendChild(rowFromCells([{cls:'mono', text:r.record}, r.reads, r.consumed_by]));
+        });
+      }
+    }
+
+    function humanizeLabel(s) {
+      if (!s) return '';
+      return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
+    }
+
+    function populateAttention(d) {
+      if (!d.attention) return;
+      var c = $id('cards-attention-actors');
+      if (c && d.attention.actors) {
+        clear(c);
+        d.attention.actors.forEach(function (a) {
+          var sec = document.createElement('section');
+          sec.className = 'card';
+          var h = document.createElement('h3');
+          h.className = 'card-title';
+          h.textContent = a.title;
+          sec.appendChild(h);
+          var tbl = document.createElement('table');
+          var rows = [
+            ['Selected evidence',           a.selected_evidence,  'input-cell'],
+            ['Memory selection',            a.memory_selection,   'mono'],
+            [humanizeLabel(a.intent_label), a.intent_value,       'status-cell'],
+            ['Next focus',                  a.next_focus,         'status-cell'],
+            ['Budget / dim cap',            a.budget_dim_cap,     'mono']
+          ];
+          rows.forEach(function (r) {
+            var tr = document.createElement('tr');
+            tr.appendChild(makeCell(r[0]));
+            tr.appendChild(makeCell(r[1], r[2]));
+            tbl.appendChild(tr);
+          });
+          sec.appendChild(tbl);
+          c.appendChild(sec);
+        });
+      }
+      var disc = $id('tbody-attention-discipline');
+      if (disc && d.attention.discipline) {
+        clear(disc);
+        d.attention.discipline.forEach(function (r) {
+          var tr = document.createElement('tr');
+          tr.appendChild(makeCell(r.discipline));
+          var td = document.createElement('td');
+          var span = document.createElement('span');
+          span.className = 'mono';
+          // Pull the leading mono fragment if it's followed by ' per ...'
+          // For simplicity render the whole rule as plain text.
+          td.textContent = r.rule;
+          tr.appendChild(td);
+          tr.appendChild(makeCell(r.boundary));
+          disc.appendChild(tr);
+        });
+      }
+    }
+
+    function populateFirms(d) {
+      if (!d.firms) return;
+      var l = $id('tbody-firms-latent');
+      if (l && d.firms.latent_state) {
+        clear(l);
+        d.firms.latent_state.forEach(function (r) {
+          l.appendChild(rowFromCells([
+            r.firm_id,
+            {cls:'num', text:r.liquidity_pressure.toFixed(2)},
+            {cls:'num', text:r.funding_need.toFixed(2)},
+            {cls:'num', text:r.debt_service_pressure.toFixed(2)},
+            {cls:'num', text:r.market_access_pressure.toFixed(2)},
+            {cls:'num', text:r.confidence.toFixed(2)}
+          ]));
+        });
+      }
+      var n = $id('tbody-firms-financing-need');
+      if (n && d.firms.financing_need) {
+        clear(n);
+        d.firms.financing_need.forEach(function (r) {
+          n.appendChild(rowFromCells([r.firm_id, r.horizon, r.purpose, r.urgency, r.size_label]));
+        });
+      }
+      var s = $id('tbody-firms-strategic');
+      if (s && d.firms.strategic_response) {
+        clear(s);
+        d.firms.strategic_response.forEach(function (r) {
+          s.appendChild(rowFromCells([r.firm_id, r.posture, r.trigger, r.status]));
+        });
+      }
+    }
+
+    function populateInvestors(d) {
+      if (!d.investors) return;
+      var v = $id('tbody-investors-valuation');
+      if (v && d.investors.valuation) {
+        clear(v);
+        d.investors.valuation.forEach(function (r) {
+          v.appendChild(rowFromCells([
+            r.pair, r.method,
+            {cls:'num', text:r.estimate.toFixed(1)},
+            {cls:'num', text:r.confidence.toFixed(2)}
+          ]));
+        });
+      }
+      var i = $id('tbody-investors-intent');
+      if (i && d.investors.intent) {
+        clear(i);
+        d.investors.intent.forEach(function (r) {
+          i.appendChild(rowFromCells([r.investor, r.firm, r.direction, r.trigger]));
+        });
+      }
+      var s = $id('tbody-investors-stewardship');
+      if (s && d.investors.stewardship) {
+        clear(s);
+        d.investors.stewardship.forEach(function (r) {
+          s.appendChild(rowFromCells([r.investor, r.theme, r.type]));
+        });
+      }
+      var dlg = $id('tbody-investors-dialogue');
+      if (dlg && d.investors.dialogue) {
+        clear(dlg);
+        d.investors.dialogue.forEach(function (r) {
+          dlg.appendChild(rowFromCells([r.from, r.to, r.type, r.status]));
+        });
+      }
+    }
+
+    function populateBanks(d) {
+      if (!d.banks) return;
+      var c = $id('tbody-banks-credit-review');
+      if (c && d.banks.credit_review) {
+        clear(c);
+        d.banks.credit_review.forEach(function (r) {
+          c.appendChild(rowFromCells([
+            r.pair, r.watch_label,
+            {cls:'num', text:r.pressure.toFixed(2)},
+            {cls:'num', text:r.confidence.toFixed(2)}
+          ]));
+        });
+      }
+      var l = $id('tbody-banks-interbank-liquidity');
+      if (l && d.banks.interbank_liquidity) {
+        clear(l);
+        d.banks.interbank_liquidity.forEach(function (r) {
+          l.appendChild(rowFromCells([r.bank, r.liquidity, r.settlement_pressure, r.reserve_access, r.funding_stress]));
+        });
+      }
+      var s = $id('tbody-banks-substrate');
+      if (s && d.banks.v1_13_substrate) {
+        clear(s);
+        d.banks.v1_13_substrate.forEach(function (r) {
+          s.appendChild(rowFromCells([r.layer, r.record, r.status, r.boundary]));
+        });
+      }
+    }
+
+    function populateOutputs(d) {
+      if (!d.outputs) return;
+      var idx = d.outputs.index_path || [];
+      var base = d.outputs.fundamental_baseline || [];
+      var allValues = idx.concat(base).map(function (p) { return p.value; });
+      var vmin, vmax;
+      if (allValues.length) {
+        vmin = Math.min.apply(null, allValues) - 1.5;
+        vmax = Math.max.apply(null, allValues) + 1.5;
+      } else {
+        vmin = 95; vmax = 110;
+      }
+      var pIdx = $id('path-index');
+      var pBase = $id('path-index-baseline');
+      if (pIdx)  pIdx.setAttribute('d',  buildPath(idx, vmin, vmax));
+      if (pBase) pBase.setAttribute('d', buildPath(base, vmin, vmax));
+
+      // Event annotation lines + labels on the chart
+      var ann = $id('g-event-annotations');
+      if (ann && d.outputs.events) {
+        clear(ann);
+        d.outputs.events.forEach(function (ev) {
+          var x = dateToX(ev.date);
+          var col = ev.kind === 'warning' ? '#7c1d2c' : '#034694';
+          var line = document.createElementNS(SVG_NS, 'line');
+          line.setAttribute('x1', x);
+          line.setAttribute('y1', Y_TOP);
+          line.setAttribute('x2', x);
+          line.setAttribute('y2', Y_BOTTOM + 2);
+          line.setAttribute('stroke', col);
+          line.setAttribute('stroke-width', '1.2');
+          line.setAttribute('stroke-dasharray', '4 3');
+          ann.appendChild(line);
+          var txt = document.createElementNS(SVG_NS, 'text');
+          txt.setAttribute('x', x + 5);
+          txt.setAttribute('y', Y_TOP - 4);
+          txt.setAttribute('fill', col);
+          txt.textContent = '↑ ' + ev.date + ' · ' + ev.label;
+          ann.appendChild(txt);
+        });
+      }
+
+      // Event chips below the chart
+      var er = $id('event-row-outputs');
+      if (er && d.outputs.events) {
+        clear(er);
+        d.outputs.events.forEach(function (ev) {
+          var div = document.createElement('div');
+          div.className = 'event-chip' + (ev.kind === 'info' ? ' blue' : '');
+          var dateD = document.createElement('div');
+          dateD.className = 'event-date';
+          dateD.textContent = ev.date;
+          var s = document.createElement('strong');
+          s.textContent = ev.label;
+          div.appendChild(dateD);
+          div.appendChild(s);
+          div.appendChild(document.createElement('br'));
+          div.appendChild(document.createTextNode(ev.note || ''));
+          er.appendChild(div);
+        });
+      }
+
+      // KPI row
+      var kr = $id('kpi-row-outputs');
+      if (kr && d.outputs.kpis) {
+        clear(kr);
+        d.outputs.kpis.forEach(function (k) {
+          var div = document.createElement('div');
+          div.className = 'kpi';
+          var lab = document.createElement('div');
+          lab.className = 'label';
+          lab.textContent = k.label;
+          var val = document.createElement('div');
+          val.className = 'value';
+          if (k.label === 'digest') val.style.fontSize = '14px';
+          val.textContent = k.value;
+          var note = document.createElement('div');
+          note.className = 'note';
+          note.textContent = k.note || '';
+          div.appendChild(lab); div.appendChild(val); div.appendChild(note);
+          kr.appendChild(div);
+        });
+      }
+
+      // Causal summary table
+      var ct = $id('tbody-outputs-causal');
+      if (ct && d.outputs.causal_summary) {
+        clear(ct);
+        d.outputs.causal_summary.forEach(function (r) {
+          ct.appendChild(rowFromCells([
+            r.date, r.event, r.actors,
+            {cls:'mono', text:r.evidence},
+            {cls:'mono', text:r.downstream_records},
+            r.explanation
+          ]));
+        });
+      }
+    }
+
+    function populateLedger(d) {
+      if (!d.ledger || !d.ledger.records) return;
+      var stream = $id('tbody-ledger-stream');
+      if (!stream) return;
+      clear(stream);
+      d.ledger.records.forEach(function (rec) {
+        var tr = document.createElement('tr');
+        tr.className = 'clickable-record';
+        tr.dataset.recordId = rec.record_id;
+        tr.appendChild(makeCell(rec.seq, 'num'));
+        tr.appendChild(makeCell(rec.type));
+        tr.appendChild(makeCell(rec.source));
+        tr.appendChild(makeCell(rec.target));
+        tr.appendChild(makeCell(rec.status));
+        tr.addEventListener('click', function () { activateRecord(rec); });
+        stream.appendChild(tr);
+      });
+      if (d.ledger.records.length) activateRecord(d.ledger.records[0]);
+    }
+
+    function activateRecord(rec) {
+      // toggle active row
+      var rows = document.querySelectorAll('#tbody-ledger-stream tr');
+      rows.forEach(function (r) {
+        r.classList.toggle('active', r.dataset.recordId === rec.record_id);
+      });
+      // selected
+      var sel = $id('tbody-ledger-selected');
+      if (sel && rec.selected) {
+        clear(sel);
+        rec.selected.forEach(function (pair) {
+          var tr = document.createElement('tr');
+          tr.appendChild(makeCell(pair[0]));
+          var v = pair[1];
+          var cls;
+          if (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v)) cls = 'num';
+          else if (typeof v === 'string' && v.indexOf(':') !== -1) cls = 'mono';
+          tr.appendChild(makeCell(v, cls));
+          sel.appendChild(tr);
+        });
+      }
+      // parent evidence
+      var pa = $id('tbody-ledger-parent');
+      if (pa && rec.parent_evidence) {
+        clear(pa);
+        rec.parent_evidence.forEach(function (ev) {
+          pa.appendChild(rowFromCells([ev.bucket, {cls:'mono', text:ev.refs}]));
+        });
+      }
+      // downstream
+      var ds = $id('tbody-ledger-downstream');
+      if (ds && rec.downstream) {
+        clear(ds);
+        rec.downstream.forEach(function (e) {
+          ds.appendChild(rowFromCells([e.type, {cls:'mono', text:e.object}, e.effect]));
+        });
+      }
+    }
+
+    function populateManifestStrip(d) {
+      if (!d.manifest) return;
+      var dig = $id('digest-short');
+      if (dig && d.manifest.digest) {
+        dig.textContent = d.manifest.digest.slice(0, 8) + '…';
+      }
+      var ls = $id('load-status');
+      if (ls) {
+        ls.classList.add('ok');
+        ls.textContent = 'sample loaded · ' + (d.manifest.as_of_period || '') + ' · ' + (d.manifest.schema || '');
+      }
+    }
+
+    function loadSample() {
+      var node = $id('fwe-sample-manifest');
+      if (!node) return;
+      var data;
+      try {
+        data = JSON.parse(node.textContent || '{}');
+      } catch (e) {
+        var ls = $id('load-status');
+        if (ls) ls.textContent = 'sample parse failed';
+        return;
+      }
+      populateManifestStrip(data);
+      populateMarketState(data);
+      populateAttention(data);
+      populateFirms(data);
+      populateInvestors(data);
+      populateBanks(data);
+      populateOutputs(data);
+      populateLedger(data);
+    }
+
+    var btn = $id('btn-load-sample');
+    if (btn) btn.addEventListener('click', loadSample);
   })();
 </script>
 </body>
