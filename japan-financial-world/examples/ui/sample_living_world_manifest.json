@@ -2,13 +2,17 @@
   "manifest": {
     "schema": "living_world_manifest.v1",
     "ui_prototype_version": "v0",
-    "runtime_engine_version": "v1.14.1",
-    "evidence_substrate_version": "v1.13.6",
-    "frozen_attention_loop_version": "v1.12.last",
+    "runtime_engine_version": "v1.16.last",
+    "display_layer_version": "v1.17.1",
+    "closed_loop_version": "v1.16.last",
+    "latest_display_module": "v1.17.1 Temporal Display Series",
     "digest": "916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379",
+    "digest_kind": "sample_fixture",
     "as_of_period": "2026-Q3",
     "per_period_record_count": 83,
     "per_run_window": [324, 372],
+    "fixture_kind": "sample_fixture",
+    "fixture_note": "sample manifest snapshots an earlier engine build; the live v1.16.last runtime emits 108 / 110 records per period and a [432, 480] per-run window",
     "synthetic_only": true
   },
   "market_state": {

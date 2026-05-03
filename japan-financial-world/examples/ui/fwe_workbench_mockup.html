@@ -251,13 +251,18 @@
     font-family: "Zapfino", "Snell Roundhand", "Palace Script MT", "Monotype Corsiva", "Apple Chancery", cursive;
     font-size: 116px;
     font-weight: 400;
-    line-height: 1.15;
+    /* Zapfino's descenders extend far below the baseline (the
+       "g" in "Engine" reaches well into the next line). Pad
+       with extra line-height + bottom margin so the subtitle
+       does not collide with the descender. */
+    line-height: 1.5;
     letter-spacing: 0.005em;
     color: #050505;
+    margin-bottom: 24px;
   }
   .cover-subtitle {
     position: relative;
-    margin-top: 16px;
+    margin-top: 56px;
     text-align: center;
     font-family: var(--font-serif);
     font-style: italic;
@@ -589,9 +594,9 @@
     <div class="ribbon-group">
       <div class="version-strip" role="status" aria-label="Version split">
         <div class="version-pill"><span class="label">UI prototype</span>    <span class="value">v0</span></div>
-        <div class="version-pill"><span class="label">Runtime engine</span>  <span class="value">v1.14.1</span></div>
-        <div class="version-pill"><span class="label">Evidence substrate</span><span class="value">v1.13.6</span></div>
-        <div class="version-pill"><span class="label">Frozen attn loop</span><span class="value">v1.12.last</span></div>
+        <div class="version-pill"><span class="label">Runtime engine</span>  <span class="value">v1.16.last</span></div>
+        <div class="version-pill"><span class="label">Display layer</span>   <span class="value">v1.17.1</span></div>
+        <div class="version-pill"><span class="label">Closed loop</span>     <span class="value">v1.16.last</span></div>
       </div>
     </div>
     <div class="ribbon-spacer"></div>
@@ -608,7 +613,7 @@
     <article id="sheet-cover" class="sheet active">
       <div class="sheet-inner cover-page">
         <div class="cover-grid"></div>
-        <div class="cover-build">build · public prototype<br/>v1.14.1 · synthetic only</div>
+        <div class="cover-build">build · public prototype<br/>runtime v1.16.last · display v1.17.1 · synthetic only</div>
         <div class="cover-rule"></div>
         <h1 class="cover-title">Fin World Engine</h1>
         <div class="cover-subtitle">An inter-space agent-based simulation substrate</div>
@@ -641,7 +646,7 @@
               <div class="section-rule"></div>
               <h3 class="card-title">Run control</h3>
               <table>
-                <tr><td>Run digest</td><td class="mono">916e410d829b…beb379</td></tr>
+                <tr><td>Run digest <span class="muted">(sample fixture)</span></td><td class="mono">916e410d829b…beb379</td></tr>
                 <tr><td>Seed</td><td class="input-cell">42</td></tr>
                 <tr><td>Start date</td><td class="input-cell">2026-03-31</td></tr>
                 <tr><td>Periods</td><td class="input-cell">4 quarters</td></tr>
@@ -1214,7 +1219,7 @@
             <div class="kpi"><div class="label">credit watches</div><div class="value">8</div><div class="note">no lending decision</div></div>
             <div class="kpi"><div class="label">attention shifts</div><div class="value">22</div><div class="note">budgeted</div></div>
             <div class="kpi"><div class="label">unresolved refs</div><div class="value">0</div><div class="note">context frame</div></div>
-            <div class="kpi"><div class="label">digest</div><div class="value" style="font-size:14px;">916e…b379</div><div class="note">canonical</div></div>
+            <div class="kpi"><div class="label">digest</div><div class="value" style="font-size:14px;">916e…b379</div><div class="note">sample fixture</div></div>
           </div>
 
           <section class="card" style="margin-top:14px;">
@@ -1370,12 +1375,12 @@
           <section class="card" style="margin-top:14px;">
             <h3 class="card-title">Digest &amp; manifest</h3>
             <table>
-              <tr><td>Run digest (canonical SHA-256)</td><td class="mono">916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379</td></tr>
+              <tr><td>Run digest (sample fixture, SHA-256)</td><td class="mono">916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379</td></tr>
               <tr><td>Manifest schema</td><td class="mono">living_world_manifest.v1</td></tr>
-              <tr><td>Per-period record count</td><td class="mono">81 (period 0) / 83 (periods 1+)</td></tr>
-              <tr><td>Per-run window</td><td class="mono">[324, 372]</td></tr>
+              <tr><td>Per-period record count <span class="muted">(sample fixture)</span></td><td class="mono">81 (period 0) / 83 (periods 1+)</td></tr>
+              <tr><td>Per-run window <span class="muted">(sample fixture)</span></td><td class="mono">[324, 372]</td></tr>
               <tr><td>Replay invariant</td><td>byte-identical across consecutive runs from the same seed</td></tr>
-              <tr><td>Version</td><td class="mono">v1.14.1 (substrate v1.13.last + corporate financing need v1.14.1)</td></tr>
+              <tr><td>Version</td><td class="mono">runtime v1.16.last · display v1.17.1 (sample fixture snapshots an earlier engine build)</td></tr>
             </table>
             <div class="note-box" style="margin-top:10px;">
               The manifest is a static JSON artifact produced by the
@@ -1474,13 +1479,17 @@
   "manifest": {
     "schema": "living_world_manifest.v1",
     "ui_prototype_version": "v0",
-    "runtime_engine_version": "v1.14.1",
-    "evidence_substrate_version": "v1.13.6",
-    "frozen_attention_loop_version": "v1.12.last",
+    "runtime_engine_version": "v1.16.last",
+    "display_layer_version": "v1.17.1",
+    "closed_loop_version": "v1.16.last",
+    "latest_display_module": "v1.17.1 Temporal Display Series",
     "digest": "916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379",
+    "digest_kind": "sample_fixture",
     "as_of_period": "2026-Q3",
     "per_period_record_count": 83,
     "per_run_window": [324, 372],
+    "fixture_kind": "sample_fixture",
+    "fixture_note": "sample manifest snapshots an earlier engine build; the live v1.16.last runtime emits 108 / 110 records per period and a [432, 480] per-run window",
     "synthetic_only": true
   },
   "market_state": {
