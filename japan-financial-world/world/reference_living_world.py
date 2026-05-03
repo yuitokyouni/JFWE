@@ -2447,197 +2447,14 @@ def run_living_reference_world(
             bank_attention_state_ids.append(fb.attention_state_id)
             bank_attention_feedback_ids.append(fb.feedback_id)
 
-        # ------------------------------------------------------------------
-        # v1.14.5 — corporate financing chain phase.
-        #
-        # For each firm, emit one CorporateFinancingNeedRecord, two
-        # FundingOptionCandidate records (bank loan + bond issuance),
-        # one CapitalStructureReviewCandidate, and one
-        # CorporateFinancingPathRecord (via the v1.14.4 deterministic
-        # builder). The chain is bounded — no investor × firm × option
-        # explosion — and every record cross-references the period's
-        # firm state, market environment, interbank liquidity, bank
-        # credit review, and investor intent ids where available.
-        #
-        # Storage / audit / graph-linking only. There is **no
-        # financing execution, no loan approval, no bond / equity
-        # issuance, no underwriting, no syndication, no bookbuilding,
-        # no allocation, no interest rate / spread / fee / coupon /
-        # offering price, no optimal capital structure decision, no
-        # capital structure optimisation, no real leverage / D/E /
-        # WACC calculation, no lending decision, no investment
-        # recommendation, no trading, no price formation, no real
-        # data ingestion, no Japan calibration**.
-        #
-        # Synthetic labels vary by firm position so the per-period
-        # report carries non-trivial histograms. The exact mapping is
-        # deterministic.
-        # ------------------------------------------------------------------
+        # Shared per-period evidence-id tuples used by both the
+        # v1.15.5 securities market intent chain and the v1.14.5
+        # corporate financing chain. Defined once at the top of
+        # the chain region so the v1.15.5 phase can run **before**
+        # the v1.14.5 phase (v1.15.6 reorder — see §112 in
+        # ``docs/world_model.md``).
         mes_ids_period = tuple(market_environment_state_ids)
         ibl_ids_period = tuple(interbank_liquidity_state_id_by_bank.values())
-
-        corporate_financing_need_ids: list[str] = []
-        funding_option_candidate_ids: list[str] = []
-        capital_structure_review_candidate_ids: list[str] = []
-        corporate_financing_path_ids: list[str] = []
-
-        for firm_idx, firm_id in enumerate(firms):
-            firm_state_id = firm_state_id_by_firm.get(firm_id)
-            firm_state_refs = (firm_state_id,) if firm_state_id else ()
-            firm_corp_signal = corp_signal_by_firm.get(firm_id)
-            firm_corp_signal_refs = (
-                (firm_corp_signal,) if firm_corp_signal else ()
-            )
-
-            purpose = _CORPORATE_FINANCING_PURPOSE_BY_FIRM_INDEX[
-                firm_idx % len(_CORPORATE_FINANCING_PURPOSE_BY_FIRM_INDEX)
-            ]
-            review_type = _CORPORATE_FINANCING_REVIEW_TYPE_BY_FIRM_INDEX[
-                firm_idx
-                % len(_CORPORATE_FINANCING_REVIEW_TYPE_BY_FIRM_INDEX)
-            ]
-            mkt_access = _CORPORATE_FINANCING_MARKET_ACCESS_BY_FIRM_INDEX[
-                firm_idx
-                % len(_CORPORATE_FINANCING_MARKET_ACCESS_BY_FIRM_INDEX)
-            ]
-
-            # Per-firm filtering of cross-references (avoids citing
-            # other firms' bank credit reviews / investor intents on
-            # this firm's path).
-            firm_bcr_ids = tuple(
-                sid
-                for sid in bank_credit_review_signal_ids
-                if f":{firm_id}:" in sid
-            )
-            firm_intent_ids = tuple(
-                iid
-                for iid in investor_intent_ids
-                if f":{firm_id}:" in iid
-            )
-
-            # 1. Corporate financing need (one per firm per period).
-            need_id = f"corporate_financing_need:{firm_id}:{iso_date}"
-            try:
-                kernel.corporate_financing_needs.add_need(
-                    CorporateFinancingNeedRecord(
-                        need_id=need_id,
-                        firm_id=firm_id,
-                        as_of_date=iso_date,
-                        funding_horizon_label="near_term",
-                        funding_purpose_label=purpose,
-                        urgency_label="moderate",
-                        synthetic_size_label="reference_size_medium",
-                        status="active",
-                        visibility="internal_only",
-                        confidence=0.5,
-                        source_firm_financial_state_ids=firm_state_refs,
-                        source_market_environment_state_ids=mes_ids_period,
-                        source_corporate_signal_ids=firm_corp_signal_refs,
-                    )
-                )
-            except DuplicateCorporateFinancingNeedError:
-                pass
-            corporate_financing_need_ids.append(need_id)
-
-            # 2. Two funding option candidates per need
-            #    (bank_loan_candidate + bond_issuance_candidate). The
-            #    label set is deliberately small and generic — the
-            #    point is to show a bounded, non-binding set of
-            #    routes, not to enumerate exhaustively.
-            firm_option_ids: list[str] = []
-            for kind, instrument_class in (
-                ("bank_loan", "loan"),
-                ("bond_issuance", "bond"),
-            ):
-                option_id = (
-                    f"funding_option:{firm_id}:{kind}:{iso_date}"
-                )
-                try:
-                    kernel.funding_options.add_candidate(
-                        FundingOptionCandidate(
-                            funding_option_id=option_id,
-                            firm_id=firm_id,
-                            as_of_date=iso_date,
-                            option_type_label=f"{kind}_candidate",
-                            instrument_class_label=instrument_class,
-                            maturity_band_label="medium_term",
-                            seniority_label="senior",
-                            accessibility_label="accessible",
-                            urgency_fit_label="near_term",
-                            market_fit_label="supportive",
-                            status="candidate",
-                            visibility="internal_only",
-                            confidence=0.5,
-                            source_need_ids=(need_id,),
-                            source_market_environment_state_ids=mes_ids_period,
-                            source_interbank_liquidity_state_ids=ibl_ids_period,
-                            source_firm_state_ids=firm_state_refs,
-                            source_bank_credit_review_signal_ids=firm_bcr_ids,
-                            source_investor_intent_ids=firm_intent_ids,
-                        )
-                    )
-                except DuplicateFundingOptionCandidateError:
-                    pass
-                firm_option_ids.append(option_id)
-                funding_option_candidate_ids.append(option_id)
-
-            # 3. Capital structure review (one per firm per period).
-            review_id = f"capital_structure_review:{firm_id}:{iso_date}"
-            try:
-                kernel.capital_structure_reviews.add_candidate(
-                    CapitalStructureReviewCandidate(
-                        review_candidate_id=review_id,
-                        firm_id=firm_id,
-                        as_of_date=iso_date,
-                        review_type_label=review_type,
-                        leverage_pressure_label="moderate",
-                        liquidity_pressure_label="moderate",
-                        maturity_wall_label="manageable",
-                        dilution_concern_label="low",
-                        covenant_headroom_label="comfortable",
-                        market_access_label=mkt_access,
-                        rating_perception_label="stable",
-                        status="candidate",
-                        visibility="internal_only",
-                        confidence=0.5,
-                        source_need_ids=(need_id,),
-                        source_funding_option_ids=tuple(firm_option_ids),
-                        source_firm_state_ids=firm_state_refs,
-                        source_market_environment_state_ids=mes_ids_period,
-                        source_interbank_liquidity_state_ids=ibl_ids_period,
-                        source_bank_credit_review_signal_ids=firm_bcr_ids,
-                        source_investor_intent_ids=firm_intent_ids,
-                    )
-                )
-            except DuplicateCapitalStructureReviewError:
-                pass
-            capital_structure_review_candidate_ids.append(review_id)
-
-            # 4. Financing path (one per firm per period). Built via
-            #    the v1.14.4 deterministic helper, which derives
-            #    ``path_type`` / ``coherence`` / ``constraint`` /
-            #    ``next_review`` from the cited records — without any
-            #    global scan and without choosing an optimal option.
-            try:
-                path = build_corporate_financing_path(
-                    kernel,
-                    firm_id=firm_id,
-                    as_of_date=iso_date,
-                    need_ids=(need_id,),
-                    funding_option_ids=tuple(firm_option_ids),
-                    capital_structure_review_ids=(review_id,),
-                    market_environment_state_ids=mes_ids_period,
-                    interbank_liquidity_state_ids=ibl_ids_period,
-                    bank_credit_review_signal_ids=firm_bcr_ids,
-                    investor_intent_ids=firm_intent_ids,
-                )
-                corporate_financing_path_ids.append(
-                    path.financing_path_id
-                )
-            except DuplicateCorporateFinancingPathError:
-                corporate_financing_path_ids.append(
-                    f"corporate_financing_path:{firm_id}:{iso_date}"
-                )
 
         # ------------------------------------------------------------------
         # v1.15.5 — securities market intent chain phase.
@@ -2792,6 +2609,275 @@ def run_living_reference_world(
             except DuplicateIndicativeMarketPressureError:
                 indicative_market_pressure_ids.append(
                     f"indicative_market_pressure:{security_id}:{iso_date}"
+                )
+
+        # ------------------------------------------------------------------
+        # v1.14.5 — corporate financing chain phase.
+        #
+        # For each firm, emit one CorporateFinancingNeedRecord, two
+        # FundingOptionCandidate records (bank loan + bond issuance),
+        # one CapitalStructureReviewCandidate, and one
+        # CorporateFinancingPathRecord (via the v1.14.4 deterministic
+        # builder). The chain is bounded — no investor × firm × option
+        # explosion — and every record cross-references the period's
+        # firm state, market environment, interbank liquidity, bank
+        # credit review, and investor intent ids where available.
+        #
+        # Storage / audit / graph-linking only. There is **no
+        # financing execution, no loan approval, no bond / equity
+        # issuance, no underwriting, no syndication, no bookbuilding,
+        # no allocation, no interest rate / spread / fee / coupon /
+        # offering price, no optimal capital structure decision, no
+        # capital structure optimisation, no real leverage / D/E /
+        # WACC calculation, no lending decision, no investment
+        # recommendation, no trading, no price formation, no real
+        # data ingestion, no Japan calibration**.
+        #
+        # Synthetic labels vary by firm position so the per-period
+        # report carries non-trivial histograms. The exact mapping is
+        # deterministic.
+        #
+        # **v1.15.6 update.** This phase now runs *after* the
+        # v1.15.5 securities-market-intent chain phase (above) so
+        # each firm's review and path can cite the same period's
+        # `IndicativeMarketPressureRecord`. ``mes_ids_period`` and
+        # ``ibl_ids_period`` are defined once at the top of the
+        # chain region (just before the v1.15.5 phase).
+        # ------------------------------------------------------------------
+        # Per-firm pressure-id lookup populated by the v1.15.5
+        # phase above. The v1.14.5 chain consumes it below to
+        # cite this period's pressure record on the firm's
+        # equity-like security.
+        pressure_id_by_security: dict[str, str] = {}
+        pressure_record_by_security: dict[str, Any] = {}
+        for pid in indicative_market_pressure_ids:
+            try:
+                pressure = kernel.indicative_market_pressure.get_record(pid)
+            except Exception:  # pragma: no cover - defensive
+                continue
+            pressure_id_by_security[pressure.security_id] = pid
+            pressure_record_by_security[pressure.security_id] = pressure
+
+        corporate_financing_need_ids: list[str] = []
+        funding_option_candidate_ids: list[str] = []
+        capital_structure_review_candidate_ids: list[str] = []
+        corporate_financing_path_ids: list[str] = []
+
+        for firm_idx, firm_id in enumerate(firms):
+            firm_state_id = firm_state_id_by_firm.get(firm_id)
+            firm_state_refs = (firm_state_id,) if firm_state_id else ()
+            firm_corp_signal = corp_signal_by_firm.get(firm_id)
+            firm_corp_signal_refs = (
+                (firm_corp_signal,) if firm_corp_signal else ()
+            )
+
+            purpose = _CORPORATE_FINANCING_PURPOSE_BY_FIRM_INDEX[
+                firm_idx % len(_CORPORATE_FINANCING_PURPOSE_BY_FIRM_INDEX)
+            ]
+            review_type = _CORPORATE_FINANCING_REVIEW_TYPE_BY_FIRM_INDEX[
+                firm_idx
+                % len(_CORPORATE_FINANCING_REVIEW_TYPE_BY_FIRM_INDEX)
+            ]
+            mkt_access = _CORPORATE_FINANCING_MARKET_ACCESS_BY_FIRM_INDEX[
+                firm_idx
+                % len(_CORPORATE_FINANCING_MARKET_ACCESS_BY_FIRM_INDEX)
+            ]
+            dilution_concern = "low"
+
+            # v1.15.6 — pressure feedback. If the firm's listed
+            # security has a same-period
+            # ``IndicativeMarketPressureRecord`` (built by the
+            # v1.15.5 phase above), cite it on the review and the
+            # path and let it influence two label fields:
+            #
+            # - ``market_access_label`` is overridden to match the
+            #   pressure's ``market_access_label`` whenever the
+            #   pressure says ``constrained`` or ``closed`` — the
+            #   market surface dominates when access is actually
+            #   constrained.
+            # - ``dilution_concern_label`` is bumped from ``low``
+            #   to ``moderate`` when the pressure's
+            #   ``financing_relevance_label`` is
+            #   ``caution_for_dilution``, and to ``high`` when it
+            #   is ``adverse_for_market_access``.
+            #
+            # Pressure can NOT cause approval, pricing, or any
+            # execution effect — only label drift on these two
+            # closed-set axes. The full
+            # ``MARKET_ACCESS_LABELS`` vocabulary alignment
+            # pinned by v1.15.4's ``is``-identity test makes the
+            # market_access override mechanical (no conversion).
+            firm_security_id = listed_security_id_by_firm.get(firm_id)
+            firm_pressure_id = (
+                pressure_id_by_security.get(firm_security_id)
+                if firm_security_id
+                else None
+            )
+            firm_pressure_record = (
+                pressure_record_by_security.get(firm_security_id)
+                if firm_security_id
+                else None
+            )
+            firm_pressure_ids: tuple[str, ...] = (
+                (firm_pressure_id,) if firm_pressure_id else ()
+            )
+            if firm_pressure_record is not None:
+                if firm_pressure_record.market_access_label in (
+                    "constrained",
+                    "closed",
+                ):
+                    mkt_access = firm_pressure_record.market_access_label
+                if (
+                    firm_pressure_record.financing_relevance_label
+                    == "caution_for_dilution"
+                ):
+                    dilution_concern = "moderate"
+                elif (
+                    firm_pressure_record.financing_relevance_label
+                    == "adverse_for_market_access"
+                ):
+                    dilution_concern = "high"
+
+            # Per-firm filtering of cross-references (avoids citing
+            # other firms' bank credit reviews / investor intents on
+            # this firm's path).
+            firm_bcr_ids = tuple(
+                sid
+                for sid in bank_credit_review_signal_ids
+                if f":{firm_id}:" in sid
+            )
+            firm_intent_ids = tuple(
+                iid
+                for iid in investor_intent_ids
+                if f":{firm_id}:" in iid
+            )
+
+            # 1. Corporate financing need (one per firm per period).
+            need_id = f"corporate_financing_need:{firm_id}:{iso_date}"
+            try:
+                kernel.corporate_financing_needs.add_need(
+                    CorporateFinancingNeedRecord(
+                        need_id=need_id,
+                        firm_id=firm_id,
+                        as_of_date=iso_date,
+                        funding_horizon_label="near_term",
+                        funding_purpose_label=purpose,
+                        urgency_label="moderate",
+                        synthetic_size_label="reference_size_medium",
+                        status="active",
+                        visibility="internal_only",
+                        confidence=0.5,
+                        source_firm_financial_state_ids=firm_state_refs,
+                        source_market_environment_state_ids=mes_ids_period,
+                        source_corporate_signal_ids=firm_corp_signal_refs,
+                    )
+                )
+            except DuplicateCorporateFinancingNeedError:
+                pass
+            corporate_financing_need_ids.append(need_id)
+
+            # 2. Two funding option candidates per need
+            #    (bank_loan_candidate + bond_issuance_candidate). The
+            #    label set is deliberately small and generic — the
+            #    point is to show a bounded, non-binding set of
+            #    routes, not to enumerate exhaustively.
+            firm_option_ids: list[str] = []
+            for kind, instrument_class in (
+                ("bank_loan", "loan"),
+                ("bond_issuance", "bond"),
+            ):
+                option_id = (
+                    f"funding_option:{firm_id}:{kind}:{iso_date}"
+                )
+                try:
+                    kernel.funding_options.add_candidate(
+                        FundingOptionCandidate(
+                            funding_option_id=option_id,
+                            firm_id=firm_id,
+                            as_of_date=iso_date,
+                            option_type_label=f"{kind}_candidate",
+                            instrument_class_label=instrument_class,
+                            maturity_band_label="medium_term",
+                            seniority_label="senior",
+                            accessibility_label="accessible",
+                            urgency_fit_label="near_term",
+                            market_fit_label="supportive",
+                            status="candidate",
+                            visibility="internal_only",
+                            confidence=0.5,
+                            source_need_ids=(need_id,),
+                            source_market_environment_state_ids=mes_ids_period,
+                            source_interbank_liquidity_state_ids=ibl_ids_period,
+                            source_firm_state_ids=firm_state_refs,
+                            source_bank_credit_review_signal_ids=firm_bcr_ids,
+                            source_investor_intent_ids=firm_intent_ids,
+                        )
+                    )
+                except DuplicateFundingOptionCandidateError:
+                    pass
+                firm_option_ids.append(option_id)
+                funding_option_candidate_ids.append(option_id)
+
+            # 3. Capital structure review (one per firm per period).
+            review_id = f"capital_structure_review:{firm_id}:{iso_date}"
+            try:
+                kernel.capital_structure_reviews.add_candidate(
+                    CapitalStructureReviewCandidate(
+                        review_candidate_id=review_id,
+                        firm_id=firm_id,
+                        as_of_date=iso_date,
+                        review_type_label=review_type,
+                        leverage_pressure_label="moderate",
+                        liquidity_pressure_label="moderate",
+                        maturity_wall_label="manageable",
+                        dilution_concern_label=dilution_concern,
+                        covenant_headroom_label="comfortable",
+                        market_access_label=mkt_access,
+                        rating_perception_label="stable",
+                        status="candidate",
+                        visibility="internal_only",
+                        confidence=0.5,
+                        source_need_ids=(need_id,),
+                        source_funding_option_ids=tuple(firm_option_ids),
+                        source_firm_state_ids=firm_state_refs,
+                        source_market_environment_state_ids=mes_ids_period,
+                        source_interbank_liquidity_state_ids=ibl_ids_period,
+                        source_bank_credit_review_signal_ids=firm_bcr_ids,
+                        source_investor_intent_ids=firm_intent_ids,
+                        source_indicative_market_pressure_ids=(
+                            firm_pressure_ids
+                        ),
+                    )
+                )
+            except DuplicateCapitalStructureReviewError:
+                pass
+            capital_structure_review_candidate_ids.append(review_id)
+
+            # 4. Financing path (one per firm per period). Built via
+            #    the v1.14.4 deterministic helper, which derives
+            #    ``path_type`` / ``coherence`` / ``constraint`` /
+            #    ``next_review`` from the cited records — without any
+            #    global scan and without choosing an optimal option.
+            try:
+                path = build_corporate_financing_path(
+                    kernel,
+                    firm_id=firm_id,
+                    as_of_date=iso_date,
+                    need_ids=(need_id,),
+                    funding_option_ids=tuple(firm_option_ids),
+                    capital_structure_review_ids=(review_id,),
+                    market_environment_state_ids=mes_ids_period,
+                    interbank_liquidity_state_ids=ibl_ids_period,
+                    bank_credit_review_signal_ids=firm_bcr_ids,
+                    investor_intent_ids=firm_intent_ids,
+                    indicative_market_pressure_ids=firm_pressure_ids,
+                )
+                corporate_financing_path_ids.append(
+                    path.financing_path_id
+                )
+            except DuplicateCorporateFinancingPathError:
+                corporate_financing_path_ids.append(
+                    f"corporate_financing_path:{firm_id}:{iso_date}"
                 )
 
         period_end_idx = len(kernel.ledger.records)

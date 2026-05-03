@@ -69,6 +69,7 @@ def _path(
     interbank_liquidity_state_ids: tuple[str, ...] = (),
     bank_credit_review_signal_ids: tuple[str, ...] = (),
     investor_intent_ids: tuple[str, ...] = (),
+    indicative_market_pressure_ids: tuple[str, ...] = (),
     metadata: dict | None = None,
 ) -> CorporateFinancingPathRecord:
     return CorporateFinancingPathRecord(
@@ -90,6 +91,7 @@ def _path(
         interbank_liquidity_state_ids=interbank_liquidity_state_ids,
         bank_credit_review_signal_ids=bank_credit_review_signal_ids,
         investor_intent_ids=investor_intent_ids,
+        indicative_market_pressure_ids=indicative_market_pressure_ids,
         metadata=metadata or {},
     )
 
@@ -1188,3 +1190,294 @@ def test_module_contains_no_jurisdiction_specific_identifiers():
     for token in _FORBIDDEN_TOKENS:
         pattern = rf"\b{re.escape(token)}\b"
         assert re.search(pattern, text) is None, token
+
+
+# ---------------------------------------------------------------------------
+# v1.15.6 — IndicativeMarketPressureRecord citation slot + helper override
+# ---------------------------------------------------------------------------
+
+
+def _pressure(
+    *,
+    market_pressure_id: str,
+    security_id: str = "security:target",
+    market_access_label: str = "open",
+    demand_pressure_label: str = "balanced",
+    liquidity_pressure_label: str = "normal",
+    volatility_pressure_label: str = "calm",
+    financing_relevance_label: str = "neutral_for_financing",
+):
+    from world.market_pressure import IndicativeMarketPressureRecord
+
+    return IndicativeMarketPressureRecord(
+        market_pressure_id=market_pressure_id,
+        security_id=security_id,
+        as_of_date="2026-03-31",
+        demand_pressure_label=demand_pressure_label,
+        liquidity_pressure_label=liquidity_pressure_label,
+        volatility_pressure_label=volatility_pressure_label,
+        market_access_label=market_access_label,
+        financing_relevance_label=financing_relevance_label,
+        status="active",
+        visibility="internal_only",
+        confidence=0.5,
+    )
+
+
+def test_v1_15_6_path_accepts_indicative_market_pressure_ids():
+    p = _path(
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:security:reference_a:2026-03-31",
+        ),
+    )
+    assert p.indicative_market_pressure_ids == (
+        "indicative_market_pressure:security:reference_a:2026-03-31",
+    )
+
+
+def test_v1_15_6_path_rejects_empty_strings_in_pressure_tuple():
+    with pytest.raises(ValueError):
+        _path(indicative_market_pressure_ids=("",))
+
+
+def test_v1_15_6_path_to_dict_round_trips_pressure_ids():
+    p = _path(
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:security:reference_a:2026-03-31",
+        ),
+    )
+    out = p.to_dict()
+    assert out["indicative_market_pressure_ids"] == [
+        "indicative_market_pressure:security:reference_a:2026-03-31"
+    ]
+
+
+def test_v1_15_6_book_list_by_indicative_market_pressure():
+    book = CorporateFinancingPathBook()
+    book.add_path(
+        _path(
+            financing_path_id="corporate_financing_path:a",
+            indicative_market_pressure_ids=(
+                "indicative_market_pressure:p1",
+            ),
+        )
+    )
+    book.add_path(
+        _path(
+            financing_path_id="corporate_financing_path:b",
+            indicative_market_pressure_ids=(
+                "indicative_market_pressure:p1",
+                "indicative_market_pressure:p2",
+            ),
+        )
+    )
+    book.add_path(
+        _path(
+            financing_path_id="corporate_financing_path:c",
+            indicative_market_pressure_ids=(
+                "indicative_market_pressure:p3",
+            ),
+        )
+    )
+    out = book.list_by_indicative_market_pressure(
+        "indicative_market_pressure:p1"
+    )
+    assert {p.financing_path_id for p in out} == {
+        "corporate_financing_path:a",
+        "corporate_financing_path:b",
+    }
+    assert (
+        len(
+            book.list_by_indicative_market_pressure(
+                "indicative_market_pressure:never_referenced"
+            )
+        )
+        == 0
+    )
+
+
+def test_v1_15_6_ledger_payload_carries_pressure_ids_key():
+    ledger = Ledger()
+    book = CorporateFinancingPathBook(ledger=ledger)
+    book.add_path(
+        _path(
+            indicative_market_pressure_ids=(
+                "indicative_market_pressure:security:reference_a:2026-03-31",
+            ),
+        )
+    )
+    rec = ledger.records[0]
+    assert "indicative_market_pressure_ids" in rec.payload
+    assert list(rec.payload["indicative_market_pressure_ids"]) == [
+        "indicative_market_pressure:security:reference_a:2026-03-31"
+    ]
+
+
+def test_v1_15_6_builder_constrained_pressure_overrides_constraint():
+    """When any cited pressure has market_access_label =
+    constrained, the path's constraint_label is forced to
+    market_access_constraint regardless of the review-derived
+    label."""
+    k = _kernel()
+    k.capital_structure_reviews.add_candidate(
+        _review(
+            review_candidate_id="capital_structure_review:r1",
+            market_access_label="open",  # review thinks access is fine
+            liquidity_pressure_label="moderate",
+            leverage_pressure_label="moderate",
+            maturity_wall_label="manageable",
+            covenant_headroom_label="comfortable",
+            dilution_concern_label="low",
+        )
+    )
+    k.indicative_market_pressure.add_record(
+        _pressure(
+            market_pressure_id="indicative_market_pressure:p_constrained",
+            market_access_label="constrained",
+        )
+    )
+    p = build_corporate_financing_path(
+        k,
+        firm_id="firm:reference_a",
+        as_of_date="2026-03-31",
+        funding_option_ids=("funding_option:o1",),
+        capital_structure_review_ids=("capital_structure_review:r1",),
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:p_constrained",
+        ),
+    )
+    assert p.constraint_label == "market_access_constraint"
+    # Reviews said open, but pressure said constrained → conflict.
+    assert p.coherence_label == "conflicting_evidence"
+    # Conflict promotes next_review → compare_options.
+    assert p.next_review_label == "compare_options"
+    # Pressure ids are stored on the record.
+    assert p.indicative_market_pressure_ids == (
+        "indicative_market_pressure:p_constrained",
+    )
+
+
+def test_v1_15_6_builder_closed_pressure_also_overrides_constraint():
+    k = _kernel()
+    k.capital_structure_reviews.add_candidate(
+        _review(
+            review_candidate_id="capital_structure_review:r1",
+            market_access_label="open",
+        )
+    )
+    k.indicative_market_pressure.add_record(
+        _pressure(
+            market_pressure_id="indicative_market_pressure:p_closed",
+            market_access_label="closed",
+        )
+    )
+    p = build_corporate_financing_path(
+        k,
+        firm_id="firm:reference_a",
+        as_of_date="2026-03-31",
+        funding_option_ids=("funding_option:o1",),
+        capital_structure_review_ids=("capital_structure_review:r1",),
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:p_closed",
+        ),
+    )
+    assert p.constraint_label == "market_access_constraint"
+    assert p.coherence_label == "conflicting_evidence"
+
+
+def test_v1_15_6_builder_open_pressure_does_not_override():
+    """When pressure says access is open, the path's constraint
+    derivation falls through to the review-based rule (no
+    pressure-driven override)."""
+    k = _kernel()
+    k.capital_structure_reviews.add_candidate(
+        _review(
+            review_candidate_id="capital_structure_review:r1",
+            market_access_label="open",
+        )
+    )
+    k.indicative_market_pressure.add_record(
+        _pressure(
+            market_pressure_id="indicative_market_pressure:p_open",
+            market_access_label="open",
+        )
+    )
+    p = build_corporate_financing_path(
+        k,
+        firm_id="firm:reference_a",
+        as_of_date="2026-03-31",
+        funding_option_ids=("funding_option:o1",),
+        capital_structure_review_ids=("capital_structure_review:r1",),
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:p_open",
+        ),
+    )
+    assert p.constraint_label == "no_obvious_constraint"
+    assert p.coherence_label == "coherent"
+
+
+def test_v1_15_6_builder_does_not_scan_pressure_book_globally():
+    """The helper must read only the cited pressure ids — never
+    iterate the full indicative_market_pressure book."""
+    k = _kernel()
+    k.capital_structure_reviews.add_candidate(
+        _review(review_candidate_id="capital_structure_review:r1")
+    )
+    k.indicative_market_pressure.add_record(
+        _pressure(market_pressure_id="indicative_market_pressure:cited")
+    )
+
+    def _boom(*_a, **_kw):  # pragma: no cover - must not fire
+        raise AssertionError(
+            "helper performed a global scan via list_* / snapshot — forbidden"
+        )
+
+    book = k.indicative_market_pressure
+    for method_name in dir(book):
+        if method_name.startswith("list_") or method_name == "snapshot":
+            setattr(book, method_name, _boom)
+
+    p = build_corporate_financing_path(
+        k,
+        firm_id="firm:reference_a",
+        as_of_date="2026-03-31",
+        funding_option_ids=("funding_option:o1",),
+        capital_structure_review_ids=("capital_structure_review:r1",),
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:cited",
+        ),
+    )
+    # Helper completed without tripping the trip-wire.
+    assert p.indicative_market_pressure_ids == (
+        "indicative_market_pressure:cited",
+    )
+
+
+def test_v1_15_6_builder_unresolved_pressure_id_is_silently_skipped():
+    """Mirrors the v1.14.4 behaviour for need / review ids: an
+    unresolved pressure id is kept on the record (cited) but not
+    used during label derivation."""
+    k = _kernel()
+    k.capital_structure_reviews.add_candidate(
+        _review(
+            review_candidate_id="capital_structure_review:r1",
+            market_access_label="open",
+        )
+    )
+    p = build_corporate_financing_path(
+        k,
+        firm_id="firm:reference_a",
+        as_of_date="2026-03-31",
+        funding_option_ids=("funding_option:o1",),
+        capital_structure_review_ids=("capital_structure_review:r1",),
+        indicative_market_pressure_ids=(
+            "indicative_market_pressure:does_not_exist",
+        ),
+    )
+    # No resolvable pressure → no override, falls through.
+    assert p.constraint_label == "no_obvious_constraint"
+    assert p.coherence_label == "coherent"
+    # Cited id still preserved on the record.
+    assert p.indicative_market_pressure_ids == (
+        "indicative_market_pressure:does_not_exist",
+    )

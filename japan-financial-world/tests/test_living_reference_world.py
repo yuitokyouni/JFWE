@@ -2629,10 +2629,10 @@ def test_v1_12_9_living_world_digest_pinned():
     k = _seed_kernel()
     r = _run_default(k)
     expected = (
-        "041686b0c69eea751cb24e3e3e5b4ac25e56a8ae20d4b1bd40a41dc5303403a5"
+        "bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8"
     )
     assert living_world_digest(k, r) == expected, (
-        "v1.15.5 living_world_digest moved unexpectedly. If the "
+        "v1.15.6 living_world_digest moved unexpectedly. If the "
         "shift is intentional, update the pinned value here AND "
         "in docs/world_model.md and docs/test_inventory.md."
     )
@@ -3888,6 +3888,126 @@ def test_v1_15_5_markdown_report_includes_securities_market_intent_section():
         or "no order book" in md_lower
         or "no pricebook mutation" in md_lower
     )
+
+
+def test_v1_15_6_capital_reviews_cite_indicative_market_pressure():
+    """Each period's capital-structure-review records cite the
+    same period's `IndicativeMarketPressureRecord` for the firm's
+    listed equity. v1.15.6 closes the
+    market-interest → corporate-financing feedback loop."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        period_pressures = set(ps.indicative_market_pressure_ids)
+        for rid in ps.capital_structure_review_candidate_ids:
+            rec = k.capital_structure_reviews.get_candidate(rid)
+            assert rec.source_indicative_market_pressure_ids
+            assert (
+                set(rec.source_indicative_market_pressure_ids)
+                & period_pressures
+            )
+
+
+def test_v1_15_6_financing_paths_cite_indicative_market_pressure():
+    k = _seed_kernel()
+    r = _run_default(k)
+    for ps in r.per_period_summaries:
+        period_pressures = set(ps.indicative_market_pressure_ids)
+        for pid in ps.corporate_financing_path_ids:
+            rec = k.financing_paths.get_path(pid)
+            assert rec.indicative_market_pressure_ids
+            assert (
+                set(rec.indicative_market_pressure_ids) & period_pressures
+            )
+
+
+def test_v1_15_6_pressure_security_id_matches_review_firm_security():
+    """The pressure record cited by a firm's review names the
+    same security_id as the firm's listed equity (via the
+    `security:{firm_id}:equity:line_1` setup convention)."""
+    k = _seed_kernel()
+    r = _run_default(k)
+    expected_security_for = {
+        firm_id: f"security:{firm_id}:equity:line_1"
+        for firm_id in r.firm_ids
+    }
+    for ps in r.per_period_summaries:
+        for rid in ps.capital_structure_review_candidate_ids:
+            review = k.capital_structure_reviews.get_candidate(rid)
+            expected_security = expected_security_for[review.firm_id]
+            for pid in review.source_indicative_market_pressure_ids:
+                pressure = k.indicative_market_pressure.get_record(pid)
+                assert pressure.security_id == expected_security
+
+
+def test_v1_15_6_does_not_mutate_pricebook():
+    """v1.15.6 wires pressure feedback into corporate financing,
+    but it must NOT mutate the PriceBook."""
+    k = _seed_kernel()
+    prices_before = k.prices.snapshot()
+    _run_default(k)
+    assert k.prices.snapshot() == prices_before
+
+
+def test_v1_15_6_chain_payloads_carry_no_forbidden_keys():
+    """The corporate-financing chain (need / option / review /
+    path) and the v1.15 chain (intent / aggregated / pressure)
+    payloads must not include any execution / order / pricing /
+    recommendation key. Pinned at the per-event-type level."""
+    k = _seed_kernel()
+    _run_default(k)
+    forbidden = {
+        "buy",
+        "sell",
+        "order",
+        "order_id",
+        "trade",
+        "trade_id",
+        "bid",
+        "ask",
+        "quote",
+        "price",
+        "market_price",
+        "indicative_price",
+        "target_price",
+        "expected_return",
+        "execution",
+        "clearing",
+        "settlement",
+        "approved",
+        "selected_option",
+        "optimal_option",
+        "commitment",
+        "underwriting",
+        "syndication",
+        "allocation",
+        "pricing",
+        "interest_rate",
+        "spread",
+        "coupon",
+        "fee",
+        "offering_price",
+        "recommendation",
+        "investment_advice",
+        "real_data_value",
+    }
+    chain_event_types = {
+        "corporate_financing_need_recorded",
+        "funding_option_candidate_recorded",
+        "capital_structure_review_candidate_recorded",
+        "corporate_financing_path_recorded",
+        "investor_market_intent_recorded",
+        "aggregated_market_interest_recorded",
+        "indicative_market_pressure_recorded",
+    }
+    for record in k.ledger.records:
+        if record.record_type.value not in chain_event_types:
+            continue
+        leaked = set(record.payload.keys()) & forbidden
+        assert not leaked, (
+            f"{record.record_type.value} payload must not include "
+            f"anti-field keys; leaked: {sorted(leaked)}"
+        )
 
 
 def test_v1_15_5_chain_record_ids_are_synthetic_only():

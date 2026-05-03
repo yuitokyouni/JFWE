@@ -215,6 +215,18 @@ class CorporateFinancingPathRecord:
     interbank_liquidity_state_ids: tuple[str, ...] = field(default_factory=tuple)
     bank_credit_review_signal_ids: tuple[str, ...] = field(default_factory=tuple)
     investor_intent_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.15.6 additive: citation slot for v1.15.4
+    # ``IndicativeMarketPressureRecord`` ids. Naming follows the
+    # path's existing convention (no ``source_`` prefix) — every
+    # tuple slot on ``CorporateFinancingPathRecord`` reads as the
+    # set of cited ids of that bucket. The
+    # :func:`build_corporate_financing_path` helper accepts these
+    # ids as an additional kwarg and uses them to override
+    # ``constraint_label`` / ``coherence_label`` deterministically
+    # when the cited pressure conflicts with the cited reviews.
+    indicative_market_pressure_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
@@ -238,6 +250,7 @@ class CorporateFinancingPathRecord:
         "interbank_liquidity_state_ids",
         "bank_credit_review_signal_ids",
         "investor_intent_ids",
+        "indicative_market_pressure_ids",
     )
 
     LABEL_FIELDS: ClassVar[tuple[tuple[str, frozenset[str]], ...]] = (
@@ -320,6 +333,9 @@ class CorporateFinancingPathRecord:
                 self.bank_credit_review_signal_ids
             ),
             "investor_intent_ids": list(self.investor_intent_ids),
+            "indicative_market_pressure_ids": list(
+                self.indicative_market_pressure_ids
+            ),
             "metadata": dict(self.metadata),
         }
 
@@ -386,6 +402,9 @@ class CorporateFinancingPathBook:
                         path.bank_credit_review_signal_ids
                     ),
                     "investor_intent_ids": list(path.investor_intent_ids),
+                    "indicative_market_pressure_ids": list(
+                        path.indicative_market_pressure_ids
+                    ),
                 },
                 space_id="financing_paths",
                 visibility=path.visibility,
@@ -488,6 +507,15 @@ class CorporateFinancingPathBook:
             if review_candidate_id in p.capital_structure_review_ids
         )
 
+    def list_by_indicative_market_pressure(
+        self, market_pressure_id: str
+    ) -> tuple[CorporateFinancingPathRecord, ...]:
+        return tuple(
+            p
+            for p in self._paths.values()
+            if market_pressure_id in p.indicative_market_pressure_ids
+        )
+
     def snapshot(self) -> dict[str, Any]:
         paths = sorted(
             (p.to_dict() for p in self._paths.values()),
@@ -538,6 +566,7 @@ def build_corporate_financing_path(
     interbank_liquidity_state_ids: Iterable[str] = (),
     bank_credit_review_signal_ids: Iterable[str] = (),
     investor_intent_ids: Iterable[str] = (),
+    indicative_market_pressure_ids: Iterable[str] = (),
     confidence: float = 0.5,
     status: str = "active",
     visibility: str = "internal_only",
@@ -549,9 +578,10 @@ def build_corporate_financing_path(
     The helper is a deterministic pure-label synthesiser:
 
     - It reads only the cited ids via
-      ``kernel.corporate_financing_needs.get_need`` and
-      ``kernel.capital_structure_reviews.get_candidate``. It does
-      not scan any book globally.
+      ``kernel.corporate_financing_needs.get_need``,
+      ``kernel.capital_structure_reviews.get_candidate``, and (at
+      v1.15.6) ``kernel.indicative_market_pressure.get_record``.
+      It does not scan any book globally.
     - It does not choose an optimal funding option. It does not
       approve, price, underwrite, or recommend any financing.
     - It produces small synthetic labels using the label content
@@ -564,12 +594,25 @@ def build_corporate_financing_path(
       ``coherence_label`` — ``insufficient_evidence`` if either
       ``funding_option_ids`` or ``capital_structure_review_ids``
       is empty; otherwise ``coherent`` if cited reviews share one
-      ``market_access_label``, else ``partially_coherent``.
+      ``market_access_label``, else ``partially_coherent``. **At
+      v1.15.6**, if any cited
+      :class:`IndicativeMarketPressureRecord` has
+      ``market_access_label`` ∈ {``constrained``, ``closed``}
+      while any cited review has ``market_access_label`` ∈
+      {``open``, ``selective``}, the coherence is upgraded to
+      ``conflicting_evidence`` (the financing surface and the
+      market surface disagree).
 
       ``constraint_label`` — first-match priority over cited
       reviews (market_access → liquidity → leverage → maturity →
       covenant → dilution); ``no_obvious_constraint`` if no
       review trips a flag, ``unknown`` if no reviews are cited.
+      **At v1.15.6**, if any cited
+      :class:`IndicativeMarketPressureRecord` has
+      ``market_access_label`` ∈ {``constrained``, ``closed``},
+      the constraint is forced to ``market_access_constraint``
+      regardless of the review-derived label — the market
+      pressure dominates when access is actually constrained.
 
       ``next_review_label`` — ``request_more_evidence`` /
       ``compare_options`` / ``escalate_to_capital_structure_review``
@@ -585,6 +628,7 @@ def build_corporate_financing_path(
     ibl_ids_t = tuple(interbank_liquidity_state_ids)
     bcrs_ids_t = tuple(bank_credit_review_signal_ids)
     intent_ids_t = tuple(investor_intent_ids)
+    pressure_ids_t = tuple(indicative_market_pressure_ids)
 
     # Resolve cited needs (only the cited ids — never list_*).
     purposes: list[str] = []
@@ -615,6 +659,23 @@ def build_corporate_financing_path(
             continue
         reviews.append(review)
 
+    # v1.15.6 — resolve cited indicative market pressure records
+    # (only the cited ids — never list_*).
+    pressures: list[Any] = []
+    for pid in pressure_ids_t:
+        try:
+            pressure = kernel.indicative_market_pressure.get_record(pid)
+        except Exception:
+            continue
+        pressures.append(pressure)
+
+    pressure_market_access_set = {
+        p.market_access_label for p in pressures
+    }
+    pressure_constrains_access = bool(
+        pressure_market_access_set & {"constrained", "closed"}
+    )
+
     # coherence_label
     if not funding_option_ids_t or not review_ids_t:
         coherence = "insufficient_evidence"
@@ -625,6 +686,14 @@ def build_corporate_financing_path(
         coherence = (
             "coherent" if len(market_access_set) == 1 else "partially_coherent"
         )
+        # v1.15.6 — if any cited pressure says access is
+        # constrained / closed but any cited review says access is
+        # open / selective, the financing surface and the market
+        # surface disagree → ``conflicting_evidence``.
+        if pressure_constrains_access and (
+            market_access_set & {"open", "selective"}
+        ):
+            coherence = "conflicting_evidence"
 
     # constraint_label — first match wins
     if not reviews:
@@ -651,10 +720,18 @@ def build_corporate_financing_path(
                 constraint = "dilution_constraint"
                 break
 
+    # v1.15.6 — pressure dominates: if any cited pressure says
+    # access is constrained / closed, override the constraint to
+    # ``market_access_constraint`` regardless of the review-derived
+    # label. The market surface beats the financing surface for
+    # the access-constraint label.
+    if pressure_constrains_access:
+        constraint = "market_access_constraint"
+
     # next_review_label
     if coherence == "insufficient_evidence":
         next_review = "request_more_evidence"
-    elif coherence == "partially_coherent":
+    elif coherence in ("partially_coherent", "conflicting_evidence"):
         next_review = "compare_options"
     elif constraint not in ("no_obvious_constraint", "unknown"):
         next_review = "escalate_to_capital_structure_review"
@@ -684,6 +761,7 @@ def build_corporate_financing_path(
         interbank_liquidity_state_ids=ibl_ids_t,
         bank_credit_review_signal_ids=bcrs_ids_t,
         investor_intent_ids=intent_ids_t,
+        indicative_market_pressure_ids=pressure_ids_t,
         metadata=dict(metadata) if metadata else {},
     )
     return kernel.financing_paths.add_path(record)

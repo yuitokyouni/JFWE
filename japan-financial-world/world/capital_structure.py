@@ -262,6 +262,18 @@ class CapitalStructureReviewCandidate:
         default_factory=tuple
     )
     source_investor_intent_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.15.6 additive: citation slot for v1.15.4
+    # ``IndicativeMarketPressureRecord`` ids. Plain-id cross-
+    # reference; not validated against any other book per the v0/v1
+    # cross-reference rule. The market-access label vocabulary
+    # alignment pinned in v1.15.4 (the ``MARKET_ACCESS_LABELS``
+    # frozenset is shared by reference) makes the composition
+    # mechanical: the orchestrator may set this review's
+    # ``market_access_label`` to match a cited pressure record
+    # without any conversion step.
+    source_indicative_market_pressure_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
@@ -288,6 +300,7 @@ class CapitalStructureReviewCandidate:
         "source_interbank_liquidity_state_ids",
         "source_bank_credit_review_signal_ids",
         "source_investor_intent_ids",
+        "source_indicative_market_pressure_ids",
     )
 
     LABEL_FIELDS: ClassVar[tuple[tuple[str, frozenset[str]], ...]] = (
@@ -374,6 +387,9 @@ class CapitalStructureReviewCandidate:
                 self.source_bank_credit_review_signal_ids
             ),
             "source_investor_intent_ids": list(self.source_investor_intent_ids),
+            "source_indicative_market_pressure_ids": list(
+                self.source_indicative_market_pressure_ids
+            ),
             "metadata": dict(self.metadata),
         }
 
@@ -447,6 +463,9 @@ class CapitalStructureReviewBook:
                     ),
                     "source_investor_intent_ids": list(
                         candidate.source_investor_intent_ids
+                    ),
+                    "source_indicative_market_pressure_ids": list(
+                        candidate.source_indicative_market_pressure_ids
                     ),
                 },
                 space_id="capital_structure_reviews",
@@ -525,6 +544,15 @@ class CapitalStructureReviewBook:
             c
             for c in self._candidates.values()
             if funding_option_id in c.source_funding_option_ids
+        )
+
+    def list_by_indicative_market_pressure(
+        self, market_pressure_id: str
+    ) -> tuple[CapitalStructureReviewCandidate, ...]:
+        return tuple(
+            c
+            for c in self._candidates.values()
+            if market_pressure_id in c.source_indicative_market_pressure_ids
         )
 
     def snapshot(self) -> dict[str, Any]:

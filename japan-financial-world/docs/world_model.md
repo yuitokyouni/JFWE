@@ -8905,3 +8905,67 @@ The test count moves from `3849 / 3849` (v1.15.4) to `3863 / 3863` (v1.15.5) —
 v1.15.5 ships the first living-world integration of the v1.15 chain. The next milestone is **v1.15.6** — folds `IndicativeMarketPressureRecord` ids back into the v1.14.3 `CapitalStructureReviewCandidate` and the v1.14.4 `CorporateFinancingPathRecord` as additional citation slots. The `market_access_label` vocabulary alignment (pinned by an `is`-identity test in v1.15.4) makes this composition mechanical: capital-structure review can read the pressure record's `market_access_label` directly and use it as additional evidence; the financing path's `build_corporate_financing_path` helper gains an optional pressure-evidence kwarg.
 
 **v1.15.last** is the docs-only freeze that pins the v1.15 surface as the first FWE milestone where the living world produces a securities-market-intent aggregation alongside the v1.12 attention loop and the v1.14 corporate-financing chain.
+
+## 112. v1.15.6 Securities market pressure feedback to corporate financing
+
+§112 closes the first **securities-market → corporate-financing feedback loop**. v1.15.5 wired the securities-market-intent chain (`InvestorMarketIntentRecord` → `AggregatedMarketInterestRecord` → `IndicativeMarketPressureRecord`) into the per-period sweep but did not connect that surface back to the v1.14 corporate-financing chain. v1.15.6 makes the v1.14.3 `CapitalStructureReviewCandidate` and the v1.14.4 `CorporateFinancingPathRecord` cite the same period's `IndicativeMarketPressureRecord` ids and lets a small set of deterministic rules drive label drift on the financing surface.
+
+The integration is **citation + label-drift only** — there is **no price update, no `PriceBook` mutation, no trading, no order submission, no order matching, no execution, no quote dissemination, no clearing, no settlement, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no pricing, no optimal capital structure decision, no investment recommendation, no real data ingestion, no Japan calibration**.
+
+### 112.1 What v1.15.6 ships
+
+**Citation slots** (additive on existing v1.14.3 / v1.14.4 records):
+
+- `CapitalStructureReviewCandidate.source_indicative_market_pressure_ids: tuple[str, ...]` — plain-id cross-reference; not validated against any other book per the v0/v1 cross-reference rule. Validated via the existing string-tuple normaliser. Surfaced on `to_dict()` and the ledger payload (`capital_structure_review_candidate_recorded`).
+- `CorporateFinancingPathRecord.indicative_market_pressure_ids: tuple[str, ...]` — same shape, different naming convention (the path's id-tuple slots already drop the `source_` prefix to match the path's audit-graph framing).
+
+**Book filters**:
+
+- `CapitalStructureReviewBook.list_by_indicative_market_pressure(market_pressure_id)` — returns every review citing the given pressure id.
+- `CorporateFinancingPathBook.list_by_indicative_market_pressure(market_pressure_id)` — same on the path book.
+
+**Helper extension** (`build_corporate_financing_path`):
+
+- New keyword `indicative_market_pressure_ids: Iterable[str] = ()`.
+- Resolves only the cited ids via `kernel.indicative_market_pressure.get_record` (cited-only; pinned by a trip-wire test that monkey-patches every `list_*` and `snapshot` on `kernel.indicative_market_pressure`).
+- **Constraint override**: if any cited pressure has `market_access_label ∈ {constrained, closed}`, the path's `constraint_label` is forced to `market_access_constraint` regardless of the review-derived label. The market surface dominates when access is actually constrained.
+- **Coherence override**: if any cited pressure says access is constrained / closed and any cited review says access is open / selective, the `coherence_label` is upgraded to `conflicting_evidence` (the financing surface and the market surface disagree).
+- **`next_review_label`**: `conflicting_evidence` falls into the `compare_options` branch alongside `partially_coherent`.
+
+### 112.2 Living-world integration
+
+The per-period sweep is reordered so the **v1.15.5 securities-market-intent chain phase runs *before* the v1.14.5 corporate-financing chain phase**. After the v1.15.5 phase produces this period's `IndicativeMarketPressureRecord` per listed security, the v1.14.5 phase looks up the firm's pressure record by security id and:
+
+- Cites it on the review (via `source_indicative_market_pressure_ids`) and on the path (via `indicative_market_pressure_ids`).
+- Overrides the review's `market_access_label` to match the pressure's whenever the pressure says `constrained` or `closed`.
+- Bumps the review's `dilution_concern_label` from `low` to `moderate` when the pressure's `financing_relevance_label` is `caution_for_dilution`, and to `high` when it is `adverse_for_market_access`.
+
+`mes_ids_period` and `ibl_ids_period` are now defined once at the top of the chain region (before the v1.15.5 phase) so both phases share the same evidence tuples.
+
+### 112.3 Anti-claims
+
+No new event types. No new ledger record types. No new dataclass fields outside the two citation tuples. No new CLI count line. No new markdown section. The existing v1.14.3 / v1.14.4 anti-field family is preserved unchanged — `CapitalStructureReviewCandidate` and `CorporateFinancingPathRecord` payloads still carry no `price`, `market_price`, `indicative_price`, `target_price`, `expected_return`, `bid`, `ask`, `quote`, `order`, `order_id`, `trade`, `trade_id`, `execution`, `clearing`, `settlement`, `approved`, `selected_option`, `optimal_option`, `commitment`, `underwriting`, `syndication`, `allocation`, `pricing`, `interest_rate`, `spread`, `coupon`, `fee`, `offering_price`, `recommendation`, `investment_advice`, or `real_data_value` field.
+
+A dedicated `test_v1_15_6_does_not_mutate_pricebook` test runs the full default sweep and asserts `kernel.prices.snapshot()` is byte-equal before and after — v1.15.6 is feedback wiring, never a price layer.
+
+### 112.4 Performance boundary
+
+**Per-period record count is unchanged at 108 / 110 records** — v1.15.6 adds citation slots, not new records. Per-run window stays at `[432, 480]`. The default 4-period sweep emits 460 records, exactly as at v1.15.5.
+
+The integration-test `living_world_digest` moves from `041686b0c69eea751cb24e3e3e5b4ac25e56a8ae20d4b1bd40a41dc5303403a5` (v1.15.5) to **`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`** (v1.15.6) by design — three forces flow into the canonical view's bytes:
+
+1. The phase reorder changes the per-period ledger sequence (v1.15.5 records now precede v1.14.5 records).
+2. The two new citation slots appear on every capital-structure-review and financing-path payload + canonical view.
+3. The label drift on `dilution_concern_label` / `market_access_label` (when pressure pushes them) shows up in payloads (in the default fixture the v1.15.5 chain produces `selective` market-access for every security so neither override triggers, but the citation slots are populated regardless).
+
+The test count moves from `3863 / 3863` (v1.15.5) to `3883 / 3883` (v1.15.6) — `+20` tests across:
+
+- `tests/test_capital_structure.py` (+5): citation-slot acceptance, empty-string rejection, `to_dict` round-trip, `list_by_indicative_market_pressure` filter, ledger-payload key pin.
+- `tests/test_financing_paths.py` (+10): citation-slot acceptance, empty-string rejection, `to_dict`, `list_by_indicative_market_pressure`, ledger-payload pin, helper override (constrained → `market_access_constraint` + `conflicting_evidence`), helper override (closed → same), helper no-override on open pressure, helper no-global-scan trip-wire, helper unresolved-id silent-skip.
+- `tests/test_living_reference_world.py` (+5): living-world capital-structure-reviews cite pressure ids, living-world financing-paths cite pressure ids, pressure security-id matches firm's listed equity, no `PriceBook` mutation, no forbidden payload keys across the seven chain event types.
+
+### 112.5 Forward pointer
+
+v1.15.6 closes the first feedback loop. The next milestone is **v1.15.last** — the docs-only freeze that pins the v1.15 surface (4 storage modules + 2 deterministic helpers + 1 living-world integration + 1 feedback loop) as the first FWE milestone where the living world produces a market-interest aggregation **and** that aggregation feeds back into the corporate financing chain. No new code, no new tests; the freeze pins the canonical fixture's record-count + digest and updates `RELEASE_CHECKLIST.md` with a v1.15.last readiness snapshot.
+
+There is also a known gap noted by the user during v1.15.5 review: the v1.15.5 `intent_direction_label` is currently rotated by `(period_idx + investor_idx + firm_idx) % 4`, which produces non-trivial histograms but is not endogenous in the v1.12 sense. A future v1.15.x or v1.16+ milestone should make `intent_direction_label` a deterministic function of the upstream evidence (`InvestorIntentRecord.intent_direction`, `ValuationRecord.confidence`, `FirmFinancialStateRecord.market_access_pressure`, `MarketEnvironmentStateRecord.overall_market_access_regime_label`, and the actor's `ActorAttentionStateRecord` focus labels). The v1.15.6 freeze does not change this — it only wires the downstream feedback.

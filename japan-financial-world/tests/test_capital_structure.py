@@ -67,6 +67,7 @@ def _candidate(
     source_interbank_liquidity_state_ids: tuple[str, ...] = (),
     source_bank_credit_review_signal_ids: tuple[str, ...] = (),
     source_investor_intent_ids: tuple[str, ...] = (),
+    source_indicative_market_pressure_ids: tuple[str, ...] = (),
     metadata: dict | None = None,
 ) -> CapitalStructureReviewCandidate:
     return CapitalStructureReviewCandidate(
@@ -91,6 +92,7 @@ def _candidate(
         source_interbank_liquidity_state_ids=source_interbank_liquidity_state_ids,
         source_bank_credit_review_signal_ids=source_bank_credit_review_signal_ids,
         source_investor_intent_ids=source_investor_intent_ids,
+        source_indicative_market_pressure_ids=source_indicative_market_pressure_ids,
         metadata=metadata or {},
     )
 
@@ -839,3 +841,97 @@ def test_module_contains_no_jurisdiction_specific_identifiers():
     for token in _FORBIDDEN_TOKENS:
         pattern = rf"\b{re.escape(token)}\b"
         assert re.search(pattern, text) is None, token
+
+
+# ---------------------------------------------------------------------------
+# v1.15.6 — IndicativeMarketPressureRecord citation slot
+# ---------------------------------------------------------------------------
+
+
+def test_v1_15_6_candidate_accepts_indicative_market_pressure_evidence():
+    c = _candidate(
+        source_indicative_market_pressure_ids=(
+            "indicative_market_pressure:security:reference_a:2026-03-31",
+        ),
+    )
+    assert c.source_indicative_market_pressure_ids == (
+        "indicative_market_pressure:security:reference_a:2026-03-31",
+    )
+
+
+def test_v1_15_6_candidate_rejects_empty_strings_in_pressure_evidence_tuple():
+    with pytest.raises(ValueError):
+        _candidate(source_indicative_market_pressure_ids=("",))
+
+
+def test_v1_15_6_candidate_to_dict_round_trips_pressure_evidence():
+    c = _candidate(
+        source_indicative_market_pressure_ids=(
+            "indicative_market_pressure:security:reference_a:2026-03-31",
+        ),
+    )
+    out = c.to_dict()
+    assert out["source_indicative_market_pressure_ids"] == [
+        "indicative_market_pressure:security:reference_a:2026-03-31"
+    ]
+
+
+def test_v1_15_6_book_list_by_indicative_market_pressure():
+    book = CapitalStructureReviewBook()
+    book.add_candidate(
+        _candidate(
+            review_candidate_id="capital_structure_review:a",
+            source_indicative_market_pressure_ids=(
+                "indicative_market_pressure:p1",
+            ),
+        )
+    )
+    book.add_candidate(
+        _candidate(
+            review_candidate_id="capital_structure_review:b",
+            source_indicative_market_pressure_ids=(
+                "indicative_market_pressure:p1",
+                "indicative_market_pressure:p2",
+            ),
+        )
+    )
+    book.add_candidate(
+        _candidate(
+            review_candidate_id="capital_structure_review:c",
+            source_indicative_market_pressure_ids=(
+                "indicative_market_pressure:p3",
+            ),
+        )
+    )
+    out = book.list_by_indicative_market_pressure(
+        "indicative_market_pressure:p1"
+    )
+    assert {c.review_candidate_id for c in out} == {
+        "capital_structure_review:a",
+        "capital_structure_review:b",
+    }
+    assert (
+        len(
+            book.list_by_indicative_market_pressure(
+                "indicative_market_pressure:never_referenced"
+            )
+        )
+        == 0
+    )
+
+
+def test_v1_15_6_ledger_payload_carries_pressure_evidence_key():
+    ledger = Ledger()
+    book = CapitalStructureReviewBook(ledger=ledger)
+    book.add_candidate(
+        _candidate(
+            source_indicative_market_pressure_ids=(
+                "indicative_market_pressure:security:reference_a:2026-03-31",
+            ),
+        )
+    )
+    rec = ledger.records[0]
+    assert "source_indicative_market_pressure_ids" in rec.payload
+    assert list(rec.payload["source_indicative_market_pressure_ids"]) == [
+        "indicative_market_pressure:security:reference_a:2026-03-31"
+    ]

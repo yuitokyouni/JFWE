@@ -336,6 +336,25 @@ If any of those pins fails, the demo has either grown the
 fixture (intentional but undocumented) or gained a hidden
 quadratic loop (unintended).
 
+## v1.15.6 update pins
+
+v1.15.6 wires `IndicativeMarketPressureRecord` ids into the v1.14
+corporate-financing chain as additional citation slots and
+reorders the per-period sweep so the v1.15.5 chain runs *before*
+the v1.14.5 chain. **No new records** — citation slots only — so
+the per-period record count is unchanged. On the default 4-period
+fixture (3 firms, 2 investors, 2 banks):
+
+- per-period record count: **108** (period 0) / **110** (periods 1+),
+  unchanged from v1.15.5,
+- per-run window: **`[432, 480]`**, unchanged from v1.15.5,
+- default 4-period sweep total: **460 records**, unchanged,
+- integration-test `living_world_digest`:
+  **`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`**
+  (moved at v1.15.6 by design — phase reorder + new citation
+  slots on review/path payloads),
+- pytest count: **3883 / 3883** passing.
+
 ## v1.15.5 update pins
 
 v1.15.5 puts the v1.15 securities-market-intent chain on the
@@ -347,10 +366,10 @@ investors, 2 banks):
 - per-run window: **`[432, 480]`**, up from `[384, 432]`,
 - default 4-period sweep total: **460 records**,
 - integration-test `living_world_digest`:
-  **`041686b0c69eea751cb24e3e3e5b4ac25e56a8ae20d4b1bd40a41dc5303403a5`**
+  `041686b0c69eea751cb24e3e3e5b4ac25e56a8ae20d4b1bd40a41dc5303403a5`
   (moved at v1.15.5 by design; unchanged through v1.15.1 →
   v1.15.4),
-- pytest count: **3863 / 3863** passing.
+- pytest count at v1.15.5: 3863 / 3863 passing.
 
 Loop-shape constraints: the v1.15.5 chain stays bounded at
 `P × I × F + 2 × P × F` per run — no `P × I × F × venue` or
