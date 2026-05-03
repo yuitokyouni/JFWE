@@ -16,6 +16,35 @@ The prototype has two states:
 Both states are 100% synthetic, jurisdiction-neutral, and
 non-binding.
 
+### Top-ribbon buttons (v1.17.4)
+
+- **Load sample run** — parses the inline JSON manifest and fills
+  the data-bound tables.
+- **Run mock** — reads the regime pill currently selected on the
+  Inputs sheet (`constructive` / `mixed` / `constrained` /
+  `tightening`) and updates the Outputs KPIs, the top-ribbon
+  digest, and the Settings active-regime cell from a deterministic
+  in-page `SAMPLE_RUNS` fixture. **The Python engine is not
+  invoked.** The status strip updates to `mock UI run · <regime>
+  · static fixture · no engine execution`. Same regime → same UI
+  state across two clicks.
+- **Validate** — runs client-side checks (inline JSON parses, all
+  bottom tabs reference real sheet ids, required sheets present,
+  ledger records table present, regime-compare card present).
+  Status strip updates to `validation passed · static UI` or names
+  the first failure.
+- **Compare Regimes** — activates the Outputs sheet and scrolls
+  to the **Regime compare snapshot** card (a side-by-side surface
+  of the v1.17.2 / v1.17.3 axes). The card highlights briefly so
+  it's easy to spot.
+- **Export HTML** — non-destructive. Updates the status strip to
+  `export not implemented in static prototype · use browser Save
+  Page / Print`. There is no file-system API.
+
+The status strip below the load-status line always reads
+`static fixture only · no backend execution` so the
+no-engine-execution discipline is visible at a glance.
+
 ## Files
 
 - `fwe_workbench_mockup.html` — the polished mockup (10 sheet

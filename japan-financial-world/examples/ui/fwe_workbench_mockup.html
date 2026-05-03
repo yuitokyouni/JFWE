@@ -249,7 +249,7 @@
        Snell Roundhand (also macOS) → Palace Script MT (Windows) →
        Monotype Corsiva → Apple Chancery → generic cursive. */
     font-family: "Zapfino", "Snell Roundhand", "Palace Script MT", "Monotype Corsiva", "Apple Chancery", cursive;
-    font-size: 116px;
+    font-size: 110px;
     font-weight: 400;
     /* Zapfino's descenders extend far below the baseline (the
        "g" in "Engine" reaches well into the next line). Pad
@@ -440,12 +440,79 @@
     font-weight: 600;
   }
   .ribbon-btn.primary:hover { background: var(--blue-2); }
+  .ribbon-status-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.15;
+    margin-right: 8px;
+  }
   .load-status {
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--muted);
   }
   .load-status.ok { color: var(--ok); }
+  .load-status.warn { color: var(--amber); }
+  .load-status.err  { color: var(--danger); }
+  .load-substatus {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  /* v1.17.4 — Strategy / behavior modules disclosure */
+  details.advanced-fold {
+    background: var(--paper);
+    border: 1px solid #e3e0d8;
+    border-radius: 6px;
+    padding: 0;
+  }
+  details.advanced-fold > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 12px 16px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue-2);
+    background: #f7f6f1;
+    border-radius: 6px;
+    user-select: none;
+  }
+  details.advanced-fold > summary::-webkit-details-marker { display: none; }
+  details.advanced-fold[open] > summary { border-radius: 6px 6px 0 0; }
+  details.advanced-fold > summary::before {
+    content: "▸ ";
+    color: var(--muted);
+    font-weight: 400;
+    margin-right: 4px;
+  }
+  details.advanced-fold[open] > summary::before { content: "▾ "; }
+  details.advanced-fold .advanced-fold-body {
+    padding: 12px 16px 16px 16px;
+  }
+
+  /* v1.17.4 — Output chart boundary disclaimer */
+  .display-only-banner {
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .display-only-banner::before {
+    content: "ⓘ ";
+    color: var(--muted);
+  }
+
+  /* v1.17.4 — Mock-run highlight */
+  .mock-run-glow {
+    transition: box-shadow 0.6s ease-out;
+  }
+  .mock-run-glow.flash {
+    box-shadow: 0 0 0 2px var(--blue-tint);
+  }
 
   /* ------------------------------------------------------------------ */
   /* Ledger row interactivity                                           */
@@ -582,10 +649,14 @@
     <div class="brand-chip">FWE</div>
     <div class="ribbon-group">
       <button id="btn-load-sample" class="ribbon-btn primary" type="button">Load sample run</button>
-      <button class="ribbon-btn" type="button">Run</button>
-      <button class="ribbon-btn" type="button">Validate</button>
-      <button class="ribbon-btn" type="button">Compare Regimes</button>
-      <button class="ribbon-btn" type="button">Export HTML</button>
+      <button id="btn-run-mock"   class="ribbon-btn" type="button"
+              title="Static UI run — reads the selected regime fixture; the Python engine is not invoked.">Run mock</button>
+      <button id="btn-validate"   class="ribbon-btn" type="button"
+              title="Client-side JSON / tab / fixture sanity checks.">Validate</button>
+      <button id="btn-compare"    class="ribbon-btn" type="button"
+              title="Jump to the Outputs sheet and the regime comparison card.">Compare Regimes</button>
+      <button id="btn-export"     class="ribbon-btn" type="button"
+              title="Static prototype — use the browser's Save / Print dialog.">Export HTML</button>
     </div>
     <div class="ribbon-group">
       <span class="muted">Mode</span>
@@ -600,7 +671,10 @@
       </div>
     </div>
     <div class="ribbon-spacer"></div>
-    <span id="load-status" class="load-status">no sample loaded</span>
+    <div class="ribbon-status-stack" aria-live="polite">
+      <span id="load-status" class="load-status">no sample loaded</span>
+      <span class="load-substatus muted">static fixture only · no backend execution</span>
+    </div>
     <div class="digest">digest · <span id="digest-short">—</span></div>
   </header>
 
@@ -703,56 +777,57 @@
             </section>
           </div>
 
-          <section class="card" style="margin-top:14px;">
-            <div class="section-rule"></div>
-            <h3 class="card-title">
-              Strategy / behavior modules
-              <span class="tag">interchangeable · not all active at once</span>
-            </h3>
-            <table>
-              <thead>
-                <tr><th>Module</th><th>Status</th><th>Role</th><th>Layer</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Brock-Hommes</td>
-                  <td class="status-cell">candidate</td>
-                  <td>strategy switching archetype</td>
-                  <td>actor strategy</td>
-                </tr>
-                <tr>
-                  <td>Lux-Marchesi</td>
-                  <td class="status-cell">candidate</td>
-                  <td>chartist / fundamentalist switching</td>
-                  <td>actor strategy</td>
-                </tr>
-                <tr>
-                  <td>Minority Game</td>
-                  <td class="status-cell">candidate</td>
-                  <td>crowded adaptive signal use</td>
-                  <td>actor strategy</td>
-                </tr>
-                <tr>
-                  <td>Speculation Game</td>
-                  <td class="status-cell">candidate</td>
-                  <td>round-trip cognition / wealth dynamics</td>
-                  <td>actor strategy</td>
-                </tr>
-                <tr>
-                  <td>FCN / LOB adapter</td>
-                  <td class="status-cell">deferred</td>
-                  <td>placeholder market mechanism seam, not active trading</td>
-                  <td>market mechanism</td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="note-box" style="margin-top:10px;">
-              These are interchangeable experimental adapters for future
-              v2.x / v3.x research. None ships as live behavior in the
-              current public prototype. Selecting one would not enable
-              trading, ordering, or price formation.
+          <details class="advanced-fold" style="margin-top:14px;">
+            <summary>Advanced: strategy / behavior module candidates
+              <span class="tag" style="margin-left:8px;">optional · not active</span>
+            </summary>
+            <div class="advanced-fold-body">
+              <p class="muted small" style="margin-top:0;">
+                Interchangeable experimental adapters for future v2.x /
+                v3.x research. None ships as live behavior in the current
+                public prototype. Selecting one would not enable trading,
+                ordering, or price formation. Default-collapsed because
+                first-time viewers do not need to read it.
+              </p>
+              <table>
+                <thead>
+                  <tr><th>Module</th><th>Status</th><th>Role</th><th>Layer</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Brock-Hommes</td>
+                    <td class="status-cell">candidate</td>
+                    <td>strategy switching archetype</td>
+                    <td>actor strategy</td>
+                  </tr>
+                  <tr>
+                    <td>Lux-Marchesi</td>
+                    <td class="status-cell">candidate</td>
+                    <td>chartist / fundamentalist switching</td>
+                    <td>actor strategy</td>
+                  </tr>
+                  <tr>
+                    <td>Minority Game</td>
+                    <td class="status-cell">candidate</td>
+                    <td>crowded adaptive signal use</td>
+                    <td>actor strategy</td>
+                  </tr>
+                  <tr>
+                    <td>Speculation Game</td>
+                    <td class="status-cell">candidate</td>
+                    <td>round-trip cognition / wealth dynamics</td>
+                    <td>actor strategy</td>
+                  </tr>
+                  <tr>
+                    <td>FCN / LOB adapter</td>
+                    <td class="status-cell">deferred</td>
+                    <td>placeholder market mechanism seam, not active trading</td>
+                    <td>market mechanism</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </section>
+          </details>
 
         </div>
       </div>
@@ -1161,10 +1236,10 @@
 
           <div class="index-wrap">
             <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-              <h3 class="card-title" style="margin:0;">Reference index path · one-year window</h3>
+              <h3 class="card-title" style="margin:0;">Synthetic display path · one-year window</h3>
               <span class="mono muted">2026-01-01 → 2026-12-31</span>
             </div>
-            <svg class="index-chart" viewBox="0 0 1280 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reference index path">
+            <svg class="index-chart" viewBox="0 0 1280 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Synthetic display path">
               <rect x="0" y="0" width="1280" height="380" fill="#fbfbfa"/>
               <g stroke="#d4d4d4" stroke-width="0.7">
                 <line x1="70"  y1="60"  x2="1240" y2="60"/>
@@ -1202,9 +1277,14 @@
 
               <line x1="70" y1="320" x2="1240" y2="320" stroke="#6b7280"/>
               <line x1="70" y1="40"  x2="70"   y2="320" stroke="#6b7280"/>
-              <text x="90"  y="56" font-family="Inter" font-size="12" fill="#034694">index</text>
-              <text x="142" y="56" font-family="Inter" font-size="12" fill="#6b7280">fundamental / context baseline</text>
+              <text x="90"  y="56" font-family="Inter" font-size="12" fill="#034694">display value</text>
+              <text x="172" y="56" font-family="Inter" font-size="12" fill="#6b7280">fundamental / context baseline</text>
             </svg>
+            <div class="display-only-banner">
+              Display-only. Not a price. Not a forecast. Not real market
+              data. Synthetic ordinal in [0, 1] rendered for inspection
+              of the v1.16 closed-loop run.
+            </div>
             <div id="event-row-outputs" class="event-row">
               <div class="event-chip"><div class="event-date">2026-04-01</div><strong>Rate repricing</strong><br/>market environment shifts to rising-rate context</div>
               <div class="event-chip"><div class="event-date">2026-08-01</div><strong>Market stress event</strong><br/>risk appetite turns risk-off; attention budget reallocates</div>
@@ -1213,13 +1293,13 @@
             </div>
           </div>
 
-          <div id="kpi-row-outputs" class="kpi-row" style="margin-top:14px;">
-            <div class="kpi"><div class="label">final index</div><div class="value">103.8</div><div class="note">synthetic</div></div>
-            <div class="kpi"><div class="label">risk intents</div><div class="value">14</div><div class="note">non-binding</div></div>
-            <div class="kpi"><div class="label">credit watches</div><div class="value">8</div><div class="note">no lending decision</div></div>
-            <div class="kpi"><div class="label">attention shifts</div><div class="value">22</div><div class="note">budgeted</div></div>
-            <div class="kpi"><div class="label">unresolved refs</div><div class="value">0</div><div class="note">context frame</div></div>
-            <div class="kpi"><div class="label">digest</div><div class="value" style="font-size:14px;">916e…b379</div><div class="note">sample fixture</div></div>
+          <div id="kpi-row-outputs" class="kpi-row mock-run-glow" style="margin-top:14px;">
+            <div class="kpi"><div class="label">display path endpoint</div><div class="value" id="kpi-endpoint">0.55</div><div class="note">synthetic display value</div></div>
+            <div class="kpi"><div class="label">risk intents</div><div class="value" id="kpi-risk-intents">14</div><div class="note">non-binding</div></div>
+            <div class="kpi"><div class="label">credit watches</div><div class="value" id="kpi-credit-watches">8</div><div class="note">no lending decision</div></div>
+            <div class="kpi"><div class="label">attention shifts</div><div class="value" id="kpi-attention-shifts">22</div><div class="note">budgeted</div></div>
+            <div class="kpi"><div class="label">unresolved refs</div><div class="value" id="kpi-unresolved">0</div><div class="note">context frame</div></div>
+            <div class="kpi"><div class="label">digest</div><div class="value" id="kpi-digest" style="font-size:14px;">916e…b379</div><div class="note">sample fixture</div></div>
           </div>
 
           <section class="card" style="margin-top:14px;">
@@ -1296,6 +1376,92 @@
               Stylized facts are diagnostic, not the whole output. The
               core surface is the causal, actor-specific ledger trace
               above.
+            </div>
+          </section>
+
+          <!-- v1.17.4 — Regime Compare snapshot card.
+               Click "Compare Regimes" in the top ribbon to land here. -->
+          <section id="card-regime-compare" class="card mock-run-glow"
+                   style="margin-top:14px;">
+            <div class="section-rule"></div>
+            <h3 class="card-title">
+              Regime compare snapshot
+              <span class="tag" style="margin-left:8px;">sample fixture · v1.17.2 / v1.17.3 surface</span>
+            </h3>
+            <p class="muted small" style="margin-top:0;">
+              Side-by-side closed-loop labels under each v1.11.2 regime
+              preset. Identical histograms (e.g. constrained vs
+              tightening at <code>risk_reduction_review 24</code>) are
+              still visibly different through the
+              <strong>market environment subfields</strong> and the
+              per-regime causal trace surfaced by v1.17.3.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Axis</th>
+                  <th>constructive</th>
+                  <th>mixed</th>
+                  <th>constrained</th>
+                  <th>tightening</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-regime-compare">
+                <tr>
+                  <td>Attention focus (top)</td>
+                  <td>engagement, dialogue, stewardship</td>
+                  <td>firm_state, market_environment, refinancing_window</td>
+                  <td>credit, liquidity, market_access, refinancing_window</td>
+                  <td>credit, liquidity, market_access, refinancing_window</td>
+                </tr>
+                <tr>
+                  <td>Investor market intent direction</td>
+                  <td class="mono">engagement_linked_review&nbsp;24</td>
+                  <td class="mono">hold_review&nbsp;24</td>
+                  <td class="mono">risk_reduction_review&nbsp;24</td>
+                  <td class="mono">risk_reduction_review&nbsp;24</td>
+                </tr>
+                <tr>
+                  <td>Indicative pressure (market access)</td>
+                  <td class="mono">selective&nbsp;12</td>
+                  <td class="mono">selective&nbsp;12</td>
+                  <td class="mono">selective&nbsp;12</td>
+                  <td class="mono">selective&nbsp;12</td>
+                </tr>
+                <tr>
+                  <td>Financing path constraint</td>
+                  <td class="mono">no_obvious_constraint&nbsp;12</td>
+                  <td class="mono">no_obvious_constraint&nbsp;12</td>
+                  <td class="mono">no_obvious_constraint&nbsp;12</td>
+                  <td class="mono">no_obvious_constraint&nbsp;12</td>
+                </tr>
+                <tr>
+                  <td>Market environment subfields <span class="muted">(differentiator)</span></td>
+                  <td class="mono">credit=neutral, funding=normal, refi=open</td>
+                  <td class="mono">credit=tightening, funding=selective, refi=open</td>
+                  <td class="mono">credit=stressed, funding=normal, refi=open</td>
+                  <td class="mono">credit=tightening, funding=expensive, refi=selective</td>
+                </tr>
+                <tr>
+                  <td>Top causal arrow (v1.17.3)</td>
+                  <td>env → pressure (open)</td>
+                  <td>env → pressure (selective)</td>
+                  <td>env → pressure (constrained-leaning); prior pressure → attention</td>
+                  <td>env → pressure (constrained-leaning); prior pressure → attention</td>
+                </tr>
+                <tr>
+                  <td>Record count · digest <span class="muted">(sample fixture)</span></td>
+                  <td class="mono">452 · dbccdd17…7a0313</td>
+                  <td class="mono">458 · 2bcde5a4…00b1c0</td>
+                  <td class="mono">458 · cf05a1ac…1d0e43</td>
+                  <td class="mono">458 · 6b3b73af…aec53d</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="display-only-banner" style="margin-top:10px;">
+              Synthetic display only — counts of the labels emitted by
+              the v1.16 closed-loop records under each regime preset.
+              Not a forecast. Not a price. Not a recommendation.
             </div>
           </section>
 
@@ -2319,6 +2485,230 @@
 
     var btn = $id('btn-load-sample');
     if (btn) btn.addEventListener('click', loadSample);
+  })();
+
+  // -----------------------------------------------------------------
+  // v1.17.4 — Top ribbon mock-run / Validate / Compare / Export.
+  //
+  // None of these touch a backend, network, or the Python engine.
+  // They run deterministic UI updates from the inline SAMPLE_RUNS
+  // fixture and the inline manifest. Same regime selection →
+  // byte-identical UI state.
+  // -----------------------------------------------------------------
+  (function () {
+    function $id(id) { return document.getElementById(id); }
+
+    function setStatus(message, kind) {
+      var ls = $id('load-status');
+      if (!ls) return;
+      ls.classList.remove('ok', 'warn', 'err');
+      if (kind) ls.classList.add(kind);
+      ls.textContent = message;
+    }
+
+    function selectedRegime() {
+      var active = document.querySelector('.regime-pill.active');
+      return active ? active.dataset.regime : 'constrained';
+    }
+
+    // SAMPLE_RUNS is a static, deterministic UI fixture. The values
+    // are illustrative — they do NOT come from running the Python
+    // engine. Two clicks of "Run mock" with the same regime produce
+    // the same UI state.
+    //
+    // Forbidden terms (market_price / predicted_index /
+    // expected_return / target_price / forecast_path /
+    // real_price_series / buy / sell / order / trade / execution /
+    // recommendation / investment_advice) are deliberately absent.
+    var SAMPLE_RUNS = {
+      constructive: {
+        regime_label: 'constructive',
+        digest_short: 'dbccdd17…7a0313',
+        endpoint: '0.62',
+        risk_intents: '4',
+        credit_watches: '2',
+        attention_shifts: '6',
+        unresolved_refs: '0',
+        top_event: '2026-04-15 · attention_shift · low (engagement-led)',
+        attention_summary: 'engagement, dialogue, stewardship reinforced',
+        market_pressure: 'selective · supportive demand',
+        financing_constraint: 'no_obvious_constraint · coherent',
+        env_subfields: 'credit=neutral, funding=normal, refi=open'
+      },
+      mixed: {
+        regime_label: 'mixed',
+        digest_short: '2bcde5a4…00b1c0',
+        endpoint: '0.55',
+        risk_intents: '8',
+        credit_watches: '4',
+        attention_shifts: '14',
+        unresolved_refs: '0',
+        top_event: '2026-04-15 · market_environment_change · medium',
+        attention_summary: 'firm_state, market_environment, market_access widened',
+        market_pressure: 'selective · balanced demand',
+        financing_constraint: 'no_obvious_constraint · partially_coherent',
+        env_subfields: 'credit=tightening, funding=selective, refi=open'
+      },
+      constrained: {
+        regime_label: 'constrained',
+        digest_short: 'cf05a1ac…1d0e43',
+        endpoint: '0.41',
+        risk_intents: '14',
+        credit_watches: '8',
+        attention_shifts: '22',
+        unresolved_refs: '0',
+        top_event: '2026-03-31 · market_environment_change · medium (selective_or_constrained)',
+        attention_summary: 'credit, liquidity, market_access, refinancing_window saturated',
+        market_pressure: 'selective · cautious demand',
+        financing_constraint: 'no_obvious_constraint · coherent (subfield-led)',
+        env_subfields: 'credit=stressed, funding=normal, refi=open'
+      },
+      tightening: {
+        regime_label: 'tightening',
+        digest_short: '6b3b73af…aec53d',
+        endpoint: '0.38',
+        risk_intents: '15',
+        credit_watches: '9',
+        attention_shifts: '24',
+        unresolved_refs: '0',
+        top_event: '2026-03-31 · market_environment_change · medium (selective_or_constrained)',
+        attention_summary: 'credit, liquidity, refinancing_window pressured',
+        market_pressure: 'selective · adverse-leaning demand',
+        financing_constraint: 'no_obvious_constraint · coherent (subfield-led)',
+        env_subfields: 'credit=tightening, funding=expensive, refi=selective'
+      }
+    };
+
+    function setText(id, value) {
+      var el = $id(id);
+      if (el && value != null) el.textContent = value;
+    }
+
+    function flashMockRunGlow() {
+      var glows = Array.prototype.slice.call(
+        document.querySelectorAll('.mock-run-glow')
+      );
+      glows.forEach(function (g) { g.classList.add('flash'); });
+      window.setTimeout(function () {
+        glows.forEach(function (g) { g.classList.remove('flash'); });
+      }, 700);
+    }
+
+    function runMock() {
+      var regime = selectedRegime();
+      var fixture = SAMPLE_RUNS[regime] || SAMPLE_RUNS.constrained;
+      // Update Outputs KPIs.
+      setText('kpi-endpoint',         fixture.endpoint);
+      setText('kpi-risk-intents',     fixture.risk_intents);
+      setText('kpi-credit-watches',   fixture.credit_watches);
+      setText('kpi-attention-shifts', fixture.attention_shifts);
+      setText('kpi-unresolved',       fixture.unresolved_refs);
+      setText('kpi-digest',           fixture.digest_short);
+      // Update top-ribbon digest hint.
+      setText('digest-short', fixture.digest_short);
+      // Update Settings active-regime cell.
+      setText('regime-active', fixture.regime_label);
+      // Update the regime-compare card heading hint, if present.
+      flashMockRunGlow();
+      setStatus(
+        'mock UI run · ' + fixture.regime_label
+          + ' · static fixture · no engine execution',
+        'ok'
+      );
+    }
+
+    function validate() {
+      var failures = [];
+      // Inline JSON parses.
+      var node = $id('fwe-sample-manifest');
+      if (!node) {
+        failures.push('inline sample manifest <script> missing');
+      } else {
+        try { JSON.parse(node.textContent || '{}'); }
+        catch (e) { failures.push('inline JSON parse failed'); }
+      }
+      // Sheet tabs reference real sheet ids.
+      var tabs = Array.prototype.slice.call(
+        document.querySelectorAll('.sheet-tab')
+      );
+      tabs.forEach(function (tab) {
+        var name = tab.dataset.sheet;
+        if (!name || !document.getElementById('sheet-' + name)) {
+          failures.push('tab ' + (name || '?') + ' has no matching sheet');
+        }
+      });
+      // Required sheets exist.
+      [
+        'cover', 'settings', 'market', 'attention', 'firms',
+        'investors', 'banks', 'outputs', 'ledger', 'appendix'
+      ].forEach(function (req) {
+        if (!document.getElementById('sheet-' + req)) {
+          failures.push('required sheet missing: ' + req);
+        }
+      });
+      // Ledger inspector + records present.
+      if (!document.getElementById('tbody-ledger-records')
+          && !document.querySelector('#sheet-ledger table')) {
+        failures.push('ledger records table missing');
+      }
+      // Regime compare card present.
+      if (!$id('card-regime-compare')) {
+        failures.push('regime compare card missing');
+      }
+      if (failures.length === 0) {
+        setStatus('validation passed · static UI', 'ok');
+      } else {
+        setStatus(
+          'validation failed · ' + failures.length + ' issue(s) · '
+            + failures[0],
+          'err'
+        );
+      }
+    }
+
+    function compareRegimes() {
+      // Activate the Outputs sheet and scroll to the regime-compare
+      // card. We click the tab so the existing tab-switching IIFE
+      // handles state + URL hash.
+      var outputsTab = document.querySelector(
+        '.sheet-tab[data-sheet="outputs"]'
+      );
+      if (outputsTab) outputsTab.click();
+      var card = $id('card-regime-compare');
+      if (card) {
+        // Defer scroll to next frame so the sheet swap completes.
+        window.setTimeout(function () {
+          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          card.classList.add('flash');
+          window.setTimeout(function () {
+            card.classList.remove('flash');
+          }, 800);
+        }, 30);
+      }
+      setStatus(
+        'regime compare · static fixture · no engine execution',
+        'ok'
+      );
+    }
+
+    function exportHtml() {
+      // The static prototype does not write files. We tell the user
+      // to use the browser's Save / Print dialog.
+      setStatus(
+        'export not implemented in static prototype · use browser '
+          + 'Save Page / Print',
+        'warn'
+      );
+    }
+
+    var btnRun     = $id('btn-run-mock');
+    var btnValid   = $id('btn-validate');
+    var btnCompare = $id('btn-compare');
+    var btnExport  = $id('btn-export');
+    if (btnRun)     btnRun.addEventListener('click', runMock);
+    if (btnValid)   btnValid.addEventListener('click', validate);
+    if (btnCompare) btnCompare.addEventListener('click', compareRegimes);
+    if (btnExport)  btnExport.addEventListener('click', exportHtml);
   })();
 </script>
 </body>
