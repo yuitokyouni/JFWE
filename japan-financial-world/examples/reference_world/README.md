@@ -518,6 +518,53 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.20.3 — `scenario_monthly_reference_universe` run profile (shipped)
+
+v1.20.3 ships the third concrete code milestone of the v1.20
+sequence: the opt-in `scenario_monthly_reference_universe` run
+profile in [`world/reference_living_world.py`](../../world/reference_living_world.py).
+This is the **first FWE run profile that combines** the v1.20.1
+generic 11-sector reference universe + 4 investor archetypes +
+3 bank archetypes + the v1.19.3 monthly information-release
+calendar + a v1.20.2 scheduled scenario application + the
+v1.18.2 `apply_scenario_driver` helper.
+
+What v1.20.3 enables (still bounded, still synthetic):
+
+- **12 monthly periods** × **11 sectors** × **11 representative
+  firms** × **4 investor archetypes** × **3 bank archetypes**
+  with **3-5 information arrivals per month**.
+- **One scheduled scenario application** firing at
+  `period_index == 3` / `month_04` (credit-tightening),
+  emitting **2 context shifts** (`market_environment` +
+  `financing_review_surface`) — bounded by
+  `O(scheduled_app_count × F) = 1 × 11 = 11`.
+- The closed-loop chain (attention → investor market intent →
+  aggregated market interest → indicative market pressure →
+  capital structure review / financing path → next-period
+  attention) runs unchanged on the larger fixture.
+- **3220 records total** (per-period 257-261 → within the
+  v1.20.0 target window of `[200, 280]`; under the hard
+  guardrail of `≤ 4000`).
+- Pinned `living_world_digest`:
+  **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**.
+
+The opt-in discipline is preserved: the canonical
+`quarterly_default` digest stays at
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+and the `monthly_reference` digest stays at
+**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**
+unless the caller explicitly passes
+`profile="scenario_monthly_reference_universe"`.
+
+What v1.20.3 does **not** ship: there is no CLI exporter
+extension yet (deferred to v1.20.4) and no UI extension yet
+(deferred to v1.20.5). The static workbench mockup continues
+to render only `quarterly_default` and `monthly_reference`
+bundles. To exercise v1.20.3 directly today, call
+`run_living_reference_world(...)` from Python or via the
+test suite.
+
 ## v1.20.0 forward pointer — Monthly Scenario Reference Universe design
 
 The next planned milestone, **v1.20.0** (docs-only — see

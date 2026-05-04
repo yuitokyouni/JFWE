@@ -660,3 +660,383 @@ def test_v1_19_3_monthly_reference_emits_no_forbidden_record_types():
         f"monthly_reference must not emit "
         f"{sorted(t.value for t in leaked)}"
     )
+
+
+# ===========================================================================
+# v1.20.3 — scenario_monthly_reference_universe performance boundary
+#
+# These tests pin the v1.20.0 cardinality budget *before* a
+# contributor can ship a denser per-period flow. They run against
+# the canonical 11-sector / 11-firm / 4-investor / 3-bank
+# fixture and assert:
+#
+# - 12 monthly periods,
+# - 11 sectors / 11 representative firm profiles,
+# - 4 investor archetypes / 3 bank archetypes,
+# - exactly 1 scheduled scenario application in the default
+#   fixture, firing only at ``period_index == 3`` / ``month_04``,
+# - total record count under the v1.20.0 hard guardrail of 4000,
+# - per-period record count within the documented [200, 280]
+#   window,
+# - no dense forbidden loop shape ever fires
+#   (``O(P x I x F x scenario)`` / ``O(P x F x order)`` /
+#   ``O(P x day x ...)``).
+# ===========================================================================
+
+
+from world.reference_living_world import (  # noqa: E402
+    LivingReferenceWorldResult,
+    _DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID,
+    _DEFAULT_SCENARIO_SCHEDULED_MONTH_LABEL,
+    _DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX,
+    _DEFAULT_SCENARIO_UNIVERSE_BANK_IDS,
+    _DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS,
+    _DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS,
+)
+
+
+# Per-period record-count window for the v1.20.3 default fixture.
+# Target [200, 280]; actual ~257-261. Lower bound rejects an
+# accidental phase removal; upper bound rejects a denser loop.
+_V1_20_3_PER_PERIOD_LOWER_BOUND: int = 200
+_V1_20_3_PER_PERIOD_UPPER_BOUND: int = 280
+
+
+# Run-window cumulative budget. Soft target [2400, 3360];
+# hard guardrail <= 4000.
+_V1_20_3_RUN_WINDOW_HARD_GUARDRAIL: int = 4000
+_V1_20_3_RUN_WINDOW_TARGET_MIN: int = 2400
+_V1_20_3_RUN_WINDOW_TARGET_MAX: int = 3360
+
+
+# v1.20.3 pinned digest. Updated when a v1.20.x storage book or
+# the v1.20.3 orchestrator path meaningfully changes its
+# canonical projection.
+_V1_20_3_PINNED_DIGEST: str = (
+    "5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6"
+)
+
+
+def _seed_v1_20_3_kernel() -> WorldKernel:
+    """Deterministic seed kernel for the v1.20.3 default
+    fixture. Variables + per-firm exposure mirror the v1.20.x
+    /v1.19.x convention."""
+    k = WorldKernel(
+        registry=Registry(),
+        clock=Clock(current_date=date(2026, 1, 1)),
+        scheduler=Scheduler(),
+        ledger=Ledger(),
+        state=State(),
+    )
+    for vid, vgroup in _REFERENCE_VARIABLES:
+        k.variables.add_variable(
+            ReferenceVariableSpec(
+                variable_id=vid,
+                variable_name=vid,
+                variable_group=vgroup,
+                variable_type="level",
+                source_space_id="external",
+                canonical_unit="index",
+                frequency="QUARTERLY",
+                observation_kind="released",
+            )
+        )
+        for q_date in _OBS_DATES:
+            k.variables.add_observation(
+                VariableObservation(
+                    observation_id=f"obs:{vid}:{q_date}",
+                    variable_id=vid,
+                    as_of_date=q_date,
+                    value=100.0,
+                    unit="index",
+                    vintage_id=f"{q_date}_initial",
+                )
+            )
+    for firm_id in _DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS:
+        k.exposures.add_exposure(
+            ExposureRecord(
+                exposure_id=f"exposure:{firm_id}:rates",
+                subject_id=firm_id,
+                subject_type="firm",
+                variable_id="variable:reference_long_rate_10y",
+                exposure_type="funding_cost",
+                metric="debt_service_burden",
+                direction="positive",
+                magnitude=0.3,
+            )
+        )
+    return k
+
+
+def _run_v1_20_3(k: WorldKernel) -> LivingReferenceWorldResult:
+    return run_living_reference_world(
+        k,
+        firm_ids=_DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS,
+        investor_ids=_DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS,
+        bank_ids=_DEFAULT_SCENARIO_UNIVERSE_BANK_IDS,
+        profile="scenario_monthly_reference_universe",
+    )
+
+
+# --- Default fixture topology ---
+
+
+def test_v1_20_3_runs_twelve_periods():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert r.period_count == 12
+    assert len(r.per_period_summaries) == 12
+
+
+def test_v1_20_3_default_firm_count_is_eleven():
+    assert len(_DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS) == 11
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert len(r.firm_ids) == 11
+
+
+def test_v1_20_3_default_sector_count_is_eleven():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert len(r.sector_ids) == 11
+
+
+def test_v1_20_3_default_firm_profile_count_is_eleven():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert len(r.firm_profile_ids) == 11
+
+
+def test_v1_20_3_default_investor_count_is_four():
+    assert len(_DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS) == 4
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert len(r.investor_ids) == 4
+
+
+def test_v1_20_3_default_bank_count_is_three():
+    assert len(_DEFAULT_SCENARIO_UNIVERSE_BANK_IDS) == 3
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert len(r.bank_ids) == 3
+
+
+# --- Scheduled scenario application ---
+
+
+def test_v1_20_3_default_has_one_scheduled_scenario_application():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert len(r.scenario_schedule_ids) == 1
+    assert len(r.scheduled_scenario_application_ids) == 1
+
+
+def test_v1_20_3_scenario_fires_only_in_scheduled_period():
+    """The default scenario must fire exactly once and only at
+    the pinned ``period_index == 3`` / ``month_04``. Any other
+    period must emit zero scenario application records and zero
+    context shifts. The scheduled-period shift count must stay
+    bounded by ``scheduled_app_count x firm_count = 11``."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    total_apps = 0
+    total_shifts = 0
+    for idx, ps in enumerate(r.per_period_summaries):
+        if idx == _DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX:
+            assert (
+                len(ps.scenario_application_ids) == 1
+            ), (
+                f"scheduled period {idx} expected exactly 1 "
+                f"scenario application; got "
+                f"{len(ps.scenario_application_ids)}"
+            )
+            # ``credit_tightening_driver`` family emits exactly
+            # 2 context shifts (market_environment +
+            # financing_review_surface) per the v1.18.2
+            # _build_shift_specs mapping.
+            assert len(ps.scenario_context_shift_ids) == 2
+        else:
+            assert ps.scenario_application_ids == ()
+            assert ps.scenario_context_shift_ids == ()
+        total_apps += len(ps.scenario_application_ids)
+        total_shifts += len(ps.scenario_context_shift_ids)
+    assert total_apps == 1
+    assert total_shifts <= 1 * len(r.firm_ids)
+
+
+def test_v1_20_3_scheduled_application_carries_expected_template():
+    """Pin the schedule's template id. Drift would mean the
+    default fixture has been re-pointed at a different scenario
+    family without an explicit task."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    sched = k.scenario_schedule.get_schedule(
+        r.scenario_schedule_ids[0]
+    )
+    assert sched.scenario_driver_template_ids == (
+        _DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID,
+    )
+    app = k.scenario_schedule.get_scheduled_application(
+        r.scheduled_scenario_application_ids[0]
+    )
+    assert (
+        app.scheduled_period_index
+        == _DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX
+    )
+    assert (
+        app.scheduled_month_label
+        == _DEFAULT_SCENARIO_SCHEDULED_MONTH_LABEL
+    )
+
+
+# --- Cardinality budget (binding) ---
+
+
+def test_v1_20_3_total_record_count_under_hard_guardrail():
+    """Hard guardrail: the default fixture must stay under 4000
+    records. If this assertion fires, a denser loop has crept
+    in — investigate before relaxing the bound."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert (
+        r.created_record_count
+        <= _V1_20_3_RUN_WINDOW_HARD_GUARDRAIL
+    ), (
+        f"v1.20.3 default fixture produced "
+        f"{r.created_record_count} records — exceeds the "
+        f"v1.20.0 hard guardrail of "
+        f"{_V1_20_3_RUN_WINDOW_HARD_GUARDRAIL}"
+    )
+
+
+def test_v1_20_3_per_period_record_count_within_bounded_window():
+    """Each period must produce a record count inside the
+    documented [200, 280] target window. The default fixture
+    runs at ~258."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    for ps in r.per_period_summaries:
+        assert (
+            _V1_20_3_PER_PERIOD_LOWER_BOUND
+            <= ps.record_count_created
+            <= _V1_20_3_PER_PERIOD_UPPER_BOUND
+        ), (
+            f"period {ps.period_id} produced "
+            f"{ps.record_count_created} records — outside "
+            f"the v1.20.3 per-period window "
+            f"[{_V1_20_3_PER_PERIOD_LOWER_BOUND}, "
+            f"{_V1_20_3_PER_PERIOD_UPPER_BOUND}]"
+        )
+
+
+def test_v1_20_3_total_record_count_within_target_window():
+    """Soft target: cumulative records in [2400, 3360]. The
+    default fixture runs at ~3220."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert (
+        _V1_20_3_RUN_WINDOW_TARGET_MIN
+        <= r.created_record_count
+        <= _V1_20_3_RUN_WINDOW_TARGET_MAX
+    ), (
+        f"v1.20.3 default fixture produced "
+        f"{r.created_record_count} records — outside the "
+        f"[{_V1_20_3_RUN_WINDOW_TARGET_MIN}, "
+        f"{_V1_20_3_RUN_WINDOW_TARGET_MAX}] soft target window"
+    )
+
+
+def test_v1_20_3_no_forbidden_mutation_record_in_ledger_slice():
+    """Forbidden loop shape detection: the presence of any
+    order / price-update / contract / ownership-transfer
+    record type would mean a price / order / trade / execution
+    / settlement loop has crept in."""
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    seen = {rec.record_type for rec in k.ledger.records}
+    leaked = seen & _FORBIDDEN_RECORD_TYPES
+    assert not leaked, (
+        f"scenario_monthly_reference_universe must not emit "
+        f"{sorted(t.value for t in leaked)}"
+    )
+
+
+# --- Closed-loop allowed loop shapes ---
+
+
+def test_v1_20_3_investor_market_intent_count_is_per_period_i_times_f():
+    """The closed-loop allowed shape ``O(P x I x F)`` is
+    pinned at exactly 4 x 11 = 44 per period. A higher count
+    (e.g., x venue) would mean a forbidden
+    ``O(P x I x F x venue)`` loop has crept in."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    expected_per_period = (
+        len(r.investor_ids) * len(r.firm_ids)
+    )
+    for ps in r.per_period_summaries:
+        assert (
+            len(ps.investor_market_intent_ids)
+            == expected_per_period
+        ), (
+            f"period {ps.period_id} has "
+            f"{len(ps.investor_market_intent_ids)} market "
+            f"intents; expected exactly "
+            f"{expected_per_period} (I x F)"
+        )
+
+
+def test_v1_20_3_bank_credit_review_count_is_per_period_b_times_f():
+    """Closed-loop shape ``O(P x B x F)`` is pinned at exactly
+    3 x 11 = 33 per period."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    expected_per_period = len(r.bank_ids) * len(r.firm_ids)
+    for ps in r.per_period_summaries:
+        assert (
+            len(ps.bank_credit_review_signal_ids)
+            == expected_per_period
+        )
+
+
+def test_v1_20_3_firm_state_count_is_per_period_f():
+    """Closed-loop shape ``O(P x F)`` is pinned at exactly
+    11 per period for the firm-financial-state phase."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    for ps in r.per_period_summaries:
+        assert (
+            len(ps.firm_financial_state_ids) == len(r.firm_ids)
+        )
+
+
+# --- Determinism + digest pins ---
+
+
+def test_v1_20_3_living_world_digest_is_deterministic_across_kernels():
+    from examples.reference_world.living_world_replay import (
+        living_world_digest,
+    )
+
+    k1 = _seed_v1_20_3_kernel()
+    r1 = _run_v1_20_3(k1)
+    k2 = _seed_v1_20_3_kernel()
+    r2 = _run_v1_20_3(k2)
+    assert living_world_digest(k1, r1) == living_world_digest(
+        k2, r2
+    )
+
+
+def test_v1_20_3_living_world_digest_is_pinned():
+    from examples.reference_world.living_world_replay import (
+        living_world_digest,
+    )
+
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert (
+        living_world_digest(k, r) == _V1_20_3_PINNED_DIGEST
+    ), (
+        "v1.20.3 living_world_digest drifted; if intentional, "
+        "update _V1_20_3_PINNED_DIGEST and document the cause"
+    )

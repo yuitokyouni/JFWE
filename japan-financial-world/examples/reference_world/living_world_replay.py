@@ -200,7 +200,7 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
     any of these fields fall through to empty tuples via
     ``getattr`` defaults.
     """
-    return {
+    base_period: dict[str, Any] = {
         "period_id": period.period_id,
         "as_of_date": period.as_of_date,
         "record_count_created": period.record_count_created,
@@ -298,6 +298,25 @@ def _canonicalize_period(period: LivingReferencePeriodSummary) -> dict[str, Any]
             getattr(period, "indicative_market_pressure_ids", ())
         ),
     }
+    # v1.20.3 additive: scenario-monthly-reference-universe
+    # citations. **Only added when non-empty** so the
+    # pre-existing ``quarterly_default`` / ``monthly_reference``
+    # digests stay byte-identical (no extra empty keys leak
+    # into the canonical JSON). Older period summaries without
+    # these fields fall through to empty tuples via ``getattr``.
+    for v1_20_3_key in (
+        "reference_universe_ids",
+        "sector_ids",
+        "firm_profile_ids",
+        "scenario_schedule_ids",
+        "scheduled_scenario_application_ids",
+        "scenario_application_ids",
+        "scenario_context_shift_ids",
+    ):
+        v1_20_3_value = tuple(getattr(period, v1_20_3_key, ()))
+        if v1_20_3_value:
+            base_period[v1_20_3_key] = list(v1_20_3_value)
+    return base_period
 
 
 def _canonicalize_ledger_slice(
@@ -480,7 +499,7 @@ def canonicalize_living_world_result(
     record_type_counts = _aggregate_record_type_counts(kernel, result)
     ledger_slice_canonical = _canonicalize_ledger_slice(kernel, result)
 
-    return {
+    canonical: dict[str, Any] = {
         "format": CANONICAL_FORMAT_VERSION,
         "run_id": result.run_id,
         "period_count": result.period_count,
@@ -538,6 +557,25 @@ def canonicalize_living_world_result(
         "ledger_slice_canonical": ledger_slice_canonical,
         "boundary_statement": LIVING_WORLD_BOUNDARY_STATEMENT,
     }
+    # v1.20.3 additive: setup-level scenario-monthly-reference-
+    # universe context. **Only added when non-empty** so the
+    # pre-existing ``quarterly_default`` / ``monthly_reference``
+    # digests stay byte-identical (no extra empty keys leak into
+    # the canonical JSON).
+    for v1_20_3_key in (
+        "reference_universe_ids",
+        "sector_ids",
+        "firm_profile_ids",
+        "scenario_schedule_ids",
+        "scheduled_scenario_application_ids",
+    ):
+        v1_20_3_value = tuple(getattr(result, v1_20_3_key, ()))
+        if v1_20_3_value:
+            canonical[v1_20_3_key] = list(v1_20_3_value)
+            canonical[
+                v1_20_3_key.removesuffix("_ids") + "_count"
+            ] = len(v1_20_3_value)
+    return canonical
 
 
 def living_world_digest(

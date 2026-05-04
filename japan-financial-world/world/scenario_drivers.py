@@ -483,7 +483,10 @@ class ScenarioDriverTemplateBook:
         return datetime.now(timezone.utc)
 
     def add_template(
-        self, template: ScenarioDriverTemplate
+        self,
+        template: ScenarioDriverTemplate,
+        *,
+        simulation_date: Any = None,
     ) -> ScenarioDriverTemplate:
         if template.scenario_driver_template_id in self._templates:
             raise DuplicateScenarioDriverTemplateError(
@@ -529,9 +532,14 @@ class ScenarioDriverTemplateBook:
             _scan_for_forbidden_keys(
                 payload, field_name="ledger payload"
             )
+            sim_date: Any = (
+                simulation_date
+                if simulation_date is not None
+                else self._now()
+            )
             self.ledger.append(
                 event_type="scenario_driver_template_recorded",
-                simulation_date=self._now(),
+                simulation_date=sim_date,
                 object_id=template.scenario_driver_template_id,
                 source=template.scenario_family_label,
                 payload=payload,

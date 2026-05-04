@@ -660,7 +660,7 @@ class ScenarioApplicationBook:
             )
             self.ledger.append(
                 event_type="scenario_driver_application_recorded",
-                simulation_date=self._now(),
+                simulation_date=application.as_of_date,
                 object_id=application.scenario_application_id,
                 source=application.scenario_driver_template_id,
                 payload=payload,
@@ -771,7 +771,7 @@ class ScenarioApplicationBook:
             )
             self.ledger.append(
                 event_type="scenario_context_shift_recorded",
-                simulation_date=self._now(),
+                simulation_date=shift.as_of_date,
                 object_id=shift.scenario_context_shift_id,
                 source=shift.scenario_driver_template_id,
                 target=shift.scenario_application_id,

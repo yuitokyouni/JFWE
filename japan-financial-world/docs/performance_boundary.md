@@ -438,6 +438,50 @@ The v1.19.3 milestone adds a `monthly_reference` run profile and an `Information
 
 If any of these pins fails, either the default monthly fixture has drifted (intentional but undocumented) or a hidden quadratic loop has crept into the orchestrator.
 
+## v1.20.3 scenario_monthly_reference_universe profile pins
+
+The v1.20.3 milestone adds the opt-in `scenario_monthly_reference_universe` run profile to [`world/reference_living_world.py`](../world/reference_living_world.py). It is the **first run profile that combines** the v1.20.1 generic 11-sector reference universe + 4 investor archetypes + 3 bank archetypes + the v1.19.3 monthly information-release calendar + a v1.20.2 scheduled scenario application + the v1.18.2 `apply_scenario_driver` helper. The `quarterly_default` and `monthly_reference` profiles remain byte-identical.
+
+**Default `scenario_monthly_reference_universe` sweep (v1.20.3, opt-in):**
+
+- 12 monthly periods (synthetic month-end ISO dates, same as `monthly_reference`),
+- **11 sectors** (`energy_like` / `materials_like` / `industrials_like` / `consumer_discretionary_like` / `consumer_staples_like` / `health_care_like` / `financials_like` / `information_technology_like` / `communication_services_like` / `utilities_like` / `real_estate_like`) and **11 representative firms** (`firm:reference_<sector>_a` per sector),
+- **4 investor archetypes** (`benchmark_sensitive_institutional` / `active_fund_like` / `liquidity_sensitive_investor` / `stewardship_oriented_investor`),
+- **3 bank archetypes** (`relationship_bank_like` / `credit_conservative_bank` / `market_liquidity_sensitive_bank`),
+- **3-5 information arrivals per month**, total **51** for 12 months (reused from v1.19.3),
+- exactly **1 scheduled scenario application** (credit-tightening) firing at `period_index == 3` / `month_04`, emitting **2 context shifts** (one per affected context surface — `market_environment` + `financing_review_surface`); bounded by `O(scheduled_app_count × F) = 1 × 11 = 11`,
+- per-period record count: **257** (periods 0-2, 4-11) / **261** (period 3 / scheduled month) — within the v1.20.0 target window `[200, 280]` (pinned by `tests/test_living_reference_world_performance_boundary.py::test_v1_20_3_per_period_record_count_within_bounded_window`),
+- per-run window: **3220 records** total (within the v1.20.0 soft target `[2400, 3360]`; under the v1.20.0 hard guardrail of `≤ 4000` — pinned by `test_v1_20_3_total_record_count_under_hard_guardrail` and `test_v1_20_3_total_record_count_within_target_window`),
+- `living_world_digest` (`scenario_monthly_reference_universe`): **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`** (pinned by `test_v1_20_3_living_world_digest_is_pinned`),
+- `living_world_digest` (`quarterly_default`): **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (unchanged — pinned by `test_v1_20_3_quarterly_default_digest_unchanged`),
+- `living_world_digest` (`monthly_reference`): **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`** (unchanged — pinned by `test_v1_20_3_monthly_reference_digest_unchanged`).
+
+**Allowed loop shapes (binding, v1.20.3):**
+
+- `O(P × F)` for firm states, market pressure, and financing path (pinned at exactly **132** records each per the canonical fixture by `test_v1_20_3_firm_state_count_is_per_period_f`).
+- `O(P × I × F)` for investor market intent (pinned at exactly **528** records by `test_v1_20_3_investor_market_intent_count_is_per_period_i_times_f`).
+- `O(P × B × F)` for bank credit review (pinned at exactly **396** records by `test_v1_20_3_bank_credit_review_count_is_per_period_b_times_f`).
+- `O(P × release_count)` for information arrivals (51 records).
+- `O(scheduled_app_count × F)` for scenario context shifts (≤ 11 shifts), only in the scheduled month.
+
+**Forbidden loop shapes (binding, v1.20.3):**
+
+- `O(P × I × F × scenario)` — pinned out by `test_v1_20_3_scenario_fires_only_in_scheduled_period` (the scenario application count is exactly 1, not 4 × 11 = 44).
+- `O(P × I × F × venue)` — pinned out by the per-period investor-market-intent count assertion (exactly 528, not 528 × V for V > 1).
+- `O(P × F × order)` — pinned out by `test_v1_20_3_no_forbidden_mutation_record_in_ledger_slice` (no `ORDER_SUBMITTED` / `PRICE_UPDATED` / `CONTRACT_*` / `OWNERSHIP_TRANSFERRED` records appear).
+- `O(P × day × ...)` — pinned out by the per-period record-count window (a daily inner loop would multiply each period's record count by ~30, well past the upper bound of 280).
+
+**Bounded scale guarantees:**
+
+- the new profile does **not** mutate `PriceBook`, `ContractBook`, `ConstraintBook`, `OwnershipBook`, or `InstitutionsBook` (pinned by `test_v1_20_3_does_not_mutate_pricebook` and `test_v1_20_3_does_not_mutate_contracts_constraints_ownership`),
+- the new profile emits **no** `ORDER_SUBMITTED` / `PRICE_UPDATED` / `CONTRACT_*` / `OWNERSHIP_TRANSFERRED` record types (pinned by `test_v1_20_3_no_actor_decision_record_types`),
+- the engagement / dialogue / escalation / strategic-response / valuation / investor-intent / stewardship-themes layer is skipped under the new profile to keep the per-period record count under the v1.20.0 budget (pinned by `test_v1_20_3_skips_engagement_layer_under_universe_profile`),
+- the closed-loop chain (attention → investor market intent → aggregated market interest → indicative market pressure → capital structure review / financing path → next-period attention) still runs end-to-end on the larger fixture (pinned by `test_v1_20_3_attention_chain_still_runs`),
+- `quarterly_default` and `monthly_reference` leave all four v1.20.x books empty (pinned by `test_v1_20_3_quarterly_default_emits_no_v1_20_3_setup_records` and `test_v1_20_3_monthly_reference_emits_no_v1_20_3_setup_records`),
+- pytest count: **4744 / 4744** passing (+40 from v1.20.2).
+
+If any of these pins fails, either the default `scenario_monthly_reference_universe` fixture has drifted (intentional but undocumented) or a hidden Cartesian-product loop has crept into the orchestrator.
+
 ## v1.18.last freeze pins
 
 The v1.18.last freeze (docs-only on top of the v1.18.0 → v1.18.4

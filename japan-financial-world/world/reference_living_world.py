@@ -190,6 +190,23 @@ from world.information_release import (
     InformationReleaseCalendar,
     ScheduledIndicatorRelease,
 )
+from world.reference_universe import (
+    DuplicateGenericSectorReferenceError,
+    DuplicateReferenceUniverseProfileError,
+    DuplicateSyntheticSectorFirmProfileError,
+    build_generic_11_sector_reference_universe,
+    default_firm_id_order,
+)
+from world.scenario_applications import apply_scenario_driver
+from world.scenario_drivers import (
+    DuplicateScenarioDriverTemplateError,
+    ScenarioDriverTemplate,
+)
+from world.scenario_schedule import (
+    DuplicateScenarioScheduleError,
+    DuplicateScheduledScenarioApplicationError,
+    build_default_scenario_monthly_schedule,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -378,6 +395,41 @@ class LivingReferencePeriodSummary:
     # never a price record.
     scheduled_release_ids: tuple[str, ...] = field(default_factory=tuple)
     information_arrival_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.20.3 additive: scenario-monthly-reference-universe profile
+    # citations. Empty for ``quarterly_default`` /
+    # ``monthly_reference``. ``reference_universe_ids`` carries at
+    # most one profile id (echoed on every period summary so a
+    # downstream consumer can correlate the period with the
+    # universe without joining against the result-level setup);
+    # ``sector_ids`` / ``firm_profile_ids`` echo the run-wide
+    # 11-sector / 11-firm reference set; ``scenario_schedule_ids``
+    # / ``scheduled_scenario_application_ids`` echo the run-wide
+    # default schedule;
+    # ``scenario_application_ids`` / ``scenario_context_shift_ids``
+    # carry the *per-period* scenario application + bounded
+    # context shifts emitted by the apply_scenario_driver helper —
+    # only populated in the scheduled month
+    # (``period_index == 3`` / ``month_04``); empty otherwise.
+    # Storage / citation only — never a price record, never an
+    # actor decision, never an order, trade, or financing
+    # execution.
+    reference_universe_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    sector_ids: tuple[str, ...] = field(default_factory=tuple)
+    firm_profile_ids: tuple[str, ...] = field(default_factory=tuple)
+    scenario_schedule_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    scheduled_scenario_application_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    scenario_application_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    scenario_context_shift_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     record_count_created: int = 0
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
@@ -424,6 +476,13 @@ class LivingReferencePeriodSummary:
             "indicative_market_pressure_ids",
             "scheduled_release_ids",
             "information_arrival_ids",
+            "reference_universe_ids",
+            "sector_ids",
+            "firm_profile_ids",
+            "scenario_schedule_ids",
+            "scheduled_scenario_application_ids",
+            "scenario_application_ids",
+            "scenario_context_shift_ids",
         ):
             value = tuple(getattr(self, tuple_field_name))
             for entry in value:
@@ -482,6 +541,28 @@ class LivingReferenceWorldResult:
     # tuples are setup-once — they are not multiplied per period.
     listed_security_ids: tuple[str, ...] = field(default_factory=tuple)
     market_venue_ids: tuple[str, ...] = field(default_factory=tuple)
+    # v1.20.3 additive: setup-level scenario-monthly-reference-
+    # universe context. All tuples are empty for
+    # ``quarterly_default`` / ``monthly_reference`` so the
+    # corresponding pinned digests stay byte-identical.
+    # ``reference_universe_ids`` carries the registered universe
+    # profile id (singleton); ``sector_ids`` / ``firm_profile_ids``
+    # name the 11 sectors and 11 representative firms; the
+    # ``scenario_schedule_ids`` / ``scheduled_scenario_application_ids``
+    # tuples name the v1.20.2 schedule rows registered once at
+    # setup. Run-time scenario applications + context shifts live
+    # on the per-period summary, not here.
+    reference_universe_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    sector_ids: tuple[str, ...] = field(default_factory=tuple)
+    firm_profile_ids: tuple[str, ...] = field(default_factory=tuple)
+    scenario_schedule_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
+    scheduled_scenario_application_ids: tuple[str, ...] = field(
+        default_factory=tuple
+    )
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -503,6 +584,11 @@ class LivingReferenceWorldResult:
             "market_ids",
             "listed_security_ids",
             "market_venue_ids",
+            "reference_universe_ids",
+            "sector_ids",
+            "firm_profile_ids",
+            "scenario_schedule_ids",
+            "scheduled_scenario_application_ids",
         ):
             value = tuple(getattr(self, tuple_field_name))
             for entry in value:
@@ -537,12 +623,62 @@ _DEFAULT_QUARTER_END_DATES: tuple[str, ...] = (
 
 
 # v1.19.3 — closed-set of run-profile labels accepted by the
-# orchestrator. Only ``quarterly_default`` and
-# ``monthly_reference`` are currently wired to engine machinery;
-# the other labels are reserved by v1.19.0 for future milestones.
+# orchestrator. v1.20.3 added the opt-in
+# ``scenario_monthly_reference_universe`` profile alongside the
+# pre-existing ``quarterly_default`` and ``monthly_reference``
+# profiles; the v1.18.last canonical digest for
+# ``quarterly_default`` and the v1.19.3 pinned digest for
+# ``monthly_reference`` remain byte-identical.
 _SUPPORTED_RUN_PROFILE_LABELS: frozenset[str] = frozenset(
-    {"quarterly_default", "monthly_reference"}
+    {
+        "quarterly_default",
+        "monthly_reference",
+        "scenario_monthly_reference_universe",
+    }
 )
+
+
+# v1.20.3 — default identifiers for the
+# ``scenario_monthly_reference_universe`` run profile. The
+# orchestrator does **not** auto-substitute these defaults; a
+# caller must pass ``firm_ids`` / ``investor_ids`` / ``bank_ids``
+# explicitly. The constants are exposed so tests / examples can
+# build the canonical fixture.
+#
+# Investors and banks are bounded synthetic *archetypes* —
+# **not** real institutions. The bank prefix (``bank:reference_``)
+# and investor prefix (``investor:reference_``) match the
+# pre-existing v1.9 / v1.18 naming convention.
+_DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS: tuple[str, ...] = (
+    "investor:reference_benchmark_sensitive_institutional",
+    "investor:reference_active_fund_like",
+    "investor:reference_liquidity_sensitive_investor",
+    "investor:reference_stewardship_oriented_investor",
+)
+_DEFAULT_SCENARIO_UNIVERSE_BANK_IDS: tuple[str, ...] = (
+    "bank:reference_relationship_bank_like",
+    "bank:reference_credit_conservative_bank",
+    "bank:reference_market_liquidity_sensitive_bank",
+)
+# v1.20.3 — default firm ids resolve through the v1.20.1
+# generic 11-sector universe builder. Names mirror sector labels
+# minus the ``_like`` suffix.
+_DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS: tuple[str, ...] = (
+    default_firm_id_order()
+)
+
+
+# v1.20.3 — pinned identifiers for the credit-tightening scenario
+# template + the default scheduled scenario application. The
+# storage layer (v1.20.2) emits the schedule + scheduled
+# application; the run profile (v1.20.3) emits the actual
+# :class:`ScenarioDriverApplicationRecord` and bounded
+# :class:`ScenarioContextShiftRecord` set.
+_DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID: str = (
+    "scenario_driver:credit_tightening:reference"
+)
+_DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX: int = 3
+_DEFAULT_SCENARIO_SCHEDULED_MONTH_LABEL: str = "month_04"
 
 
 # v1.19.3 — synthetic 12-month period schedule for the
@@ -839,6 +975,141 @@ def _emit_period_information_arrivals(
         scheduled_ids.append(release.scheduled_release_id)
         arrival_ids.append(arrival_id)
     return tuple(scheduled_ids), tuple(arrival_ids)
+
+
+# ---------------------------------------------------------------------------
+# v1.20.3 — Scenario monthly reference universe setup helpers
+#
+# Setup-time, idempotent registration of the v1.20.1 generic
+# 11-sector reference universe + the v1.18.1 credit-tightening
+# scenario driver template + the v1.20.2 default scenario
+# schedule. The helpers are read-only against pre-existing books
+# and only write to the four v1.20.x books named below — never
+# to PriceBook, ContractBook, or any other source-of-truth book.
+#
+# Each helper returns the deterministic ids the run profile cites
+# in period summaries.
+# ---------------------------------------------------------------------------
+
+
+def _ensure_v1_20_3_reference_universe(
+    kernel: Any,
+    *,
+    simulation_date: Any = None,
+) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
+    """Idempotently register the v1.20.1 generic 11-sector
+    reference universe on the kernel's ``reference_universe``
+    book. Returns ``(universe_profile_id, sector_ids,
+    firm_profile_ids)`` in deterministic order. Re-running with
+    the same kernel is a no-op.
+
+    Setup overhead: 1 ``ReferenceUniverseProfile`` + 11
+    :class:`GenericSectorReference` + 11
+    :class:`SyntheticSectorFirmProfile` records on first call;
+    zero records on subsequent calls.
+    """
+    fixture = build_generic_11_sector_reference_universe()
+    try:
+        kernel.reference_universe.add_universe_profile(
+            fixture.universe_profile,
+            simulation_date=simulation_date,
+        )
+    except DuplicateReferenceUniverseProfileError:
+        pass
+    sector_ids: list[str] = []
+    for sector in fixture.sector_references:
+        try:
+            kernel.reference_universe.add_sector_reference(
+                sector, simulation_date=simulation_date
+            )
+        except DuplicateGenericSectorReferenceError:
+            pass
+        sector_ids.append(sector.sector_id)
+    firm_profile_ids: list[str] = []
+    for firm in fixture.firm_profiles:
+        try:
+            kernel.reference_universe.add_firm_profile(
+                firm, simulation_date=simulation_date
+            )
+        except DuplicateSyntheticSectorFirmProfileError:
+            pass
+        firm_profile_ids.append(firm.firm_profile_id)
+    return (
+        fixture.universe_profile.reference_universe_id,
+        tuple(sector_ids),
+        tuple(firm_profile_ids),
+    )
+
+
+def _ensure_v1_20_3_scenario_template(
+    kernel: Any,
+    *,
+    simulation_date: Any = None,
+) -> str:
+    """Idempotently register the synthetic
+    ``credit_tightening`` scenario driver template on the
+    kernel's ``scenario_drivers`` book. Returns the template id.
+    Setup overhead: 1 record on first call; zero on subsequent
+    calls. The template carries the v1.18.0 audit shape
+    (``reasoning_mode`` / ``reasoning_policy_id`` /
+    ``reasoning_slot``)."""
+    template = ScenarioDriverTemplate(
+        scenario_driver_template_id=_DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID,
+        scenario_family_label="credit_tightening_driver",
+        driver_group_label="credit_liquidity",
+        driver_label=(
+            "Reference credit-tightening scenario driver "
+            "(synthetic)"
+        ),
+        event_date_policy_label="quarter_start",
+        severity_label="medium",
+        affected_actor_scope_label="market_wide",
+        expected_annotation_type_label="financing_constraint",
+        affected_context_surface_labels=(
+            "market_environment",
+            "financing_review_surface",
+        ),
+        affected_evidence_bucket_labels=(
+            "market_environment_state",
+            "financing_review_surface",
+        ),
+    )
+    try:
+        kernel.scenario_drivers.add_template(
+            template, simulation_date=simulation_date
+        )
+    except DuplicateScenarioDriverTemplateError:
+        pass
+    return _DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID
+
+
+def _ensure_v1_20_3_scenario_schedule(
+    kernel: Any,
+    *,
+    simulation_date: Any = None,
+) -> tuple[str, str]:
+    """Idempotently register the v1.20.2 default scenario
+    schedule on the kernel's ``scenario_schedule`` book. Returns
+    ``(scenario_schedule_id, scheduled_scenario_application_id)``.
+    Setup overhead: 2 records on first call; zero on subsequent
+    calls."""
+    schedule, scheduled_app = build_default_scenario_monthly_schedule()
+    try:
+        kernel.scenario_schedule.add_schedule(
+            schedule, simulation_date=simulation_date
+        )
+    except DuplicateScenarioScheduleError:
+        pass
+    try:
+        kernel.scenario_schedule.add_scheduled_application(
+            scheduled_app, simulation_date=simulation_date
+        )
+    except DuplicateScheduledScenarioApplicationError:
+        pass
+    return (
+        schedule.scenario_schedule_id,
+        scheduled_app.scheduled_scenario_application_id,
+    )
 
 
 # v1.10.5 — defaults for the engagement / strategic-response layer.
@@ -1697,10 +1968,26 @@ def run_living_reference_world(
         )
 
     if period_dates is None:
-        if profile == "monthly_reference":
+        if profile in (
+            "monthly_reference",
+            "scenario_monthly_reference_universe",
+        ):
             period_dates = _DEFAULT_MONTHLY_PERIOD_DATES
         else:
             period_dates = _DEFAULT_QUARTER_END_DATES
+
+    # v1.20.3 — profile-conditional flag that gates the
+    # engagement / strategic-response / valuation / investor-
+    # intent layer. Skipped under
+    # ``scenario_monthly_reference_universe`` so the per-period
+    # record count stays bounded under the v1.20.0 budget. The
+    # closed-loop chain (attention → investor market intent →
+    # aggregated market interest → indicative market pressure →
+    # capital structure review / financing path → next-period
+    # attention) still runs.
+    is_scenario_universe_profile: bool = (
+        profile == "scenario_monthly_reference_universe"
+    )
     raw_dates = list(period_dates)
     if len(raw_dates) == 0:
         raise ValueError("period_dates must not be empty")
@@ -1750,12 +2037,23 @@ def run_living_reference_world(
         if stewardship_theme_types is not None
         else _DEFAULT_STEWARDSHIP_THEME_TYPES
     )
-    stewardship_theme_ids = _ensure_stewardship_themes(
-        kernel,
-        investor_ids=investors,
-        theme_types=theme_types,
-        effective_from=iso_dates[0],
-    )
+    # v1.20.3 — under ``scenario_monthly_reference_universe`` the
+    # engagement / dialogue / escalation / strategic-response
+    # / valuation / investor-intent layer is skipped to keep the
+    # per-period record count under the v1.20.0 budget. Stewardship
+    # themes feed only that layer, so we skip them here too. The
+    # other profiles continue to register the default themes
+    # (eight records on first call) so their pinned digests stay
+    # byte-identical.
+    if is_scenario_universe_profile:
+        stewardship_theme_ids: tuple[str, ...] = ()
+    else:
+        stewardship_theme_ids = _ensure_stewardship_themes(
+            kernel,
+            investor_ids=investors,
+            theme_types=theme_types,
+            effective_from=iso_dates[0],
+        )
 
     # ------------------------------------------------------------------
     # v1.15.5 — securities-market surface setup. Register one
@@ -1877,12 +2175,44 @@ def run_living_reference_world(
     monthly_releases_by_period_idx: dict[
         int, tuple[ScheduledIndicatorRelease, ...]
     ] = {}
-    if profile == "monthly_reference":
+    if profile in ("monthly_reference", "scenario_monthly_reference_universe"):
         (
             monthly_release_calendar_id,
             monthly_releases_by_period_idx,
         ) = _ensure_default_monthly_release_calendar(
             kernel, iso_dates=iso_dates
+        )
+
+    # v1.20.3 — opt-in scenario-monthly-reference-universe setup.
+    # Registers the v1.20.1 11-sector / 11-firm reference
+    # universe + the credit-tightening scenario template +
+    # the v1.20.2 default scenario schedule. The block is a
+    # **no-op** for any profile other than
+    # ``scenario_monthly_reference_universe`` so the
+    # ``quarterly_default`` and ``monthly_reference`` digests
+    # remain byte-identical.
+    run_reference_universe_id: str | None = None
+    run_sector_ids: tuple[str, ...] = ()
+    run_firm_profile_ids: tuple[str, ...] = ()
+    run_scenario_schedule_id: str | None = None
+    run_scheduled_scenario_application_id: str | None = None
+    if is_scenario_universe_profile:
+        setup_simulation_date = iso_dates[0] if iso_dates else None
+        (
+            run_reference_universe_id,
+            run_sector_ids,
+            run_firm_profile_ids,
+        ) = _ensure_v1_20_3_reference_universe(
+            kernel, simulation_date=setup_simulation_date
+        )
+        _ensure_v1_20_3_scenario_template(
+            kernel, simulation_date=setup_simulation_date
+        )
+        (
+            run_scenario_schedule_id,
+            run_scheduled_scenario_application_id,
+        ) = _ensure_v1_20_3_scenario_schedule(
+            kernel, simulation_date=setup_simulation_date
         )
 
     # ------------------------------------------------------------------
@@ -1919,7 +2249,10 @@ def run_living_reference_world(
         period_scheduled_release_ids: tuple[str, ...] = ()
         period_information_arrival_ids: tuple[str, ...] = ()
         if (
-            profile == "monthly_reference"
+            profile in (
+                "monthly_reference",
+                "scenario_monthly_reference_universe",
+            )
             and monthly_release_calendar_id is not None
         ):
             scheduled_for_period = monthly_releases_by_period_idx.get(
@@ -1933,6 +2266,55 @@ def run_living_reference_world(
                 calendar_id=monthly_release_calendar_id,
                 iso_date=iso_date,
                 scheduled_releases=scheduled_for_period,
+            )
+
+        # v1.20.3 — opt-in scheduled scenario application. The
+        # ``scenario_monthly_reference_universe`` profile fires
+        # the v1.20.2 default scenario (``credit_tightening`` at
+        # ``period_index == 3`` / ``month_04``) **once per run**.
+        # Any other period — and any other profile — emits zero
+        # scenario application records and zero context shifts.
+        # The shift count is bounded by ``apply_scenario_driver``:
+        # 1 application + 2 context shifts (one per affected
+        # context surface for the credit-tightening family). This
+        # is well under the
+        # ``O(scheduled_app_count × F)`` budget.
+        period_scenario_application_ids: tuple[str, ...] = ()
+        period_scenario_context_shift_ids: tuple[str, ...] = ()
+        if (
+            is_scenario_universe_profile
+            and period_idx == _DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX
+        ):
+            scenario_application = apply_scenario_driver(
+                kernel,
+                scenario_driver_template_id=(
+                    _DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID
+                ),
+                as_of_date=iso_date,
+                source_context_record_ids=period_information_arrival_ids,
+                metadata={
+                    "scenario_schedule_id": run_scenario_schedule_id,
+                    "scheduled_scenario_application_id": (
+                        run_scheduled_scenario_application_id
+                    ),
+                    "reference_universe_id": run_reference_universe_id,
+                    "scheduled_month_label": (
+                        _DEFAULT_SCENARIO_SCHEDULED_MONTH_LABEL
+                    ),
+                    "scheduled_period_index": (
+                        _DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX
+                    ),
+                    "no_actor_decision": True,
+                    "no_price_formation": True,
+                    "no_financing_execution": True,
+                    "synthetic_only": True,
+                },
+            )
+            period_scenario_application_ids = (
+                scenario_application.scenario_application_id,
+            )
+            period_scenario_context_shift_ids = (
+                scenario_application.emitted_context_shift_ids
             )
 
         corporate_run_ids: list[str] = []
@@ -2275,9 +2657,17 @@ def run_living_reference_world(
         valuation_mechanism_run_ids: list[str] = []
         baselines = dict(firm_baseline_values or {})
 
-        for investor_id, investor_selection_id in zip(
-            investors, investor_selection_ids
-        ):
+        # v1.20.3 — skipped under
+        # ``scenario_monthly_reference_universe`` to keep the
+        # per-period record count bounded under the v1.20.0
+        # budget. Downstream phases that read ``valuation_ids``
+        # gracefully accept an empty list.
+        valuation_iter = (
+            zip(investors, investor_selection_ids)
+            if not is_scenario_universe_profile
+            else ()
+        )
+        for investor_id, investor_selection_id in valuation_iter:
             for firm_id in firms:
                 baseline = baselines.get(firm_id, valuation_baseline_default)
                 valuation_id = (
@@ -2500,7 +2890,18 @@ def run_living_reference_world(
                 _theme_id_for(investor_id, t) for t in theme_types
             )
 
-        for investor_id in investors:
+        # v1.20.3 — engagement layer (dialogue / escalation /
+        # investor-intent / strategic-response) is skipped under
+        # ``scenario_monthly_reference_universe`` to keep the
+        # per-period record count bounded. Downstream phases that
+        # filter by ``valuation_ids`` / ``investor_intent_ids`` /
+        # ``dialogue_ids`` / ``investor_escalation_candidate_ids``
+        # gracefully accept empty lists — they were already designed
+        # to drop unresolved citations.
+        engagement_investor_iter = (
+            investors if not is_scenario_universe_profile else ()
+        )
+        for investor_id in engagement_investor_iter:
             for firm_id in firms:
                 dialogue_id = _dialogue_id_for(investor_id, firm_id, iso_date)
                 investor_theme_ids = themes_by_investor[investor_id]
@@ -2549,7 +2950,10 @@ def run_living_reference_world(
         # dialogues, corporate signal, pressure signal, and
         # valuations on this (investor, firm) pair.
         investor_escalation_candidate_ids: list[str] = []
-        for investor_id in investors:
+        escalation_investor_iter = (
+            investors if not is_scenario_universe_profile else ()
+        )
+        for investor_id in escalation_investor_iter:
             investor_theme_ids = themes_by_investor[investor_id]
             for firm_id in firms:
                 escalation_id = _escalation_id_for(
@@ -2621,7 +3025,10 @@ def run_living_reference_world(
         investor_selection_id_by_investor = dict(
             zip(investors, investor_selection_ids)
         )
-        for investor_id in investors:
+        intent_investor_iter = (
+            investors if not is_scenario_universe_profile else ()
+        )
+        for investor_id in intent_investor_iter:
             inv_selection = investor_selection_id_by_investor.get(investor_id)
             inv_themes = themes_by_investor[investor_id]
             for firm_id in firms:
@@ -2693,7 +3100,10 @@ def run_living_reference_world(
         # the v1.10.4.1 type-correct ``trigger_industry_condition_ids``
         # slot — never via ``trigger_signal_ids``).
         corporate_strategic_response_candidate_ids: list[str] = []
-        for firm_id in firms:
+        strategic_firm_iter = (
+            firms if not is_scenario_universe_profile else ()
+        )
+        for firm_id in strategic_firm_iter:
             response_id = _response_id_for(firm_id, iso_date)
             firm_dialogues = tuple(
                 dialogue_id_by_pair[(inv, firm_id)]
@@ -3502,6 +3912,25 @@ def run_living_reference_world(
                 ),
                 scheduled_release_ids=period_scheduled_release_ids,
                 information_arrival_ids=period_information_arrival_ids,
+                reference_universe_ids=(
+                    (run_reference_universe_id,)
+                    if run_reference_universe_id
+                    else ()
+                ),
+                sector_ids=run_sector_ids,
+                firm_profile_ids=run_firm_profile_ids,
+                scenario_schedule_ids=(
+                    (run_scenario_schedule_id,)
+                    if run_scenario_schedule_id
+                    else ()
+                ),
+                scheduled_scenario_application_ids=(
+                    (run_scheduled_scenario_application_id,)
+                    if run_scheduled_scenario_application_id
+                    else ()
+                ),
+                scenario_application_ids=period_scenario_application_ids,
+                scenario_context_shift_ids=period_scenario_context_shift_ids,
                 record_count_created=period_end_idx - period_start_idx,
                 metadata={
                     "period_index": period_idx,
@@ -3547,5 +3976,22 @@ def run_living_reference_world(
         market_ids=unique_market_ids,
         listed_security_ids=listed_security_ids,
         market_venue_ids=market_venue_ids,
+        reference_universe_ids=(
+            (run_reference_universe_id,)
+            if run_reference_universe_id
+            else ()
+        ),
+        sector_ids=run_sector_ids,
+        firm_profile_ids=run_firm_profile_ids,
+        scenario_schedule_ids=(
+            (run_scenario_schedule_id,)
+            if run_scenario_schedule_id
+            else ()
+        ),
+        scheduled_scenario_application_ids=(
+            (run_scheduled_scenario_application_id,)
+            if run_scheduled_scenario_application_id
+            else ()
+        ),
         metadata=dict(metadata or {}),
     )

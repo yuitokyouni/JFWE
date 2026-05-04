@@ -10388,3 +10388,51 @@ The default sweep is unchanged from v1.20.1:
 ### 129.14 Forward pointer
 
 v1.20.3 will land the `scenario_monthly_reference_universe` run profile + the v1.20.0 scenario-to-sector impact map. **Before** v1.20.3 lands code, the v1.20.0 binding performance budget (target 200-280 records / period; target [2400, 3360] records / run; **upper guardrail ≤ 4000 records** for the default fixture) will be re-confirmed and the per-loop cardinality verified — **`P × I × F` is allowed**, **`P × I × F × scenario` is forbidden**, scenarios fire only on scheduled months (not every month), every emitted scenario context shift remains append-only, and **no** firm / investor / bank direct-decision record is produced. v1.20.4 will extend the CLI exporter; v1.20.5 will extend the static UI; v1.20.last will freeze the v1.20 sequence (docs-only).
+
+### 129.15 v1.20.3 — `scenario_monthly_reference_universe` run profile
+
+§129.15 ships the third concrete code milestone of the v1.20 sequence: the opt-in `scenario_monthly_reference_universe` run profile. v1.20.3 wires the v1.20.1 reference-universe storage, the v1.20.2 scenario schedule storage, and the v1.18.2 `apply_scenario_driver` helper into the `world/reference_living_world.py` orchestrator. This is the **first run profile that feels closer to a synthetic financial world**: 12 months × 11 sectors × 11 firms × 4 investor archetypes × 3 bank archetypes, monthly information arrivals, and one scheduled scenario application — but still bounded, still synthetic, still review-only.
+
+What v1.20.3 lands (binding):
+
+- **Run profile label support.** `_SUPPORTED_RUN_PROFILE_LABELS` extended from `{"quarterly_default", "monthly_reference"}` to `{"quarterly_default", "monthly_reference", "scenario_monthly_reference_universe"}`. Existing profile digests are unchanged: `quarterly_default` stays at `f93bdf3f…b705897c`; `monthly_reference` stays at `75a91cfa…91879d`.
+- **Default fixture (synthetic-only).** 11 firm ids resolve through `world.reference_universe.default_firm_id_order()` (`firm:reference_<sector>_a` per sector); 4 synthetic investor archetypes (`benchmark_sensitive_institutional` / `active_fund_like` / `liquidity_sensitive_investor` / `stewardship_oriented_investor`); 3 synthetic bank archetypes (`relationship_bank_like` / `credit_conservative_bank` / `market_liquidity_sensitive_bank`).
+- **Universe + schedule registration.** When `profile == "scenario_monthly_reference_universe"`, the orchestrator idempotently registers (a) the v1.20.1 `generic_11_sector` reference universe (1 + 11 + 11 = 23 setup records), (b) the v1.18.1 credit-tightening scenario template (1 setup record), and (c) the v1.20.2 default scenario schedule (1 + 1 = 2 setup records). All four v1.20.x books stay empty under `quarterly_default` and `monthly_reference` — the v1.20.3 wiring is opt-in.
+- **Monthly information arrivals.** Reuses the v1.19.3 `InformationReleaseCalendar` fixture verbatim. 3-5 arrivals per month, total in `[36, 60]` for 12 months. No real release dates, no real indicator values, no real institution names.
+- **Scheduled scenario application.** Exactly one scheduled scenario application fires, at `period_index == 3` / `month_04`. The orchestrator calls v1.18.2 `apply_scenario_driver(...)` with the credit-tightening template, citing the period's information arrivals as `source_context_record_ids`. Output: 1 `ScenarioDriverApplicationRecord` + 2 `ScenarioContextShiftRecord` (one per affected context surface — `market_environment` and `financing_review_surface`). Bounded by `O(scheduled_app_count × F) = 1 × 11 = 11` shifts; actual count is 2.
+- **Closed-loop chain.** Existing v1.12 attention → v1.15.5/v1.16.2 investor market intent → v1.15.3 aggregated market interest → v1.15.4 indicative market pressure → v1.14.5 capital structure review / v1.14.4 financing path → v1.12.8 next-period attention runs unchanged on the larger fixture.
+- **Engagement-layer skip.** Under `scenario_monthly_reference_universe`, the heavyweight engagement / dialogue / escalation / strategic-response / valuation / investor-intent layer is skipped to keep the per-period record count under the v1.20.0 budget. Stewardship themes are also skipped (their only consumer is the engagement layer). Downstream phases that read those id tuples gracefully accept empty lists — they were already designed to drop unresolved citations.
+- **Append-only context shifts.** Every emitted `ScenarioContextShiftRecord` is append-only; no `MarketEnvironmentBook` / `FirmFinancialStateBook` / `InterbankLiquidityStateBook` / `IndustryConditionBook` / `PriceBook` snapshot drifts pre/post run. Re-pinned by `test_v1_20_3_does_not_mutate_pricebook` and `test_v1_20_3_does_not_mutate_contracts_constraints_ownership`.
+- **Per-period summary extension.** `LivingReferencePeriodSummary` and `LivingReferenceWorldResult` carry seven new tuple fields: `reference_universe_ids`, `sector_ids`, `firm_profile_ids`, `scenario_schedule_ids`, `scheduled_scenario_application_ids`, `scenario_application_ids`, `scenario_context_shift_ids`. All are empty for `quarterly_default` / `monthly_reference`. The first five echo run-wide setup ids on every period summary; the last two carry the per-period scenario application + bounded context shifts and are non-empty only at `period_index == 3`.
+- **Canonical-form integration.** `examples/reference_world/living_world_replay.py::canonicalize_living_world_result` is extended additively: the v1.20.3 keys are added to the canonical view **only when non-empty** so the pre-existing `quarterly_default` / `monthly_reference` digests stay byte-identical.
+- **Wall-clock leakage fix.** `world/reference_universe.py`, `world/scenario_drivers.py`, and `world/scenario_schedule.py` now accept a `simulation_date` kwarg on every `add_*` method (defaulting to `_now()` when not passed). `world/scenario_applications.py::add_application` and `add_context_shift` use `record.as_of_date` for the ledger entry's `simulation_date`. The orchestrator passes `iso_dates[0]` for v1.20.3 setup records so the canonical view is byte-deterministic across two seeded kernels.
+
+### 129.16 No-mutation invariants pinned at v1.20.3
+
+Every invariant pinned at v1.18.0 / v1.19.0 / v1.20.1 / v1.20.2 stays binding. v1.20.3 adds the following:
+
+1. The `scenario_monthly_reference_universe` profile **does not** mutate `PriceBook`, `ContractBook`, `ConstraintBook`, `OwnershipBook`, or `InstitutionsBook`. Pinned by `test_v1_20_3_does_not_mutate_pricebook` and `test_v1_20_3_does_not_mutate_contracts_constraints_ownership`.
+2. The `scenario_monthly_reference_universe` profile **does not** emit `ORDER_SUBMITTED` / `PRICE_UPDATED` / `CONTRACT_CREATED` / `CONTRACT_STATUS_UPDATED` / `CONTRACT_COVENANT_BREACHED` / `OWNERSHIP_TRANSFERRED` record types. Pinned by `test_v1_20_3_no_actor_decision_record_types` and `test_v1_20_3_no_forbidden_mutation_record_in_ledger_slice`.
+3. The scenario application fires exactly **once** in the run, only at `period_index == 3` (`month_04`). Pinned by `test_v1_20_3_scenario_fires_only_in_scheduled_period`.
+4. The `quarterly_default` profile does **not** register the v1.20.x reference universe, the v1.20.x scenario schedule, or the v1.20.x scenario template — all four v1.20.x books stay empty. Pinned by `test_v1_20_3_quarterly_default_emits_no_v1_20_3_setup_records`.
+5. The `monthly_reference` profile does **not** register any v1.20.x book either. Pinned by `test_v1_20_3_monthly_reference_emits_no_v1_20_3_setup_records`.
+6. The closed-loop chain still runs end-to-end under the larger fixture: 4 investor menus + 3 bank menus + 4 attention states + 3 attention states per period, `O(P × I × F) = 12 × 4 × 11 = 528` investor market intents, `O(P × F) = 12 × 11 = 132` financing paths. Pinned by `test_v1_20_3_attention_chain_still_runs`.
+
+### 129.17 Performance boundary at v1.20.3
+
+| Surface                                                                | Value (v1.20.3 default fixture)                                              |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (no scenario)                                  | **257** (period 0) — **261** (period 3 / scheduled)                          |
+| Per-run window (`scenario_monthly_reference_universe`, 12 periods)     | **3220 records** (within `[2400, 3360]` soft target; under `≤ 4000` hard guardrail) |
+| Sector count / firm-profile count                                     | **11 / 11**                                                                  |
+| Investor count / bank count                                           | **4 / 3**                                                                    |
+| Scheduled scenario applications                                       | **1**                                                                        |
+| Scenario context shifts (total over run)                              | **2** — bounded by `O(scheduled_app_count × F) = 1 × 11 = 11`               |
+| `living_world_digest` (`scenario_monthly_reference_universe`)         | **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**       |
+| `living_world_digest` (`quarterly_default`, unchanged)                 | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**       |
+| `living_world_digest` (`monthly_reference`, unchanged)                 | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**       |
+| Test count (`pytest -q`)                                               | **4744 / 4744**                                                              |
+
+### 129.18 Forward pointer (post-v1.20.3)
+
+v1.20.4 will extend the CLI exporter to bundle `scenario_monthly_reference_universe` runs (mirroring the v1.19.3.1 `monthly_reference` extension); v1.20.5 will extend the static UI loader so a reader can browse the 11-sector / 11-firm matrix and the scheduled scenario timeline; v1.20.last will freeze the v1.20 sequence (docs-only).

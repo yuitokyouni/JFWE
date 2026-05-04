@@ -726,7 +726,10 @@ class ReferenceUniverseBook:
     # -- universe profile -------------------------------------------
 
     def add_universe_profile(
-        self, profile: ReferenceUniverseProfile
+        self,
+        profile: ReferenceUniverseProfile,
+        *,
+        simulation_date: Any = None,
     ) -> ReferenceUniverseProfile:
         if profile.reference_universe_id in self._universe_profiles:
             raise DuplicateReferenceUniverseProfileError(
@@ -754,9 +757,14 @@ class ReferenceUniverseBook:
             _scan_for_forbidden_keys(
                 payload, field_name="ledger payload"
             )
+            sim_date: Any = (
+                simulation_date
+                if simulation_date is not None
+                else self._now()
+            )
             self.ledger.append(
                 event_type="reference_universe_profile_recorded",
-                simulation_date=self._now(),
+                simulation_date=sim_date,
                 object_id=profile.reference_universe_id,
                 source=profile.universe_profile_label,
                 payload=payload,
@@ -793,7 +801,10 @@ class ReferenceUniverseBook:
     # -- sector reference -------------------------------------------
 
     def add_sector_reference(
-        self, sector: GenericSectorReference
+        self,
+        sector: GenericSectorReference,
+        *,
+        simulation_date: Any = None,
     ) -> GenericSectorReference:
         if sector.sector_id in self._sector_references:
             raise DuplicateGenericSectorReferenceError(
@@ -828,9 +839,14 @@ class ReferenceUniverseBook:
             _scan_for_forbidden_keys(
                 payload, field_name="ledger payload"
             )
+            sim_date: Any = (
+                simulation_date
+                if simulation_date is not None
+                else self._now()
+            )
             self.ledger.append(
                 event_type="generic_sector_reference_recorded",
-                simulation_date=self._now(),
+                simulation_date=sim_date,
                 object_id=sector.sector_id,
                 source=sector.sector_label,
                 payload=payload,
@@ -899,7 +915,10 @@ class ReferenceUniverseBook:
     # -- firm profile -----------------------------------------------
 
     def add_firm_profile(
-        self, firm: SyntheticSectorFirmProfile
+        self,
+        firm: SyntheticSectorFirmProfile,
+        *,
+        simulation_date: Any = None,
     ) -> SyntheticSectorFirmProfile:
         if firm.firm_profile_id in self._firm_profiles:
             raise DuplicateSyntheticSectorFirmProfileError(
@@ -940,9 +959,14 @@ class ReferenceUniverseBook:
             _scan_for_forbidden_keys(
                 payload, field_name="ledger payload"
             )
+            sim_date: Any = (
+                simulation_date
+                if simulation_date is not None
+                else self._now()
+            )
             self.ledger.append(
                 event_type="synthetic_sector_firm_profile_recorded",
-                simulation_date=self._now(),
+                simulation_date=sim_date,
                 object_id=firm.firm_profile_id,
                 source=firm.sector_label,
                 target=firm.firm_id,

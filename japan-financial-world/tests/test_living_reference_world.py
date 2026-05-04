@@ -4905,3 +4905,439 @@ def test_v1_19_3_monthly_reference_does_not_emit_forbidden_record_types():
     }
     seen = {rec.record_type for rec in k.ledger.records}
     assert not (seen & forbidden)
+
+
+# ===========================================================================
+# v1.20.3 — scenario_monthly_reference_universe run profile
+#
+# The first opt-in run profile that combines:
+# - 12 monthly periods,
+# - the v1.20.1 generic 11-sector / 11-firm reference universe,
+# - 4 investor archetypes / 3 bank archetypes,
+# - monthly information arrivals (reused from v1.19.3),
+# - one scheduled scenario application
+#   (``credit_tightening`` at ``period_index == 3`` /
+#   ``month_04``),
+# - append-only scenario context shifts,
+# - the existing closed-loop chain (attention -> investor
+#   market intent -> aggregated market interest -> indicative
+#   market pressure -> capital structure review / financing
+#   path -> next-period attention).
+# ===========================================================================
+
+
+from world.reference_living_world import (  # noqa: E402
+    _DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID,
+    _DEFAULT_SCENARIO_UNIVERSE_BANK_IDS,
+    _DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS,
+    _DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS,
+)
+
+
+def _seed_v1_20_3_kernel() -> WorldKernel:
+    """Deterministic seed kernel for v1.20.3. Mirrors the
+    canonical seed pattern but seeds exposures for *every*
+    universe firm so the per-firm pressure phase has data."""
+    k = WorldKernel(
+        registry=Registry(),
+        clock=Clock(current_date=date(2026, 1, 1)),
+        scheduler=Scheduler(),
+        ledger=Ledger(),
+        state=State(),
+    )
+    for vid, vgroup in _REFERENCE_VARIABLES:
+        k.variables.add_variable(
+            ReferenceVariableSpec(
+                variable_id=vid,
+                variable_name=vid,
+                variable_group=vgroup,
+                variable_type="level",
+                source_space_id="external",
+                canonical_unit="index",
+                frequency="QUARTERLY",
+                observation_kind="released",
+            )
+        )
+        for q_date in _OBS_DATES:
+            k.variables.add_observation(
+                VariableObservation(
+                    observation_id=f"obs:{vid}:{q_date}",
+                    variable_id=vid,
+                    as_of_date=q_date,
+                    value=100.0,
+                    unit="index",
+                    vintage_id=f"{q_date}_initial",
+                )
+            )
+    for firm_id in _DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS:
+        k.exposures.add_exposure(
+            ExposureRecord(
+                exposure_id=f"exposure:{firm_id}:rates",
+                subject_id=firm_id,
+                subject_type="firm",
+                variable_id="variable:reference_long_rate_10y",
+                exposure_type="funding_cost",
+                metric="debt_service_burden",
+                direction="positive",
+                magnitude=0.3,
+            )
+        )
+    return k
+
+
+def _run_v1_20_3(k: WorldKernel) -> "LivingReferenceWorldResult":
+    return run_living_reference_world(
+        k,
+        firm_ids=_DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS,
+        investor_ids=_DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS,
+        bank_ids=_DEFAULT_SCENARIO_UNIVERSE_BANK_IDS,
+        profile="scenario_monthly_reference_universe",
+    )
+
+
+def test_v1_20_3_profile_label_is_recognized():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    assert isinstance(r, LivingReferenceWorldResult)
+
+
+def test_v1_20_3_quarterly_default_emits_no_v1_20_3_setup_records():
+    """The v1.20.3 reference-universe / scenario-template /
+    scenario-schedule setup must remain opt-in. Running
+    ``quarterly_default`` must leave all four v1.20.x books
+    empty."""
+    k = _seed_kernel()
+    _run_default(k)
+    assert k.reference_universe.list_universe_profiles() == ()
+    assert k.reference_universe.list_sector_references() == ()
+    assert k.reference_universe.list_firm_profiles() == ()
+    assert k.scenario_drivers.list_templates() == ()
+    assert k.scenario_schedule.list_schedules() == ()
+    assert k.scenario_schedule.list_scheduled_applications() == ()
+    assert k.scenario_applications.list_applications() == ()
+    assert k.scenario_applications.list_context_shifts() == ()
+
+
+def test_v1_20_3_monthly_reference_emits_no_v1_20_3_setup_records():
+    """``monthly_reference`` must remain narrow: information
+    arrivals only, no reference universe / no scenario template /
+    no scenario schedule / no scenario application."""
+    k = _seed_kernel()
+    _run_monthly_reference(k)
+    assert k.reference_universe.list_universe_profiles() == ()
+    assert k.scenario_drivers.list_templates() == ()
+    assert k.scenario_schedule.list_schedules() == ()
+    assert k.scenario_applications.list_applications() == ()
+
+
+def test_v1_20_3_registers_universe_profile_only_when_invoked():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    profiles = k.reference_universe.list_universe_profiles()
+    assert len(profiles) == 1
+    assert (
+        profiles[0].reference_universe_id
+        == r.reference_universe_ids[0]
+    )
+    assert (
+        len(k.reference_universe.list_sector_references()) == 11
+    )
+    assert (
+        len(k.reference_universe.list_firm_profiles()) == 11
+    )
+
+
+def test_v1_20_3_registers_credit_tightening_template():
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    template = k.scenario_drivers.get_template(
+        _DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID
+    )
+    assert (
+        template.scenario_family_label == "credit_tightening_driver"
+    )
+
+
+def test_v1_20_3_registers_scenario_schedule():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    schedule = k.scenario_schedule.get_schedule(
+        r.scenario_schedule_ids[0]
+    )
+    assert (
+        schedule.run_profile_label
+        == "scenario_monthly_reference_universe"
+    )
+    assert (
+        schedule.scenario_driver_template_ids
+        == (_DEFAULT_SCENARIO_DRIVER_TEMPLATE_ID,)
+    )
+
+
+def test_v1_20_3_emits_one_scenario_application_only_in_scheduled_month():
+    """``ScenarioDriverApplicationRecord`` must be present
+    only at ``period_index == 3`` (month 4). Any other period
+    must emit zero application records."""
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    apps = k.scenario_applications.list_applications()
+    assert len(apps) == 1
+    # The application's as_of_date must match month 4 of the
+    # default monthly fixture (2026-04-30).
+    assert apps[0].as_of_date == "2026-04-30"
+
+
+def test_v1_20_3_emits_context_shifts_only_in_scheduled_month():
+    """``ScenarioContextShiftRecord`` count is 2 (one per
+    affected context surface for the credit-tightening
+    family). Both shifts must reference the
+    ``period_index == 3`` as_of_date."""
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    shifts = k.scenario_applications.list_context_shifts()
+    assert len(shifts) == 2
+    for shift in shifts:
+        assert shift.as_of_date == "2026-04-30"
+    surfaces = {s.context_surface_label for s in shifts}
+    assert surfaces == {
+        "market_environment",
+        "financing_review_surface",
+    }
+
+
+def test_v1_20_3_does_not_mutate_pricebook():
+    k = _seed_v1_20_3_kernel()
+    snap_before = k.prices.snapshot()
+    _run_v1_20_3(k)
+    assert k.prices.snapshot() == snap_before
+
+
+def test_v1_20_3_does_not_mutate_contracts_constraints_ownership():
+    """v1.20.3 is review / context only — none of the v0/v1
+    source-of-truth books may be mutated."""
+    k = _seed_v1_20_3_kernel()
+    contracts_before = k.contracts.snapshot()
+    constraints_before = k.constraints.snapshot()
+    ownership_before = k.ownership.snapshot()
+    institutions_before = k.institutions.snapshot()
+    _run_v1_20_3(k)
+    assert k.contracts.snapshot() == contracts_before
+    assert k.constraints.snapshot() == constraints_before
+    assert k.ownership.snapshot() == ownership_before
+    assert k.institutions.snapshot() == institutions_before
+
+
+def test_v1_20_3_skips_engagement_layer_under_universe_profile():
+    """Under ``scenario_monthly_reference_universe`` the
+    heavyweight engagement / valuation / dialogue / escalation
+    / strategic-response / investor-intent layer is skipped to
+    keep the per-period record count under the v1.20.0
+    budget. Verify those id tuples are empty per period."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    for ps in r.per_period_summaries:
+        assert ps.valuation_ids == ()
+        assert ps.dialogue_ids == ()
+        assert ps.investor_escalation_candidate_ids == ()
+        assert ps.investor_intent_ids == ()
+        assert ps.corporate_strategic_response_candidate_ids == ()
+
+
+def test_v1_20_3_attention_chain_still_runs():
+    """The closed-loop chain (attention -> investor market
+    intent -> aggregated market interest -> indicative market
+    pressure -> capital structure review / financing path ->
+    next-period attention) must continue under
+    scenario_monthly_reference_universe."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    for ps in r.per_period_summaries:
+        # attention surfaces still emit per actor
+        assert len(ps.investor_menu_ids) == 4
+        assert len(ps.bank_menu_ids) == 3
+        assert len(ps.investor_attention_state_ids) == 4
+        assert len(ps.bank_attention_state_ids) == 3
+        # closed-loop core
+        assert (
+            len(ps.investor_market_intent_ids)
+            == len(r.investor_ids) * len(r.firm_ids)
+        )
+        assert (
+            len(ps.aggregated_market_interest_ids) == 11
+        )
+        assert (
+            len(ps.indicative_market_pressure_ids) == 11
+        )
+        # financing chain
+        assert (
+            len(ps.corporate_financing_need_ids) == 11
+        )
+        assert (
+            len(ps.capital_structure_review_candidate_ids) == 11
+        )
+        assert (
+            len(ps.corporate_financing_path_ids) == 11
+        )
+
+
+def test_v1_20_3_per_period_summary_carries_universe_ids():
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    for ps in r.per_period_summaries:
+        assert (
+            ps.reference_universe_ids == r.reference_universe_ids
+        )
+        assert ps.sector_ids == r.sector_ids
+        assert ps.firm_profile_ids == r.firm_profile_ids
+        assert (
+            ps.scenario_schedule_ids == r.scenario_schedule_ids
+        )
+        assert (
+            ps.scheduled_scenario_application_ids
+            == r.scheduled_scenario_application_ids
+        )
+
+
+def test_v1_20_3_information_arrivals_emitted_each_month():
+    """Reuse of v1.19.3 monthly information-release fixture —
+    arrivals must fire 3-5 per month, total in [36, 60]."""
+    k = _seed_v1_20_3_kernel()
+    r = _run_v1_20_3(k)
+    total = sum(
+        len(ps.information_arrival_ids)
+        for ps in r.per_period_summaries
+    )
+    assert 36 <= total <= 60
+    for ps in r.per_period_summaries:
+        per_month = len(ps.information_arrival_ids)
+        assert 3 <= per_month <= 5
+
+
+def test_v1_20_3_default_investor_archetype_ids():
+    """The four investor archetypes are bounded synthetic.
+    The id list must include the v1.20.0 archetype names."""
+    expected_substrings = (
+        "benchmark_sensitive_institutional",
+        "active_fund_like",
+        "liquidity_sensitive_investor",
+        "stewardship_oriented_investor",
+    )
+    for expected in expected_substrings:
+        assert any(
+            expected in iid
+            for iid in _DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS
+        )
+
+
+def test_v1_20_3_default_bank_archetype_ids():
+    expected_substrings = (
+        "relationship_bank_like",
+        "credit_conservative_bank",
+        "market_liquidity_sensitive_bank",
+    )
+    for expected in expected_substrings:
+        assert any(
+            expected in bid
+            for bid in _DEFAULT_SCENARIO_UNIVERSE_BANK_IDS
+        )
+
+
+def test_v1_20_3_scenario_application_carries_v1_18_0_audit_shape():
+    """Every emitted ``ScenarioDriverApplicationRecord`` and
+    ``ScenarioContextShiftRecord`` must carry the v1.18.0
+    audit-shape fields (``reasoning_mode`` /
+    ``reasoning_policy_id`` / ``reasoning_slot``) so a future
+    LLM-mode reasoning policy can replace the v1.18.x rule-
+    based fallback without changing the audit surface."""
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    for app in k.scenario_applications.list_applications():
+        assert app.reasoning_mode == "rule_based_fallback"
+        assert app.reasoning_slot == "future_llm_compatible"
+        assert app.reasoning_policy_id
+    for shift in k.scenario_applications.list_context_shifts():
+        assert shift.reasoning_mode == "rule_based_fallback"
+        assert shift.reasoning_slot == "future_llm_compatible"
+
+
+def test_v1_20_3_scenario_application_metadata_carries_boundary_flags():
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    apps = k.scenario_applications.list_applications()
+    assert len(apps) == 1
+    app = apps[0]
+    assert app.metadata.get("no_actor_decision") is True
+    assert app.metadata.get("no_price_formation") is True
+    assert app.metadata.get("no_financing_execution") is True
+    assert app.metadata.get("synthetic_only") is True
+
+
+def test_v1_20_3_no_real_company_name_in_firm_ids():
+    """Firm ids must use the synthetic ``firm:reference_<sector>_a``
+    naming convention. No real company names."""
+    for firm_id in _DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS:
+        assert firm_id.startswith("firm:reference_")
+        assert firm_id.endswith("_a")
+
+
+def test_v1_20_3_reference_universe_uses_no_licensed_taxonomy():
+    """The 11-sector reference universe must use the
+    ``_like`` suffix on sector labels — no GICS / MSCI /
+    S&P / FactSet / Bloomberg / Refinitiv / TOPIX / Nikkei /
+    JPX direct taxonomy reuse."""
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    for sector in k.reference_universe.list_sector_references():
+        assert sector.sector_label.endswith("_like")
+    licensed_substrings = (
+        "gics",
+        "msci",
+        "s&p",
+        "factset",
+        "bloomberg",
+        "refinitiv",
+        "topix",
+        "nikkei",
+        "jpx",
+    )
+    for sector in k.reference_universe.list_sector_references():
+        lowered = sector.sector_label.lower()
+        for token in licensed_substrings:
+            assert token not in lowered, (
+                f"sector_label {sector.sector_label!r} carries "
+                f"licensed taxonomy token {token!r}"
+            )
+
+
+def test_v1_20_3_no_actor_decision_record_types():
+    """The closed-loop chain emits attention / market-intent
+    / aggregated-interest / indicative-pressure /
+    financing-path records — none of which are actor
+    decisions, orders, trades, executions, or financing
+    approvals."""
+    from world.ledger import RecordType as _RT_LOCAL
+
+    k = _seed_v1_20_3_kernel()
+    _run_v1_20_3(k)
+    forbidden = {
+        _RT_LOCAL.ORDER_SUBMITTED,
+        _RT_LOCAL.PRICE_UPDATED,
+        _RT_LOCAL.CONTRACT_CREATED,
+        _RT_LOCAL.CONTRACT_STATUS_UPDATED,
+        _RT_LOCAL.CONTRACT_COVENANT_BREACHED,
+        _RT_LOCAL.OWNERSHIP_TRANSFERRED,
+    }
+    seen = {rec.record_type for rec in k.ledger.records}
+    assert not (seen & forbidden)
+
+
+def test_v1_20_3_unknown_profile_label_still_rejected():
+    k = _seed_v1_20_3_kernel()
+    with pytest.raises(ValueError):
+        run_living_reference_world(
+            k,
+            firm_ids=_DEFAULT_SCENARIO_UNIVERSE_FIRM_IDS,
+            investor_ids=_DEFAULT_SCENARIO_UNIVERSE_INVESTOR_IDS,
+            bank_ids=_DEFAULT_SCENARIO_UNIVERSE_BANK_IDS,
+            profile="rogue_profile",
+        )

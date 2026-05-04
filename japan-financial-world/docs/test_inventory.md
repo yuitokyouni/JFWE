@@ -1638,8 +1638,10 @@ no-mutation guarantee.
 | Living-world monthly_reference (v1.19.3)| 0  |  +16  |
 | Reference universe storage (v1.20.1) | 1     |  92   |
 | Scenario schedule storage (v1.20.2)  | 1     |  90   |
+| Scenario universe run profile (v1.20.3) — functional + boundary scans | 0 | +22 |
+| Scenario universe run profile (v1.20.3) — performance boundary | 0 | +18 |
 | post-v1.7 (v1.7-public-rc1+ / v1.8.x / v1.9.0 / v1.9.1-prep / v1.9.1 / v1.9.2 / v1.9.3 / v1.9.3.1 / CLI argv pin / v1.9.4 / v1.9.5 / v1.9.6 / v1.9.7 / v1.9.8 / v1.10.1 / v1.10.2 / v1.10.3 / v1.10.4 / v1.10.4.1 / v1.10.5 / v1.11.0 / v1.11.1 / v1.11.2 / v1.12.0 / v1.12.1 / v1.12.2 / v1.12.3 / v1.12.4 / v1.12.5 / v1.12.6 / v1.12.7 / v1.12.8 / v1.12.9 / v1.13.1 / v1.13.2 / v1.13.3 / v1.13.4 / v1.13.5 / v1.13.6 / v1.14.1 / v1.14.2 / v1.14.3 / v1.14.4 / v1.14.5 / v1.15.1 / v1.15.2 / v1.15.3 / v1.15.4 / v1.15.5 / v1.15.6 / v1.16.1 / v1.16.2 / v1.16.3 / v1.17.1 / v1.17.2 / v1.17.3 / v1.18.1 / v1.18.2 / v1.18.3 / v1.19.1 / v1.19.2 / v1.19.3 / v1.19.3.1) | 42 | 2313 |
-| **Total**                        | **106**| **4704** |
+| **Total**                        | **106**| **4744** |
 
 ## Auditing for jurisdiction-neutral identifiers
 

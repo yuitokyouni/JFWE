@@ -651,7 +651,10 @@ class ScenarioScheduleBook:
     # -- schedule ---------------------------------------------------
 
     def add_schedule(
-        self, schedule: ScenarioSchedule
+        self,
+        schedule: ScenarioSchedule,
+        *,
+        simulation_date: Any = None,
     ) -> ScenarioSchedule:
         if schedule.scenario_schedule_id in self._schedules:
             raise DuplicateScenarioScheduleError(
@@ -689,9 +692,14 @@ class ScenarioScheduleBook:
             _scan_for_forbidden_keys(
                 payload, field_name="ledger payload"
             )
+            sim_date: Any = (
+                simulation_date
+                if simulation_date is not None
+                else self._now()
+            )
             self.ledger.append(
                 event_type="scenario_schedule_recorded",
-                simulation_date=self._now(),
+                simulation_date=sim_date,
                 object_id=schedule.scenario_schedule_id,
                 source=schedule.run_profile_label,
                 target=schedule.reference_universe_id,
@@ -752,7 +760,10 @@ class ScenarioScheduleBook:
     # -- scheduled application --------------------------------------
 
     def add_scheduled_application(
-        self, application: ScheduledScenarioApplication
+        self,
+        application: ScheduledScenarioApplication,
+        *,
+        simulation_date: Any = None,
     ) -> ScheduledScenarioApplication:
         if (
             application.scheduled_scenario_application_id
@@ -801,9 +812,14 @@ class ScenarioScheduleBook:
             _scan_for_forbidden_keys(
                 payload, field_name="ledger payload"
             )
+            sim_date: Any = (
+                simulation_date
+                if simulation_date is not None
+                else self._now()
+            )
             self.ledger.append(
                 event_type="scheduled_scenario_application_recorded",
-                simulation_date=self._now(),
+                simulation_date=sim_date,
                 object_id=(
                     application.scheduled_scenario_application_id
                 ),
