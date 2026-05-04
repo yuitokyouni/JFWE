@@ -108,6 +108,12 @@ class RecordType(str, Enum):
     SCENARIO_DRIVER_TEMPLATE_RECORDED = (
         "scenario_driver_template_recorded"
     )
+    SCENARIO_DRIVER_APPLICATION_RECORDED = (
+        "scenario_driver_application_recorded"
+    )
+    SCENARIO_CONTEXT_SHIFT_RECORDED = (
+        "scenario_context_shift_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

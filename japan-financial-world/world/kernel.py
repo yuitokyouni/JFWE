@@ -19,6 +19,7 @@ from world.securities import SecurityMarketBook
 from world.market_intents import InvestorMarketIntentBook
 from world.market_interest import AggregatedMarketInterestBook
 from world.market_pressure import IndicativeMarketPressureBook
+from world.scenario_applications import ScenarioApplicationBook
 from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
@@ -153,13 +154,23 @@ class WorldKernel:
         default_factory=IndicativeMarketPressureBook
     )
     # v1.18.1 — scenario-driver template storage. Storage-only;
-    # no application logic. v1.18.2 will add the
-    # ``apply_scenario_driver(...)`` helper. Empty by default,
-    # so the canonical view of an unmodified default sweep is
-    # byte-identical to v1.17.last (no template registered →
-    # no ledger emission → no digest movement).
+    # no application logic. v1.18.2 adds the
+    # ``apply_scenario_driver(...)`` helper that emits new
+    # evidence / context records that cite the scenario driver
+    # via plain-id citations — never mutates a pre-existing
+    # context record. Empty by default, so the canonical view of
+    # an unmodified default sweep is byte-identical to v1.17.last
+    # (no template registered → no ledger emission → no digest
+    # movement).
     scenario_drivers: ScenarioDriverTemplateBook = field(
         default_factory=ScenarioDriverTemplateBook
+    )
+    # v1.18.2 — scenario-driver application receipts +
+    # append-only context-shift records. Empty by default; only
+    # populated when ``apply_scenario_driver(...)`` is explicitly
+    # invoked. Pre-existing context records are never mutated.
+    scenario_applications: ScenarioApplicationBook = field(
+        default_factory=ScenarioApplicationBook
     )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
@@ -210,6 +221,7 @@ class WorldKernel:
             self.aggregated_market_interest,
             self.indicative_market_pressure,
             self.scenario_drivers,
+            self.scenario_applications,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
