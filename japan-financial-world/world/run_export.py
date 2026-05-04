@@ -70,6 +70,12 @@ RUN_PROFILE_LABELS: frozenset[str] = frozenset(
     {
         "quarterly_default",
         "monthly_reference",
+        # v1.20.3 / v1.20.4 — opt-in scenario universe profile.
+        # The CLI exporter (``examples.reference_world.export_run_bundle``)
+        # builds bundles for this label as of v1.20.4; the static
+        # UI (``examples/ui/fwe_workbench_mockup.html``) renders
+        # them at v1.20.5.
+        "scenario_monthly_reference_universe",
         "scenario_monthly",
         "daily_display_only",
         "future_daily_full_simulation",

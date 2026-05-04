@@ -367,6 +367,50 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
+## v1.20.4 forward pointer — `scenario_monthly_reference_universe` CLI export (shipped, UI rendering deferred)
+
+v1.20.4 ships the CLI exporter for the v1.20.3 opt-in profile
+`scenario_monthly_reference_universe` (see
+[`../reference_world/README.md`](../reference_world/README.md)
+and the v1.20.4 section there for the full bundle layout).
+The new bundle carries three v1.20.x-specific sections:
+
+- **`metadata.reference_universe`** — universe profile id, 11
+  sector ids / labels (all carrying the `_like` suffix), 11
+  firm profile ids / firm ids, and a per-sector sensitivity
+  summary on the v1.20.0 six-dimension five-rung closed set.
+- **`scenario_trace`** — scheduled-application + applied-
+  application + emitted context-shift ids; merged context-
+  surface labels (`market_environment` +
+  `financing_review_surface`) and shift-direction labels
+  (`tighten`); per-application **`affected_sector_ids` (11)**
+  and **`affected_firm_profile_ids` (11)** so a downstream
+  consumer can render per-sector / per-firm impact without
+  recomputing the universe.
+- **`market_intent`** + **`financing`** — compact label-only
+  histograms with closed-loop cardinality counts.
+
+The static workbench (this folder) **does not yet render** the
+new bundle. v1.20.4 is **CLI-only**: the v1.19.4 file-input
+loader does not list `scenario_monthly_reference_universe` in
+`BUNDLE_EXECUTABLE_PROFILES` yet, so loading a v1.20.4 bundle
+into this UI surfaces a generic "is not a recognised v1.19.x
+run profile" status. The v1.20.5 milestone will:
+
+- add `scenario_monthly_reference_universe` to
+  `BUNDLE_EXECUTABLE_PROFILES`;
+- render the universe view / sector heatmap / monthly
+  timeline / sector comparison surfaces described in the
+  v1.20.0 forward pointer below;
+- extend the in-page `Validate` audit checks to pin the new
+  surfaces.
+
+Until v1.20.5 lands, the canonical inspection path for
+`scenario_monthly_reference_universe` bundles is **CLI ->
+local JSON file -> manual inspection** (e.g. `jq` /
+`python -c 'import json; …'`). The `quarterly_default` and
+`monthly_reference` browser-side rendering paths are unchanged.
+
 ## v1.20.0 forward pointer — Monthly Scenario Reference Universe design
 
 The next planned milestone, **v1.20.0** (docs-only — see

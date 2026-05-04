@@ -491,6 +491,33 @@ _JURISDICTION_TOKENS: tuple[str, ...] = (
 )
 
 
+# v1.20.4 — licensed-taxonomy tokens scanned by the new
+# scenario universe bundle test. Mirrors the v1.20.x test
+# files' pattern so a downstream test-file scan can strip the
+# literal table.
+_LICENSED_TAXONOMY_TOKENS: tuple[str, ...] = (
+    "gics",
+    "msci",
+    "factset",
+    "bloomberg",
+    "refinitiv",
+)
+
+
+def _strip_token_table(text: str, marker: str) -> str:
+    """Return ``text`` with the first ``(...)`` literal block
+    starting at ``marker`` removed. Used by
+    :func:`test_test_file_jurisdiction_neutral_scan` to mask out
+    its own token tables."""
+    start = text.find(marker)
+    if start == -1:
+        return text
+    end = text.find(")", start)
+    if end == -1:
+        return text
+    return text[:start] + text[end + 1 :]
+
+
 def test_module_jurisdiction_neutral_scan() -> None:
     text = _CLI_MODULE_PATH.read_text(encoding="utf-8").lower()
     for token in _JURISDICTION_TOKENS:
@@ -502,17 +529,18 @@ def test_module_jurisdiction_neutral_scan() -> None:
 
 
 def test_test_file_jurisdiction_neutral_scan() -> None:
-    """The token list itself appears in this file; scan the file
-    excluding the literal table tuple."""
+    """The token lists themselves appear in this file; scan the
+    file excluding the literal table tuples."""
     text = Path(__file__).read_text(encoding="utf-8").lower()
-    table_start = text.find("_jurisdiction_tokens: tuple[str, ...] = (")
-    assert table_start != -1
-    table_end = text.find(")", table_start)
-    assert table_end != -1
-    text_minus_table = text[:table_start] + text[table_end + 1 :]
+    text = _strip_token_table(
+        text, "_jurisdiction_tokens: tuple[str, ...] = ("
+    )
+    text = _strip_token_table(
+        text, "_licensed_taxonomy_tokens: tuple[str, ...] = ("
+    )
     for token in _JURISDICTION_TOKENS:
         pattern = rf"\b{re.escape(token)}\b"
-        assert re.search(pattern, text_minus_table) is None, (
+        assert re.search(pattern, text) is None, (
             f"forbidden token {token!r} appears in this test file"
         )
 
@@ -727,9 +755,488 @@ def test_v1_19_3_1_executable_profiles_pin_includes_monthly_reference():
 
     assert "quarterly_default" in EXECUTABLE_PROFILES
     assert "monthly_reference" in EXECUTABLE_PROFILES
+    # v1.20.4 — scenario_monthly_reference_universe is now
+    # executable.
+    assert "scenario_monthly_reference_universe" in EXECUTABLE_PROFILES
     # The three remaining deferred labels.
     assert set(DESIGNED_BUT_NOT_EXECUTABLE_PROFILES) == {
         "scenario_monthly",
         "daily_display_only",
         "future_daily_full_simulation",
     }
+
+
+# ---------------------------------------------------------------------------
+# v1.20.4 — scenario_monthly_reference_universe profile in the CLI
+# ---------------------------------------------------------------------------
+
+
+_V1_20_4_PINNED_BUNDLE_DIGEST: str = (
+    "ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf"
+)
+
+
+def _scenario_universe_invocation(
+    out_path: Path,
+    *,
+    scenario: str = "credit_tightening_driver",
+) -> subprocess.CompletedProcess:
+    return _run_cli(
+        "--profile",
+        "scenario_monthly_reference_universe",
+        "--regime",
+        "constrained",
+        "--scenario",
+        scenario,
+        "--out",
+        str(out_path),
+        "--quiet",
+    )
+
+
+def test_v1_20_4_scenario_universe_writes_parsable_json(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "fwe_scenario_universe_bundle.json"
+    _scenario_universe_invocation(out)
+    assert out.exists()
+    data = json.loads(out.read_text(encoding="utf-8"))
+    # Top-level keys match the v1.19.1 RunExportBundle shape.
+    assert set(data.keys()) == _expected_bundle_to_dict_keys()
+    assert (
+        data["run_profile_label"]
+        == "scenario_monthly_reference_universe"
+    )
+    assert data["regime_label"] == "constrained"
+    assert (
+        data["selected_scenario_label"]
+        == "credit_tightening_driver"
+    )
+    assert data["period_count"] == 12
+
+
+def test_v1_20_4_scenario_universe_two_runs_byte_identical(
+    tmp_path: Path,
+) -> None:
+    a = tmp_path / "scenario_a.json"
+    b = tmp_path / "scenario_b.json"
+    _scenario_universe_invocation(a)
+    _scenario_universe_invocation(b)
+    assert a.read_bytes() == b.read_bytes()
+    assert len(a.read_bytes()) > 1000
+
+
+def test_v1_20_4_scenario_universe_digest_pinned(
+    tmp_path: Path,
+) -> None:
+    """Pin the CLI bundle digest so accidental drift in the
+    canonical view, the orchestrator, or any of the v1.20.x
+    storage books fails loudly."""
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["digest"] == _V1_20_4_PINNED_BUNDLE_DIGEST, (
+        "v1.20.4 scenario universe bundle digest drifted; if "
+        "intentional, update _V1_20_4_PINNED_BUNDLE_DIGEST and "
+        "document the cause"
+    )
+
+
+def test_v1_20_4_scenario_universe_manifest_counts(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    m = data["manifest"]
+    assert m["sector_count"] == 11
+    assert m["firm_count"] == 11
+    assert m["investor_count"] == 4
+    assert m["bank_count"] == 3
+    assert m["scheduled_scenario_application_count"] == 1
+    assert m["scenario_application_count"] == 1
+    assert m["scenario_context_shift_count"] == 2
+    # 51 information arrivals across 12 months.
+    assert m["information_arrival_count"] == 51
+    # Hard guardrail: under 4000 records.
+    assert m["record_count"] <= 4000
+    # Boundary flags.
+    assert m["synthetic_only"] is True
+    assert m["no_backend"] is True
+    assert m["no_ui_execution"] is True
+
+
+def test_v1_20_4_scenario_universe_carries_reference_universe_section(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    ru = data["metadata"]["reference_universe"]
+    assert (
+        ru["reference_universe_id"]
+        == "reference_universe:generic_11_sector"
+    )
+    assert ru["sector_count"] == 11
+    assert ru["firm_count"] == 11
+    assert ru["synthetic_only"] is True
+    # 11 sector labels, all with the ``_like`` suffix.
+    assert len(ru["sector_labels"]) == 11
+    for sector_label in ru["sector_labels"]:
+        assert sector_label.endswith("_like")
+    # 11 firm profile ids and 11 firm ids.
+    assert len(ru["firm_profile_ids"]) == 11
+    assert len(ru["firm_ids"]) == 11
+    # Sector sensitivity summary present and complete.
+    assert len(ru["sector_sensitivity_summary"]) == 11
+
+
+def test_v1_20_4_scenario_universe_carries_scenario_trace_section(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    st = data["scenario_trace"]
+    # Ids and counts.
+    assert (
+        st["selected_scenario_label"]
+        == "credit_tightening_driver"
+    )
+    assert len(st["scheduled_scenario_application_ids"]) == 1
+    assert len(st["scenario_application_ids"]) == 1
+    assert st["scenario_application_count"] == 1
+    assert st["scenario_context_shift_count"] == 2
+    # The credit_tightening family emits exactly two surfaces.
+    assert set(st["context_surface_labels"]) == {
+        "market_environment",
+        "financing_review_surface",
+    }
+    assert set(st["shift_direction_labels"]) == {"tighten"}
+    # Universe-wide affected sets — 11 sectors / 11 firms.
+    assert len(st["affected_sector_ids"]) == 11
+    assert len(st["affected_firm_profile_ids"]) == 11
+    # v1.18.0 audit shape preserved.
+    assert "rule_based_fallback" in st["reasoning_modes"]
+    assert "future_llm_compatible" in st["reasoning_slots"]
+    # Boundary flags merged AND view.
+    bf = st["boundary_flags"]
+    assert bf.get("no_actor_decision") is True
+    assert bf.get("no_price_formation") is True
+    assert bf.get("no_financing_execution") is True
+
+
+def test_v1_20_4_scenario_universe_per_application_summary_includes_affected_ids(
+    tmp_path: Path,
+) -> None:
+    """The per-application summary list inside scenario_trace
+    must surface ``affected_sector_ids`` and
+    ``affected_firm_profile_ids`` so a downstream UI consumer
+    can render per-sector / per-firm impact."""
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    summaries = data["scenario_trace"][
+        "scenario_application_summaries"
+    ]
+    assert len(summaries) == 1
+    s = summaries[0]
+    assert s["application_status_label"] == (
+        "applied_as_context_shift"
+    )
+    assert s["scheduled_month_label"] == "month_04"
+    assert s["scheduled_period_index"] == 3
+    assert len(s["affected_sector_ids"]) == 11
+    assert len(s["affected_firm_profile_ids"]) == 11
+    assert s["emitted_context_shift_count"] == 2
+
+
+def test_v1_20_4_scenario_universe_carries_information_arrival_summary(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    summary = data["metadata"]["information_arrival_summary"]
+    assert summary["calendar_count"] == 1
+    assert summary["scheduled_release_count"] == 51
+    assert summary["arrival_count"] == 51
+    # Mirrored on the timeline.
+    assert (
+        data["timeline"]["information_arrival_summary"][
+            "arrival_count"
+        ]
+        == 51
+    )
+
+
+def test_v1_20_4_scenario_universe_carries_market_intent_and_financing_summaries(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    mi = data["market_intent"]
+    # I × F × P = 4 × 11 × 12 = 528.
+    assert mi["investor_market_intent_count"] == 528
+    # F × P = 11 × 12 = 132 each.
+    assert mi["aggregated_market_interest_count"] == 132
+    assert mi["indicative_market_pressure_count"] == 132
+    fin = data["financing"]
+    # F × P = 132 each.
+    assert fin["capital_structure_review_count"] == 132
+    assert fin["financing_path_count"] == 132
+
+
+def test_v1_20_4_scenario_universe_ledger_excerpt_capped_at_twenty(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    data = json.loads(out.read_text(encoding="utf-8"))
+    excerpt = data["ledger_excerpt"]
+    assert len(excerpt["records"]) <= 20
+    # The excerpt must include at least one scenario-related
+    # record type so a reader can see the v1.20.x setup chain.
+    types = {rec["record_type"] for rec in excerpt["records"]}
+    scenario_types = {
+        "reference_universe_profile_recorded",
+        "generic_sector_reference_recorded",
+        "synthetic_sector_firm_profile_recorded",
+        "scenario_driver_template_recorded",
+        "scenario_schedule_recorded",
+        "scheduled_scenario_application_recorded",
+    }
+    assert types & scenario_types, (
+        "ledger excerpt should include at least one v1.20.x "
+        "setup record; got: " + ", ".join(sorted(types))
+    )
+
+
+def test_v1_20_4_scenario_universe_no_iso_wall_clock_timestamp(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    text = out.read_text(encoding="utf-8")
+    assert (
+        re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", text)
+        is None
+    )
+
+
+def test_v1_20_4_scenario_universe_contains_no_absolute_paths(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    text = out.read_text(encoding="utf-8")
+    assert "/tmp/" not in text
+    assert "/Users/" not in text
+    assert "/home/" not in text
+    assert str(out) not in text
+
+
+def test_v1_20_4_scenario_universe_carries_no_real_indicator_values(
+    tmp_path: Path,
+) -> None:
+    """Same word-boundary scan as the monthly_reference test
+    extended to the scenario universe bundle."""
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    text = out.read_text(encoding="utf-8")
+    forbidden_value_tokens = (
+        "real_indicator_value",
+        "real_company_name",
+        "real_sector_weight",
+        "real_market_cap",
+        "real_financial_value",
+        "cpi_value",
+        "gdp_value",
+        "policy_rate",
+        "real_release_date",
+        "llm_output",
+        "llm_prose",
+        "prompt_text",
+        "market_price",
+        "predicted_index",
+        "forecast_path",
+        "expected_return",
+        "target_price",
+        "investment_advice",
+    )
+    for tok in forbidden_value_tokens:
+        pattern = rf"\b{re.escape(tok)}\b"
+        assert re.search(pattern, text) is None, (
+            f"forbidden token {tok!r} appears in scenario universe bundle"
+        )
+    # Bare ``japan_calibration`` field rejected; the negation
+    # flag ``no_japan_calibration`` is permitted.
+    assert (
+        re.search(r"\bjapan_calibration\b", text) is None
+    )
+
+
+def test_v1_20_4_scenario_universe_no_licensed_taxonomy_tokens(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "scenario.json"
+    _scenario_universe_invocation(out)
+    text = out.read_text(encoding="utf-8").lower()
+    # ``_LICENSED_TAXONOMY_TOKENS`` and ``_JURISDICTION_TOKENS``
+    # are module-level tuples stripped from the test-file scan
+    # by ``_strip_token_table``; the Japanese-jurisdiction
+    # tokens live in ``_JURISDICTION_TOKENS`` and are checked
+    # there too.
+    for tok in _LICENSED_TAXONOMY_TOKENS:
+        pattern = rf"\b{re.escape(tok)}\b"
+        assert re.search(pattern, text) is None, (
+            f"licensed-taxonomy token {tok!r} appears in scenario universe bundle"
+        )
+    for tok in _JURISDICTION_TOKENS:
+        pattern = rf"\b{re.escape(tok)}\b"
+        assert re.search(pattern, text) is None, (
+            f"jurisdiction token {tok!r} appears in scenario universe bundle"
+        )
+
+
+def test_v1_20_4_scenario_universe_does_not_move_quarterly_default_digest(
+    tmp_path: Path,
+) -> None:
+    """Running the CLI on the scenario universe profile builds
+    its own fresh kernel; it must NOT move the canonical
+    quarterly_default ``living_world_digest`` of a separately
+    seeded default sweep."""
+    from examples.reference_world.living_world_replay import (
+        living_world_digest,
+    )
+    from test_living_reference_world import (
+        _run_default,
+        _seed_kernel,
+    )
+
+    _scenario_universe_invocation(tmp_path / "scenario.json")
+    k = _seed_kernel()
+    r = _run_default(k)
+    assert (
+        living_world_digest(k, r)
+        == "f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c"
+    )
+
+
+def test_v1_20_4_scenario_universe_does_not_move_monthly_reference_digest(
+    tmp_path: Path,
+) -> None:
+    """Same invariant for monthly_reference."""
+    from examples.reference_world.living_world_replay import (
+        living_world_digest,
+    )
+    from test_living_reference_world import (
+        _run_monthly_reference,
+        _seed_kernel,
+    )
+
+    _scenario_universe_invocation(tmp_path / "scenario.json")
+    k = _seed_kernel()
+    r = _run_monthly_reference(k)
+    assert (
+        living_world_digest(k, r)
+        == "75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d"
+    )
+
+
+def test_v1_20_4_scenario_universe_rejects_unrelated_scenario_label(
+    tmp_path: Path,
+) -> None:
+    """``credit_tightening_driver`` is allowed only under the
+    scenario universe profile. Pointing it at quarterly_default
+    must still exit non-zero."""
+    out = tmp_path / "scenario.json"
+    cp = _run_cli(
+        "--profile",
+        "quarterly_default",
+        "--regime",
+        "constrained",
+        "--scenario",
+        "credit_tightening_driver",
+        "--out",
+        str(out),
+        expect_success=False,
+    )
+    assert cp.returncode != 0
+    assert not out.exists()
+
+
+def test_v1_20_4_scenario_universe_rejects_unsupported_scenario(
+    tmp_path: Path,
+) -> None:
+    """Any other scenario label must be rejected even under the
+    universe profile."""
+    out = tmp_path / "scenario.json"
+    cp = _run_cli(
+        "--profile",
+        "scenario_monthly_reference_universe",
+        "--regime",
+        "constrained",
+        "--scenario",
+        "rate_repricing_driver",
+        "--out",
+        str(out),
+        expect_success=False,
+    )
+    assert cp.returncode != 0
+    assert (
+        "is not supported under profile "
+        "'scenario_monthly_reference_universe'"
+    ) in cp.stderr
+    assert not out.exists()
+
+
+def test_v1_20_4_scenario_universe_accepts_none_baseline(
+    tmp_path: Path,
+) -> None:
+    """The ``none_baseline`` scenario remains valid under the
+    universe profile (returns a bundle with the same scenario
+    application records, since the engine still fires the
+    scheduled scenario regardless of the CLI selector label).
+    The ``selected_scenario_label`` echoes the caller's
+    selection."""
+    out = tmp_path / "scenario_baseline.json"
+    cp = _scenario_universe_invocation(
+        out, scenario="none_baseline"
+    )
+    assert cp.returncode == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["selected_scenario_label"] == "none_baseline"
+    # The engine still fires the scheduled scenario at month 4
+    # (the v1.20.3 schedule is registered when the profile runs;
+    # the CLI selector label is metadata only).
+    assert data["scenario_trace"][
+        "scenario_application_count"
+    ] == 1
+
+
+def test_v1_20_4_scenario_universe_designed_but_not_executable_unchanged(
+    tmp_path: Path,
+) -> None:
+    """The three designed-but-not-executable labels stay
+    designed-but-not-executable at v1.20.4."""
+    for deferred_profile in (
+        "scenario_monthly",
+        "daily_display_only",
+        "future_daily_full_simulation",
+    ):
+        out = tmp_path / f"deferred_{deferred_profile}.json"
+        cp = _run_cli(
+            "--profile",
+            deferred_profile,
+            "--regime",
+            "constrained",
+            "--scenario",
+            "none_baseline",
+            "--out",
+            str(out),
+            expect_success=False,
+        )
+        assert cp.returncode != 0
+        assert not out.exists()

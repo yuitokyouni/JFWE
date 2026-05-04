@@ -2285,6 +2285,20 @@ def run_living_reference_world(
             is_scenario_universe_profile
             and period_idx == _DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX
         ):
+            # v1.20.4 — surface the per-sector / per-firm impact
+            # of a universe-wide ``credit_tightening`` shift on
+            # the scenario application metadata. The scenario
+            # only emits 2 ``ScenarioContextShiftRecord``
+            # (``market_environment`` + ``financing_review_surface``)
+            # — but it *applies* to every sector / firm in the
+            # registered universe. The ids appear here so a
+            # downstream consumer (e.g. the v1.20.4 CLI bundle
+            # or the v1.20.5 UI) can render the per-sector /
+            # per-firm impact without recomputing the universe.
+            # No actor decision, no firm decision, no price
+            # update, no financing execution — just an
+            # **evidence/ context** annotation pointing at the
+            # universe rows the scenario logically touches.
             scenario_application = apply_scenario_driver(
                 kernel,
                 scenario_driver_template_id=(
@@ -2303,6 +2317,10 @@ def run_living_reference_world(
                     ),
                     "scheduled_period_index": (
                         _DEFAULT_SCENARIO_SCHEDULED_PERIOD_INDEX
+                    ),
+                    "affected_sector_ids": list(run_sector_ids),
+                    "affected_firm_profile_ids": list(
+                        run_firm_profile_ids
                     ),
                     "no_actor_decision": True,
                     "no_price_formation": True,

@@ -75,6 +75,7 @@ def test_run_profile_labels_closed_set():
         {
             "quarterly_default",
             "monthly_reference",
+            "scenario_monthly_reference_universe",
             "scenario_monthly",
             "daily_display_only",
             "future_daily_full_simulation",

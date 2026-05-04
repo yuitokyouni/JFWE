@@ -482,6 +482,32 @@ The v1.20.3 milestone adds the opt-in `scenario_monthly_reference_universe` run 
 
 If any of these pins fails, either the default `scenario_monthly_reference_universe` fixture has drifted (intentional but undocumented) or a hidden Cartesian-product loop has crept into the orchestrator.
 
+## v1.20.4 CLI export for `scenario_monthly_reference_universe` pins
+
+The v1.20.4 milestone extends [`examples/reference_world/export_run_bundle.py`](../examples/reference_world/export_run_bundle.py) so a reader can run a single CLI command to export the v1.20.3 `scenario_monthly_reference_universe` profile as a deterministic local `RunExportBundle` JSON.
+
+**v1.20.4 CLI bundle (default fixture, `--regime constrained --scenario credit_tightening_driver`):**
+
+- bundle digest: **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`** (pinned by `tests/test_run_export_cli.py::test_v1_20_4_scenario_universe_digest_pinned`),
+- two runs of the same CLI args produce byte-identical JSON (pinned by `test_v1_20_4_scenario_universe_two_runs_byte_identical`),
+- `manifest.sector_count = 11` / `manifest.firm_count = 11` / `manifest.investor_count = 4` / `manifest.bank_count = 3`,
+- `manifest.scheduled_scenario_application_count = 1` / `manifest.scenario_application_count = 1` / `manifest.scenario_context_shift_count = 2`,
+- `manifest.information_arrival_count = 51`,
+- `manifest.record_count <= 4000` (CLI fixture: 3241; under hard guardrail),
+- `scenario_trace.affected_sector_ids` = 11 ids; `scenario_trace.affected_firm_profile_ids` = 11 ids (universe-wide credit-tightening impact),
+- `bundle.metadata.reference_universe` carries the v1.20.1 universe profile + 11 sectors + 11 firm profiles + per-sector sensitivity summary,
+- `quarterly_default` and `monthly_reference` `living_world_digest`s preserved across the v1.20.4 CLI run (the new builder uses its own fresh kernel — pinned by `test_v1_20_4_scenario_universe_does_not_move_quarterly_default_digest` / `test_v1_20_4_scenario_universe_does_not_move_monthly_reference_digest`).
+
+**Bounded scale guarantees:**
+
+- the bundle text contains no real institution / real indicator / real release date / licensed-taxonomy token (pinned by `test_v1_20_4_scenario_universe_no_licensed_taxonomy_tokens` and `test_v1_20_4_scenario_universe_carries_no_real_indicator_values`),
+- the `ledger_excerpt` is bounded at 20 records and includes at least one v1.20.x setup record (`reference_universe_profile_recorded` / `generic_sector_reference_recorded` / `synthetic_sector_firm_profile_recorded` / `scenario_driver_template_recorded` / `scenario_schedule_recorded` / `scheduled_scenario_application_recorded`) so a reader can see the universe / scenario chain at a glance,
+- the CLI rejects every (scenario, profile) combination outside `SCENARIO_UNIVERSE_PROFILE_SUPPORTED_SCENARIOS = ("none_baseline", "credit_tightening_driver")` for the universe profile (pinned by `test_v1_20_4_scenario_universe_rejects_unrelated_scenario_label` and `test_v1_20_4_scenario_universe_rejects_unsupported_scenario`),
+- the three designed-but-not-executable labels (`scenario_monthly` / `daily_display_only` / `future_daily_full_simulation`) stay deferred (pinned by `test_v1_20_4_scenario_universe_designed_but_not_executable_unchanged`),
+- pytest count: **4764 / 4764** passing (+20 from v1.20.3).
+
+If any of these pins fails, either the CLI bundle layout has drifted (intentional but undocumented) or a hidden non-determinism / wall-clock leak / forbidden-token has crept into the export path.
+
 ## v1.18.last freeze pins
 
 The v1.18.last freeze (docs-only on top of the v1.18.0 → v1.18.4

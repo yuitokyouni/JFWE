@@ -518,6 +518,68 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.20.4 — CLI export for `scenario_monthly_reference_universe` (shipped)
+
+v1.20.4 extends this directory's CLI exporter
+([`export_run_bundle.py`](export_run_bundle.py)) so a user can
+write a deterministic `RunExportBundle` JSON for the v1.20.3
+opt-in profile:
+
+```sh
+cd japan-financial-world
+python -m examples.reference_world.export_run_bundle \
+    --profile scenario_monthly_reference_universe \
+    --regime constrained \
+    --scenario credit_tightening_driver \
+    --out /tmp/fwe_scenario_universe_bundle.json
+```
+
+Bundle digest (default fixture):
+**`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**.
+
+The bundle adds three v1.20.x sections beyond the v1.19.3.1
+shape:
+
+- **`metadata.reference_universe`** — universe profile id +
+  11 sector ids + 11 firm profile ids + 11 firm ids + 11
+  sector labels (all carrying the `_like` suffix) + a
+  per-sector sensitivity summary on the v1.20.0 six-dimension
+  five-rung closed set.
+- **`scenario_trace`** — scheduled-application + applied-
+  application + emitted context-shift ids; the merged
+  context-surface labels (`market_environment` +
+  `financing_review_surface`) and shift-direction labels
+  (`tighten`); per-application **`affected_sector_ids` (11)**
+  and **`affected_firm_profile_ids` (11)** read from the
+  v1.20.4 orchestrator's application metadata so a downstream
+  reader can render per-sector / per-firm impact without
+  recomputing the universe; the v1.18.0 `reasoning_modes` /
+  `reasoning_slots` audit shape; the merged `boundary_flags`
+  AND view.
+- **`market_intent`** + **`financing`** — compact label-only
+  histograms over the v1.15.5 / v1.16.2 securities chain and
+  the v1.14.5 financing chain. Counts pin the closed-loop
+  cardinality: `O(P × I × F) = 528` market intents;
+  `O(P × F) = 132` aggregated interest / indicative pressure /
+  financing path / capital-structure review.
+
+The CLI exporter still continues to reject `scenario_monthly`
+/ `daily_display_only` / `future_daily_full_simulation` (the
+v1.19.3.1 discipline preserved). The new
+`credit_tightening_driver` scenario selector label is **only**
+valid under `--profile scenario_monthly_reference_universe`;
+combining it with `quarterly_default` or `monthly_reference`
+exits non-zero.
+
+Bundle is fully deterministic — same CLI args → byte-identical
+JSON. No wall-clock timestamp anywhere; no absolute path
+leakage; no licensed-taxonomy / real-issuer / real-indicator
+tokens. The static workbench mockup
+([`../ui/fwe_workbench_mockup.html`](../ui/fwe_workbench_mockup.html))
+**does not yet render** the new bundle (deferred to v1.20.5);
+v1.20.4 is **CLI-only** — no UI rendering changes, no backend,
+no fetch / XHR, no daily simulation, no LLM execution.
+
 ## v1.20.3 — `scenario_monthly_reference_universe` run profile (shipped)
 
 v1.20.3 ships the third concrete code milestone of the v1.20

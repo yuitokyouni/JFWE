@@ -10436,3 +10436,57 @@ Every invariant pinned at v1.18.0 / v1.19.0 / v1.20.1 / v1.20.2 stays binding. v
 ### 129.18 Forward pointer (post-v1.20.3)
 
 v1.20.4 will extend the CLI exporter to bundle `scenario_monthly_reference_universe` runs (mirroring the v1.19.3.1 `monthly_reference` extension); v1.20.5 will extend the static UI loader so a reader can browse the 11-sector / 11-firm matrix and the scheduled scenario timeline; v1.20.last will freeze the v1.20 sequence (docs-only).
+
+### 129.19 v1.20.4 — CLI export for `scenario_monthly_reference_universe`
+
+§129.19 ships the fourth concrete code milestone of the v1.20 sequence: the `examples.reference_world.export_run_bundle` CLI exporter now builds a deterministic `RunExportBundle` JSON for the v1.20.3 `scenario_monthly_reference_universe` profile. v1.20.4 is **CLI-only** — there is no UI change, no backend, no fetch / XHR, no daily simulation, and no LLM execution. The static workbench mockup continues to render only `quarterly_default` and `monthly_reference` bundles (deferred to v1.20.5).
+
+What v1.20.4 lands (binding):
+
+- **CLI profile registry.** `EXECUTABLE_PROFILES` extended from `("quarterly_default", "monthly_reference")` to `("quarterly_default", "monthly_reference", "scenario_monthly_reference_universe")`. The three labels under `DESIGNED_BUT_NOT_EXECUTABLE_PROFILES` (`scenario_monthly` / `daily_display_only` / `future_daily_full_simulation`) remain unchanged. `world.run_export.RUN_PROFILE_LABELS` extended additively with `scenario_monthly_reference_universe`.
+- **CLI scenario registry.** `SCENARIO_UNIVERSE_PROFILE_SUPPORTED_SCENARIOS = ("none_baseline", "credit_tightening_driver")` — the new `credit_tightening_driver` selector label is **only** valid under the universe profile; combining it with `quarterly_default` or `monthly_reference` exits non-zero. The `none_baseline` selector remains valid for every profile.
+- **`_build_bundle_for_scenario_monthly_reference_universe(...)`** mirrors the v1.19.3.1 `_build_bundle_for_monthly_reference(...)` shape but adds three v1.20.x-specific bundle sections.
+- **`reference_universe`** (under `bundle.metadata`) — universe profile id + 11 sector ids + 11 firm profile ids + 11 firm ids + 11 sector labels + a per-sector sensitivity summary (six dimensions × five-rung closed set).
+- **`scenario_trace`** — scheduled-application + applied-application + emitted context-shift ids; merged context-surface labels (`market_environment` + `financing_review_surface`) and shift-direction labels (`tighten`); per-application `affected_sector_ids` (11) + `affected_firm_profile_ids` (11) read from the v1.20.4 orchestrator's application metadata; merged `boundary_flags` AND view; v1.18.0 `reasoning_modes` / `reasoning_slots` audit shape.
+- **`market_intent` / `financing`** — compact label-only histograms over the v1.15.5 / v1.16.2 securities chain and the v1.14.5 financing chain. Counts pin the closed-loop allowed-shape cardinality: `O(P × I × F) = 528` market intents; `O(P × F) = 132` aggregated interest / indicative pressure / financing path / capital-structure review.
+- **`information_arrival_summary`** — reused from v1.19.3.1 (1 calendar / 51 scheduled releases / 51 arrivals across 12 months).
+- **`ledger_excerpt`** — bounded at `LEDGER_EXCERPT_LIMIT = 20`. v1.20.4 prefers v1.20.x setup record types (universe profile / sector / firm profile / scenario template / schedule / scheduled application / applied application / context shift) before falling back to first-N. Volatile fields (`record_id`, `timestamp`) are stripped per v1.19.2 convention.
+- **`world/reference_living_world.py` (orchestrator).** The v1.20.3 scenario application metadata now carries `affected_sector_ids` (universe-wide for the credit-tightening family — all 11 sectors) and `affected_firm_profile_ids` (all 11 firm profiles). This makes the per-sector / per-firm impact visible to the v1.20.4 CLI bundle and the v1.20.5 UI without recomputing the universe. The v1.18.2 `apply_scenario_driver` helper still emits exactly **2 `ScenarioContextShiftRecord`** (one per affected context surface) — the universe-wide impact list lives on the application metadata, the shift records remain compact.
+
+Determinism (binding):
+
+- Same CLI args → byte-identical JSON. Pinned by `tests/test_run_export_cli.py::test_v1_20_4_scenario_universe_two_runs_byte_identical`.
+- No wall-clock timestamp anywhere in the bundle. Pinned by `test_v1_20_4_scenario_universe_no_iso_wall_clock_timestamp`.
+- No absolute path leakage (`/tmp/` / `/Users/` / `/home/` / the `--out` path itself). Pinned by `test_v1_20_4_scenario_universe_contains_no_absolute_paths`.
+- `quarterly_default` / `monthly_reference` `living_world_digest`s preserved across the v1.20.4 CLI run (the new builder uses its own fresh kernel). Pinned by `test_v1_20_4_scenario_universe_does_not_move_quarterly_default_digest` and `test_v1_20_4_scenario_universe_does_not_move_monthly_reference_digest`.
+
+CLI bundle digest (default fixture, `--regime constrained --scenario credit_tightening_driver`):
+
+| Surface                                                          | Value                                                                       |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `digest`                                                         | **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**       |
+| `manifest.sector_count` / `firm_count`                            | **11 / 11**                                                                  |
+| `manifest.investor_count` / `bank_count`                         | **4 / 3**                                                                    |
+| `manifest.scheduled_scenario_application_count`                  | **1**                                                                        |
+| `manifest.scenario_application_count`                            | **1**                                                                        |
+| `manifest.scenario_context_shift_count`                          | **2**                                                                        |
+| `manifest.information_arrival_count`                             | **51**                                                                       |
+| `manifest.record_count`                                          | **3241** (CLI fixture; under `≤ 4000` hard guardrail)                        |
+| `scenario_trace.affected_sector_ids` count                       | **11**                                                                       |
+| `scenario_trace.affected_firm_profile_ids` count                 | **11**                                                                       |
+| `quarterly_default` `living_world_digest` (unchanged)             | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**       |
+| `monthly_reference` `living_world_digest` (unchanged)             | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**       |
+| Test count (`pytest -q`)                                          | **4764 / 4764**                                                              |
+
+### 129.20 No-mutation invariants pinned at v1.20.4
+
+Every invariant pinned at v1.18.0 / v1.19.0 / v1.20.1 / v1.20.2 / v1.20.3 stays binding. v1.20.4 adds the following:
+
+1. The CLI does **not** mutate any source-of-truth book on its own kernel and never touches a separately seeded `quarterly_default` / `monthly_reference` kernel's `living_world_digest`.
+2. The CLI rejects every (scenario, profile) combination that is not in `SCENARIO_UNIVERSE_PROFILE_SUPPORTED_SCENARIOS` for the universe profile and not equal to `"none_baseline"` for the other profiles. Pinned by `test_v1_20_4_scenario_universe_rejects_unrelated_scenario_label` and `test_v1_20_4_scenario_universe_rejects_unsupported_scenario`.
+3. The bundle text contains no real institution / real indicator / real release date / licensed-taxonomy token (`gics` / `msci` / `factset` / `bloomberg` / `refinitiv` / `topix` / `nikkei` / `jpx`). Pinned by `test_v1_20_4_scenario_universe_no_licensed_taxonomy_tokens` and `test_v1_20_4_scenario_universe_carries_no_real_indicator_values`.
+4. The `ledger_excerpt` is bounded at 20 records and includes at least one v1.20.x setup record so a reader can see the universe / scenario chain at a glance.
+
+### 129.21 Forward pointer (post-v1.20.4)
+
+v1.20.5 will extend the static UI loader (`examples/ui/fwe_workbench_mockup.html`) so a reader can browse the universe / sector / monthly scenario surfaces from a v1.20.4 bundle in a `file://` browser session. v1.20.last will freeze the v1.20 sequence (docs-only).
