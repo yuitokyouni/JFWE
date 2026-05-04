@@ -130,6 +130,10 @@ class RecordType(str, Enum):
     SYNTHETIC_SECTOR_FIRM_PROFILE_RECORDED = (
         "synthetic_sector_firm_profile_recorded"
     )
+    SCENARIO_SCHEDULE_RECORDED = "scenario_schedule_recorded"
+    SCHEDULED_SCENARIO_APPLICATION_RECORDED = (
+        "scheduled_scenario_application_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

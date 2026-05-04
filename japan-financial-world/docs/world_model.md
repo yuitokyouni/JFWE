@@ -10336,3 +10336,55 @@ The default sweep is unchanged from v1.19.last:
 ### 129.8 Forward pointer
 
 v1.20.2 will land `world/scenario_schedule.py` (`ScenarioSchedule` + `ScheduledScenarioApplication` storage); v1.20.3 will land the `scenario_monthly_reference_universe` run profile + the v1.20.0 scenario-to-sector impact map; v1.20.4 will extend the CLI exporter; v1.20.5 will extend the static UI; v1.20.last will freeze the v1.20 sequence (docs-only).
+
+### 129.9 v1.20.2 — ScenarioSchedule / ScheduledScenarioApplication storage
+
+§129.9 ships the second concrete code milestone of the v1.20 sequence: the scenario scheduling storage layer at [`world/scenario_schedule.py`](../world/scenario_schedule.py). v1.20.2 is **storage only** — it does not ship the `scenario_monthly_reference_universe` run profile (deferred to v1.20.3), it does not apply scenarios, it does not extend the CLI exporter or the static UI loader, and it does not move the canonical `quarterly_default` (`f93bdf3f…b705897c`) or `monthly_reference` (`75a91cfa…91879d`) digest.
+
+The module ships:
+
+- two immutable frozen dataclasses (`ScenarioSchedule`, `ScheduledScenarioApplication`);
+- one append-only `ScenarioScheduleBook` with 17 read methods (`add_schedule` / `get_schedule` / `list_schedules` / `list_by_run_profile` / `list_by_reference_universe` / `list_by_schedule_policy` / `list_by_status` / `add_scheduled_application` / `get_scheduled_application` / `list_scheduled_applications` / `list_applications_by_schedule` / `list_applications_by_template` / `list_applications_by_month` / `list_applications_by_period_index` / `list_applications_by_application_policy` / `list_applications_by_reference_universe` / `snapshot`);
+- six closed-set frozensets — `RUN_PROFILE_LABELS` (5: `scenario_monthly_reference_universe` / `monthly_reference` / `scenario_monthly` / `quarterly_default` / `unknown`); `SCHEDULE_POLICY_LABELS` (5: `single_scenario` / `multi_scenario_bounded` / `display_only` / `inactive` / `unknown`); `APPLICATION_POLICY_LABELS` (6: `apply_at_period_start` / `apply_before_information_arrivals` / `apply_after_information_arrivals` / `apply_before_attention_update` / `display_only` / `unknown`); `SCHEDULED_MONTH_LABELS` (13: `month_01` … `month_12` + `unknown`); `STATUS_LABELS` (6); `VISIBILITY_LABELS` (5);
+- the v1.20.0 hard-naming-boundary `FORBIDDEN_SCENARIO_SCHEDULE_FIELD_NAMES` frozenset composing the v1.18.0 actor-decision tokens with the v1.20.0 real-issuer / real-financial / licensed-taxonomy tokens (`real_company_name` / `real_sector_weight` / `gics` / `msci` / `factset` / `bloomberg` / `refinitiv` / `topix` / `nikkei` / `jpx`);
+- two new `RecordType` enum values: `SCENARIO_SCHEDULE_RECORDED` / `SCHEDULED_SCENARIO_APPLICATION_RECORDED`;
+- kernel wiring: `WorldKernel.scenario_schedule: ScenarioScheduleBook` empty by default;
+- the `MONTHLY_PERIOD_INDEX_MIN` / `MONTHLY_PERIOD_INDEX_MAX` constants pinning the 0-11 bound for monthly profile period indices;
+- a deterministic `build_default_scenario_monthly_schedule(...)` helper that constructs the v1.20.0-pinned default single-scenario schedule (one `ScenarioSchedule` + one `ScheduledScenarioApplication`) — `credit_tightening_driver` at month 4 (period index 3) on the v1.20.1 `generic_11_sector` universe with `apply_after_information_arrivals` policy. The helper does **not** auto-register on a kernel.
+
+### 129.10 No-mutation invariants pinned at v1.20.2
+
+1. Adding a schedule / scheduled-application record does **not** mutate the `PriceBook` of a separately seeded kernel.
+2. Wiring an empty `ScenarioScheduleBook` does **not** move the default-fixture `living_world_digest` of a `quarterly_default` sweep — pinned by `tests/test_scenario_schedule.py::test_empty_scenario_schedule_does_not_move_quarterly_default_digest`.
+3. Wiring an empty `ScenarioScheduleBook` does **not** move the `monthly_reference` `living_world_digest` — pinned by `tests/test_scenario_schedule.py::test_empty_scenario_schedule_does_not_move_monthly_reference_digest`.
+4. The book emits **no** `SCENARIO_DRIVER_APPLICATION_RECORDED` or `SCENARIO_CONTEXT_SHIFT_RECORDED` ledger events — the schedule stores *intent*; the v1.20.3 run profile fires the actual application. Pinned by `test_no_actor_decision_event_types_emitted_by_scenario_schedule_book`.
+5. References on the dataclass (`scenario_driver_template_id`, `affected_reference_universe_id`, `affected_sector_ids`, `affected_firm_profile_ids`) are **plain ids**; the storage layer does **not** check that the cited records exist. v1.20.3 will resolve / validate at run time.
+6. Duplicate id rejection raises `Duplicate*Error` and emits **no** extra ledger record.
+
+### 129.11 Period-index validation rules pinned at v1.20.2
+
+- `scheduled_period_index` is a non-negative `int` in `[0, 11]` (inclusive).
+- `bool` is rejected explicitly (it is otherwise a subclass of `int`).
+- `scheduled_period_indices` (the tuple field on `ScenarioSchedule`) applies the same per-entry rule.
+- The v1.20.2 helper `_scheduled_month_label_for(period_index)` enforces the same bound.
+
+### 129.12 Test inventory delta
+
+`+90` tests in [`tests/test_scenario_schedule.py`](../tests/test_scenario_schedule.py); test_inventory total moves from **105 / 4614** to **106 / 4704**.
+
+### 129.13 Performance boundary at v1.20.2
+
+The default sweep is unchanged from v1.20.1:
+
+| Surface                                                                | Value (v1.20.2 = v1.20.1 = v1.19.last)                                       |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (`quarterly_default`, no scenario applied)     | **108** (period 0) / **110** (periods 1+) — unchanged                        |
+| Per-run window (`quarterly_default`, 4 periods)                       | **`[432, 480]`** (unchanged)                                                |
+| Default 4-period sweep (`quarterly_default`)                          | **460 records** (unchanged)                                                  |
+| `living_world_digest` (`quarterly_default`)                            | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (unchanged) |
+| `monthly_reference` `living_world_digest`                              | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`** (unchanged) |
+| Test count (`pytest -q`)                                               | **4704 / 4704**                                                              |
+
+### 129.14 Forward pointer
+
+v1.20.3 will land the `scenario_monthly_reference_universe` run profile + the v1.20.0 scenario-to-sector impact map. **Before** v1.20.3 lands code, the v1.20.0 binding performance budget (target 200-280 records / period; target [2400, 3360] records / run; **upper guardrail ≤ 4000 records** for the default fixture) will be re-confirmed and the per-loop cardinality verified — **`P × I × F` is allowed**, **`P × I × F × scenario` is forbidden**, scenarios fire only on scheduled months (not every month), every emitted scenario context shift remains append-only, and **no** firm / investor / bank direct-decision record is produced. v1.20.4 will extend the CLI exporter; v1.20.5 will extend the static UI; v1.20.last will freeze the v1.20 sequence (docs-only).

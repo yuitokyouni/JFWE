@@ -23,6 +23,7 @@ from world.information_release import InformationReleaseBook
 from world.reference_universe import ReferenceUniverseBook
 from world.scenario_applications import ScenarioApplicationBook
 from world.scenario_drivers import ScenarioDriverTemplateBook
+from world.scenario_schedule import ScenarioScheduleBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
 from world.constraints import ConstraintBook, ConstraintEvaluator
@@ -198,6 +199,17 @@ class WorldKernel:
     reference_universe: ReferenceUniverseBook = field(
         default_factory=ReferenceUniverseBook
     )
+    # v1.20.2 — scenario schedule storage. Storage-only;
+    # v1.20.3 will fire the schedule when executing the
+    # ``scenario_monthly_reference_universe`` run profile.
+    # Empty by default so the canonical ``quarterly_default``
+    # / ``monthly_reference`` digests stay byte-identical
+    # (no schedule registered → no ledger emission → no digest
+    # movement). Pinned by
+    # ``tests/test_scenario_schedule.py::test_empty_scenario_schedule_does_not_move_*``.
+    scenario_schedule: ScenarioScheduleBook = field(
+        default_factory=ScenarioScheduleBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -250,6 +262,7 @@ class WorldKernel:
             self.scenario_applications,
             self.information_releases,
             self.reference_universe,
+            self.scenario_schedule,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
