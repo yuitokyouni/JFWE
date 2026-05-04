@@ -23,6 +23,112 @@ can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
 - **Date:** 2026-05-04
+- **Target:** v1.18.last scenario-driver-library freeze. The
+  v1.17.last inspection-layer freeze (snapshot below), the
+  v1.16.last endogenous-market-intent feedback freeze, the
+  v1.15.last securities-market-intent aggregation freeze, the
+  v1.14.last corporate-financing-intent freeze, the v1.13.last
+  settlement-substrate freeze, the v1.12.last endogenous-
+  attention-loop freeze, the v1.9.last public-prototype
+  freeze, and the v1.8.0 public release
+  (`v1.8-public-release` at commit `7fa2c42`) all remain
+  unchanged; v1.18.last freezes the v1.18 sequence as the
+  **first public-FWE scenario-driver inspection layer** over
+  the v1.17 inspection surface and the v1.16 closed loop.
+  The layer adds *scenario inspectability*, not new economic
+  behaviour — a `ScenarioDriverTemplate` storage book
+  (v1.18.1), an append-only `ScenarioDriverApplicationRecord`
+  / `ScenarioContextShiftRecord` helper that emits new records
+  citing the scenario driver via plain-id citations and never
+  mutates a pre-existing context record (v1.18.2), three
+  pure-function display helpers + a deterministic markdown
+  scenario report driver (v1.18.3), and a static UI scenario
+  selector mock with seven options (Baseline / Rate repricing
+  / Credit tightening / Funding window closure / Liquidity
+  stress / Information gap / Unmapped fallback) on the v1.17.4
+  workbench (v1.18.4). v1.18.last itself is docs-only on top
+  of the v1.18.0 → v1.18.4 code freezes. The chain is
+  **append-only / stimulus-only / inspection-only** — scenario
+  driver is the stimulus, never the response; no firm
+  decisions, no investor actions, no bank approval logic, no
+  price formation, no market price, no predicted index, no
+  forecast path, no expected return, no target price, no
+  trading, no orders, no execution, no clearing, no
+  settlement, no financing execution, no investment advice,
+  no real data ingestion, no Japan calibration, no LLM
+  execution, no LLM prose as source-of-truth, no stochastic
+  behaviour probabilities, no learned model, no mutation of
+  pre-existing context records. `reasoning_mode =
+  "rule_based_fallback"` is binding at v1.18.x; the
+  `future_llm_compatible` slot marker is an architectural
+  commitment, not a runtime capability. The static workbench
+  scenario selector has no backend, no build, no external
+  runtime, no network I/O — `Run mock` switches `(regime,
+  scenario)` fixtures, never invokes the Python engine. Known
+  limitations: scenario templates are synthetic, not
+  forecasts; application is rule-based fallback (5 family→shift
+  mappings + a `no_direct_shift` fallback); actor response
+  stays in existing / future mechanisms; no scenario is
+  calibrated to real data; the UI scenario selector is a mock,
+  not live execution; the `no_direct_shift` fallback means
+  *stored but not yet mapped to a concrete context surface*
+  and is tagged in the report and UI as "this is not an
+  error".
+- **Status:** docs + tests frozen. The freeze is conditional on
+  CI being green on the commit being tagged.
+- **Local results (v1.18.last):**
+  - `pytest -q` → 4334 passed
+  - `compileall world spaces tests examples` → clean
+  - `ruff check .` (repo root) → clean
+  - `python -m examples.reference_world.run_living_reference_world`
+    → unchanged from v1.17.last; produces the same `[setup]` /
+    `[period N]` / `[ledger]` trace and the same default-fixture
+    record set as at v1.17.last. v1.18 added zero records to
+    the per-period sweep when no scenario is applied.
+  - integration-test fixture `living_world_digest` =
+    **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+    (unchanged from v1.17.last across the entire v1.18 sequence
+    when no scenario is applied — pinned by per-book trip-wire
+    tests at v1.18.1 / v1.18.2 / v1.18.3:
+    `tests/test_scenario_drivers.py::test_empty_scenario_drivers_does_not_move_default_living_world_digest`,
+    `tests/test_scenario_applications.py::test_empty_scenario_applications_does_not_move_default_living_world_digest`,
+    `…::test_explicit_scenario_application_does_not_touch_default_run`,
+    `tests/test_display_timeline.py::test_scenario_helpers_do_not_move_default_living_world_digest`,
+    `tests/test_scenario_report.py::test_run_scenario_report_does_not_move_default_living_world_digest`)
+  - `python -m examples.reference_world.scenario_report` →
+    produces a deterministic markdown report rendering the
+    v1.18.2 application chain (template / application /
+    context shift / event annotation / causal annotation) for
+    a six-template default fixture exercising all five
+    v1.18.2 mappings plus the `no_direct_shift` fallback.
+    Same fixture + same `as_of_date` → byte-identical
+    markdown.
+  - `examples/ui/fwe_workbench_mockup.html` → opens directly
+    under `file://` with no console errors. Bottom-tab ↔ sheet
+    article 1:1 bijection enforced at runtime by the in-page
+    `Validate` button. Inline JSON parses; standalone
+    `sample_living_world_manifest.json` parses; both carry the
+    v1.18.4 `scenario_selector` / `scenario_fixtures` /
+    `scenario_trace` / `selected_scenario` keys. `Run mock`
+    switches `(regime, scenario)` fixtures across the four
+    regimes × seven scenarios; the status line reads
+    `mock UI run · <regime> · <scenario> · static fixture · no
+    engine execution`. Picking `Unmapped fallback` surfaces
+    the `no_direct_shift` callout verbatim. Long plain-id
+    citation wrapping fixed at v1.18.4 (`table-layout: fixed`
+    + `overflow-wrap: anywhere`); the page no longer overflows
+    the viewport when Run mock fills the scenario trace
+    tables. `Validate` reports `validation passed · static
+    UI`. Constant `static fixture only · no backend execution`
+    sub-status visible at all times.
+  - Forbidden-token scan + public-wording audit + public /
+    private boundary review + no-confidential-content audit +
+    no-real-data audit + no-behavior-probability audit — all
+    unchanged from v1.17.last.
+
+#### v1.17.last historical snapshot (unchanged)
+
+- **Date:** 2026-05-04
 - **Target:** v1.17.last inspection-layer freeze. The
   v1.16.last endogenous-market-intent feedback freeze (snapshot
   below), the v1.15.last securities-market-intent aggregation
@@ -52,51 +158,11 @@ new review is performed.
   no build, no external runtime, no network I/O — `Run mock` is
   fixture switching, `Compare Regimes` is display-report
   navigation, `Export HTML` is a non-destructive status update.
-  Known limitations: no live engine execution from the UI; the
-  workbench's embedded sample fixture digest reflects an earlier
-  engine snapshot and is tagged accordingly; the inspection
-  layer is rendering, not interpretation.
-- **Status:** docs + tests frozen. The freeze is conditional on
-  CI being green on the commit being tagged.
-- **Local results (v1.17.last):**
-  - `pytest -q` → 4165 passed
-  - `compileall world spaces tests examples` → clean
-  - `ruff check .` (repo root) → clean
-  - `python -m examples.reference_world.run_living_reference_world`
-    → unchanged from v1.16.last; produces the same `[setup]` /
-    `[period N]` / `[ledger]` trace and the same default-fixture
-    record set as at v1.16.last. v1.17 added zero records to
-    the per-period sweep.
-  - integration-test fixture `living_world_digest` =
-    **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
-    (unchanged from v1.16.last across the entire v1.17 sequence
-    — pinned by
-    `tests/test_display_timeline.py::test_default_living_world_run_does_not_create_display_records`
-    and
-    `tests/test_regime_comparison_report.py::test_extract_regime_run_snapshot_does_not_mutate_kernel`)
-  - `python -c "from examples.reference_world.regime_comparison_report import regime_comparison_markdown; print(regime_comparison_markdown())"`
-    → produces a deterministic side-by-side regime comparison
-    markdown surface across constructive / constrained /
-    tightening, with the v1.17.3 environment-subfield row
-    surfacing the difference between regimes whose top-level
-    histograms collide. Re-running yields byte-identical
-    output.
-  - `examples/ui/fwe_workbench_mockup.html` → opens directly
-    under `file://` with no console errors. Bottom-tab ↔ sheet
-    article 1:1 bijection enforced at runtime by the in-page
-    `Validate` button. Inline JSON parses; standalone
-    `sample_living_world_manifest.json` parses. `Run mock`
-    fixture-switches across constructive / mixed / constrained /
-    tightening; `Compare Regimes` lands on the Regime Compare
-    tab and flashes the comparison card; `Validate` reports
-    `validation passed · static UI`; `Export HTML` reports the
-    non-destructive `static prototype` status. Constant
-    `static fixture only · no backend execution` sub-status
-    visible at all times.
-  - Forbidden-token scan + public-wording audit + public /
-    private boundary review + no-confidential-content audit +
-    no-real-data audit + no-behavior-probability audit — all
-    unchanged from v1.16.last.
+- **Status:** historical snapshot, preserved unchanged.
+- **Local results (v1.17.last):** `pytest -q` → 4165 passed;
+  `compileall` clean; `ruff check .` clean;
+  `living_world_digest` =
+  `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`.
 
 #### v1.16.last historical snapshot (unchanged)
 
@@ -477,8 +543,9 @@ new review is performed.
   freeze: `1626 passed`. v1.13.last freeze: `2988 passed`.
   v1.14.last freeze: `3391 passed`. v1.15.last freeze:
   `3883 passed`. v1.16.last freeze: `4033 passed`. v1.17.last
-  freeze: `4165 passed`. Use the count of the milestone being
-  tagged; mismatch means the tree is not the freeze tree.
+  freeze: `4165 passed`. v1.18.last freeze: `4334 passed`. Use
+  the count of the milestone being tagged; mismatch means the
+  tree is not the freeze tree.
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).

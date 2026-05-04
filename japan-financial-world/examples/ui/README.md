@@ -367,6 +367,19 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
+## v1.18.last — scenario driver library freeze
+
+v1.18.last closes the v1.18 sequence as the first FWE milestone
+where **synthetic scenario drivers can be stored, applied as
+append-only context shifts, rendered into scenario reports, and
+selected in the static workbench UI** — without mutating any
+source-of-truth record and without deciding actor behaviour.
+The static workbench scenario selector (described below) is the
+v1.18.4 contribution to that surface; the v1.18.last freeze is
+docs-only and ships no UI changes beyond cross-links into the
+single-page summary at
+[`../../docs/v1_18_scenario_driver_library_summary.md`](../../docs/v1_18_scenario_driver_library_summary.md).
+
 ## v1.18.4 — scenario selector mock
 
 The Inputs tab now carries a **scenario driver selector** card

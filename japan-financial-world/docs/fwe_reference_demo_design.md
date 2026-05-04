@@ -5,6 +5,27 @@ jurisdiction-neutral demo world that exercises every v0 + v1 record
 type through the existing v1.6 reference loop and produces a complete
 causal ledger trace.
 
+> **Note (v1.18.last freeze).** v1.18 froze the public-FWE
+> **scenario-driver inspection layer** on top of the v1.17
+> inspection surface and the v1.16 closed loop — synthetic
+> scenario templates ([`world/scenario_drivers.py`](../world/scenario_drivers.py)),
+> append-only application + context-shift records
+> ([`world/scenario_applications.py`](../world/scenario_applications.py)),
+> deterministic event / causal annotations rendered through
+> the v1.17.1 display surface plus a markdown scenario report
+> ([`examples/reference_world/scenario_report.py`](../examples/reference_world/scenario_report.py)),
+> and a static UI scenario selector mock on the v1.17.4
+> workbench. The headline runnable surface remains the
+> v1.16.last living reference world; v1.18 adds *scenario
+> inspectability*, not new economic behaviour. Scenario driver
+> is the stimulus, never the response — context shifts are
+> append-only and the cited pre-existing context records are
+> byte-identical pre / post call. The static workbench scenario
+> selector is fixture-switching only — the Python engine is
+> invoked from the command line, never from the UI. See
+> [`v1_18_scenario_driver_library_summary.md`](v1_18_scenario_driver_library_summary.md)
+> for the v1.18 single-page summary.
+>
 > **Note (v1.17.last freeze).** v1.17 froze the public-FWE
 > **inspection layer** on top of the v1.16 closed loop —
 > reporting calendar, synthetic display path, event

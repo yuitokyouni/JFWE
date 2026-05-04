@@ -518,6 +518,35 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.18.last addendum — scenario driver library freeze
+
+v1.18.last closes the v1.18 scenario-driver sequence as the
+**first FWE milestone where synthetic scenario drivers can be
+stored, applied as append-only context shifts, rendered into
+scenario reports, and selected in the static workbench UI** —
+without mutating any source-of-truth record and without
+deciding actor behaviour. The freeze is **docs-only** on top of
+the v1.18.0 → v1.18.4 code freezes:
+
+- v1.18.0 docs-only design;
+- v1.18.1 `ScenarioDriverTemplate` storage (+56 tests);
+- v1.18.2 `ScenarioDriverApplicationRecord` /
+  `ScenarioContextShiftRecord` append-only helper (+72 tests);
+- v1.18.3 scenario report + causal timeline integration
+  (+23 / +18 tests);
+- v1.18.4 static UI scenario selector mock (no pytest tests —
+  the in-page `Validate` button enforces the bijection
+  invariants).
+
+`scenario_report.py` (below) is the kernel-reading bridge that
+renders the v1.18.2 application chain into a deterministic
+markdown report through the v1.18.3 display helpers. The driver
+builds its own *fresh* kernel — running it does **not** move
+the default-fixture `living_world_digest` of a separately
+seeded default sweep. See
+[`docs/v1_18_scenario_driver_library_summary.md`](../../docs/v1_18_scenario_driver_library_summary.md)
+for the v1.18.last single-page summary.
+
 ## v1.18.3 addendum — scenario report
 
 `scenario_report.py` ships the v1.18.3 deterministic markdown

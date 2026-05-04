@@ -1,8 +1,50 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.17.last** (`Inspection Layer
-freeze` — docs-only milestone that closes the v1.17 sequence;
-ships the single-page reader-facing summary in
+Snapshot of the test suite at **v1.18.last** (`Scenario Driver
+Library freeze` — docs-only milestone that closes the v1.18
+sequence; ships the single-page reader-facing summary in
+[`v1_18_scenario_driver_library_summary.md`](v1_18_scenario_driver_library_summary.md),
+the v1.18.last release-readiness snapshot in
+[`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md), and the
+v1.18.last position-in-sequence row in `world_model.md` §127;
+no new code, no new tests, no new ledger event types, no new
+behavior; test count = **4334 / 4334**, per-period record count
+= **108 / 110**, per-run window = **`[432, 480]`**,
+`living_world_digest` =
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+— all unchanged from v1.17.last by design across the entire
+v1.18 sequence when no scenario is applied; the v1.18 surface
+is the **first public-FWE scenario-driver inspection layer**
+over the v1.17 inspection surface and the v1.16 closed loop:
+synthetic scenario templates (v1.18.1) → append-only scenario
+applications (v1.18.2) → append-only context-shift records
+(v1.18.2) → event / causal annotations rendered through the
+v1.17.1 display surface (v1.18.3) → deterministic markdown
+scenario report (v1.18.3) → static UI scenario selector mock
+(v1.18.4); append-only, deterministic, rule-based-fallback
+only — no price formation, no market price, no predicted
+index, no forecast path, no expected return, no target price,
+no trading, no orders, no execution, no clearing, no
+settlement, no financing execution, no investment advice, no
+real data ingestion, no Japan calibration, no LLM execution,
+no LLM prose as source-of-truth, no stochastic behaviour
+probabilities, no learned model, no firm decisions, no
+investor actions, no bank approval logic, no mutation of
+pre-existing context records. The scenario chain stays
+template-only / append-only / label-only / stimulus-only — the
+scenario driver is the stimulus, never the response. The
+v1.18.4 static workbench gains a seven-option scenario
+selector (Baseline / Rate repricing / Credit tightening /
+Funding window closure / Liquidity stress / Information gap /
+Unmapped fallback) — fixture switching only, the Python engine
+is NOT invoked from the UI. The v1.17.last, v1.16.last, and
+v1.15.last historical snapshots below are preserved unchanged.)
+
+---
+
+Earlier snapshot at **v1.17.last** (`Inspection Layer freeze`
+— docs-only milestone that closes the v1.17 sequence; ships
+the single-page reader-facing summary in
 [`v1_17_inspection_layer_summary.md`](v1_17_inspection_layer_summary.md),
 the v1.17.last release-readiness snapshot in
 [`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md), and the
@@ -23,15 +65,7 @@ expected return, no target price, no trading, no orders, no
 execution, no clearing, no settlement, no investment advice,
 no real data, no Japan calibration, no LLM execution, no
 stochastic behaviour probabilities, no learned model, no new
-economic source-of-truth records. The v1.17 layer is a
-rendering of records the kernel already emits; the report
-driver runs each regime on its own freshly-seeded kernel and
-walks the read-only book interface only. The static workbench
-has no backend, no build, no external runtime, no network I/O
-— "Run mock" is fixture switching, "Compare Regimes" is
-display-report navigation, "Export HTML" is a non-destructive
-status update. The v1.16.last and v1.15.last historical
-snapshots below are preserved unchanged.)
+economic source-of-truth records.)
 
 ---
 

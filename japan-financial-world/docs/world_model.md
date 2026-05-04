@@ -9758,3 +9758,113 @@ v1.18.3 is **report / display integration only**. The v1.18 chain stays append-o
 ### 126.6 Forward pointer
 
 v1.18.4 wires the v1.18.3 markdown report into the static analyst workbench at [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html) as a non-destructive scenario picker (fixture switching only — Python engine NOT invoked from the UI). v1.18.last freezes the scenario-driver layer (docs-only).
+
+§127 closes the v1.18 sequence. v1.18.last is **docs-only** on top of the v1.18.0 → v1.18.4 code freezes: no new module, no new test, no new ledger event, no new label vocabulary. The freeze pins the v1.18 surface as the first FWE milestone where **synthetic scenario drivers can be stored, applied as append-only context shifts, rendered into scenario reports, and selected in the static workbench UI** — without mutating any source-of-truth record and without deciding actor behaviour.
+
+The freeze ships:
+
+- the single-page reader-facing summary in [`v1_18_scenario_driver_library_summary.md`](v1_18_scenario_driver_library_summary.md);
+- this §127 section;
+- the v1.18.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md);
+- the v1.18.last freeze pin section in [`performance_boundary.md`](performance_boundary.md);
+- the v1.18.last header note in [`test_inventory.md`](test_inventory.md);
+- the v1.18.last addendum in [`examples/reference_world/README.md`](../examples/reference_world/README.md);
+- the v1.18.last cross-link in [`examples/ui/README.md`](../examples/ui/README.md);
+- the v1.18.last headline note in [`fwe_reference_demo_design.md`](fwe_reference_demo_design.md).
+
+### 127.1 Sequence map
+
+| Milestone   | Surface                                                                  | Status                                  |
+| ----------- | ------------------------------------------------------------------------ | --------------------------------------- |
+| v1.18.0     | Scenario Driver Library design (docs-only)                               | Shipped                                 |
+| v1.18.1     | `world/scenario_drivers.py` — `ScenarioDriverTemplate` storage           | Shipped (+56 tests)                     |
+| v1.18.2     | `world/scenario_applications.py` — append-only application helper         | Shipped (+72 tests)                     |
+| v1.18.3     | `world/display_timeline.py` (extended) + `examples/reference_world/scenario_report.py` — scenario report + causal timeline integration | Shipped (+23 / +18 tests)               |
+| v1.18.4     | `examples/ui/fwe_workbench_mockup.html` — static UI scenario selector    | Shipped (UI / fixture only — no pytest) |
+| **v1.18.last** | **docs-only**                                                         | **Shipped** (this freeze)               |
+
+### 127.2 Binding architecture (carried verbatim from v1.18.0)
+
+```
+ScenarioDriverTemplate                           (v1.18.1)
+    │  storage; closed-set vocabulary; v1.18.0 audit fields
+    ▼
+ScenarioDriverApplicationRecord                  (v1.18.2)
+    │  per-call receipt, append-only, plain-id citations only
+    ▼
+ScenarioContextShiftRecord                       (v1.18.2)
+    │  one or more per application, append-only;
+    │  cited pre-existing context records are byte-identical
+    │  pre / post call (pinned per-book by trip-wire tests)
+    ▼
+EventAnnotationRecord / CausalTimelineAnnotation (v1.18.3)
+    │  rendered through the v1.17.1 display surface;
+    │  causal shape (template_id, application_id) → shift_id
+    ▼
+Markdown report (v1.18.3) / Static UI cards (v1.18.4)
+    inspection only — no engine invocation from the UI
+```
+
+### 127.3 Critical boundary (carried verbatim from v1.18.0 / v1.18.2)
+
+- Scenario driver is the **stimulus**, never the **response**.
+- Context shift is **append-only**; no pre-existing context record is mutated.
+- No firm decision is made by the scenario driver.
+- No investor action is made by the scenario driver.
+- No bank approval logic is added on top of the scenario layer.
+- No price, no trade, no order, no execution, no clearing, no settlement, no quote dissemination, no `PriceBook` mutation.
+- No forecast, no predicted index, no forecast path, no expected return, no target price, no recommendation, no investment advice.
+- No real data ingestion, no Japan calibration.
+- No LLM execution; no LLM prose as source-of-truth; no `prompt_text` / `llm_output` / `llm_prose` fields (pinned by `FORBIDDEN_SCENARIO_FIELD_NAMES`).
+- No hidden mutation of any source-of-truth book — pinned per book by v1.18.2 trip-wire tests.
+
+### 127.4 Future-LLM-compatibility audit shape (forward-affordance)
+
+Every v1.18 record / annotation carries:
+
+- `reasoning_mode = "rule_based_fallback"` (binding at v1.18.x);
+- `reasoning_slot = "future_llm_compatible"` (architectural commitment, not runtime capability);
+- `reasoning_policy_id` (plain id naming the rule table or policy);
+- `evidence_ref_ids` (plain-id citation tuple of the records read);
+- `unresolved_ref_count` (non-negative int);
+- `boundary_flags` (Boolean mapping naming each binding-boundary check — at v1.18.2 default: `no_actor_decision` / `no_llm_execution` / `no_price_formation` / `no_trading` / `no_financing_execution` / `no_investment_advice` / `synthetic_only`).
+
+A future LLM-mode policy must populate the **same fields** under a different `reasoning_policy_id`. There is no `prompt_text` / `llm_output` / `llm_prose` field at v1.18.x — pinned by `FORBIDDEN_SCENARIO_FIELD_NAMES`.
+
+### 127.5 Performance boundary at v1.18.last
+
+v1.18.last is **docs-only**. The default sweep without any scenario applied is byte-identical to v1.17.last:
+
+| Surface                                                               | Value (v1.18.last = v1.17.last when no scenario applied)                    |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (default fixture, no scenario applied)        | **108** (period 0) / **110** (periods 1+)                                    |
+| Per-run window (default 4-period fixture)                             | **`[432, 480]`**                                                              |
+| Default 4-period sweep                                                | **460 records**                                                              |
+| Integration-test `living_world_digest` (default, no scenario applied) | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**       |
+| Test count (`pytest -q`)                                              | **4334 / 4334**                                                              |
+
+Scenario helpers and UI fixtures do **not** move the default digest unless `apply_scenario_driver(...)` is explicitly invoked outside the default fixture; the v1.18.x trip-wire tests pin this per book and per scenario application.
+
+### 127.6 UI status at v1.18.last
+
+- Static HTML; no backend; no build tooling; no engine invocation from the browser.
+- `Run mock` switches static `(regime, scenario)` fixtures only — same pair → byte-identical UI state.
+- Scenario selector options: `Baseline` (`none_baseline`) / `Rate repricing` (`rate_repricing_driver`) / `Credit tightening` (`credit_tightening_driver`) / `Funding window closure` (`funding_window_closure_driver`) / `Liquidity stress` (`liquidity_stress_driver`) / `Information gap` (`information_gap_driver`) / `Unmapped fallback` (`no_direct_shift_fallback`).
+- Long plain-id citation wrapping fixed at v1.18.4 (`table-layout: fixed` + `overflow-wrap: anywhere`); the page no longer overflows the viewport when Run mock fills the scenario trace tables.
+- Tab ↔ sheet 1:1 bijection (10 ↔ 10) preserved; the `Validate` button enforces both the v1.17.4 bijection and the new v1.18.4 scenario-selector / scenario-trace card invariants.
+
+### 127.7 Known limitations
+
+- Scenarios are **synthetic templates, not forecasts** — no probability, no calibrated magnitude, no real-data tie.
+- Scenario application is **deterministic and `rule_based_fallback`** — five family→shift mappings + a `no_direct_shift` fallback for unmapped families.
+- Actor response is still **mediated through existing / future mechanisms** — the v1.12 / v1.14 / v1.15 / v1.16 chain (or, in the future, an audited `ReasoningPolicySlot`).
+- **No scenario is calibrated to real data.** Public FWE remains jurisdiction-neutral and synthetic.
+- The **UI scenario selector is a mock**, not live execution — `apply_scenario_driver(...)` runs from Python, never from the browser.
+- The **`no_direct_shift` fallback** means *stored but not yet mapped to a concrete context surface* — the report and UI tag this verbatim as "this is not an error".
+
+### 127.8 Next-roadmap candidates
+
+- **v1.19 — local run bridge / report export (conditional).** If interactive scenario execution becomes necessary, a CLI-driven bridge that writes a regime-comparison panel + scenario-application markdown report to disk (markdown / JSON), which the static workbench can then `Load sample run` against. Still no backend, no build, no network.
+- **v2.0 — Japan public calibration in private JFWE only.** Public FWE remains jurisdiction-neutral and synthetic.
+- **Future LLM reasoning policies remain gated** behind audit (input evidence ids, prompt / policy id, output label, confidence / status, rejected / unknown cases) and source-book immutability.
+- **Future price formation remains gated** until the v1.16 / v1.17 / v1.18 surface is operationally legible to a reviewer who has not read this codebase.

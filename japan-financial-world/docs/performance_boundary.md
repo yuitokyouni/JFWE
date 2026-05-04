@@ -336,6 +336,56 @@ If any of those pins fails, the demo has either grown the
 fixture (intentional but undocumented) or gained a hidden
 quadratic loop (unintended).
 
+## v1.18.last freeze pins
+
+The v1.18.last freeze (docs-only on top of the v1.18.0 → v1.18.4
+code freezes) closes the v1.18 sequence as the **first FWE
+milestone where synthetic scenario drivers can be stored,
+applied as append-only context shifts, rendered into scenario
+reports, and selected in the static workbench UI** — without
+mutating any source-of-truth record and without deciding actor
+behaviour. None of these touch the kernel's per-period sweep
+unless `apply_scenario_driver(...)` is explicitly invoked
+outside the default fixture. On the default 4-period fixture
+(3 firms, 2 investors, 2 banks, no scenario applied):
+
+- per-period record count: **108** (period 0) / **110** (periods 1+),
+  unchanged from v1.17.last (every v1.18 milestone added zero
+  records to the per-period sweep — the scenario books are
+  empty by default, the v1.18.2 helper runs only when called
+  explicitly, the v1.18.3 driver builds its own *fresh* kernel,
+  and v1.18.4 is a static-HTML edit),
+- per-run window: **`[432, 480]`**, unchanged,
+- default 4-period sweep total: **460 records**, unchanged,
+- integration-test `living_world_digest` (v1.18.last):
+  **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+  (unchanged from v1.17.last across all v1.18 milestones —
+  pinned by per-book trip-wire tests at v1.18.1
+  (`tests/test_scenario_drivers.py::test_empty_scenario_drivers_does_not_move_default_living_world_digest`),
+  v1.18.2
+  (`tests/test_scenario_applications.py::test_empty_scenario_applications_does_not_move_default_living_world_digest`
+  + `…::test_explicit_scenario_application_does_not_touch_default_run`),
+  and v1.18.3
+  (`tests/test_display_timeline.py::test_scenario_helpers_do_not_move_default_living_world_digest`
+  + `tests/test_scenario_report.py::test_run_scenario_report_does_not_move_default_living_world_digest`)),
+- pytest count: **4334 / 4334** passing (+169 across the v1.18
+  sequence; v1.18.0 / v1.18.4 are docs / static-HTML only and
+  add no pytest tests; the in-page `Validate` button enforces
+  the v1.18.4 scenario-selector / scenario-trace card
+  invariants).
+
+The v1.18 layer is **append-only** — every emitted record cites
+the scenario template / application via plain-ids and never
+mutates a pre-existing context record. The display helpers in
+`world/display_timeline.py` import no source-of-truth book or
+kernel (the standalone-display module-text scan is extended at
+v1.18.3 to forbid `from world.scenario_drivers` and
+`from world.scenario_applications`); the v1.18.3 driver builds
+its own *fresh* kernel; the v1.18.4 static workbench writes
+nothing, has no backend, no build, and no external runtime —
+"Run mock" switches `(regime, scenario)` fixtures, never
+invokes the Python engine.
+
 ## v1.17.last freeze pins
 
 The v1.17.last freeze (docs-only on top of the v1.17.0 → v1.17.4
