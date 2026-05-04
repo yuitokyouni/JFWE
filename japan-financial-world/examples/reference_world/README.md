@@ -518,6 +518,38 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.19.1 — RunExportBundle dataclass + JSON writer (shipped)
+
+The first concrete code milestone of the v1.19 local-run-bridge
+sequence has shipped at
+[`world/run_export.py`](../../world/run_export.py). It carries
+the **report export bundle** layer of the v1.19.0 four-layer
+design (engine run profile / report export bundle / UI loading
+mode / local run bridge): one immutable `RunExportBundle`
+dataclass + four module-level helpers
+(`build_run_export_bundle` / `bundle_to_dict` / `bundle_to_json`
+/ `write_run_export_bundle` / `read_run_export_bundle`).
+`bundle_to_json` is deterministic (`sort_keys=True`); same
+arguments → byte-identical JSON file. `read_run_export_bundle`
+returns a plain `dict` so the v1.19.4 static UI loader can walk
+the dict without a Python dependency.
+
+v1.19.1 ships export infrastructure **only**:
+
+- it does **not** run the engine,
+- it does **not** implement the `monthly_reference` or
+  `scenario_monthly` run profiles (deferred to v1.19.3),
+- it does **not** ship the CLI exporter (deferred to v1.19.2 —
+  `python -m examples.reference_world.export_run_bundle …`),
+- it does **not** connect the browser to Python (deferred to
+  v1.19.4 — `<input type="file">` + `JSON.parse`),
+- it does **not** move the default-fixture
+  `living_world_digest` of a separately seeded default sweep.
+
+The next milestone in this folder will be **v1.19.2** — the
+CLI exporter that produces a real `RunExportBundle` from a
+kernel run.
+
 ## v1.19.0 forward pointer — local run bridge / temporal profiles
 
 The next planned milestone, **v1.19.0** (docs-only — see

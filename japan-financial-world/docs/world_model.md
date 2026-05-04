@@ -9902,3 +9902,51 @@ v1.19.1 → v1.19.last will land code, but the **default fixture, default profil
 ### 128.2 Forward pointer
 
 v1.19.last freezes the local-run-bridge / temporal-profile / information-release layer. v1.20 (conditional) may add additional run profiles or stress-test variants — each a label over the existing closed loop, never a new mechanism. v2.0 is Japan public calibration in private JFWE only; the v1.19 release-cadence vocabulary is jurisdiction-neutral by design and may be calibrated to BOJ / METI / MIC / MOF schedules in private JFWE without changing the public surface. Future LLM-mode reasoning policies, when introduced, must populate the same `ActorReasoningInputFrame` / `ReasoningPolicySlot` audit shape pinned at v1.18.0; the v1.19 monthly profile + information-arrival layer **does not** unlock LLM execution. Future price formation **remains gated** until the v1.16 / v1.17 / v1.18 / v1.19 surface is operationally legible to a reviewer who has not read this codebase.
+
+### 128.3 v1.19.1 — RunExportBundle dataclasses + JSON writer
+
+§128.3 ships the first concrete code milestone in the v1.19 sequence. v1.19.1 lands [`world/run_export.py`](../world/run_export.py) — the export-infrastructure layer that turns an FWE run (or any caller-supplied label set + payload dicts) into a deterministic JSON artifact suitable for later read-only UI loading at v1.19.4. v1.19.1 itself is **export infrastructure only** — it does not run the engine, does not implement the `monthly_reference` or `scenario_monthly` run profiles, does not connect the browser to Python, and does not move the default-fixture `living_world_digest`.
+
+The module ships:
+
+- one immutable frozen dataclass `RunExportBundle` carrying the v1.19.0-pinned field set (`bundle_id` / `run_profile_label` / `regime_label` / `selected_scenario_label` / `period_count` / `digest` / `generated_at_policy_label` / `manifest` / `overview` / `timeline` / `regime_compare` / `scenario_trace` / `attention_diff` / `market_intent` / `financing` / `ledger_excerpt` / `boundary_flags` / `status` / `visibility` / `metadata`);
+- four closed-set frozensets — `RUN_PROFILE_LABELS` (6 entries), `GENERATED_AT_POLICY_LABELS` (4), `STATUS_LABELS` (6), `VISIBILITY_LABELS` (5);
+- the v1.19.0 hard-naming-boundary `FORBIDDEN_RUN_EXPORT_FIELD_NAMES` frozenset — composes the v1.18.0 actor-decision / canonical-judgment names with the v1.17.0 forbidden display names + Japan-calibration / LLM names; scanned **recursively** (any depth) across every payload + boundary-flag + metadata mapping at construction;
+- the v1.19.0 default boundary-flag set (8 entries: `synthetic_only` / `no_price_formation` / `no_trading` / `no_investment_advice` / `no_real_data` / `no_japan_calibration` / `no_llm_execution` / `display_or_export_only`) carried on every emitted bundle;
+- five module-level helpers: `build_run_export_bundle(...)` (constructor with named-arg signature mirroring the dataclass field set + sensible defaults), `bundle_to_dict(bundle)` (alias for `RunExportBundle.to_dict()`), `bundle_to_json(bundle, *, indent=2)` (deterministic via `sort_keys=True` + `ensure_ascii=False`), `write_run_export_bundle(bundle, path)` (writes a UTF-8 JSON file at `path`), `read_run_export_bundle(path)` (returns a plain `dict` — full dataclass restoration is **deferred** to a later milestone).
+
+### 128.4 Determinism rules pinned at v1.19.1
+
+- Same `(bundle_id, run_profile_label, regime_label, selected_scenario_label, period_count, digest, generated_at_policy_label, manifest, overview, timeline, regime_compare, scenario_trace, attention_diff, market_intent, financing, ledger_excerpt, boundary_flags, status, visibility, metadata)` arguments → byte-identical `RunExportBundle.to_dict()`.
+- Same bundle → byte-identical JSON via `bundle_to_json` (`sort_keys=True` makes the output insertion-order-independent for the underlying mappings).
+- Same bundle → byte-identical file via `write_run_export_bundle` (UTF-8, no BOM, no trailing whitespace beyond what `json.dumps` emits).
+- The dataclass carries **no wall-clock timestamp field**; `generated_at_policy_label = "stable_for_replay"` is therefore declarative — the rendered JSON contains no ISO-style timestamp inserted by the export module itself (pinned by `test_stable_for_replay_json_has_no_iso_timestamp`).
+- `period_count` validation rejects `bool` (which is otherwise a subclass of `int`) and negative ints.
+
+### 128.5 No-mutation invariants pinned at v1.19.1
+
+1. The module does **not** import any kernel / source-of-truth book / scenario-storage module — pinned by a module-text scan that forbids `from world.kernel`, `from world.prices`, `from world.scenario_drivers`, `from world.scenario_applications`, `from world.market_environment`, `from world.firm_state`, `from world.interbank_liquidity`, `from world.financing_paths`, `from world.market_intents`, `from world.attention`, `from world.attention_feedback`, `from world.reference_living_world`, `from world.display_timeline`, `from world.ledger`, and `from world.clock`.
+2. Constructing a bundle does **not** emit any ledger record — the module imports no `Ledger`.
+3. Constructing a bundle does **not** mutate the `PriceBook` (or any other source-of-truth book) of a separately seeded kernel.
+4. Constructing or writing a bundle does **not** move the default-fixture `living_world_digest` of a separately seeded default sweep (pinned by `test_constructing_bundles_does_not_move_default_living_world_digest`).
+5. The `monthly_reference` / `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` profile labels are accepted as **carriers only** — the v1.19.1 module does not invoke any engine machinery for any profile label.
+
+### 128.6 Test inventory delta
+
+`+56` tests in [`tests/test_run_export.py`](../tests/test_run_export.py); test_inventory total moves from **101 / 4334** to **102 / 4390**.
+
+### 128.7 Performance boundary at v1.19.1
+
+The default sweep is unchanged from v1.18.last:
+
+| Surface                                                               | Value (v1.19.1 = v1.18.last)                                                |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (default fixture, no scenario applied)        | **108** (period 0) / **110** (periods 1+)                                    |
+| Per-run window (default 4-period fixture)                             | **`[432, 480]`**                                                              |
+| Default 4-period sweep                                                | **460 records**                                                              |
+| Integration-test `living_world_digest` (default, no scenario applied) | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**       |
+| Test count (`pytest -q`)                                              | **4390 / 4390**                                                              |
+
+### 128.8 Forward pointer
+
+v1.19.2 will land the CLI exporter (`examples/reference_world/export_run_bundle.py`) wiring the existing v1.16 / v1.17 / v1.18 helpers into a `RunExportBundle` and writing it to disk. v1.19.3 will land the `monthly_reference` run profile and `world/information_release.py` (`InformationReleaseCalendar` book + `ScheduledIndicatorRelease` + `InformationArrivalRecord`). v1.19.4 will land the static UI's read-only **Load local run bundle** affordance. v1.19.last will freeze the v1.19 sequence (docs-only).

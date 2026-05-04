@@ -367,6 +367,53 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
+## v1.19.1 — RunExportBundle data shape (shipped)
+
+The static UI does not yet have a `Load local run bundle`
+button (planned at v1.19.4). v1.19.1 lands the **data shape**
+the future button will consume:
+[`world/run_export.py`](../../world/run_export.py) now exports
+a deterministic `RunExportBundle` dataclass and a JSON writer.
+
+When the v1.19.4 loader ships, the file the UI will load is the
+byte-identical JSON produced by:
+
+```python
+from world.run_export import build_run_export_bundle, write_run_export_bundle
+
+bundle = build_run_export_bundle(
+    bundle_id="run_bundle:demo:1",
+    run_profile_label="quarterly_default",
+    regime_label="constrained",
+    period_count=4,
+    digest="f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c",
+    overview={"main_message": "..."},
+    timeline={...},
+    # ...
+)
+write_run_export_bundle(bundle, "examples/ui/run_bundle.local.json")
+```
+
+The bundle is **deterministic** (`sort_keys=True`); two writes
+of the same `(profile, regime, scenario, payload)` triple
+produce byte-identical files. The dataclass carries no
+wall-clock timestamp field, so the rendered JSON contains no
+ISO-style timestamp inserted by the export module itself.
+
+Top-level keys the UI loader will consume:
+`bundle_id` / `run_profile_label` / `regime_label` /
+`selected_scenario_label` / `period_count` / `digest` /
+`generated_at_policy_label` / `manifest` / `overview` /
+`timeline` / `regime_compare` / `scenario_trace` /
+`attention_diff` / `market_intent` / `financing` /
+`ledger_excerpt` / `boundary_flags` / `status` / `visibility` /
+`metadata`.
+
+Default boundary flags: `synthetic_only` /
+`no_price_formation` / `no_trading` / `no_investment_advice` /
+`no_real_data` / `no_japan_calibration` / `no_llm_execution` /
+`display_or_export_only`.
+
 ## v1.19.0 forward pointer — local run bundle loader (planned)
 
 The next planned UI milestone, **v1.19.0** (docs-only — see
