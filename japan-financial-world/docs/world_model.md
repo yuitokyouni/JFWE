@@ -10094,6 +10094,37 @@ Test inventory total moves from **104 / 4514** to **104 / 4522** (no new test fi
 
 The canonical `quarterly_default` digest stays byte-identical at **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** — a separately seeded default sweep is unaffected by CLI invocations, regardless of profile.
 
-### 128.17 Forward pointer
+### 128.17 v1.19.4 — UI local run bundle loader (read-only)
 
-v1.19.4 will land the static UI's read-only **Load local run bundle** affordance (and an optional stub local server). v1.19.last will freeze the v1.19 sequence (docs-only).
+§128.17 ships the fourth concrete code milestone of the v1.19 sequence: the static workbench at [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html) gains a top-ribbon **Load local bundle** button. The browser reads a user-supplied `RunExportBundle` JSON file produced by the v1.19.2 / v1.19.3.1 CLI exporter via the standard `<input type="file">` + `FileReader.readAsText` API path — **no `fetch()`, no XHR, no backend, no engine execution from the browser, no file-system write**.
+
+The loader:
+
+- parses with `JSON.parse` (never `eval`, never script injection);
+- validates the v1.19.1 top-level key set + the v1.19.0 default 8-flag boundary-flag block (`synthetic_only` / `no_price_formation` / `no_trading` / `no_investment_advice` / `no_real_data` / `no_japan_calibration` / `no_llm_execution`);
+- accepts the executable profiles `quarterly_default` / `monthly_reference` (mirrored from the v1.19.3.1 CLI's `EXECUTABLE_PROFILES` constant);
+- explicitly rejects the deferred profiles `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` with status `bundle profile '<profile>' is not loadable in v1.19.4 static UI`;
+- renders user-loaded values via `textContent` only (never `innerHTML`);
+- caps the rendered ledger excerpt at 20 rows;
+- updates a new top-ribbon `current_data_source` label to one of `inline_fixture` / `sample_manifest` / `local_bundle` (the label flips back to `inline_fixture` on **Run mock** and to `sample_manifest` on **Load sample run**);
+- renders into a new **Local run bundle** card on the Inputs tab plus the existing Overview / Timeline / Attention diff / Ledger surfaces;
+- for `monthly_reference` bundles surfaces the v1.19.3 `metadata.information_arrival_summary` (calendar count / scheduled-release count / arrival count + per-`indicator_family_label` / per-`release_importance_label` / per-`arrival_status_label` histograms — all label-counts only, no real values);
+- preserves the v1.17.4 / v1.18.4 no-jump discipline verbatim — no `scrollIntoView`, no `location.hash` mutation, no active-sheet shift; capture-and-restore protocol on scroll position.
+
+The in-page **Validate** button gains six new audit checks: loader button + file input + Local run bundle card + `current_data_source` label presence; `validateBundleSchema` function + `BUNDLE_REQUIRED_TOP_KEYS` / `BUNDLE_REQUIRED_BOUNDARY_FLAGS` / `BUNDLE_EXECUTABLE_PROFILES` / `BUNDLE_DEFERRED_PROFILES` constants present and well-shaped.
+
+### 128.18 Performance boundary at v1.19.4
+
+The v1.19.4 milestone is **HTML / CSS / JS only** — no Python module touched, no test added. Per-period record count, per-run window, default 4-period sweep total, default-fixture `living_world_digest`, and pytest count are unchanged from v1.19.3.1:
+
+| Surface                                                               | Value (v1.19.4 = v1.19.3.1)                                                 |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (default fixture, no scenario applied)        | **108** (period 0) / **110** (periods 1+)                                    |
+| Per-run window (default 4-period fixture)                             | **`[432, 480]`**                                                              |
+| Default 4-period sweep                                                | **460 records**                                                              |
+| Integration-test `living_world_digest` (default, no scenario applied) | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**       |
+| Test count (`pytest -q`)                                              | **4522 / 4522**                                                              |
+
+### 128.19 Forward pointer
+
+v1.19.last will freeze the v1.19 sequence (docs-only). The optional `127.0.0.1` stub local server bridge stays deferred — the CLI + read-only UI loader cover the headline workflow already.

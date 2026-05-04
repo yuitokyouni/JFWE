@@ -367,7 +367,97 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
-## v1.19.2 — CLI emits the JSON the v1.19.4 UI loader will consume (shipped)
+## v1.19.4 — Local run bundle loader (shipped, read-only)
+
+The static workbench now loads a `RunExportBundle` JSON
+artifact produced by the v1.19.2 / v1.19.3.1 CLI exporter.
+**Read-only** — the browser never executes Python, never calls a
+backend, never writes files.
+
+### Workflow
+
+```bash
+cd japan-financial-world
+
+# v1.19.2 — quarterly_default
+python -m examples.reference_world.export_run_bundle \
+    --profile quarterly_default \
+    --regime constrained \
+    --scenario none_baseline \
+    --out /tmp/fwe_quarterly_bundle.json
+
+# v1.19.3.1 — monthly_reference
+python -m examples.reference_world.export_run_bundle \
+    --profile monthly_reference \
+    --regime constrained \
+    --scenario none_baseline \
+    --out /tmp/fwe_monthly_bundle.json
+
+open examples/ui/fwe_workbench_mockup.html
+```
+
+In the workbench:
+
+1. Click **Load local bundle** in the top ribbon.
+2. Pick the JSON file from your file picker.
+3. Inspect the rendered result in Inputs (Local run bundle
+   card) / Overview / Timeline / Attention / Market Intent /
+   Financing / Ledger.
+
+### Behavior
+
+- Reads the file via the browser `FileReader` API; **no
+  network**.
+- Parses with `JSON.parse` — never `eval`, never script
+  injection.
+- Validates the v1.19.1 `RunExportBundle` top-level key set
+  and the v1.19.0 default 8-flag boundary-flag block.
+- Renders user-loaded values via `textContent` only — never
+  `innerHTML`.
+- Updates the top-ribbon status to:
+  `loaded local bundle · <profile> · <regime> · digest=<prefix> · read-only`.
+- Updates the **`current_data_source`** label to
+  `local_bundle`. Subsequently clicking **Run mock** flips
+  the label back to `inline_fixture`; clicking **Load sample
+  run** flips it to `sample_manifest`.
+- Caps the rendered `ledger_excerpt` at 20 rows.
+- Preserves the v1.17.4 no-jump discipline — does not call
+  `scrollIntoView`, change `location.hash`, or change the
+  active sheet.
+
+### Accepted profiles
+
+- ✅ `quarterly_default` — 4-period canonical default.
+- ✅ `monthly_reference` — 12-period synthetic monthly profile;
+  the bundle's `metadata.information_arrival_summary` is
+  rendered into the *Information arrival summary* sub-card
+  (calendar count / scheduled releases / arrivals + per-
+  indicator-family / per-importance / per-arrival-status
+  histograms). **Information arrival is not data ingestion** —
+  no real values, no real release dates, no real
+  institutional identifiers.
+
+### Rejected profiles (clear status message)
+
+- ❌ `scenario_monthly` — deferred (v1.19.x).
+- ❌ `daily_display_only` — display-only; not loadable as a
+  run bundle in v1.19.4.
+- ❌ `future_daily_full_simulation` — explicitly out of scope
+  for v1.19.
+
+For any of the above the loader prints
+`bundle profile '<profile>' is not loadable in v1.19.4 static UI`.
+
+### Hard boundary
+
+No engine execution from the browser. No backend. No
+file-system write. No network. No daily simulation. No price
+formation. No trading. No financing execution. No investment
+advice. No real data ingestion. No Japan calibration. No LLM
+execution. The workbench remains a single-file static HTML
+prototype runnable directly under `file://`.
+
+## v1.19.2 — CLI emits the JSON the v1.19.4 UI loader consumes (shipped)
 
 The v1.19.2 CLI exporter at
 [`../reference_world/export_run_bundle.py`](../reference_world/export_run_bundle.py)
@@ -443,7 +533,7 @@ Default boundary flags: `synthetic_only` /
 `no_real_data` / `no_japan_calibration` / `no_llm_execution` /
 `display_or_export_only`.
 
-## v1.19.0 forward pointer — local run bundle loader (planned)
+## v1.19.0 design pointer — local run bundle loader (delivered at v1.19.4)
 
 The next planned UI milestone, **v1.19.0** (docs-only — see
 [`../../docs/v1_19_local_run_bridge_and_temporal_profiles_design.md`](../../docs/v1_19_local_run_bridge_and_temporal_profiles_design.md)),

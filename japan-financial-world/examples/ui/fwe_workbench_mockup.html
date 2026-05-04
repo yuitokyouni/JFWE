@@ -1216,6 +1216,10 @@
       <div class="brand-chip">FWE</div>
       <div class="ribbon-group">
         <button id="btn-load-sample" class="ribbon-btn primary" type="button">Load sample run</button>
+        <button id="btn-load-local-bundle" class="ribbon-btn" type="button"
+          title="v1.19.4 — read a local RunExportBundle JSON produced by the v1.19.2 / v1.19.3.1 CLI exporter. Read-only; no engine execution from the browser.">Load local bundle</button>
+        <input id="input-local-bundle" type="file" accept="application/json,.json"
+          style="display:none;" aria-hidden="true" />
         <button id="btn-run-mock" class="ribbon-btn" type="button"
           title="Static UI run — reads the selected regime fixture; the Python engine is not invoked.">Run mock</button>
         <button id="btn-validate" class="ribbon-btn" type="button"
@@ -1242,6 +1246,9 @@
       <div class="ribbon-status-stack" aria-live="polite">
         <span id="load-status" class="load-status">no sample loaded</span>
         <span class="load-substatus muted">static fixture only · no backend execution</span>
+        <span class="load-substatus muted">data source ·
+          <span id="current-data-source" data-source="inline_fixture">inline_fixture</span>
+        </span>
       </div>
       <div class="digest">digest · <span id="digest-short">—</span></div>
     </header>
@@ -1443,6 +1450,111 @@
                   append-only — no pre-existing context record is
                   mutated. No actor decision, no price, no trade, no
                   forecast, no advice.
+                </div>
+              </section>
+
+              <!-- v1.19.4 — Local run bundle loader card (read-only) -->
+              <section class="card" id="card-local-run-bundle">
+                <div class="section-rule"></div>
+                <h3 class="card-title">Local run bundle <span class="tag">v1.19.4 · read-only</span></h3>
+                <div class="note-box" style="margin-top:8px;">
+                  Load a deterministic <code>RunExportBundle</code>
+                  JSON file produced by the v1.19.2 /
+                  v1.19.3.1 CLI exporter. The browser
+                  <strong>never</strong> executes Python, never
+                  calls a backend, never writes files. Workflow:
+                  <ol style="margin:8px 0 0 18px; padding-left:0;">
+                    <li>run
+                      <code>python -m examples.reference_world.export_run_bundle
+                      --profile &lt;quarterly_default | monthly_reference&gt;
+                      --regime &lt;regime&gt; --scenario none_baseline
+                      --out /tmp/fwe_run_bundle.json</code>
+                      in your terminal,</li>
+                    <li>click
+                      <strong>Load local bundle</strong> in the top
+                      ribbon and pick the JSON file,</li>
+                    <li>inspect the result in Overview / Timeline /
+                      Attention / Market Intent / Financing /
+                      Ledger.</li>
+                  </ol>
+                </div>
+                <table style="margin-top:10px;">
+                  <tr>
+                    <td>Active profile</td>
+                    <td class="status-cell" id="bundle-active-profile">—</td>
+                  </tr>
+                  <tr>
+                    <td>Active regime</td>
+                    <td class="status-cell" id="bundle-active-regime">—</td>
+                  </tr>
+                  <tr>
+                    <td>Selected scenario</td>
+                    <td class="status-cell" id="bundle-active-scenario">—</td>
+                  </tr>
+                  <tr>
+                    <td>Period count</td>
+                    <td class="status-cell" id="bundle-period-count">—</td>
+                  </tr>
+                  <tr>
+                    <td>Digest</td>
+                    <td class="status-cell mono" id="bundle-digest">—</td>
+                  </tr>
+                  <tr>
+                    <td>Generated-at policy</td>
+                    <td class="status-cell" id="bundle-generated-at-policy">—</td>
+                  </tr>
+                  <tr>
+                    <td>Profile badge</td>
+                    <td class="status-cell">
+                      <span id="bundle-profile-badge" class="tag">none</span>
+                    </td>
+                  </tr>
+                </table>
+                <div class="note-box" id="bundle-monthly-summary" style="margin-top:10px; display:none;">
+                  <strong>Information arrival summary
+                    <span class="tag">v1.19.3 monthly_reference</span></strong>
+                  <table style="margin-top:8px;">
+                    <tr>
+                      <td>Calendar count</td>
+                      <td class="status-cell" id="bundle-calendar-count">—</td>
+                    </tr>
+                    <tr>
+                      <td>Scheduled releases</td>
+                      <td class="status-cell" id="bundle-scheduled-release-count">—</td>
+                    </tr>
+                    <tr>
+                      <td>Information arrivals</td>
+                      <td class="status-cell" id="bundle-arrival-count">—</td>
+                    </tr>
+                    <tr>
+                      <td>Per indicator family</td>
+                      <td class="status-cell" id="bundle-per-indicator-family">—</td>
+                    </tr>
+                    <tr>
+                      <td>Per release importance</td>
+                      <td class="status-cell" id="bundle-per-release-importance">—</td>
+                    </tr>
+                    <tr>
+                      <td>Per arrival status</td>
+                      <td class="status-cell" id="bundle-per-arrival-status">—</td>
+                    </tr>
+                  </table>
+                  <div class="muted small" style="margin-top:6px;">
+                    Information arrival is <strong>not</strong>
+                    data ingestion — no real values, no real
+                    release dates, no real institutional
+                    identifiers. Japan release cadence is a
+                    design reference only.
+                  </div>
+                </div>
+                <div class="boundary-box" style="margin-top:10px;">
+                  Read-only static viewer. No engine execution.
+                  No backend. No file-system write. No browser-
+                  to-Python execution. No daily simulation. No
+                  price formation. No trading. No financing
+                  execution. No investment advice. No real data
+                  ingestion. No Japan calibration. No LLM
+                  execution.
                 </div>
               </section>
 
@@ -4335,6 +4447,14 @@
         populateBanks(data);
         populateOutputs(data);
         populateLedger(data);
+        // v1.19.4 — record that the visible state came from the
+        // inline sample manifest (not the inline_fixture default
+        // and not a local bundle).
+        var src = $id('current-data-source');
+        if (src) {
+          src.textContent = 'sample_manifest';
+          src.dataset.source = 'sample_manifest';
+        }
       }
 
       var btn = $id('btn-load-sample');
@@ -4955,6 +5075,13 @@
           + ' · static fixture · no engine execution',
           'ok'
         );
+        // v1.19.4 — Run mock reads the inline SAMPLE_RUNS
+        // fixture, so the data source returns to "inline_fixture".
+        var dsEl = $id('current-data-source');
+        if (dsEl) {
+          dsEl.textContent = 'inline_fixture';
+          dsEl.dataset.source = 'inline_fixture';
+        }
 
         // Defensive restore: if any rule we missed shifted the
         // scroll or swapped the active sheet, undo it.
@@ -5187,6 +5314,72 @@
         } catch (e) {
           // already reported above by the inline JSON parse check
         }
+        // i.3) v1.19.4 local-bundle loader surfaces.
+        if (!$id('btn-load-local-bundle')) {
+          failures.push('local bundle loader button missing');
+        }
+        if (!$id('input-local-bundle')) {
+          failures.push('local bundle file input missing');
+        }
+        if (!$id('card-local-run-bundle')) {
+          failures.push('local run bundle card missing');
+        }
+        if (!$id('current-data-source')) {
+          failures.push('current_data_source label missing');
+        } else {
+          var currentSource = $id('current-data-source')
+            .dataset.source;
+          var allowedSources = [
+            'inline_fixture', 'sample_manifest', 'local_bundle'
+          ];
+          if (allowedSources.indexOf(currentSource) === -1) {
+            failures.push(
+              "current_data_source has unrecognised value: "
+                + currentSource
+            );
+          }
+        }
+        if (typeof validateBundleSchema !== 'function') {
+          failures.push(
+            'validateBundleSchema function missing — '
+              + 'v1.19.4 loader not initialized'
+          );
+        }
+        if (typeof BUNDLE_REQUIRED_TOP_KEYS === 'undefined'
+          || !Array.isArray(BUNDLE_REQUIRED_TOP_KEYS)) {
+          failures.push('BUNDLE_REQUIRED_TOP_KEYS missing');
+        }
+        if (typeof BUNDLE_REQUIRED_BOUNDARY_FLAGS === 'undefined'
+          || !Array.isArray(BUNDLE_REQUIRED_BOUNDARY_FLAGS)) {
+          failures.push('BUNDLE_REQUIRED_BOUNDARY_FLAGS missing');
+        }
+        if (typeof BUNDLE_EXECUTABLE_PROFILES === 'undefined'
+          || !Array.isArray(BUNDLE_EXECUTABLE_PROFILES)
+          || BUNDLE_EXECUTABLE_PROFILES.indexOf(
+              'quarterly_default') === -1
+          || BUNDLE_EXECUTABLE_PROFILES.indexOf(
+              'monthly_reference') === -1) {
+          failures.push(
+            'BUNDLE_EXECUTABLE_PROFILES must include '
+              + "'quarterly_default' and 'monthly_reference'"
+          );
+        }
+        if (typeof BUNDLE_DEFERRED_PROFILES === 'undefined'
+          || !Array.isArray(BUNDLE_DEFERRED_PROFILES)) {
+          failures.push('BUNDLE_DEFERRED_PROFILES missing');
+        } else {
+          ['scenario_monthly', 'daily_display_only',
+              'future_daily_full_simulation'].forEach(
+            function (deferred) {
+              if (BUNDLE_DEFERRED_PROFILES.indexOf(deferred)
+                  === -1) {
+                failures.push(
+                  "BUNDLE_DEFERRED_PROFILES must include '"
+                    + deferred + "'"
+                );
+              }
+            });
+        }
         // j) Run mock no-jump invariant: dry-run the handler
         //    and confirm the active sheet id and scroll position
         //    are unchanged. (No fixture mutation is permanent —
@@ -5257,6 +5450,537 @@
           + 'Save Page / Print',
           'warn'
         );
+      }
+
+      // ----------------------------------------------------------------
+      // v1.19.4 — Local run bundle loader (read-only).
+      //
+      // The browser:
+      //   1. opens an <input type="file"> picker;
+      //   2. reads the chosen JSON file via FileReader (no network);
+      //   3. parses with JSON.parse — no eval, no script;
+      //   4. validates the v1.19.1 RunExportBundle schema;
+      //   5. dispatches the parsed bundle to per-section renderers
+      //      that use textContent only — never innerHTML — for any
+      //      caller-supplied value;
+      //   6. updates the current_data_source label to "local_bundle".
+      //
+      // The browser does NOT execute Python, does NOT call a
+      // backend, does NOT write files, does NOT change
+      // location.hash, does NOT change the active sheet (the
+      // user keeps the no-jump discipline pinned at v1.17.4).
+      // ----------------------------------------------------------------
+
+      // Closed-set of executable bundle profiles, mirrored from
+      // the v1.19.2 / v1.19.3.1 CLI exporter
+      // (examples/reference_world/export_run_bundle.py).
+      var BUNDLE_EXECUTABLE_PROFILES = [
+        'quarterly_default',
+        'monthly_reference'
+      ];
+      var BUNDLE_DEFERRED_PROFILES = [
+        'scenario_monthly',
+        'daily_display_only',
+        'future_daily_full_simulation'
+      ];
+      // Required top-level keys on a v1.19.1 RunExportBundle.
+      var BUNDLE_REQUIRED_TOP_KEYS = [
+        'bundle_id',
+        'run_profile_label',
+        'regime_label',
+        'selected_scenario_label',
+        'period_count',
+        'digest',
+        'generated_at_policy_label',
+        'manifest',
+        'overview',
+        'timeline',
+        'regime_compare',
+        'scenario_trace',
+        'attention_diff',
+        'market_intent',
+        'financing',
+        'ledger_excerpt',
+        'boundary_flags',
+        'status',
+        'visibility',
+        'metadata'
+      ];
+      // Required boundary-flag keys (the v1.19.0 8-flag default
+      // set).
+      var BUNDLE_REQUIRED_BOUNDARY_FLAGS = [
+        'synthetic_only',
+        'no_price_formation',
+        'no_trading',
+        'no_investment_advice',
+        'no_real_data',
+        'no_japan_calibration',
+        'no_llm_execution'
+      ];
+      // Cap rendered ledger excerpt rows.
+      var BUNDLE_LEDGER_RENDER_LIMIT = 20;
+
+      function setCurrentDataSource(source) {
+        var el = $id('current-data-source');
+        if (!el) return;
+        el.textContent = source;
+        el.dataset.source = source;
+      }
+
+      function validateBundleSchema(bundle) {
+        // Returns null on success, or an array of failure messages.
+        var failures = [];
+        if (!bundle || typeof bundle !== 'object'
+            || Array.isArray(bundle)) {
+          return ['bundle is not a JSON object'];
+        }
+        BUNDLE_REQUIRED_TOP_KEYS.forEach(function (k) {
+          if (!Object.prototype.hasOwnProperty.call(bundle, k)) {
+            failures.push("missing top-level key '" + k + "'");
+          }
+        });
+        if (typeof bundle.bundle_id !== 'string'
+            || bundle.bundle_id.length === 0) {
+          failures.push("'bundle_id' must be a non-empty string");
+        }
+        if (typeof bundle.run_profile_label !== 'string') {
+          failures.push("'run_profile_label' must be a string");
+        }
+        if (typeof bundle.regime_label !== 'string') {
+          failures.push("'regime_label' must be a string");
+        }
+        if (typeof bundle.selected_scenario_label !== 'string') {
+          failures.push("'selected_scenario_label' must be a string");
+        }
+        if (typeof bundle.digest !== 'string'
+            || bundle.digest.length === 0) {
+          failures.push("'digest' must be a non-empty string");
+        }
+        if (typeof bundle.generated_at_policy_label !== 'string') {
+          failures.push("'generated_at_policy_label' must be a string");
+        }
+        if (typeof bundle.period_count !== 'number'
+            || bundle.period_count < 0) {
+          failures.push("'period_count' must be a non-negative number");
+        }
+        var bf = bundle.boundary_flags;
+        if (!bf || typeof bf !== 'object' || Array.isArray(bf)) {
+          failures.push("'boundary_flags' must be an object");
+        } else {
+          BUNDLE_REQUIRED_BOUNDARY_FLAGS.forEach(function (k) {
+            if (bf[k] !== true) {
+              failures.push(
+                "boundary flag '" + k + "' must be present and true"
+              );
+            }
+          });
+        }
+        return failures.length === 0 ? null : failures;
+      }
+
+      function isBundleProfileExecutable(profile) {
+        return BUNDLE_EXECUTABLE_PROFILES.indexOf(profile) !== -1;
+      }
+
+      function isBundleProfileDeferred(profile) {
+        return BUNDLE_DEFERRED_PROFILES.indexOf(profile) !== -1;
+      }
+
+      function safeString(v, fallback) {
+        if (v === null || v === undefined) return fallback || '—';
+        if (typeof v === 'string') return v;
+        if (typeof v === 'number' || typeof v === 'boolean') {
+          return String(v);
+        }
+        // Reject objects/arrays for textContent rendering — caller
+        // should have flattened. We never inject as innerHTML.
+        return fallback || '—';
+      }
+
+      function safeNumber(v, fallback) {
+        if (typeof v === 'number' && isFinite(v)) return v;
+        return fallback === undefined ? 0 : fallback;
+      }
+
+      function formatLabelHistogram(obj) {
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+          return '—';
+        }
+        var keys = Object.keys(obj).sort();
+        if (keys.length === 0) return '—';
+        var parts = [];
+        for (var i = 0; i < keys.length; i++) {
+          var k = keys[i];
+          var v = obj[k];
+          if (typeof v === 'number' && isFinite(v)) {
+            parts.push(k + '=' + String(v));
+          }
+        }
+        return parts.length ? parts.join(' · ') : '—';
+      }
+
+      function renderInputsFromBundle(bundle) {
+        setText('bundle-active-profile', bundle.run_profile_label);
+        setText('bundle-active-regime', bundle.regime_label);
+        setText('bundle-active-scenario',
+          bundle.selected_scenario_label);
+        setText('bundle-period-count',
+          String(safeNumber(bundle.period_count)));
+        setText('bundle-digest', bundle.digest);
+        setText('bundle-generated-at-policy',
+          bundle.generated_at_policy_label);
+        var badge = $id('bundle-profile-badge');
+        if (badge) {
+          badge.textContent = bundle.run_profile_label;
+          badge.classList.remove('blue', 'green', 'amber');
+          if (bundle.run_profile_label === 'monthly_reference') {
+            badge.classList.add('blue');
+          } else if (bundle.run_profile_label === 'quarterly_default') {
+            badge.classList.add('green');
+          }
+        }
+        // Monthly arrival summary card (visible only for monthly).
+        var monthlyBox = $id('bundle-monthly-summary');
+        if (monthlyBox) {
+          var summary = null;
+          var meta = bundle.metadata || {};
+          if (meta && typeof meta === 'object'
+              && meta.information_arrival_summary
+              && typeof meta.information_arrival_summary === 'object'
+              && !Array.isArray(meta.information_arrival_summary)) {
+            summary = meta.information_arrival_summary;
+          }
+          if (bundle.run_profile_label === 'monthly_reference'
+              && summary) {
+            monthlyBox.style.display = '';
+            setText('bundle-calendar-count',
+              String(safeNumber(summary.calendar_count)));
+            setText('bundle-scheduled-release-count',
+              String(safeNumber(summary.scheduled_release_count)));
+            setText('bundle-arrival-count',
+              String(safeNumber(summary.arrival_count)));
+            setText('bundle-per-indicator-family',
+              formatLabelHistogram(summary.per_indicator_family));
+            setText('bundle-per-release-importance',
+              formatLabelHistogram(summary.per_release_importance));
+            setText('bundle-per-arrival-status',
+              formatLabelHistogram(summary.per_arrival_status));
+          } else {
+            monthlyBox.style.display = 'none';
+          }
+        }
+      }
+
+      function renderOverviewFromBundle(bundle) {
+        var overview = bundle.overview || {};
+        // Active-regime / digest header rows (the Overview hero).
+        setText('overview-active-regime', bundle.regime_label);
+        setText('ov-active-regime', bundle.regime_label);
+        setText('ov-active-regime-kpi', bundle.regime_label);
+        setText('ov-digest',
+          (bundle.digest || '').slice(0, 12)
+            + (bundle.digest && bundle.digest.length > 12 ? '…' : ''));
+        setText('ov-digest-kpi',
+          (bundle.digest || '').slice(0, 12)
+            + (bundle.digest && bundle.digest.length > 12 ? '…' : ''));
+        setText('digest-short',
+          (bundle.digest || '').slice(0, 8)
+            + (bundle.digest && bundle.digest.length > 8 ? '…' : ''));
+        // Main message — derived from the overview's top labels.
+        var mainParts = [];
+        if (typeof overview.top_attention_focus_label === 'string') {
+          mainParts.push('attention focus = '
+            + overview.top_attention_focus_label);
+        }
+        if (typeof overview.top_market_pressure_label === 'string') {
+          mainParts.push('market pressure = '
+            + overview.top_market_pressure_label);
+        }
+        if (typeof overview.top_market_intent_direction_label
+            === 'string') {
+          mainParts.push('market intent = '
+            + overview.top_market_intent_direction_label);
+        }
+        var headline = (
+          'Loaded local bundle (read-only). regime='
+          + safeString(bundle.regime_label) + '; profile='
+          + safeString(bundle.run_profile_label)
+          + (mainParts.length
+              ? '; ' + mainParts.join('; ')
+              : '')
+          + '.'
+        );
+        setText('ov-main-message', headline);
+        setText('ov-top-event',
+          safeString(overview.top_event,
+            'top_event not present in bundle'));
+        setText('ov-top-pressure',
+          safeString(overview.top_market_pressure_label));
+        setText('ov-top-financing',
+          safeString(overview.top_financing_constraint_label
+            || overview.financing_constraint, '—'));
+        setText('ov-top-attention',
+          safeString(overview.top_attention_focus_label));
+        setText('ov-endpoint',
+          safeString(overview.display_path_endpoint
+            || overview.endpoint, '—'));
+        setText('ov-endpoint-bullet',
+          safeString(overview.display_path_endpoint
+            || overview.endpoint, '—'));
+      }
+
+      function renderTimelineFromBundle(bundle) {
+        var timeline = bundle.timeline || {};
+        setText('timeline-active-regime', bundle.regime_label);
+        setText('kpi-digest',
+          (bundle.digest || '').slice(0, 12)
+            + (bundle.digest && bundle.digest.length > 12 ? '…' : ''));
+        setText('kpi-endpoint',
+          safeString(timeline.display_path_endpoint
+            || timeline.endpoint, '—'));
+        setText('kpi-attention-shifts',
+          safeString(timeline.event_annotation_count, '—'));
+      }
+
+      function renderAttentionDiffFromBundle(bundle) {
+        var diff = bundle.attention_diff || {};
+        if (!diff || typeof diff !== 'object'
+            || Array.isArray(diff)) return;
+        if (Object.keys(diff).length === 0) return;
+        setText('diff-previous',
+          safeString(diff.previous_focus
+            || diff.diff_previous, '—'));
+        setText('diff-trigger',
+          safeString(diff.trigger || diff.diff_trigger, '—'));
+        setText('diff-new',
+          safeString(diff.new_focus || diff.diff_new, '—'));
+        setText('diff-dropped',
+          safeString(diff.dropped_focus
+            || diff.diff_dropped, '—'));
+        setText('diff-reinforced',
+          safeString(diff.reinforced_focus
+            || diff.diff_reinforced, '—'));
+        setText('diff-why',
+          safeString(diff.why || diff.diff_why, '—'));
+      }
+
+      // Generic "compact section" renderer for Market Intent /
+      // Financing — caller-supplied bundle sections are usually
+      // {} in v1.19.2 and may or may not carry rows in future
+      // milestones. We do not assume a shape; we surface the
+      // section as a JSON-stringified summary inside a status
+      // cell if present, else mark "—".
+      function renderSummaryStatus(targetId, sectionObj) {
+        var el = $id(targetId);
+        if (!el) return;
+        if (!sectionObj || typeof sectionObj !== 'object'
+            || Object.keys(sectionObj).length === 0) {
+          el.textContent = '—';
+          return;
+        }
+        // Bound the rendered summary so a malicious / large
+        // section cannot blow the page out.
+        var keys = Object.keys(sectionObj).sort();
+        var parts = [];
+        for (var i = 0; i < keys.length && i < 6; i++) {
+          var k = keys[i];
+          var v = sectionObj[k];
+          if (typeof v === 'string'
+              || typeof v === 'number'
+              || typeof v === 'boolean') {
+            parts.push(k + '=' + String(v));
+          } else if (Array.isArray(v)) {
+            parts.push(k + '=[' + v.length + ' rows]');
+          } else if (v && typeof v === 'object') {
+            parts.push(k + '={' + Object.keys(v).length + ' keys}');
+          }
+        }
+        el.textContent = parts.join(' · ') || '—';
+      }
+
+      function renderLedgerFromBundle(bundle) {
+        var excerpt = bundle.ledger_excerpt || {};
+        var records = Array.isArray(excerpt.records)
+          ? excerpt.records.slice(0, BUNDLE_LEDGER_RENDER_LIMIT)
+          : [];
+        var tbody = $id('tbody-ledger-records');
+        if (!tbody) return;
+        // Capture-and-restore protocol — the ledger renderer
+        // mutates a tbody, but we never change scroll or
+        // active-sheet state.
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+        // Wipe the tbody safely (remove children rather than
+        // innerHTML = '').
+        while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+        for (var i = 0; i < records.length; i++) {
+          var r = records[i] || {};
+          var tr = document.createElement('tr');
+          var cells = [
+            safeString(r.sequence
+              || r.seq
+              || r.simulation_date, '—'),
+            safeString(r.record_type
+              || r.event_type
+              || r.type, '—'),
+            safeString(r.source, '—'),
+            safeString(r.target, '—'),
+            safeString(r.object_id, '—'),
+            safeString(r.simulation_date, '—')
+          ];
+          for (var j = 0; j < cells.length; j++) {
+            var td = document.createElement('td');
+            td.textContent = cells[j];
+            if (j === 0 || j === 1) td.classList.add('mono');
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+        if (records.length === 0) {
+          var emptyRow = document.createElement('tr');
+          var emptyCell = document.createElement('td');
+          emptyCell.colSpan = 6;
+          emptyCell.className = 'muted';
+          emptyCell.textContent =
+            'no ledger excerpt records in this bundle';
+          emptyRow.appendChild(emptyCell);
+          tbody.appendChild(emptyRow);
+        }
+        if (window.scrollX !== sx || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+      }
+
+      function renderBundle(bundle) {
+        renderInputsFromBundle(bundle);
+        renderOverviewFromBundle(bundle);
+        renderTimelineFromBundle(bundle);
+        renderAttentionDiffFromBundle(bundle);
+        renderSummaryStatus('ov-top-pressure',
+          bundle.market_intent || bundle.overview);
+        // Market Intent / Financing are reserved sections in
+        // v1.19.2 — expose them through the inputs card's
+        // existing Active rows. We do not invent new card
+        // surfaces here.
+        renderLedgerFromBundle(bundle);
+      }
+
+      function loadLocalBundleFromText(text) {
+        var bundle;
+        try {
+          bundle = JSON.parse(text);
+        } catch (e) {
+          setStatus(
+            'load local bundle · failed: invalid JSON ('
+              + (e && e.message ? e.message : 'parse error')
+              + ')',
+            'err'
+          );
+          return;
+        }
+        var failures = validateBundleSchema(bundle);
+        if (failures) {
+          setStatus(
+            'load local bundle · schema invalid · '
+              + failures.length + ' issue(s) · '
+              + failures[0],
+            'err'
+          );
+          return;
+        }
+        var profile = bundle.run_profile_label;
+        if (isBundleProfileDeferred(profile)) {
+          setStatus(
+            "bundle profile '" + profile
+              + "' is not loadable in v1.19.4 static UI",
+            'err'
+          );
+          return;
+        }
+        if (!isBundleProfileExecutable(profile)) {
+          setStatus(
+            "bundle profile '" + profile
+              + "' is not a recognised v1.19.x run profile",
+            'err'
+          );
+          return;
+        }
+        // Capture-and-restore protocol mirrors runMock.
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+        var activeSheet = document.querySelector(
+          'article.sheet.active'
+        );
+        var activeId = activeSheet ? activeSheet.id : null;
+
+        renderBundle(bundle);
+        setCurrentDataSource('local_bundle');
+
+        var digestPrefix = (bundle.digest || '').slice(0, 12);
+        setStatus(
+          'loaded local bundle · ' + profile
+            + ' · ' + bundle.regime_label
+            + ' · digest=' + digestPrefix
+            + ' · read-only',
+          'ok'
+        );
+
+        if (window.scrollX !== sx || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+        var activeAfter = document.querySelector(
+          'article.sheet.active'
+        );
+        var activeIdAfter = activeAfter ? activeAfter.id : null;
+        if (activeId !== null && activeIdAfter !== activeId) {
+          setStatus(
+            'load local bundle · WARNING · active sheet '
+              + 'shifted from ' + activeId + ' to '
+              + activeIdAfter,
+            'warn'
+          );
+        }
+      }
+
+      function handleLocalBundleFile(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          var text = ev && ev.target ? ev.target.result : '';
+          if (typeof text !== 'string') {
+            setStatus(
+              'load local bundle · failed: file did not '
+                + 'decode as text',
+              'err'
+            );
+            return;
+          }
+          loadLocalBundleFromText(text);
+        };
+        reader.onerror = function () {
+          setStatus(
+            'load local bundle · failed: file read error',
+            'err'
+          );
+        };
+        reader.readAsText(file);
+      }
+
+      var btnLoadLocal = $id('btn-load-local-bundle');
+      var inputLoadLocal = $id('input-local-bundle');
+      if (btnLoadLocal && inputLoadLocal) {
+        btnLoadLocal.addEventListener('click', function () {
+          // Reset value so re-selecting the same file fires
+          // 'change' again.
+          inputLoadLocal.value = '';
+          inputLoadLocal.click();
+        });
+        inputLoadLocal.addEventListener('change', function (ev) {
+          var files = ev && ev.target ? ev.target.files : null;
+          if (files && files.length > 0) {
+            handleLocalBundleFile(files[0]);
+          }
+        });
       }
 
       var btnRun = $id('btn-run-mock');

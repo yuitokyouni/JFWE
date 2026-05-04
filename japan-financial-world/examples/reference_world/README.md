@@ -630,7 +630,15 @@ The `monthly_reference` profile reads a default jurisdiction-neutral synthetic c
 
 **Determinism:** the `monthly_reference` `living_world_digest` is pinned at `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d` (`tests/test_living_reference_world.py::test_v1_19_3_monthly_reference_living_world_digest_is_pinned`). The default `quarterly_default` digest stays byte-identical at `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c` because the new `InformationReleaseBook` is empty by default (`tests/test_information_release.py::test_empty_information_releases_does_not_move_default_living_world_digest`).
 
-The next milestone in this folder will be **v1.19.4** — the static UI's read-only **Load local run bundle** affordance (and an optional stub local server).
+**v1.19.4 — UI loader shipped.** The static workbench at
+[`../ui/fwe_workbench_mockup.html`](../ui/fwe_workbench_mockup.html)
+now reads the JSON bundles produced by this CLI exporter via a
+read-only **Load local bundle** button — `<input type="file">`
++ `FileReader` + `JSON.parse`, no engine execution from the
+browser. See [`../ui/README.md`](../ui/README.md) for the full
+v1.19.4 workflow. The optional `127.0.0.1` stub local server is
+deferred (still planned post-v1.19.4 if interactive use cases
+appear).
 
 ## v1.19.1 — RunExportBundle dataclass + JSON writer (shipped)
 
