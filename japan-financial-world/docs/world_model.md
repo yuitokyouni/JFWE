@@ -10275,3 +10275,64 @@ v1.20.1 → v1.20.last will land code, but **`scenario_monthly_reference_univers
 ### 129.2 Forward pointer
 
 v1.20.last will freeze the monthly-scenario-reference-universe layer. v1.21 (conditional) may add a `scenario_monthly` profile (small fixture variant, the path v1.20 deferred) **or** an Institutional Investor Mandate / Benchmark Pressure design layer. v2.0 is Japan public calibration in private JFWE only; the v1.20 `_like`-suffixed sector vocabulary remains in public FWE; any real-taxonomy mapping moves to private JFWE. Future LLM-mode reasoning policies, when introduced, must populate the same `ActorReasoningInputFrame` / `ReasoningPolicySlot` audit shape pinned at v1.18.0; the v1.20 universe + scenario schedule layer **does not** unlock LLM execution. Future price formation **remains gated** until the v1.16 / v1.17 / v1.18 / v1.19 / v1.20 surface is operationally legible to a reviewer who has not read this codebase.
+
+### 129.3 v1.20.1 — ReferenceUniverseProfile / GenericSectorReference / SyntheticSectorFirmProfile storage
+
+§129.3 ships the first concrete code milestone of the v1.20 sequence: the synthetic reference universe storage layer at [`world/reference_universe.py`](../world/reference_universe.py). v1.20.1 is **storage only** — it does not ship the `scenario_monthly_reference_universe` run profile (deferred to v1.20.3), it does not ship the scenario schedule (deferred to v1.20.2), it does not extend the CLI exporter or the static UI loader, and it does not move the canonical `quarterly_default` (`f93bdf3f…b705897c`) or `monthly_reference` (`75a91cfa…91879d`) digest.
+
+The module ships:
+
+- three immutable frozen dataclasses (`ReferenceUniverseProfile`, `GenericSectorReference`, `SyntheticSectorFirmProfile`);
+- one append-only `ReferenceUniverseBook` with 17 read methods (`add_universe_profile` / `get_universe_profile` / `list_universe_profiles` / `list_universe_profiles_by_profile_label` / `add_sector_reference` / `get_sector_reference` / `list_sector_references` / `list_sectors_by_label` / `list_sectors_by_group` / `list_sectors_by_sensitivity` / `add_firm_profile` / `get_firm_profile` / `list_firm_profiles` / `list_firms_by_sector` / `list_firms_by_size` / `list_firms_by_funding_dependency` / `list_firms_by_market_access_sensitivity` / `snapshot`);
+- twelve closed-set frozensets — `UNIVERSE_PROFILE_LABELS` (5: `tiny_default` / `generic_11_sector` / `generic_broad_market` / `custom_synthetic` / `unknown`); `SECTOR_TAXONOMY_LABELS` (4: `generic_11_sector_reference` / `generic_macro_sector_reference` / `custom_synthetic` / `unknown`); `SECTOR_LABELS` (12: 11 `_like`-suffixed sector labels + `unknown`); `SECTOR_GROUP_LABELS` (7: `cyclical` / `defensive` / `financial` / `technology_related` / `real_asset_related` / `regulated_utility_like` / `unknown`); `SENSITIVITY_LABELS` (4: `low` / `moderate` / `high` / `unknown`); `FIRM_SIZE_LABELS` (5: `small` / `mid` / `large` / `mega_like` / `unknown`); `BALANCE_SHEET_STYLE_LABELS` (6: `asset_light` / `asset_heavy` / `working_capital_intensive` / `regulated_asset_base_like` / `financial_balance_sheet` / `unknown`); `FUNDING_DEPENDENCY_LABELS` (4); `DEMAND_CYCLICALITY_LABELS` (5: `defensive` / `moderate` / `cyclical` / `highly_cyclical` / `unknown`); `INPUT_COST_EXPOSURE_LABELS` (4); `STATUS_LABELS` (6); `VISIBILITY_LABELS` (5: `public` / `restricted` / `internal` / `private` / `unknown`);
+- the v1.20.0 hard-naming-boundary `FORBIDDEN_REFERENCE_UNIVERSE_FIELD_NAMES` frozenset composing the v1.18.0 actor-decision tokens with the v1.20.0 real-issuer / real-financial / licensed-taxonomy tokens (`real_company_name` / `real_sector_weight` / `market_cap` / `leverage_ratio` / `revenue` / `ebitda` / `net_income` / `real_financial_value` / `gics` / `msci` / `sp_index` / `topix` / `nikkei` / `jpx`) — scanned across every dataclass field name + payload + metadata mapping at construction;
+- three new `RecordType` enum values: `REFERENCE_UNIVERSE_PROFILE_RECORDED` / `GENERIC_SECTOR_REFERENCE_RECORDED` / `SYNTHETIC_SECTOR_FIRM_PROFILE_RECORDED`;
+- kernel wiring: `WorldKernel.reference_universe: ReferenceUniverseBook` with `field(default_factory=ReferenceUniverseBook)`, ledger + clock injected through `__post_init__`, **empty by default** so the canonical digests stay byte-identical;
+- a deterministic `build_generic_11_sector_reference_universe(...)` helper that constructs the v1.20.0-pinned default universe (1 universe profile + 11 sector references + 11 firm profiles) **without** registering anything on a kernel — the caller must explicitly invoke `register_generic_11_sector_reference_universe(book, ...)` to store the fixture. Both helpers are byte-deterministic (same args → byte-identical fixture / identical book snapshots).
+
+### 129.4 Default 11-sector / 11-firm vocabulary mapping pinned at v1.20.1
+
+| Sector label                       | Sector group              | Firm size | Balance sheet style          | Funding dep. | Market-access sens. |
+| ---------------------------------- | ------------------------- | --------- | ---------------------------- | ------------ | ------------------- |
+| `energy_like`                      | `cyclical`                | `large`   | `asset_heavy`                | `high`       | `moderate`          |
+| `materials_like`                   | `cyclical`                | `mid`     | `asset_heavy`                | `moderate`   | `moderate`          |
+| `industrials_like`                 | `cyclical`                | `mid`     | `working_capital_intensive`  | `moderate`   | `moderate`          |
+| `consumer_discretionary_like`      | `cyclical`                | `mid`     | `working_capital_intensive`  | `moderate`   | `moderate`          |
+| `consumer_staples_like`            | `defensive`               | `mid`     | `asset_light`                | `low`        | `low`               |
+| `health_care_like`                 | `defensive`               | `mid`     | `asset_light`                | `low`        | `low`               |
+| `financials_like`                  | `financial`               | `large`   | `financial_balance_sheet`    | `high`       | `high`              |
+| `information_technology_like`      | `technology_related`      | `mid`     | `asset_light`                | `low`        | `low`               |
+| `communication_services_like`      | `technology_related`      | `mid`     | `asset_light`                | `moderate`   | `moderate`          |
+| `utilities_like`                   | `regulated_utility_like`  | `mid`     | `regulated_asset_base_like`  | `high`       | `high`              |
+| `real_estate_like`                 | `real_asset_related`      | `mid`     | `asset_heavy`                | `high`       | `high`              |
+
+Tests pin: every sector label except `unknown` carries the `_like` suffix; firm ids follow the `firm:reference_<sector>_a` pattern; the helper does not auto-register on a kernel; the bare `gics` / `msci` / `factset` / `bloomberg` / `refinitiv` / `topix` / `nikkei` / `jpx` tokens are absent from the module text and rendered records (jurisdiction-neutral / vendor-neutral by construction).
+
+### 129.5 No-mutation invariants pinned at v1.20.1
+
+1. Adding a universe profile / sector reference / firm profile record does **not** mutate the `PriceBook` of a separately seeded kernel.
+2. Wiring an empty `ReferenceUniverseBook` does **not** move the default-fixture `living_world_digest` of a `quarterly_default` sweep — pinned by `tests/test_reference_universe.py::test_empty_reference_universe_does_not_move_quarterly_default_digest`.
+3. Wiring an empty `ReferenceUniverseBook` does **not** move the `monthly_reference` `living_world_digest` — pinned by `tests/test_reference_universe.py::test_empty_reference_universe_does_not_move_monthly_reference_digest`.
+4. The book emits no forbidden actor-decision event types (`order_submitted` / `trade_executed` / `price_updated` / `clearing_completed` / `settlement_completed` / etc.) — pinned by `test_no_actor_decision_event_types_emitted_by_reference_universe_book`.
+5. Duplicate id rejection raises `Duplicate*Error` and emits **no** extra ledger record (mirrors v1.18.1 / v1.19.3 storage-book convention).
+
+### 129.6 Test inventory delta
+
+`+92` tests in [`tests/test_reference_universe.py`](../tests/test_reference_universe.py); test_inventory total moves from **104 / 4522** to **105 / 4614**.
+
+### 129.7 Performance boundary at v1.20.1
+
+The default sweep is unchanged from v1.19.last:
+
+| Surface                                                                | Value (v1.20.1 = v1.19.last)                                                |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (`quarterly_default`, no scenario applied)     | **108** (period 0) / **110** (periods 1+) — unchanged                        |
+| Per-run window (`quarterly_default`, 4 periods)                        | **`[432, 480]`** (unchanged)                                                |
+| Default 4-period sweep (`quarterly_default`)                          | **460 records** (unchanged)                                                  |
+| `living_world_digest` (`quarterly_default`)                            | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (unchanged) |
+| `monthly_reference` `living_world_digest`                              | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`** (unchanged) |
+| Test count (`pytest -q`)                                               | **4614 / 4614**                                                              |
+
+### 129.8 Forward pointer
+
+v1.20.2 will land `world/scenario_schedule.py` (`ScenarioSchedule` + `ScheduledScenarioApplication` storage); v1.20.3 will land the `scenario_monthly_reference_universe` run profile + the v1.20.0 scenario-to-sector impact map; v1.20.4 will extend the CLI exporter; v1.20.5 will extend the static UI; v1.20.last will freeze the v1.20 sequence (docs-only).

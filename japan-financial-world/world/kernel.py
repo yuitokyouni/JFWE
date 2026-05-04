@@ -20,6 +20,7 @@ from world.market_intents import InvestorMarketIntentBook
 from world.market_interest import AggregatedMarketInterestBook
 from world.market_pressure import IndicativeMarketPressureBook
 from world.information_release import InformationReleaseBook
+from world.reference_universe import ReferenceUniverseBook
 from world.scenario_applications import ScenarioApplicationBook
 from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.balance_sheet import BalanceSheetProjector
@@ -186,6 +187,17 @@ class WorldKernel:
     information_releases: InformationReleaseBook = field(
         default_factory=InformationReleaseBook
     )
+    # v1.20.1 — synthetic reference universe storage. Storage-
+    # only; v1.20.3 will project the universe onto a fresh
+    # kernel via the ``scenario_monthly_reference_universe``
+    # run profile. Empty by default so the canonical view of a
+    # ``quarterly_default`` or ``monthly_reference`` sweep is
+    # byte-identical to v1.19.last (no profile registered → no
+    # ledger emission → no digest movement). Pinned by
+    # `tests/test_reference_universe.py::test_empty_reference_universe_does_not_move_*`.
+    reference_universe: ReferenceUniverseBook = field(
+        default_factory=ReferenceUniverseBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -237,6 +249,7 @@ class WorldKernel:
             self.scenario_drivers,
             self.scenario_applications,
             self.information_releases,
+            self.reference_universe,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger

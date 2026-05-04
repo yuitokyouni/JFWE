@@ -121,6 +121,15 @@ class RecordType(str, Enum):
         "scheduled_indicator_release_recorded"
     )
     INFORMATION_ARRIVAL_RECORDED = "information_arrival_recorded"
+    REFERENCE_UNIVERSE_PROFILE_RECORDED = (
+        "reference_universe_profile_recorded"
+    )
+    GENERIC_SECTOR_REFERENCE_RECORDED = (
+        "generic_sector_reference_recorded"
+    )
+    SYNTHETIC_SECTOR_FIRM_PROFILE_RECORDED = (
+        "synthetic_sector_firm_profile_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"
