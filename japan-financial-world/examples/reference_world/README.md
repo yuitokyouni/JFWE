@@ -518,6 +518,45 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.19.0 forward pointer — local run bridge / temporal profiles
+
+The next planned milestone, **v1.19.0** (docs-only — see
+[`../../docs/v1_19_local_run_bridge_and_temporal_profiles_design.md`](../../docs/v1_19_local_run_bridge_and_temporal_profiles_design.md)),
+adds:
+
+- a CLI exporter that writes a deterministic
+  `RunExportBundle` JSON file under
+  `examples/ui/run_bundle.local.json` so the static workbench
+  can load a freshly produced engine run via `<input
+  type="file">` — **no backend**, **no Rails**, **no
+  browser-to-Python execution**;
+- five named **temporal run profiles** (`quarterly_default`
+  preserves the canonical digest; `monthly_reference` and
+  `scenario_monthly` are opt-in monthly profiles;
+  `daily_display_only` is display-only;
+  `future_daily_full_simulation` is **explicitly out of scope
+  for v1.19**);
+- an `InformationReleaseCalendar` layer
+  (`ScheduledIndicatorRelease` / `InformationArrivalRecord`)
+  so monthly profiles are not naive 12× quarterly loops —
+  scheduled-information categories on `monthly` / `quarterly`
+  / `meeting_based` / `weekly` / `daily_operational` /
+  `ad_hoc` cadences across `central_bank_policy` / `inflation`
+  / `labor_market` / `production_supply` / `consumption_demand`
+  / `capex_investment` / `gdp_national_accounts` /
+  `market_liquidity` / `fiscal_policy` / `sector_specific`
+  families. **Information arrival is not data ingestion** —
+  no real values, no real dates, no real institutional
+  identifiers. Japan release cadence is a **design reference
+  only**, not encoded as canonical data; public FWE remains
+  jurisdiction-neutral.
+
+The v1.19 design does **not** unlock daily full economic
+simulation, price formation, trading, financing execution, or
+LLM execution. The default-fixture
+`living_world_digest` for `quarterly_default` is unchanged at
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**.
+
 ## v1.18.last addendum — scenario driver library freeze
 
 v1.18.last closes the v1.18 scenario-driver sequence as the
