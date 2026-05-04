@@ -19,6 +19,7 @@ from world.securities import SecurityMarketBook
 from world.market_intents import InvestorMarketIntentBook
 from world.market_interest import AggregatedMarketInterestBook
 from world.market_pressure import IndicativeMarketPressureBook
+from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
 from world.constraints import ConstraintBook, ConstraintEvaluator
@@ -151,6 +152,15 @@ class WorldKernel:
     indicative_market_pressure: IndicativeMarketPressureBook = field(
         default_factory=IndicativeMarketPressureBook
     )
+    # v1.18.1 — scenario-driver template storage. Storage-only;
+    # no application logic. v1.18.2 will add the
+    # ``apply_scenario_driver(...)`` helper. Empty by default,
+    # so the canonical view of an unmodified default sweep is
+    # byte-identical to v1.17.last (no template registered →
+    # no ledger emission → no digest movement).
+    scenario_drivers: ScenarioDriverTemplateBook = field(
+        default_factory=ScenarioDriverTemplateBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -199,6 +209,7 @@ class WorldKernel:
             self.investor_market_intents,
             self.aggregated_market_interest,
             self.indicative_market_pressure,
+            self.scenario_drivers,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger

@@ -105,6 +105,9 @@ class RecordType(str, Enum):
     INDICATIVE_MARKET_PRESSURE_RECORDED = (
         "indicative_market_pressure_recorded"
     )
+    SCENARIO_DRIVER_TEMPLATE_RECORDED = (
+        "scenario_driver_template_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

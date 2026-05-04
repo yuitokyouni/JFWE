@@ -117,12 +117,17 @@ shift evidence labels, not to write a decision.
 
 ```
 ScenarioDriverTemplate
-   │  shifts evidence / context labels via cited record ids
+   │  cited via plain-id citations — never mutates an existing
+   │  context record
    ▼
 EvidenceCondition / ContextShift
-   │  attaches to an existing record (env / industry / exposure
-   │  / firm-state / market-condition) — no new economic record
-   │  type; only metadata + closed-set label drift
+   │  a NEW append-only record (or a new metadata-bearing
+   │  annotation alongside an existing record) that *cites* the
+   │  pre-existing context record (env / industry / exposure /
+   │  firm-state / market-condition) — the cited record itself
+   │  is byte-identical pre / post application. The shift carries
+   │  closed-set labels + the v1.18.0 audit-metadata block and is
+   │  read by ActorReasoningInputFrame downstream.
    ▼
 ActorReasoningInputFrame
    │  the v1.12.3 EvidenceResolver shape, extended with the
@@ -342,7 +347,11 @@ fields; the audit shape is forward-compatible.
    / fees / offering prices.
 6. Scenario drivers only **prepare synthetic evidence /
    context inputs** for existing mechanisms or future
-   `ReasoningPolicySlot`.
+   `ReasoningPolicySlot`. Application **emits new evidence /
+   context records that cite the scenario driver via plain-id
+   citations**; it **never mutates a pre-existing context
+   record**. Every cited record is byte-identical pre / post
+   application — pinned by a v1.18.2 trip-wire test.
 7. Scenario application must be **deterministic** and
    **replay-stable** — same `(template_id, kernel state,
    as_of_date)` inputs → byte-identical record emissions.
@@ -366,9 +375,9 @@ fields; the audit shape is forward-compatible.
 
 | Milestone     | What                                                                                                                                                                              | Status                  |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| **v1.18.0**   | **Scenario Driver Library design (this document)** — closed-set vocabularies, `ScenarioDriverTemplate` data model, `ActorReasoningInputFrame` + `ReasoningPolicySlot` shapes, design rules, per-milestone roadmap, success condition | **Shipped (docs-only)** |
-| v1.18.1       | `world/scenario_drivers.py` — `ScenarioDriverTemplate` immutable dataclass + `ScenarioDriverLibrary` (read-only book) + 20 default templates registered against the v1.18.0 closed-set vocabularies; jurisdiction-neutral; runtime-book-free; +N unit tests covering every closed-set label | Planned                 |
-| v1.18.2       | `world/scenario_application.py` — `apply_scenario_driver(...)` deterministic helper that takes (kernel, scenario_driver_template_id, as_of_date) and emits **only metadata-level shifts** on existing context records; no new economic source-of-truth record types; carries the v1.18.0 audit-metadata block; rule-based-fallback only; reasoning_mode = "rule_based_fallback"; trip-wire test pins that the helper does not mutate any closed-set field outside the documented surfaces | Planned                 |
+| v1.18.0       | Scenario Driver Library design (this document) — closed-set vocabularies, `ScenarioDriverTemplate` data model, `ActorReasoningInputFrame` + `ReasoningPolicySlot` shapes, design rules, per-milestone roadmap, success condition | Shipped (docs-only)     |
+| **v1.18.1**   | **`world/scenario_drivers.py`** — `ScenarioDriverTemplate` immutable dataclass + `ScenarioDriverTemplateBook` append-only store + 10 closed-set vocabularies + the v1.18.0 hard-naming-boundary `FORBIDDEN_SCENARIO_FIELD_NAMES` frozenset; new ledger event type `RecordType.SCENARIO_DRIVER_TEMPLATE_RECORDED`; `WorldKernel.scenario_drivers` wired (empty by default → no canonical-view drift); +56 unit tests | **Shipped**             |
+| v1.18.2       | **`world/scenario_application.py`** — `apply_scenario_driver(...)` deterministic helper that takes `(kernel, scenario_driver_template_id, as_of_date)` and **emits new evidence / context records that cite the scenario driver via plain-id citations** through the existing append-only `add_*` interface of the appropriate book(s). The helper **never mutates a pre-existing context record**: every shift is a new record carrying the v1.18.0 audit-metadata block (`reasoning_mode = "rule_based_fallback"` / `reasoning_policy_id` / `reasoning_slot = "future_llm_compatible"` / `evidence_ref_ids` / `unresolved_ref_count` / `boundary_flags`). Rule-based-fallback only at v1.18.2; a future audited reasoning policy can replace the rule table without changing the audit shape. Trip-wire tests pin: (a) `kernel.<context_book>.snapshot()` for any *pre-existing* record id is byte-equal pre / post call; (b) the helper writes only via `add_*` methods; (c) every emitted record carries the v1.18.0 audit metadata; (d) the default-fixture `living_world_digest` only moves when the helper is explicitly called | Planned                 |
 | v1.18.3       | Scenario report / causal timeline integration — extends the v1.17.2 `RegimeComparisonPanel` driver and the v1.17.3 event / causal annotation helpers to render scenario-driven runs side-by-side with the unscenario'd default, surfacing the v1.18.0 audit-metadata fields in the markdown comparison and in the per-regime "events & causal trace" block | Planned                 |
 | v1.18.4       | UI scenario selector mock — adds a non-destructive scenario picker to `examples/ui/fwe_workbench_mockup.html` that swaps the active `ScenarioDriverTemplate` from a static fixture, updates Overview / Timeline / Regime Compare / Attention diff slots, and stays bound by the v1.17.4 no-jump discipline; **fixture switching only — the Python engine is not invoked from the UI** | Planned                 |
 | v1.18.last    | Scenario Driver Library freeze (docs-only) — single-page reader-facing summary in `docs/v1_18_scenario_driver_library_summary.md`; v1.18.last release-readiness snapshot in `RELEASE_CHECKLIST.md`; v1.18.last freeze-pin section in `docs/performance_boundary.md`; v1.18.last `test_inventory.md` header note; v1.18.last cross-link in `docs/fwe_reference_demo_design.md` and `examples/ui/README.md` | Planned                 |
