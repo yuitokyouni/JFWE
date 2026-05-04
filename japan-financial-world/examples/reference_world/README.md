@@ -518,6 +518,90 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.19.2 CLI exporter (shipped)
+
+The second concrete code milestone of the v1.19 sequence ships
+the **CLI exporter** at
+[`export_run_bundle.py`](export_run_bundle.py). It composes the
+v1.17.2 regime-comparison driver (the read-only path that runs
+the v1.16 closed loop on a fresh kernel for a chosen regime
+preset) with the v1.19.1 `world.run_export` infrastructure
+(`build_run_export_bundle` + `write_run_export_bundle`). The
+driver writes a deterministic `RunExportBundle` JSON artifact
+to a caller-supplied `--out` path.
+
+CLI surface (executable in v1.19.2 — `quarterly_default` only):
+
+```bash
+cd japan-financial-world
+
+python examples/reference_world/export_run_bundle.py \
+    --profile quarterly_default \
+    --regime constrained \
+    --scenario none_baseline \
+    --out /tmp/fwe_run_bundle.json
+
+# also runnable as a -m module:
+python -m examples.reference_world.export_run_bundle \
+    --profile quarterly_default \
+    --regime constrained \
+    --scenario none_baseline \
+    --out /tmp/fwe_run_bundle.json
+```
+
+Closed-set CLI vocabularies:
+
+- `--profile`: executable in v1.19.2 = `quarterly_default` only.
+  Designed-but-not-executable (the CLI exits non-zero with a
+  stderr message containing `"designed but not executable in
+  v1.19.2"`): `monthly_reference`, `scenario_monthly`,
+  `daily_display_only`, `future_daily_full_simulation`.
+- `--regime`: one of the v1.11.2 presets — `constructive` /
+  `mixed` / `constrained` / `tightening`.
+- `--scenario`: defaults to `none_baseline`. Other v1.18.4
+  scenario selector labels exit non-zero with a stderr message
+  containing `"not yet wired"`.
+- `--out`: required output path. The path is **not** embedded
+  in the bundle.
+- `--indent`: default 2.
+- `--quiet`: suppresses the success line.
+
+On success the CLI prints (one line, unless `--quiet`):
+
+```
+exported run bundle: <path> · profile=<profile> · regime=<regime> · digest=<digest first 12 chars>
+```
+
+Determinism: same CLI args on the same codebase produce
+byte-identical JSON bytes. Two runs with the same args, two
+different `--out` paths, produce byte-identical bytes. The
+bundle JSON contains no ISO-style wall-clock timestamp, no
+absolute path, no `$USER` / `$HOSTNAME`. The `ledger_excerpt`
+section is bounded at 20 records, drawn from
+`kernel.ledger.records[:20]` (start-of-run setup chain — the
+most stable region across regime presets) with the volatile
+`record_id` / `timestamp` fields stripped per the v1.9.2
+canonical-form rule.
+
+v1.19.2 ships **CLI export only**:
+
+- it does **not** implement the `monthly_reference` /
+  `scenario_monthly` run profiles (deferred to v1.19.3),
+- it does **not** wire scenario application into the CLI
+  (deferred — `--scenario rate_repricing_driver` etc. exit
+  non-zero),
+- it does **not** ship the static UI loader (deferred to
+  v1.19.4),
+- it does **not** mutate the `PriceBook` of any kernel,
+- it does **not** move the default-fixture
+  `living_world_digest` of a separately seeded default sweep
+  — pinned at
+  `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  by a trip-wire test.
+
+The next milestone in this folder will be **v1.19.3** — the
+`monthly_reference` run profile + `world/information_release.py`.
+
 ## v1.19.1 — RunExportBundle dataclass + JSON writer (shipped)
 
 The first concrete code milestone of the v1.19 local-run-bridge

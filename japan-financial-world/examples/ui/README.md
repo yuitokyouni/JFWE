@@ -367,6 +367,35 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
+## v1.19.2 — CLI emits the JSON the v1.19.4 UI loader will consume (shipped)
+
+The v1.19.2 CLI exporter at
+[`../reference_world/export_run_bundle.py`](../reference_world/export_run_bundle.py)
+now produces a deterministic `RunExportBundle` JSON artifact
+on disk. v1.19.2 ships **CLI export only** — the static
+workbench does not yet have a `Load local run bundle` button
+(planned at v1.19.4).
+
+When the v1.19.4 read-only loader ships, the file the static UI
+will load is the byte-identical JSON produced by:
+
+```bash
+cd japan-financial-world
+
+python examples/reference_world/export_run_bundle.py \
+    --profile quarterly_default \
+    --regime constrained \
+    --scenario none_baseline \
+    --out examples/ui/run_bundle.local.json
+```
+
+Two CLI runs with the same arguments produce byte-identical
+JSON bytes regardless of the `--out` path. The bundle JSON
+contains no ISO-style wall-clock timestamp, no absolute path,
+and no `$USER` / `$HOSTNAME` — it is safe to drop into a
+`file://`-runnable static workbench at v1.19.4 without any
+local environment leakage.
+
 ## v1.19.1 — RunExportBundle data shape (shipped)
 
 The static UI does not yet have a `Load local run bundle`

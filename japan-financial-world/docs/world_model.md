@@ -9950,3 +9950,79 @@ The default sweep is unchanged from v1.18.last:
 ### 128.8 Forward pointer
 
 v1.19.2 will land the CLI exporter (`examples/reference_world/export_run_bundle.py`) wiring the existing v1.16 / v1.17 / v1.18 helpers into a `RunExportBundle` and writing it to disk. v1.19.3 will land the `monthly_reference` run profile and `world/information_release.py` (`InformationReleaseCalendar` book + `ScheduledIndicatorRelease` + `InformationArrivalRecord`). v1.19.4 will land the static UI's read-only **Load local run bundle** affordance. v1.19.last will freeze the v1.19 sequence (docs-only).
+
+### 128.9 v1.19.2 — CLI run exporter
+
+§128.9 ships the second concrete code milestone of the v1.19 sequence — the CLI exporter that turns an existing `quarterly_default` living-reference-world run into a deterministic `RunExportBundle` JSON artifact on disk. v1.19.2 lands [`examples/reference_world/export_run_bundle.py`](../examples/reference_world/export_run_bundle.py) — a thin CLI driver composing the v1.17.2 regime-comparison driver (`run_living_reference_world` per regime preset on a fresh kernel) with the v1.19.1 `world.run_export` infrastructure (`build_run_export_bundle` + `write_run_export_bundle`). v1.19.2 is **CLI export only** — no monthly profile, no scenario application wiring, no UI bridge.
+
+The CLI surface (mirrored verbatim from the v1.19.0 design):
+
+```
+python examples/reference_world/export_run_bundle.py \
+    --profile quarterly_default \
+    --regime constrained \
+    --scenario none_baseline \
+    --out /tmp/fwe_run_bundle.json
+```
+
+Closed-set CLI vocabularies pinned at v1.19.2:
+
+- `--profile`: executable in v1.19.2 = `quarterly_default` only. Designed-but-not-executable in v1.19.2 (the CLI exits non-zero with a stderr message containing `"designed but not executable in v1.19.2"`): `monthly_reference`, `scenario_monthly`, `daily_display_only`, `future_daily_full_simulation`. The closed set matches the v1.19.1 `RUN_PROFILE_LABELS` minus the carrier `unknown` value.
+- `--regime`: one of the v1.11.2 presets — `constructive` / `mixed` / `constrained` / `tightening`.
+- `--scenario`: defaults to `none_baseline`. Other v1.18.4 scenario selector labels (`rate_repricing_driver`, `credit_tightening_driver`, etc.) exit non-zero with a stderr message containing `"not yet wired"`.
+- `--out`: required output path. The path is **not** embedded in the bundle.
+- `--indent`: optional, default 2.
+- `--quiet`: optional flag suppressing the success line.
+
+On success the CLI prints (to stdout, single line, unless `--quiet`):
+
+```
+exported run bundle: <path> · profile=<profile> · regime=<regime> · digest=<digest first 12 chars>
+```
+
+Bundle section contents at v1.19.2:
+
+- `manifest`: `{schema_version, profile, regime, scenario, period_count, generated_at_policy_label, fwe_version_label}`. **No** absolute paths; **no** wall-clock; **no** `$USER` / `$HOSTNAME`.
+- `overview`: `{active_regime, record_count, unresolved_refs_count, top_attention_focus_label, top_market_pressure_label, top_market_intent_direction_label}` — labels-only summary drawn from the v1.17.2 regime snapshot.
+- `timeline`: `{calendar: "quarterly", display_path_kind: "indicative_pressure_path", boundary_note, event_annotation_count, causal_annotation_count}` — labels and counts only.
+- `regime_compare`: `{}` (empty — the v1.17.2 regime-comparison report exists separately; v1.19.2 is single-regime export).
+- `scenario_trace`: `{selected_scenario_label, summary}` — `none_baseline` only at v1.19.2.
+- `attention_diff` / `market_intent` / `financing`: `{}` (empty — these are reserved for v1.19.3+ when monthly profile + scenario application are wired).
+- `ledger_excerpt`: bounded — at most **20** records, drawn from `kernel.ledger.records[:20]` (start-of-run setup chain; the most stable region across regime presets). Each entry is `LedgerRecord.to_dict()` with the volatile `record_id` / `timestamp` fields stripped (v1.9.2 canonical-form rule); the deterministic `simulation_date` field is preserved.
+- `boundary_flags`: the v1.19.0 default 8-flag set (`synthetic_only` / `no_price_formation` / `no_trading` / `no_investment_advice` / `no_real_data` / `no_japan_calibration` / `no_llm_execution` / `display_or_export_only`) carries through unchanged.
+- `metadata`: `{export_module: "v1.19.2", indent: <indent>}`.
+
+Determinism rules pinned at v1.19.2:
+
+- Same CLI args on the same codebase → byte-identical JSON bytes. Two runs with the same args, two different `--out` paths, produce byte-identical bytes (pinned by `test_two_runs_to_two_paths_are_byte_identical`).
+- The bundle JSON contains no ISO-style wall-clock timestamp (`YYYY-MM-DDTHH:MM:SS`) — the dataclass has no wall-clock field, the CLI strips `record_id` / `timestamp` from every ledger excerpt entry, and the `stable_for_replay` policy label carries through declaratively (pinned by `test_bundle_json_has_no_iso_wall_clock_timestamp`).
+- The bundle JSON contains no absolute path — `--out` is **not** embedded in the bundle (pinned by `test_bundle_json_contains_no_absolute_paths`).
+- No environment-specific data — no `$USER`, no `$HOSTNAME`, no `os.getlogin()` capture.
+- The deterministic `simulation_date` style `YYYY-MM-DD` strings (e.g. `2026-03-31`) are explicitly permitted — those are deterministic synthetic dates produced by the v1.17.2 driver, not wall-clock timestamps.
+
+No-mutation invariants pinned at v1.19.2:
+
+1. The CLI module imports no FastAPI / Flask / Rails / aiohttp / tornado / starlette / uvicorn / gunicorn / django / selenium / playwright names — pinned by `test_module_imports_no_backend_or_browser_names`.
+2. The CLI does **not** mutate the `PriceBook` of a separately seeded kernel — pinned by snapshotting prices on a separately seeded kernel before / after a CLI invocation.
+3. The CLI does **not** move the default-fixture `living_world_digest` of a separately seeded default sweep — the CLI builds its own *fresh* kernel via the v1.17.2 driver (pinned by `test_default_fixture_living_world_digest_unchanged_after_cli`; the digest stays at **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**).
+4. Designed-but-not-executable profile labels and scenario labels other than `none_baseline` exit non-zero **before** any kernel is built — the CLI cannot accidentally produce a partial artifact.
+
+Test inventory delta:
+
+`+20` tests in [`tests/test_run_export_cli.py`](../tests/test_run_export_cli.py); test_inventory total moves from **102 / 4390** to **103 / 4410**.
+
+### 128.10 Performance boundary at v1.19.2
+
+The default sweep is unchanged from v1.18.last:
+
+| Surface                                                               | Value (v1.19.2 = v1.18.last)                                                |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (default fixture, no scenario applied)        | **108** (period 0) / **110** (periods 1+)                                    |
+| Per-run window (default 4-period fixture)                             | **`[432, 480]`**                                                              |
+| Default 4-period sweep                                                | **460 records**                                                              |
+| Integration-test `living_world_digest` (default, no scenario applied) | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**       |
+| Test count (`pytest -q`)                                              | **4410 / 4410**                                                              |
+
+### 128.11 Forward pointer
+
+v1.19.3 will land the `monthly_reference` run profile and `world/information_release.py` (`InformationReleaseCalendar` book + `ScheduledIndicatorRelease` + `InformationArrivalRecord` + closed-set frozensets). v1.19.4 will land the static UI's read-only **Load local run bundle** affordance, which consumes the v1.19.2 CLI's JSON output. v1.19.last will freeze the v1.19 sequence (docs-only).
