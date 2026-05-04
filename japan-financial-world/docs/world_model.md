@@ -9630,3 +9630,59 @@ No order submission. No buy / sell labels. No order book. No matching. No execut
 ### 124.3 Forward pointer
 
 v1.18.last freezes the scenario-driver layer. v1.19 (conditional) is a local run bridge / report export. v2.0 is Japan public calibration in private JFWE only. Future LLM-mode reasoning policies, when introduced, must populate the same `ActorReasoningInputFrame` / `ReasoningPolicySlot` audit shape pinned at v1.18.0 — input evidence ids, prompt / policy id, output label, confidence / status, rejected / unknown cases, no hidden mutation of any source-of-truth book. Future price formation **remains gated** until the v1.16 / v1.17 / v1.18 surface is operationally legible to a reviewer who has not read this codebase.
+
+§125 ships the second concrete code milestone in the v1.18 sequence: the **scenario-driver application helper**. v1.18.2 lands [`world/scenario_applications.py`](../world/scenario_applications.py) — the deterministic, append-only `apply_scenario_driver(...)` helper that projects v1.18.1 `ScenarioDriverTemplate` records onto FWE evidence / context surfaces by **emitting new evidence / context records that cite the scenario driver via plain-id citations**. The helper **never mutates a pre-existing context record**: every shift is a new `ScenarioContextShiftRecord` carrying the v1.18.0 audit-metadata block. The cited `MarketEnvironmentBook` / `FirmFinancialStateBook` / `PriceBook` / `InterbankLiquidityStateBook` / `CorporateFinancingPathBook` / `InvestorMarketIntentBook` / `ScenarioDriverTemplateBook` snapshots are byte-identical pre / post call — pinned by trip-wire tests.
+
+The module ships:
+
+- one immutable frozen dataclass `ScenarioDriverApplicationRecord` — the per-call application receipt (fields: `scenario_application_id`, `scenario_driver_template_id`, `as_of_date`, `application_status_label`, `reasoning_mode`, `reasoning_policy_id`, `reasoning_slot`, `source_template_ids`, `source_context_record_ids`, `emitted_context_shift_ids`, `unresolved_ref_count`, `boundary_flags`, `status`, `visibility`, `metadata`);
+- one immutable frozen dataclass `ScenarioContextShiftRecord` — the append-only context shift (fields: `scenario_context_shift_id`, `scenario_application_id`, `scenario_driver_template_id`, `as_of_date`, `context_surface_label`, `driver_group_label`, `scenario_family_label`, `shift_direction_label`, `severity_label`, `affected_actor_scope_label`, `affected_context_record_ids`, `affected_evidence_bucket_labels`, `expected_annotation_type_label`, `reasoning_mode`, `reasoning_policy_id`, `reasoning_slot`, `evidence_ref_ids`, `unresolved_ref_count`, `boundary_flags`, `status`, `visibility`, `metadata`);
+- one append-only `ScenarioApplicationBook` with `add_application` / `get_application` / `list_applications` / `list_by_template` / `list_by_application_status` / `list_by_date` / `add_context_shift` / `get_context_shift` / `list_context_shifts` / `list_shifts_by_template` / `list_shifts_by_application` / `list_shifts_by_context_surface` / `list_shifts_by_driver_group` / `list_shifts_by_scenario_family` / `snapshot`;
+- three new closed-set vocabularies: `APPLICATION_STATUS_LABELS` (6 — `prepared` · `applied_as_context_shift` · `degraded_missing_template` · `degraded_unresolved_refs` · `rejected` · `unknown`), `CONTEXT_SURFACE_LABELS` (9 — `market_environment` · `firm_financial_state` · `interbank_liquidity` · `industry_condition` · `attention_surface` · `market_pressure_surface` · `financing_review_surface` · `display_annotation_surface` · `unknown`), `SHIFT_DIRECTION_LABELS` (10 — `tighten` · `loosen` · `deteriorate` · `improve` · `increase_uncertainty` · `reduce_uncertainty` · `attention_amplify` · `information_gap` · `no_direct_shift` · `unknown`);
+- two new ledger event types: `RecordType.SCENARIO_DRIVER_APPLICATION_RECORDED` and `RecordType.SCENARIO_CONTEXT_SHIFT_RECORDED`;
+- `WorldKernel.scenario_applications: ScenarioApplicationBook` — empty by default; only populated when `apply_scenario_driver(...)` is explicitly invoked.
+
+### 125.1 Family → shift mapping (v1.18.2 minimal pin)
+
+The helper's mapping table is deterministic, minimal, and labelled `reasoning_mode = "rule_based_fallback"`. A future audited reasoning policy can replace the table without changing the audit shape.
+
+| Family                                  | Emitted shift(s)                                                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `rate_repricing_driver` / `macro_rates` | one `market_environment` × `tighten` (or `increase_uncertainty` if `severity_label == "low"`) × `market_environment_change` |
+| `credit_tightening_driver`              | `market_environment` × `tighten` × `market_environment_change` **and** `financing_review_surface` × `tighten` × `financing_constraint` |
+| `funding_window_closure_driver`         | `financing_review_surface` × `deteriorate` × `financing_constraint`                                                         |
+| `liquidity_stress_driver`               | `interbank_liquidity` × `deteriorate` **and** `market_environment` × `deteriorate` × `market_environment_change`            |
+| `information_gap_driver`                | `attention_surface` × `information_gap` × `attention_shift`                                                                  |
+| (any other family)                      | one `unknown` × `no_direct_shift` × `<template.expected_annotation_type_label>`                                              |
+
+Every emitted record carries the v1.18.0 audit metadata: `reasoning_mode = "rule_based_fallback"` (binding), `reasoning_policy_id = "v1.18.2:scenario_application:rule_based_fallback"`, `reasoning_slot = "future_llm_compatible"`, `evidence_ref_ids = (template_id, *source_context_record_ids)`, `unresolved_ref_count`, and the seven default boundary flags `no_actor_decision` / `no_llm_execution` / `no_price_formation` / `no_trading` / `no_financing_execution` / `no_investment_advice` / `synthetic_only`.
+
+### 125.2 Append-only invariants pinned at v1.18.2
+
+1. **Pre-existing context records are byte-identical pre / post call.** The `MarketEnvironmentBook` / `FirmFinancialStateBook` / `PriceBook` / `InterbankLiquidityStateBook` / `CorporateFinancingPathBook` / `InvestorMarketIntentBook` / `ScenarioDriverTemplateBook` snapshots do not move when `apply_scenario_driver(...)` runs. Pinned by per-book trip-wire tests.
+2. **The helper does not scan kernel books globally.** It reads only the named template via `get_template` and the cited `source_context_record_ids` passed by the caller. Pinned by a trip-wire test that patches every other book's `list_*` / `snapshot` methods to raise; the helper still succeeds.
+3. **Empty `ScenarioApplicationBook` does not move the default-fixture `living_world_digest`.** The default sweep without any explicit scenario application stays byte-identical to v1.17.last at `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`. Pinned by `test_empty_scenario_applications_does_not_move_default_living_world_digest`.
+4. **Application is deterministic.** Identical `(template_id, as_of_date, source_context_record_ids)` inputs produce identical `scenario_application_id` and byte-identical book snapshots. Pinned by `test_apply_scenario_driver_deterministic_application_id`.
+5. **No actor decision, no LLM execution, no price formation, no trading, no financing execution, no investment advice.** No ledger record produced under v1.18.2 carries an `order_submitted` / `trade_executed` / `price_updated` / `clearing_completed` / `settlement_completed` / `loan_approved` / `security_issued` / `underwriting_executed` / `investor_action_taken` / `firm_decision_recorded` / `bank_approval_recorded` event type. Pinned by a regression test.
+
+### 125.3 Test inventory delta
+
+`+72` tests in [`tests/test_scenario_applications.py`](../tests/test_scenario_applications.py); test_inventory total moves from **99 / 4221** to **100 / 4293**.
+
+### 125.4 Performance boundary
+
+The default sweep without any scenario applied is unchanged from v1.17.last:
+
+| Surface                                                               | Value (v1.18.2 = v1.17.last when no scenario applied)                       |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Per-period record count (default fixture, no scenario applied)        | **108** (period 0) / **110** (periods 1+)                                    |
+| Per-run window (default 4-period fixture)                             | **`[432, 480]`**                                                              |
+| Default 4-period sweep                                                | **460 records**                                                              |
+| Integration-test `living_world_digest` (default, no scenario applied) | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**       |
+| Test count (`pytest -q`)                                              | **4293 / 4293**                                                              |
+
+Only when `apply_scenario_driver(...)` is explicitly invoked does the kernel ledger gain scenario-application + context-shift records, and even then no other source-of-truth book is mutated.
+
+### 125.5 Forward pointer
+
+v1.18.3 wires the v1.18.2 application output into the v1.17.2 / v1.17.3 inspection layer (regime comparison + causal annotations) so a reader can see scenario-driven runs side-by-side with the unscenario'd default. v1.18.4 adds a non-destructive UI scenario selector. v1.18.last freezes the scenario-driver layer (docs-only).
