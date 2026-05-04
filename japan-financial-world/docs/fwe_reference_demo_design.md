@@ -5,6 +5,42 @@ jurisdiction-neutral demo world that exercises every v0 + v1 record
 type through the existing v1.6 reference loop and produces a complete
 causal ledger trace.
 
+> **Note (v1.19.last freeze).** v1.19 froze the public-FWE
+> **local-run-bundle / monthly-reference inspection layer** on
+> top of the v1.18 scenario-driver inspection layer, the v1.17
+> inspection layer, and the v1.16 closed loop. The chain is
+> CLI-first: a user runs
+> `python -m examples.reference_world.export_run_bundle
+> --profile <quarterly_default | monthly_reference>
+> --regime <regime> --scenario none_baseline
+> --out /tmp/fwe_run_bundle.json` in a terminal to produce a
+> deterministic `RunExportBundle` JSON file
+> ([`world/run_export.py`](../world/run_export.py),
+> [`examples/reference_world/export_run_bundle.py`](../examples/reference_world/export_run_bundle.py));
+> the static workbench
+> ([`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html))
+> then loads that file via `<input type="file">` +
+> `FileReader.readAsText` + `JSON.parse` — **no `fetch()`, no
+> XHR, no backend, no engine execution from the browser, no
+> file-system write**. The `monthly_reference` profile reuses
+> the existing v1.16 closed loop on a 12-month synthetic
+> schedule and emits 3-5 information arrivals per month
+> (51 total) from a jurisdiction-neutral synthetic
+> `InformationReleaseCalendar`
+> ([`world/information_release.py`](../world/information_release.py)).
+> **Information arrival is not data ingestion** — no real
+> indicator values, no real release dates, no real
+> institutional identifiers; Japan release cadence is a
+> design reference only. The `quarterly_default`
+> `living_world_digest` stays byte-identical at
+> `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+> across the entire v1.19 sequence; the `monthly_reference`
+> digest is pinned at
+> `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`.
+> See
+> [`v1_19_local_run_bundle_and_monthly_reference_summary.md`](v1_19_local_run_bundle_and_monthly_reference_summary.md)
+> for the v1.19 single-page summary.
+>
 > **Note (v1.18.last freeze).** v1.18 froze the public-FWE
 > **scenario-driver inspection layer** on top of the v1.17
 > inspection surface and the v1.16 closed loop — synthetic

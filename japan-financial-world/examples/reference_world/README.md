@@ -518,6 +518,61 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.19.last — Local Run Bundle and Monthly Reference freeze (shipped, docs-only)
+
+v1.19.last closes the v1.19 sequence as the **first FWE
+milestone where a user can generate deterministic local run
+bundles from CLI and inspect them in the static workbench,
+including monthly_reference runs** — without backend execution,
+prices, trades, real data, or Japan calibration.
+
+The sequence:
+
+- v1.19.0 design (docs-only);
+- v1.19.1 `world/run_export.py` (`RunExportBundle` + JSON
+  writer; +56 tests);
+- v1.19.2 `examples/reference_world/export_run_bundle.py` (CLI
+  exporter, `quarterly_default`; +20 tests);
+- v1.19.3 `world/information_release.py` +
+  `world/reference_living_world.py` (`profile=...` arg) —
+  `monthly_reference` + `InformationReleaseCalendar`; +88 + 13
+  + 3 tests;
+- v1.19.3.1 monthly_reference enabled in the CLI exporter
+  (+8 tests);
+- v1.19.4 static UI **Load local bundle** button (HTML/JS only,
+  no pytest delta).
+
+Final user workflow (the headline):
+
+```bash
+cd japan-financial-world
+
+python -m examples.reference_world.export_run_bundle \
+    --profile monthly_reference \
+    --regime constrained \
+    --scenario none_baseline \
+    --out /tmp/fwe_monthly_bundle.json
+
+open ../ui/fwe_workbench_mockup.html
+# in the workbench:
+#   click "Load local bundle"
+#   pick /tmp/fwe_monthly_bundle.json
+#   inspect Overview / Timeline / Attention / Market Intent /
+#   Financing / Ledger
+```
+
+Test count: **4522 / 4522**. Default-fixture
+`living_world_digest` (`quarterly_default`) unchanged at
+`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`.
+`monthly_reference` digest pinned at
+`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+with 3-5 information arrivals per month and 51 total across 12
+months.
+
+See
+[`../../docs/v1_19_local_run_bundle_and_monthly_reference_summary.md`](../../docs/v1_19_local_run_bundle_and_monthly_reference_summary.md)
+for the v1.19.last single-page summary.
+
 ## v1.19.2 CLI exporter (shipped)
 
 The second concrete code milestone of the v1.19 sequence ships

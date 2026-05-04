@@ -10128,3 +10128,111 @@ The v1.19.4 milestone is **HTML / CSS / JS only** — no Python module touched, 
 ### 128.19 Forward pointer
 
 v1.19.last will freeze the v1.19 sequence (docs-only). The optional `127.0.0.1` stub local server bridge stays deferred — the CLI + read-only UI loader cover the headline workflow already.
+
+§128.20 closes the v1.19 sequence. v1.19.last is **docs-only** on top of the v1.19.0 → v1.19.4 code freezes (plus the v1.19.3.1 reconciliation follow-up): no new module, no new test, no new ledger event, no new label vocabulary. The freeze pins the v1.19 surface as the first FWE milestone where **a user can generate deterministic local run bundles from CLI and inspect them in the static workbench, including monthly_reference runs** — without backend execution, prices, trades, real data, or Japan calibration.
+
+The freeze ships:
+
+- the single-page reader-facing summary in [`v1_19_local_run_bundle_and_monthly_reference_summary.md`](v1_19_local_run_bundle_and_monthly_reference_summary.md);
+- this §128.20 section;
+- the v1.19.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md);
+- the v1.19.last freeze pin section in [`performance_boundary.md`](performance_boundary.md);
+- the v1.19.last header note in [`test_inventory.md`](test_inventory.md);
+- the v1.19.last addendum in [`examples/reference_world/README.md`](../examples/reference_world/README.md);
+- the v1.19.last cross-link in [`examples/ui/README.md`](../examples/ui/README.md);
+- the v1.19.last headline note in [`fwe_reference_demo_design.md`](fwe_reference_demo_design.md).
+
+### 128.20.1 Sequence map
+
+| Milestone     | Surface                                                                                                                                            | Status                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| v1.19.0       | Local Run Bridge / Report Export / Temporal Run Profile design (docs-only)                                                                          | Shipped                                 |
+| v1.19.1       | `world/run_export.py` — `RunExportBundle` dataclass + JSON writer                                                                                  | Shipped (+56 tests)                     |
+| v1.19.2       | `examples/reference_world/export_run_bundle.py` — CLI exporter for `quarterly_default`                                                              | Shipped (+20 tests)                     |
+| v1.19.3       | `world/information_release.py` + `world/reference_living_world.py` (`profile=...` arg) — `monthly_reference` profile + `InformationReleaseCalendar` | Shipped (+88 + 13 + 3 tests)            |
+| v1.19.3.1     | `examples/reference_world/export_run_bundle.py` (extended) — CLI exporter for `monthly_reference`                                                   | Shipped (+8 tests)                      |
+| v1.19.4       | `examples/ui/fwe_workbench_mockup.html` (extended) — UI local run bundle loader (read-only)                                                         | Shipped (UI / fixture only — no pytest) |
+| **v1.19.last**| **docs-only**                                                                                                                                      | **Shipped** (this freeze)               |
+
+### 128.20.2 Final user workflow (binding)
+
+```bash
+cd japan-financial-world
+
+python -m examples.reference_world.export_run_bundle \
+    --profile monthly_reference \
+    --regime constrained \
+    --scenario none_baseline \
+    --out /tmp/fwe_monthly_bundle.json
+
+open examples/ui/fwe_workbench_mockup.html
+# in the workbench:
+#   click "Load local bundle"
+#   pick /tmp/fwe_monthly_bundle.json
+#   inspect Overview / Timeline / Attention / Market Intent / Financing / Ledger
+```
+
+### 128.20.3 Key architecture (carried verbatim from v1.19.0)
+
+- The **CLI generates** the local JSON bundle.
+- The **browser reads** the JSON as data only.
+- The browser **does not execute Python**.
+- **No backend, no Rails, no FastAPI, no Flask** in the default workflow.
+- **No browser-to-engine execution.**
+- **No file-system write** from the browser.
+
+The CLI is the trust boundary; the JSON file is the contract; the browser is a read-only viewer.
+
+### 128.20.4 monthly_reference boundary (carried verbatim)
+
+`monthly_reference` creates actual monthly synthetic records and information arrivals. It is **opt-in**. It is **not real data ingestion**. It stores **no real indicator values**. It uses **no real institutional identifiers**. It is **not daily simulation**. It creates **no price records**, **no orders**, **no trades**, **no investment advice**.
+
+### 128.20.5 Daily boundary (carried verbatim)
+
+`daily_display_only` remains **display / report only**. `future_daily_full_simulation` remains **out of scope for the v1.19 sequence** — it ships in v2+ at the earliest, gated on the future market-mechanism / price-formation design.
+
+### 128.20.6 Hard boundary (carried verbatim from v1.18.last)
+
+No price formation. No market price. No predicted index. No forecast path. No expected return. No target price. No trading. No orders. No execution. No clearing. No settlement. No financing execution. No investment advice. No real data ingestion. No Japan calibration. No LLM execution.
+
+### 128.20.7 Performance boundary at v1.19.last
+
+v1.19.last is **docs-only**. Per-period record count, per-run window, default-fixture digest, and pytest count are pinned:
+
+| Surface                                                                | Value (v1.19.last = v1.19.4)                                                       |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Per-period record count (`quarterly_default`, no scenario applied)      | **108** (period 0) / **110** (periods 1+) — unchanged from v1.18.last               |
+| Per-run window (`quarterly_default`, 4 periods)                        | **`[432, 480]`** (unchanged)                                                       |
+| Default 4-period sweep (`quarterly_default`)                           | **460 records** (unchanged)                                                        |
+| `living_world_digest` (`quarterly_default`, no scenario applied)       | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (unchanged) |
+| `monthly_reference` arrivals (default fixture)                         | **3-5 / month, 51 / 12 months** (within [36, 60] design budget)                     |
+| `monthly_reference` `living_world_digest`                              | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**             |
+| Test count (`pytest -q`)                                               | **4522 / 4522** (+188 across the v1.19 sequence)                                    |
+
+UI local bundle loading does **not** affect the engine digest of any kernel — the workbench loads JSON; it never touches a kernel.
+
+### 128.20.8 UI status at v1.19.last
+
+- Static HTML; local bundle loader uses `FileReader` + `JSON.parse`.
+- Renders user-loaded values through `textContent`.
+- Ledger excerpt capped at **20** rows.
+- `current_data_source` tracks `inline_fixture` / `sample_manifest` / `local_bundle`.
+- Accepts `quarterly_default` / `monthly_reference`.
+- Rejects `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` with `bundle profile '<profile>' is not loadable in v1.19.4 static UI`.
+
+### 128.20.9 Known limitations
+
+- `monthly_reference` is still **synthetic** — every label is a closed-set ordinal over a synthetic vocabulary; there is no real CPI / GDP / policy-rate value.
+- Information arrivals are **categories of public information, not real values**.
+- UI loading is **read-only** — the workbench cannot mutate, write, or re-export.
+- `scenario_monthly` is **not executable yet** — the CLI rejects it; the UI rejects it.
+- `daily_display_only` is **not economic simulation** — it is display-only.
+- **No live run button yet** — the user runs the CLI in a terminal, then loads the produced JSON.
+
+### 128.20.10 Next-roadmap candidates
+
+- **v1.20 — Institutional Investor Mandate / Benchmark Pressure design** (option A). Adds a synthetic mandate / benchmark layer (jurisdiction-neutral, label-only) that shapes investor reasoning under the existing closed loop.
+- **v1.20 — `scenario_monthly` profile** (option B). Wires the v1.18.2 `apply_scenario_driver(...)` chain into the `monthly_reference` profile so a reader can see scenario-driver applications interleaved with month-by-month information arrivals.
+- **v2.0 — Japan public calibration in private JFWE only.** Public FWE remains jurisdiction-neutral and synthetic.
+- **Future LLM-mode reasoning policies remain gated** behind the v1.18.0 audit shape (input evidence ids, prompt / policy id, output label, confidence / status, rejected / unknown cases) and source-book immutability.
+- **Future price formation remains gated** until the v1.16 / v1.17 / v1.18 / v1.19 surface is operationally legible to a reviewer who has not read this codebase.

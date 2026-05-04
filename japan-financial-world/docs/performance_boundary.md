@@ -336,6 +336,82 @@ If any of those pins fails, the demo has either grown the
 fixture (intentional but undocumented) or gained a hidden
 quadratic loop (unintended).
 
+## v1.19.last freeze pins
+
+The v1.19.last freeze (docs-only on top of the v1.19.0 → v1.19.4
+code freezes plus the v1.19.3.1 reconciliation follow-up)
+closes the v1.19 sequence as the **first FWE milestone where a
+user can generate deterministic local run bundles from CLI and
+inspect them in the static workbench, including
+monthly_reference runs** — without backend execution, prices,
+trades, real data, or Japan calibration.
+
+**Default `quarterly_default` sweep (unchanged from
+v1.18.last):**
+
+- per-period record count: **108** (period 0) / **110** (periods 1+),
+- per-run window: **`[432, 480]`**,
+- default 4-period sweep total: **460 records**,
+- integration-test `living_world_digest`:
+  **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**,
+- pinned across the entire v1.19 sequence by per-book trip-wire
+  tests at v1.19.1 (`tests/test_run_export.py::test_constructing_bundles_does_not_move_default_living_world_digest`),
+  v1.19.2 (`tests/test_run_export_cli.py::test_default_fixture_living_world_digest_unchanged_after_cli`),
+  v1.19.3 (`tests/test_information_release.py::test_empty_information_releases_does_not_move_default_living_world_digest`
+  and `tests/test_living_reference_world.py::test_v1_19_3_quarterly_default_digest_unchanged`),
+  v1.19.3.1 (`tests/test_run_export_cli.py::test_v1_19_3_1_monthly_reference_does_not_move_quarterly_default_digest`).
+
+**Default `monthly_reference` sweep (v1.19.3, opt-in):**
+
+- 12 monthly periods (synthetic month-end ISO dates),
+- **3-5 information arrivals per month**, total **51** for the
+  default fixture,
+- `living_world_digest` (`monthly_reference`):
+  **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**.
+
+**CLI exporter discipline (v1.19.2 + v1.19.3.1):**
+
+- builds its own *fresh* kernel per invocation — running the
+  CLI cannot influence a separately seeded default sweep,
+- writes deterministic JSON via `world.run_export` (`sort_keys=True`),
+- the bundle JSON contains no ISO wall-clock timestamp inserted
+  by the export module itself, no absolute path, no `$USER` /
+  `$HOSTNAME` capture (pinned by
+  `test_bundle_json_has_no_iso_wall_clock_timestamp` /
+  `test_bundle_json_contains_no_absolute_paths` and the v1.19.3.1
+  monthly equivalents),
+- two runs with the same args, two different `--out` paths,
+  produce byte-identical bytes,
+- module imports no FastAPI / Flask / Rails / aiohttp / tornado
+  / starlette / uvicorn / gunicorn / django / selenium /
+  playwright names (pinned by
+  `test_module_imports_no_backend_or_browser_names`).
+
+**Static UI loader discipline (v1.19.4):**
+
+- HTML / CSS / JS only — `<input type="file">` +
+  `FileReader.readAsText` + `JSON.parse`; no `fetch()`, no
+  XHR, no backend, no engine execution from the browser, no
+  file-system write,
+- renders user-loaded values via `textContent` only — never
+  `innerHTML`,
+- caps the rendered ledger excerpt at **20** rows,
+- preserves the v1.17.4 / v1.18.4 no-jump discipline verbatim,
+- accepts `quarterly_default` / `monthly_reference`; rejects
+  `scenario_monthly` / `daily_display_only` /
+  `future_daily_full_simulation` with a clear status message.
+
+**Test count:** **4522 / 4522** passing (+188 across the v1.19
+sequence: v1.19.1 +56, v1.19.2 +20, v1.19.3 +88+13+3,
+v1.19.3.1 +8, v1.19.4 +0). v1.19.0 / v1.19.4 are docs /
+static-HTML only and add no pytest tests; the in-page Validate
+button enforces the workbench-side invariants instead.
+
+If any of these pins fails, either the default fixture has
+drifted (intentional but undocumented), the CLI has gained a
+hidden network call, or the static workbench has gained a
+hidden engine bridge.
+
 ## v1.19.3 monthly_reference profile pins
 
 The v1.19.3 milestone adds a `monthly_reference` run profile and an `InformationReleaseCalendar` storage layer ([`world/information_release.py`](../world/information_release.py)). The default `quarterly_default` profile remains byte-identical to v1.18.last; the `monthly_reference` profile is opt-in and runs the existing v1.16 closed loop on a 12-month synthetic schedule with synthetic public-information arrivals.

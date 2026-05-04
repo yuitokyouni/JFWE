@@ -22,6 +22,105 @@ Each readiness review records its result here so the next reviewer
 can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
+- **Date:** 2026-05-05
+- **Target:** v1.19.last local-run-bundle / monthly-reference
+  freeze. The v1.18.last scenario-driver-library freeze
+  (snapshot below), the v1.17.last inspection-layer freeze,
+  the v1.16.last endogenous-market-intent feedback freeze,
+  the v1.15.last securities-market-intent aggregation freeze,
+  the v1.14.last corporate-financing-intent freeze, the
+  v1.13.last settlement-substrate freeze, the v1.12.last
+  endogenous-attention-loop freeze, the v1.9.last public-
+  prototype freeze, and the v1.8.0 public release
+  (`v1.8-public-release` at commit `7fa2c42`) all remain
+  unchanged; v1.19.last freezes the v1.19 sequence as the
+  **first public-FWE local-run-bundle inspection layer** —
+  CLI generates a deterministic `RunExportBundle` JSON
+  (v1.19.1) for either `quarterly_default` (v1.19.2) or the
+  new `monthly_reference` profile (v1.19.3 + v1.19.3.1); the
+  static workbench reads the JSON via `<input type="file">`
+  + `FileReader.readAsText` + `JSON.parse` (v1.19.4) — **no
+  fetch, no XHR, no backend, no engine execution from the
+  browser, no file-system write**. The `monthly_reference`
+  profile reuses the existing v1.16 closed loop on a
+  12-month synthetic schedule and emits 3-5 information
+  arrivals per month (51 total) from a jurisdiction-neutral
+  synthetic `InformationReleaseCalendar` — **information
+  arrival is not data ingestion**; no real values, no real
+  release dates, no real institutional identifiers; Japan
+  release cadence is a design reference only. v1.19.last
+  itself is docs-only on top of the v1.19.0 → v1.19.4 code
+  freezes (plus the v1.19.3.1 reconciliation follow-up). The
+  chain is **CLI-first / read-only-loader / opt-in-monthly /
+  no-backend** — no price formation, no market price, no
+  predicted index, no forecast path, no expected return, no
+  target price, no trading, no orders, no execution, no
+  clearing, no settlement, no financing execution, no
+  investment advice, no real data ingestion, no Japan
+  calibration, no LLM execution, no daily simulation, no
+  browser-to-Python execution, no Rails, no FastAPI, no
+  Flask. `reasoning_mode = "rule_based_fallback"` remains
+  binding at v1.19.x. Known limitations: `monthly_reference`
+  is still synthetic (no real CPI / GDP / policy-rate
+  values); information arrivals are categories, not values;
+  UI loading is read-only; `scenario_monthly` is not yet
+  executable; `daily_display_only` is not economic
+  simulation; no live run button — the user runs the CLI in
+  a terminal, then loads the JSON.
+- **Status:** docs + tests frozen. The freeze is conditional on
+  CI being green on the commit being tagged.
+- **Local results (v1.19.last):**
+  - `pytest -q` → 4522 passed
+  - `compileall world spaces tests examples` → clean
+  - `ruff check .` (repo root) → clean
+  - `python -m examples.reference_world.run_living_reference_world`
+    → unchanged from v1.18.last on the default `quarterly_default`
+    profile; produces the same `[setup]` / `[period N]` /
+    `[ledger]` trace and the same default-fixture record set.
+  - integration-test fixture `living_world_digest`
+    (`quarterly_default`) =
+    **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+    (unchanged from v1.18.last across the entire v1.19 sequence
+    — pinned by per-book trip-wire tests at v1.19.1 /
+    v1.19.2 / v1.19.3 / v1.19.3.1).
+  - `monthly_reference` `living_world_digest` =
+    **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**
+    with **3-5 arrivals / month, 51 / 12 months** (within the
+    [36, 60] design budget, pinned by
+    `tests/test_living_reference_world.py::test_v1_19_3_monthly_reference_living_world_digest_is_pinned`).
+  - `python -m examples.reference_world.export_run_bundle
+    --profile quarterly_default --regime constrained
+    --scenario none_baseline --out /tmp/q.json` → writes a
+    deterministic JSON; same args → byte-identical bytes;
+    bundle JSON contains no ISO wall-clock, no absolute
+    path, no `$USER` / `$HOSTNAME`.
+  - `python -m examples.reference_world.export_run_bundle
+    --profile monthly_reference --regime constrained
+    --scenario none_baseline --out /tmp/m.json` → writes a
+    deterministic monthly bundle whose
+    `metadata.information_arrival_summary` carries
+    `arrival_count = 51` across 7 indicator families.
+  - `examples/ui/fwe_workbench_mockup.html` → opens directly
+    under `file://` with no console errors. The new
+    **Load local bundle** button reads either the quarterly
+    or monthly JSON via `FileReader` + `JSON.parse`,
+    validates the v1.19.1 schema + v1.19.0 default 8-flag
+    boundary block, accepts `quarterly_default` /
+    `monthly_reference`, rejects `scenario_monthly` /
+    `daily_display_only` / `future_daily_full_simulation`
+    with `bundle profile '<profile>' is not loadable in
+    v1.19.4 static UI`. Renders user-loaded values via
+    `textContent` only; caps the ledger excerpt at 20 rows.
+    `current_data_source` label correctly tracks
+    `inline_fixture` / `sample_manifest` / `local_bundle`.
+    `Validate` reports `validation passed · static UI`.
+  - Forbidden-token scan + public-wording audit + public /
+    private boundary review + no-confidential-content audit +
+    no-real-data audit + no-behavior-probability audit — all
+    unchanged from v1.18.last.
+
+#### v1.18.last historical snapshot (unchanged)
+
 - **Date:** 2026-05-04
 - **Target:** v1.18.last scenario-driver-library freeze. The
   v1.17.last inspection-layer freeze (snapshot below), the
@@ -543,9 +642,10 @@ new review is performed.
   freeze: `1626 passed`. v1.13.last freeze: `2988 passed`.
   v1.14.last freeze: `3391 passed`. v1.15.last freeze:
   `3883 passed`. v1.16.last freeze: `4033 passed`. v1.17.last
-  freeze: `4165 passed`. v1.18.last freeze: `4334 passed`. Use
-  the count of the milestone being tagged; mismatch means the
-  tree is not the freeze tree.
+  freeze: `4165 passed`. v1.18.last freeze: `4334 passed`.
+  v1.19.last freeze: `4522 passed`. Use the count of the
+  milestone being tagged; mismatch means the tree is not the
+  freeze tree.
 - [ ] `python -m compileall world spaces tests examples` from
   `japan-financial-world/` succeeds (no syntax errors anywhere,
   including the reference demo and test files).

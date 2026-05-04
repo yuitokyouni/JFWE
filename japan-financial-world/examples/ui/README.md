@@ -367,6 +367,25 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
+## v1.19.last — Local Run Bundle and Monthly Reference freeze (shipped, docs-only)
+
+v1.19.last closes the v1.19 sequence as the **first FWE
+milestone where a user can generate deterministic local run
+bundles from CLI and inspect them in the static workbench,
+including monthly_reference runs**. The static UI loader
+shipped at v1.19.4 (described below) is the v1.19 contribution
+to that surface; the v1.19.last freeze is docs-only and ships
+no UI changes beyond cross-links into the single-page summary
+at
+[`../../docs/v1_19_local_run_bundle_and_monthly_reference_summary.md`](../../docs/v1_19_local_run_bundle_and_monthly_reference_summary.md).
+
+Test count: **4522 / 4522**. The default-fixture
+`living_world_digest` (`quarterly_default`) is unchanged at
+`f93bdf3f…b705897c`; the `monthly_reference` digest is pinned
+at `75a91cfa…91879d`. The browser remains a **read-only viewer**
+— no `fetch()`, no XHR, no backend, no engine execution from
+the browser, no file-system write.
+
 ## v1.19.4 — Local run bundle loader (shipped, read-only)
 
 The static workbench now loads a `RunExportBundle` JSON

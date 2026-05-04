@@ -1,6 +1,52 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.18.last** (`Scenario Driver
+Snapshot of the test suite at **v1.19.last** (`Local Run Bundle
+and Monthly Reference freeze` — docs-only milestone that closes
+the v1.19 sequence; ships the single-page reader-facing summary
+in
+[`v1_19_local_run_bundle_and_monthly_reference_summary.md`](v1_19_local_run_bundle_and_monthly_reference_summary.md),
+the v1.19.last release-readiness snapshot in
+[`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md), and the
+v1.19.last position-in-sequence row in `world_model.md` §128.20;
+no new code, no new tests, no new ledger event types, no new
+behavior; test count = **4522 / 4522**, per-period record count
+(`quarterly_default`) = **108 / 110**, per-run window
+(`quarterly_default`) = **`[432, 480]`**,
+default-fixture `living_world_digest` =
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+(unchanged from v1.18.last across the entire v1.19 sequence
+when no scenario is applied), `monthly_reference`
+`living_world_digest` =
+**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**;
+the v1.19 surface is the **first public-FWE local-run-bundle
+inspection layer** — deterministic `RunExportBundle` JSON
+(v1.19.1) + CLI exporter (v1.19.2 / v1.19.3.1) +
+`monthly_reference` profile + `InformationReleaseCalendar` /
+`ScheduledIndicatorRelease` / `InformationArrivalRecord`
+(v1.19.3) + static UI read-only loader (v1.19.4); CLI generates
+JSON, browser reads JSON, browser does **not** execute Python,
+**no backend**, **no Rails**, **no FastAPI**, **no Flask**,
+**no fetch / XHR / network**, **no file-system write**, **no
+daily simulation**; `monthly_reference` is opt-in synthetic and
+emits 51 information arrivals across 12 months from a
+jurisdiction-neutral synthetic calendar (no real values, no
+real release dates, no real institutional identifiers); UI
+loader accepts `quarterly_default` / `monthly_reference` and
+rejects `scenario_monthly` / `daily_display_only` /
+`future_daily_full_simulation` with a clear status message;
+**no price formation, no market price, no predicted index, no
+forecast path, no expected return, no target price, no trading,
+no orders, no execution, no clearing, no settlement, no
+financing execution, no investment advice, no real data
+ingestion, no Japan calibration, no LLM execution, no firm
+decisions, no investor actions, no bank approval logic, no
+mutation of pre-existing context records**. The v1.18.last,
+v1.17.last, v1.16.last, and v1.15.last historical snapshots
+below are preserved unchanged.)
+
+---
+
+Earlier snapshot at **v1.18.last** (`Scenario Driver
 Library freeze` — docs-only milestone that closes the v1.18
 sequence; ships the single-page reader-facing summary in
 [`v1_18_scenario_driver_library_summary.md`](v1_18_scenario_driver_library_summary.md),
