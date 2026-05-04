@@ -10490,3 +10490,59 @@ Every invariant pinned at v1.18.0 / v1.19.0 / v1.20.1 / v1.20.2 / v1.20.3 stays 
 ### 129.21 Forward pointer (post-v1.20.4)
 
 v1.20.5 will extend the static UI loader (`examples/ui/fwe_workbench_mockup.html`) so a reader can browse the universe / sector / monthly scenario surfaces from a v1.20.4 bundle in a `file://` browser session. v1.20.last will freeze the v1.20 sequence (docs-only).
+
+### 129.22 v1.20.5 — UI universe / sector / monthly scenario rendering
+
+§129.22 ships the fifth concrete code milestone of the v1.20 sequence: the static workbench mockup ([`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html)) now renders the v1.20.4 `scenario_monthly_reference_universe` bundle. The browser **never** executes Python, never calls a backend, never writes files. v1.20.5 is **HTML / CSS / JS only** — no Python source modules touched, no test count change.
+
+What v1.20.5 lands (binding):
+
+- **New Universe tab + sheet.** The bottom-tabs nav now lists 11 tabs (Cover · Inputs · Overview · **Universe** · Timeline · Regime Compare · Attention · Market Intent · Financing · Ledger · Appendix); the tab ↔ sheet bijection is preserved.
+- **Empty-state card.** When no v1.20.4 bundle is loaded, the Universe sheet renders an instructive empty-state card pointing the reader at the CLI exporter command.
+- **Live-state card.** When a `scenario_monthly_reference_universe` bundle is loaded, the Universe sheet renders:
+  - **Universe profile header** — `reference_universe_id` + `sector_taxonomy_label`; profile badge.
+  - **Counts row** (eight cards) — sectors / firm profiles / investors / banks / periods / selected scenario / affected sectors / affected firms.
+  - **Sector sensitivity heatmap** — 11-row × 9-column table; six sensitivity columns (`demand` / `rate` / `credit` / `input cost` / `policy` / `tech disruption`) plus an `Affected` column. Each cell carries a CSS rung class (`sens-low` / `sens-moderate` / `sens-high` / `sens-very-high` / `sens-unknown`); the cell text always echoes the underlying closed-set label verbatim — colour is decorative, no numeric weight is implied.
+  - **Firm profile table** — 11 rows × 6 columns (firm profile id / sector label / firm size / funding dependency / market access / affected). Long ids wrap (`word-break: break-word; table-layout: fixed`).
+  - **Scenario causal trace** — five-step ordered list: scenario template → scheduled application → applied application → context shifts (count + surfaces + directions) → affected scope (sector + firm counts).
+  - **Boundary-statement footer** — `synthetic / generic-sector / opt-in profile`; explicitly negates price formation, trading, financing execution, firm decision, investor action, bank approval, real data ingestion, licensed taxonomy, Japan calibration, LLM execution.
+- **Bundle schema validator extension.** `validateBundleSchema(...)` now accepts the new profile and additionally requires:
+  - `metadata.reference_universe` object,
+  - non-empty `sector_labels` and `firm_profile_ids` arrays inside it,
+  - `scenario_trace` object with `affected_sector_ids` and `affected_firm_profile_ids` arrays,
+  - `manifest.sector_count == 11`, `manifest.firm_count == 11`, `manifest.investor_count == 4`, `manifest.bank_count == 3`.
+  Validation failures surface as a readable status-line list ("schema invalid · N issue(s) · …"). Pre-existing `quarterly_default` / `monthly_reference` validation is unchanged.
+- **`BUNDLE_EXECUTABLE_PROFILES`** extended additively with `scenario_monthly_reference_universe`. The three deferred labels (`scenario_monthly` / `daily_display_only` / `future_daily_full_simulation`) stay deferred.
+- **Profile badge** — distinct amber colour for the universe profile so a reader can visually distinguish it from the v1.19.x blue (`monthly_reference`) and green (`quarterly_default`) badges.
+- **Information arrival summary card** — now also visible for the universe profile (which reuses the v1.19.3 calendar fixture verbatim — 51 arrivals across 12 months).
+- **In-page Validate audit** — extended with seven new checks: Universe tab + sheet present, both table tbodies present, `renderUniverseFromBundle` function defined, `SENSITIVITY_LABELS` constant carries the v1.20.0 five-rung closed set, `BUNDLE_EXECUTABLE_PROFILES` includes the new profile.
+
+Safety (binding):
+
+- `textContent` only — no `innerHTML`, no `eval`, no script injection for user-loaded JSON.
+- No `fetch` / XHR / network call. No backend. No file-system write.
+- No `location.hash` mutation during bundle load (capture-and-restore protocol mirrors the v1.19.4 loader).
+- No active-sheet shift during bundle load.
+- No scroll jump (capture-and-restore around scroll position).
+
+CLI bundle digest (default fixture, unchanged from v1.20.4):
+
+| Surface                                                          | Value                                                                       |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `scenario_monthly_reference_universe` CLI bundle digest          | **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`** (unchanged) |
+| `quarterly_default` `living_world_digest`                        | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (unchanged) |
+| `monthly_reference` `living_world_digest`                        | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`** (unchanged) |
+| Test count (`pytest -q`)                                          | **4764 / 4764** (unchanged — UI-only milestone)                              |
+
+### 129.23 No-mutation invariants pinned at v1.20.5
+
+Every invariant pinned at v1.18.0 / v1.19.0 / v1.20.1 / v1.20.2 / v1.20.3 / v1.20.4 stays binding. v1.20.5 adds the following:
+
+1. The static workbench renders only label-strings via `textContent`. No `innerHTML` is set from user-loaded JSON anywhere.
+2. The Universe tab is **read-only**. No engine execution, no backend call, no file-system write — the CLI exporter remains the only producer of the bundle JSON.
+3. The 11-tab ↔ 11-sheet bijection holds: each tab has a matching sheet element and vice versa.
+4. No real company name, no real sector index membership, no licensed taxonomy token, no real release date, and no real indicator value is rendered. The sector grid uses the `_like`-suffixed labels verbatim from the bundle; the firm profile rows use the synthetic `firm:reference_<sector>_a` ids verbatim.
+
+### 129.24 Forward pointer (post-v1.20.5)
+
+v1.20.last will freeze the v1.20 sequence (docs-only) — single-page reader-facing summary, release-readiness snapshot, performance-boundary freeze pin, test-inventory header note, and cross-links from `examples/reference_world/README.md`, `examples/ui/README.md`, and `docs/fwe_reference_demo_design.md`.

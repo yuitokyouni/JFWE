@@ -1204,6 +1204,201 @@
         z-index: 5;
       }
     }
+
+    /* ------------------------------------------------------------------ */
+    /* v1.20.5 — Universe tab: sector sensitivity heatmap + firm grid     */
+    /*                                                                    */
+    /* The five rungs are visualised through CSS background colour only — */
+    /* they are *labels*, not numeric values. No real sector weight, no   */
+    /* real market cap, no real financial value. Each rung carries a      */
+    /* mono-spaced label so the rendered cell text always echoes the      */
+    /* underlying closed-set vocabulary.                                  */
+    /* ------------------------------------------------------------------ */
+    .universe-counts-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 6px 0 0;
+    }
+
+    .universe-count-card {
+      flex: 1 1 140px;
+      min-width: 140px;
+      border: 1px solid #d8d6cf;
+      background: #fafaf6;
+      padding: 8px 10px;
+    }
+
+    .universe-count-card .small-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .universe-count-card .value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .universe-count-card .value-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .sensitivity-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 8px;
+    }
+
+    .sensitivity-table th,
+    .sensitivity-table td {
+      border: 1px solid #dcd9d2;
+      padding: 5px 6px;
+      vertical-align: top;
+      word-break: break-word;
+      font-size: 12px;
+    }
+
+    .sensitivity-table th {
+      background: #f6f5f0;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .sensitivity-table td.mono,
+    .sensitivity-table th.mono {
+      font-family: var(--font-mono);
+    }
+
+    /* Heatmap rungs — closed-set, label-only. No numeric value
+       implied. The colour is decorative; the textContent always
+       echoes the v1.20.0 sensitivity label verbatim. */
+    .sens-low {
+      background: #f1f8f3;
+      color: #1f6b3a;
+    }
+
+    .sens-moderate {
+      background: #fbf7e8;
+      color: #7a6320;
+    }
+
+    .sens-high {
+      background: #fdeed3;
+      color: #8a5a1a;
+    }
+
+    .sens-very-high {
+      background: #fde2dc;
+      color: #8d2c1d;
+    }
+
+    .sens-unknown {
+      background: #f0efeb;
+      color: var(--muted);
+    }
+
+    /* Affected-by-scenario flag column */
+    .affected-yes {
+      background: #fde2dc;
+      color: #8d2c1d;
+      font-weight: 600;
+    }
+
+    .affected-no {
+      background: #f0efeb;
+      color: var(--muted);
+    }
+
+    .universe-firm-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 8px;
+    }
+
+    .universe-firm-table th,
+    .universe-firm-table td {
+      border: 1px solid #dcd9d2;
+      padding: 5px 6px;
+      vertical-align: top;
+      word-break: break-word;
+      font-size: 12px;
+    }
+
+    .universe-firm-table th {
+      background: #f6f5f0;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .universe-firm-table td.mono,
+    .universe-firm-table th.mono {
+      font-family: var(--font-mono);
+    }
+
+    .universe-empty-state {
+      padding: 12px 14px;
+      border: 1px dashed #cdcac1;
+      background: #fafaf6;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    /* Causal trace block: scenario template -> scheduled
+       application -> applied application -> context shifts ->
+       affected sector / firm counts. Renders as a vertical
+       bullet chain so the lineage is visible at a glance. */
+    .scenario-trace-list {
+      list-style: none;
+      margin: 8px 0 0;
+      padding: 0;
+      counter-reset: scenario-trace-step;
+    }
+
+    .scenario-trace-list li {
+      position: relative;
+      padding: 6px 8px 6px 32px;
+      border-left: 2px solid #d8d6cf;
+      margin-left: 12px;
+    }
+
+    .scenario-trace-list li::before {
+      counter-increment: scenario-trace-step;
+      content: counter(scenario-trace-step);
+      position: absolute;
+      left: -12px;
+      top: 6px;
+      width: 22px;
+      height: 22px;
+      border: 1px solid #c6c6c6;
+      background: #fafaf6;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .scenario-trace-list li .label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .scenario-trace-list li .value {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      word-break: break-word;
+    }
   </style>
 </head>
 
@@ -1456,26 +1651,28 @@
               <!-- v1.19.4 — Local run bundle loader card (read-only) -->
               <section class="card" id="card-local-run-bundle">
                 <div class="section-rule"></div>
-                <h3 class="card-title">Local run bundle <span class="tag">v1.19.4 · read-only</span></h3>
+                <h3 class="card-title">Local run bundle <span class="tag">v1.19.4 · v1.20.5 · read-only</span></h3>
                 <div class="note-box" style="margin-top:8px;">
                   Load a deterministic <code>RunExportBundle</code>
-                  JSON file produced by the v1.19.2 /
-                  v1.19.3.1 CLI exporter. The browser
+                  JSON file produced by the v1.19.2 / v1.19.3.1 /
+                  v1.20.4 CLI exporter. The browser
                   <strong>never</strong> executes Python, never
                   calls a backend, never writes files. Workflow:
                   <ol style="margin:8px 0 0 18px; padding-left:0;">
                     <li>run
                       <code>python -m examples.reference_world.export_run_bundle
-                      --profile &lt;quarterly_default | monthly_reference&gt;
-                      --regime &lt;regime&gt; --scenario none_baseline
+                      --profile &lt;quarterly_default | monthly_reference |
+                      scenario_monthly_reference_universe&gt;
+                      --regime &lt;regime&gt; --scenario &lt;none_baseline |
+                      credit_tightening_driver&gt;
                       --out /tmp/fwe_run_bundle.json</code>
                       in your terminal,</li>
                     <li>click
                       <strong>Load local bundle</strong> in the top
                       ribbon and pick the JSON file,</li>
-                    <li>inspect the result in Overview / Timeline /
-                      Attention / Market Intent / Financing /
-                      Ledger.</li>
+                    <li>inspect the result in Overview / Universe /
+                      Timeline / Attention / Market Intent /
+                      Financing / Ledger.</li>
                   </ol>
                 </div>
                 <table style="margin-top:10px;">
@@ -1512,7 +1709,7 @@
                 </table>
                 <div class="note-box" id="bundle-monthly-summary" style="margin-top:10px; display:none;">
                   <strong>Information arrival summary
-                    <span class="tag">v1.19.3 monthly_reference</span></strong>
+                    <span class="tag">v1.19.3 · monthly_reference · scenario_monthly_reference_universe</span></strong>
                   <table style="margin-top:8px;">
                     <tr>
                       <td>Calendar count</td>
@@ -2482,6 +2679,243 @@
         </div>
       </article>
 
+      <!-- =============================================================== -->
+      <!-- v1.20.5 redesign — Universe tab                                  -->
+      <!-- Read-only rendering of the v1.20.4 scenario_monthly_reference_   -->
+      <!-- universe bundle. Empty state for any other profile. The 11      -->
+      <!-- sector grid uses CSS-class colour rungs only; the rendered cell -->
+      <!-- text always echoes the underlying closed-set sensitivity label. -->
+      <!-- =============================================================== -->
+      <article id="sheet-universe" class="sheet">
+        <div class="sheet-inner">
+          <div class="band">
+            <div>
+              <div class="chapter">Sheet IV</div>
+              <h1>Universe · 11-sector / 11-firm synthetic reference</h1>
+            </div>
+            <div class="mono">profile · <span id="universe-profile-label">—</span></div>
+          </div>
+          <div class="subband">Cross-sectional view of the v1.20.1 generic 11-sector reference universe and the v1.20.2 / v1.20.3 scheduled scenario application. Synthetic / generic-sector / opt-in profile, not real-issuer membership; no licensed taxonomy dependency, no real company names, no real sector weights, no investment advice.</div>
+          <div class="panel-body">
+
+            <!-- Empty-state card: shown only when no scenario universe
+                 bundle has been loaded yet. -->
+            <section
+              class="card universe-empty-state"
+              id="card-universe-empty"
+              aria-live="polite"
+            >
+              No <code>scenario_monthly_reference_universe</code>
+              bundle loaded yet. Generate one with
+              <code>python -m examples.reference_world.export_run_bundle
+              --profile scenario_monthly_reference_universe --regime
+              constrained --scenario credit_tightening_driver --out
+              /tmp/fwe_scenario_universe_bundle.json</code> and click
+              <strong>Load local bundle</strong>.
+            </section>
+
+            <!-- Live-state card: shown only after a v1.20.4 bundle
+                 is loaded. -->
+            <section
+              class="card"
+              id="card-universe-live"
+              style="display:none;"
+            >
+
+              <h3 class="card-title">
+                Universe profile
+                <span class="tag" id="universe-profile-badge">scenario_monthly_reference_universe</span>
+              </h3>
+              <div class="note-box" style="margin-top:8px;">
+                <code>reference_universe_id</code> ·
+                <span class="mono" id="universe-id">—</span>
+                <span class="muted">·</span>
+                taxonomy ·
+                <span class="mono" id="universe-taxonomy">—</span>
+              </div>
+
+              <div class="universe-counts-row">
+                <div class="universe-count-card">
+                  <div class="small-label">Sectors</div>
+                  <div class="value" id="universe-count-sectors">—</div>
+                  <div class="value-sub">_like-suffixed labels</div>
+                </div>
+                <div class="universe-count-card">
+                  <div class="small-label">Firm profiles</div>
+                  <div class="value" id="universe-count-firms">—</div>
+                  <div class="value-sub">one rep firm / sector</div>
+                </div>
+                <div class="universe-count-card">
+                  <div class="small-label">Investors</div>
+                  <div class="value" id="universe-count-investors">—</div>
+                  <div class="value-sub">synthetic archetypes</div>
+                </div>
+                <div class="universe-count-card">
+                  <div class="small-label">Banks</div>
+                  <div class="value" id="universe-count-banks">—</div>
+                  <div class="value-sub">synthetic archetypes</div>
+                </div>
+                <div class="universe-count-card">
+                  <div class="small-label">Periods</div>
+                  <div class="value" id="universe-count-periods">—</div>
+                  <div class="value-sub">monthly cadence</div>
+                </div>
+                <div class="universe-count-card">
+                  <div class="small-label">Selected scenario</div>
+                  <div class="value mono" id="universe-selected-scenario" style="font-size:13px;">—</div>
+                  <div class="value-sub">scenario selector label</div>
+                </div>
+                <div class="universe-count-card">
+                  <div class="small-label">Affected sectors</div>
+                  <div class="value" id="universe-affected-sector-count">—</div>
+                  <div class="value-sub">cited on application</div>
+                </div>
+                <div class="universe-count-card">
+                  <div class="small-label">Affected firms</div>
+                  <div class="value" id="universe-affected-firm-count">—</div>
+                  <div class="value-sub">cited on application</div>
+                </div>
+              </div>
+
+              <h3 class="card-title" style="margin-top:14px;">
+                Sector sensitivity heatmap
+                <span class="tag">v1.20.0 closed-set · _like</span>
+              </h3>
+              <div class="muted small" style="margin-top:4px;">
+                Five-rung closed set: <code>low</code> /
+                <code>moderate</code> / <code>high</code> /
+                <code>very_high</code> / <code>unknown</code>. Colour
+                is decorative — the cell text always echoes the
+                underlying label. Not a numeric weight, not a real
+                sector index membership, not licensed taxonomy
+                (no <code>GICS</code> / <code>MSCI</code> /
+                <code>S&amp;P</code> / <code>FactSet</code> /
+                <code>Bloomberg</code> / <code>Refinitiv</code> /
+                <code>TOPIX</code> / <code>Nikkei</code> /
+                <code>JPX</code>).
+              </div>
+              <table class="sensitivity-table">
+                <colgroup>
+                  <col style="width: 22%;" />
+                  <col style="width: 13%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 11%;" />
+                  <col style="width: 9%;" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Sector label</th>
+                    <th>Sector group</th>
+                    <th>Demand</th>
+                    <th>Rate</th>
+                    <th>Credit</th>
+                    <th>Input cost</th>
+                    <th>Policy</th>
+                    <th>Tech disruption</th>
+                    <th>Affected</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-universe-sectors">
+                  <tr>
+                    <td colspan="9" class="muted">
+                      load a <code>scenario_monthly_reference_universe</code>
+                      bundle to populate the sector grid (11 rows).
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h3 class="card-title" style="margin-top:14px;">
+                Firm profiles · 11 representative firms
+                <span class="tag">v1.20.1 firm:reference_*</span>
+              </h3>
+              <div class="muted small" style="margin-top:4px;">
+                Synthetic firm ids — <code>firm:reference_&lt;sector&gt;_a</code>.
+                No real company names, no real financial-statement values,
+                no real market-cap values, no real leverage ratios.
+              </div>
+              <table class="universe-firm-table">
+                <colgroup>
+                  <col style="width: 28%;" />
+                  <col style="width: 18%;" />
+                  <col style="width: 14%;" />
+                  <col style="width: 16%;" />
+                  <col style="width: 14%;" />
+                  <col style="width: 10%;" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Firm profile id</th>
+                    <th>Sector label</th>
+                    <th>Firm size</th>
+                    <th>Funding dependency</th>
+                    <th>Market access</th>
+                    <th>Affected</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-universe-firms">
+                  <tr>
+                    <td colspan="6" class="muted">
+                      load a <code>scenario_monthly_reference_universe</code>
+                      bundle to populate the firm profile table (11 rows).
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h3 class="card-title" style="margin-top:14px;">
+                Scenario causal trace
+                <span class="tag">v1.20.3 / v1.20.4</span>
+              </h3>
+              <div class="muted small" style="margin-top:4px;">
+                Storage / citation lineage for the scheduled scenario
+                application. Append-only — no actor decision, no price,
+                no trade, no execution, no financing approval.
+              </div>
+              <ol class="scenario-trace-list" id="scenario-trace-list">
+                <li>
+                  <div class="label">scenario template</div>
+                  <div class="value" id="trace-template-id">—</div>
+                </li>
+                <li>
+                  <div class="label">scheduled application</div>
+                  <div class="value" id="trace-scheduled-id">—</div>
+                </li>
+                <li>
+                  <div class="label">applied application</div>
+                  <div class="value" id="trace-applied-id">—</div>
+                </li>
+                <li>
+                  <div class="label">context shifts</div>
+                  <div class="value" id="trace-context-shift-summary">—</div>
+                </li>
+                <li>
+                  <div class="label">affected scope</div>
+                  <div class="value" id="trace-affected-summary">—</div>
+                </li>
+              </ol>
+
+              <div class="boundary-box" style="margin-top:14px;">
+                Read-only static viewer · synthetic / generic-sector /
+                opt-in profile. No engine execution. No backend. No
+                fetch / XHR. No file-system write. No browser-to-Python
+                execution. No daily simulation. No price formation. No
+                trading. No order book. No matching. No clearing. No
+                settlement. No financing execution. No firm decision.
+                No investor action. No bank approval. No investment
+                advice. No real data ingestion. No real company names.
+                No licensed taxonomy dependency. No Japan calibration.
+                No LLM execution.
+              </div>
+            </section>
+          </div>
+        </div>
+      </article>
+
       <!-- REGIME COMPARE -->
       <article id="sheet-regime-compare" class="sheet">
         <div class="sheet-inner">
@@ -3312,6 +3746,7 @@
       <button class="sheet-tab active" data-sheet="cover" data-category="cover" type="button">Cover</button>
       <button class="sheet-tab group-start" data-sheet="settings" data-category="setup" type="button">Inputs</button>
       <button class="sheet-tab group-start" data-sheet="overview" data-category="state" type="button">Overview</button>
+      <button class="sheet-tab" data-sheet="universe" data-category="state" type="button">Universe</button>
       <button class="sheet-tab" data-sheet="timeline" data-category="state" type="button">Timeline</button>
       <button class="sheet-tab" data-sheet="regime-compare" data-category="state" type="button">Regime Compare</button>
       <button class="sheet-tab" data-sheet="attention" data-category="state" type="button">Attention</button>
@@ -3928,6 +4363,7 @@
       var sheetCategories = {
         'sheet-settings':       { label: 'INPUT',  cls: 'setup'  },
         'sheet-overview':       { label: 'STATE',  cls: 'state'  },
+        'sheet-universe':       { label: 'STATE',  cls: 'state'  },
         'sheet-timeline':       { label: 'STATE',  cls: 'state'  },
         'sheet-regime-compare': { label: 'STATE',  cls: 'state'  },
         'sheet-attention':      { label: 'STATE',  cls: 'state'  },
@@ -5358,10 +5794,13 @@
           || BUNDLE_EXECUTABLE_PROFILES.indexOf(
               'quarterly_default') === -1
           || BUNDLE_EXECUTABLE_PROFILES.indexOf(
-              'monthly_reference') === -1) {
+              'monthly_reference') === -1
+          || BUNDLE_EXECUTABLE_PROFILES.indexOf(
+              'scenario_monthly_reference_universe') === -1) {
           failures.push(
             'BUNDLE_EXECUTABLE_PROFILES must include '
-              + "'quarterly_default' and 'monthly_reference'"
+              + "'quarterly_default', 'monthly_reference', and "
+              + "'scenario_monthly_reference_universe'"
           );
         }
         if (typeof BUNDLE_DEFERRED_PROFILES === 'undefined'
@@ -5379,6 +5818,36 @@
                 );
               }
             });
+        }
+        // v1.20.5 — Universe tab + sheet present, sensitivity
+        // rung CSS classes resolved, renderUniverseFromBundle
+        // wired.
+        if (!document.querySelector(
+            '.sheet-tab[data-sheet="universe"]')) {
+          failures.push("Universe tab missing");
+        }
+        if (!$id('sheet-universe')) {
+          failures.push("Universe sheet missing");
+        }
+        if (!$id('tbody-universe-sectors')
+            || !$id('tbody-universe-firms')) {
+          failures.push("Universe tables missing");
+        }
+        if (typeof renderUniverseFromBundle !== 'function') {
+          failures.push("renderUniverseFromBundle missing");
+        }
+        if (typeof SENSITIVITY_LABELS === 'undefined'
+            || !Array.isArray(SENSITIVITY_LABELS)
+            || SENSITIVITY_LABELS.indexOf('low') === -1
+            || SENSITIVITY_LABELS.indexOf('moderate') === -1
+            || SENSITIVITY_LABELS.indexOf('high') === -1
+            || SENSITIVITY_LABELS.indexOf('very_high') === -1
+            || SENSITIVITY_LABELS.indexOf('unknown') === -1) {
+          failures.push(
+            'SENSITIVITY_LABELS must include the v1.20.0 '
+              + "five-rung closed set (low / moderate / high / "
+              + "very_high / unknown)"
+          );
         }
         // j) Run mock no-jump invariant: dry-run the handler
         //    and confirm the active sheet id and scroll position
@@ -5474,14 +5943,30 @@
       // Closed-set of executable bundle profiles, mirrored from
       // the v1.19.2 / v1.19.3.1 CLI exporter
       // (examples/reference_world/export_run_bundle.py).
+      // v1.20.5 — added 'scenario_monthly_reference_universe' as
+      // an executable profile alongside the v1.19.x pair.
       var BUNDLE_EXECUTABLE_PROFILES = [
         'quarterly_default',
-        'monthly_reference'
+        'monthly_reference',
+        'scenario_monthly_reference_universe'
       ];
       var BUNDLE_DEFERRED_PROFILES = [
         'scenario_monthly',
         'daily_display_only',
         'future_daily_full_simulation'
+      ];
+      // v1.20.5 — closed-set sensitivity rungs from the v1.20.0
+      // design (per ``world.reference_universe.SENSITIVITY_LABELS``).
+      // Rendered as CSS classes ``sens-low`` / ``sens-moderate`` /
+      // ``sens-high`` / ``sens-very-high`` / ``sens-unknown``. The
+      // cell text always echoes the underlying label verbatim — the
+      // colour is decorative.
+      var SENSITIVITY_LABELS = [
+        'low',
+        'moderate',
+        'high',
+        'very_high',
+        'unknown'
       ];
       // Required top-level keys on a v1.19.1 RunExportBundle.
       var BUNDLE_REQUIRED_TOP_KEYS = [
@@ -5575,6 +6060,78 @@
             }
           });
         }
+        // v1.20.5 — profile-specific schema check for the
+        // scenario_monthly_reference_universe bundle. The
+        // additional sections are required only for that profile;
+        // quarterly_default / monthly_reference bundles continue
+        // to validate exactly as in v1.19.4.
+        if (bundle.run_profile_label
+            === 'scenario_monthly_reference_universe') {
+          var meta = bundle.metadata || {};
+          var universe = meta && typeof meta === 'object'
+            ? meta.reference_universe : null;
+          if (!universe || typeof universe !== 'object'
+              || Array.isArray(universe)) {
+            failures.push(
+              "missing 'metadata.reference_universe' object "
+                + "(required for scenario_monthly_reference_universe)"
+            );
+          } else {
+            if (!Array.isArray(universe.sector_labels)
+                || universe.sector_labels.length === 0) {
+              failures.push(
+                "missing 'metadata.reference_universe."
+                  + "sector_labels' non-empty array"
+              );
+            }
+            if (!Array.isArray(universe.firm_profile_ids)
+                || universe.firm_profile_ids.length === 0) {
+              failures.push(
+                "missing 'metadata.reference_universe."
+                  + "firm_profile_ids' non-empty array"
+              );
+            }
+          }
+          var trace = bundle.scenario_trace;
+          if (!trace || typeof trace !== 'object'
+              || Array.isArray(trace)) {
+            failures.push(
+              "'scenario_trace' must be an object for "
+                + "scenario_monthly_reference_universe"
+            );
+          } else {
+            if (!Array.isArray(trace.affected_sector_ids)) {
+              failures.push(
+                "'scenario_trace.affected_sector_ids' must be "
+                  + "an array"
+              );
+            }
+            if (!Array.isArray(trace.affected_firm_profile_ids)) {
+              failures.push(
+                "'scenario_trace.affected_firm_profile_ids' "
+                  + "must be an array"
+              );
+            }
+          }
+          // Manifest count fields the v1.20.4 CLI exporter writes.
+          var manifest = bundle.manifest || {};
+          var expectedCounts = {
+            'sector_count': 11,
+            'firm_count': 11,
+            'investor_count': 4,
+            'bank_count': 3
+          };
+          Object.keys(expectedCounts).forEach(function (key) {
+            var expected = expectedCounts[key];
+            var got = manifest[key];
+            if (typeof got !== 'number' || got !== expected) {
+              failures.push(
+                "manifest." + key + " must be " + expected
+                  + " (got " + safeString(got) + ")"
+              );
+            }
+          });
+        }
         return failures.length === 0 ? null : failures;
       }
 
@@ -5637,9 +6194,17 @@
             badge.classList.add('blue');
           } else if (bundle.run_profile_label === 'quarterly_default') {
             badge.classList.add('green');
+          } else if (bundle.run_profile_label
+              === 'scenario_monthly_reference_universe') {
+            // v1.20.5 — distinct amber badge so the monthly-
+            // scenario-universe profile is visually different
+            // from the bare monthly_reference profile.
+            badge.classList.add('amber');
           }
         }
-        // Monthly arrival summary card (visible only for monthly).
+        // Monthly arrival summary card (visible for monthly +
+        // for scenario_monthly_reference_universe — both reuse the
+        // v1.19.3 calendar fixture).
         var monthlyBox = $id('bundle-monthly-summary');
         if (monthlyBox) {
           var summary = null;
@@ -5650,7 +6215,9 @@
               && !Array.isArray(meta.information_arrival_summary)) {
             summary = meta.information_arrival_summary;
           }
-          if (bundle.run_profile_label === 'monthly_reference'
+          if ((bundle.run_profile_label === 'monthly_reference'
+              || bundle.run_profile_label
+                === 'scenario_monthly_reference_universe')
               && summary) {
             monthlyBox.style.display = '';
             setText('bundle-calendar-count',
@@ -5863,6 +6430,302 @@
         // existing Active rows. We do not invent new card
         // surfaces here.
         renderLedgerFromBundle(bundle);
+        // v1.20.5 — Universe tab renderer. Empty-state branch
+        // covers quarterly_default / monthly_reference bundles
+        // where ``metadata.reference_universe`` is absent.
+        renderUniverseFromBundle(bundle);
+      }
+
+      // -----------------------------------------------------------------
+      // v1.20.5 — Universe tab renderer.
+      //
+      // Reads ``bundle.metadata.reference_universe`` and
+      // ``bundle.scenario_trace`` from a v1.20.4 RunExportBundle
+      // and renders the sector heatmap + firm profile table +
+      // scenario causal trace. For any other profile the section
+      // is hidden behind the empty-state card.
+      //
+      // Safety:
+      // - textContent only — never innerHTML for user-loaded JSON.
+      // - capture-and-restore protocol (no scroll jump, no active-
+      //   sheet shift).
+      // - long ids wrap via the universe-firm-table CSS rules.
+      // -----------------------------------------------------------------
+      function _classifySensitivityRung(label) {
+        // Map a v1.20.0 closed-set sensitivity label to a CSS
+        // rung class. Unknown / missing labels fall back to
+        // ``sens-unknown``.
+        if (label === 'low') return 'sens-low';
+        if (label === 'moderate') return 'sens-moderate';
+        if (label === 'high') return 'sens-high';
+        if (label === 'very_high') return 'sens-very-high';
+        return 'sens-unknown';
+      }
+
+      function _appendCell(tr, text, opts) {
+        var td = document.createElement('td');
+        td.textContent = text;
+        if (opts && opts.cls) {
+          var classes = String(opts.cls).split(/\s+/);
+          for (var i = 0; i < classes.length; i++) {
+            if (classes[i]) td.classList.add(classes[i]);
+          }
+        }
+        tr.appendChild(td);
+        return td;
+      }
+
+      function _appendSensitivityCell(tr, label) {
+        return _appendCell(tr, safeString(label, 'unknown'), {
+          cls: 'mono ' + _classifySensitivityRung(label)
+        });
+      }
+
+      function _appendAffectedCell(tr, isAffected) {
+        return _appendCell(
+          tr,
+          isAffected ? 'yes' : 'no',
+          { cls: 'mono ' + (isAffected ? 'affected-yes' : 'affected-no') }
+        );
+      }
+
+      function renderUniverseFromBundle(bundle) {
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+
+        var emptyCard = $id('card-universe-empty');
+        var liveCard = $id('card-universe-live');
+        var tbodySectors = $id('tbody-universe-sectors');
+        var tbodyFirms = $id('tbody-universe-firms');
+        var profileLabelEl = $id('universe-profile-label');
+
+        var profile = bundle.run_profile_label || '';
+        var meta = bundle.metadata || {};
+        var universe = (meta && typeof meta === 'object'
+          && meta.reference_universe
+          && typeof meta.reference_universe === 'object'
+          && !Array.isArray(meta.reference_universe))
+          ? meta.reference_universe : null;
+
+        if (profileLabelEl) {
+          profileLabelEl.textContent = safeString(profile, '—');
+        }
+
+        // Empty state for any profile that does not carry the
+        // v1.20.4 reference_universe section.
+        if (profile !== 'scenario_monthly_reference_universe'
+            || !universe) {
+          if (emptyCard) emptyCard.style.display = '';
+          if (liveCard) liveCard.style.display = 'none';
+          // Reset the table bodies so a re-load of a
+          // non-universe bundle wipes any prior universe view.
+          if (tbodySectors) {
+            while (tbodySectors.firstChild) {
+              tbodySectors.removeChild(tbodySectors.firstChild);
+            }
+            var emptyRow = document.createElement('tr');
+            var emptyCell = document.createElement('td');
+            emptyCell.colSpan = 9;
+            emptyCell.className = 'muted';
+            emptyCell.textContent =
+              'load a scenario_monthly_reference_universe '
+                + 'bundle to populate the sector grid (11 rows).';
+            emptyRow.appendChild(emptyCell);
+            tbodySectors.appendChild(emptyRow);
+          }
+          if (tbodyFirms) {
+            while (tbodyFirms.firstChild) {
+              tbodyFirms.removeChild(tbodyFirms.firstChild);
+            }
+            var emptyRow2 = document.createElement('tr');
+            var emptyCell2 = document.createElement('td');
+            emptyCell2.colSpan = 6;
+            emptyCell2.className = 'muted';
+            emptyCell2.textContent =
+              'load a scenario_monthly_reference_universe '
+                + 'bundle to populate the firm profile table '
+                + '(11 rows).';
+            emptyRow2.appendChild(emptyCell2);
+            tbodyFirms.appendChild(emptyRow2);
+          }
+          if (window.scrollX !== sx || window.scrollY !== sy) {
+            window.scrollTo(sx, sy);
+          }
+          return;
+        }
+
+        // Live state — populate cards.
+        if (emptyCard) emptyCard.style.display = 'none';
+        if (liveCard) liveCard.style.display = '';
+
+        setText('universe-id',
+          safeString(universe.reference_universe_id, '—'));
+        setText('universe-taxonomy',
+          safeString(universe.sector_taxonomy_label, '—'));
+
+        var manifest = bundle.manifest || {};
+        setText('universe-count-sectors',
+          String(safeNumber(manifest.sector_count
+            || universe.sector_count)));
+        setText('universe-count-firms',
+          String(safeNumber(manifest.firm_count
+            || universe.firm_count)));
+        setText('universe-count-investors',
+          String(safeNumber(manifest.investor_count)));
+        setText('universe-count-banks',
+          String(safeNumber(manifest.bank_count)));
+        setText('universe-count-periods',
+          String(safeNumber(bundle.period_count)));
+        setText('universe-selected-scenario',
+          safeString(bundle.selected_scenario_label, '—'));
+
+        var trace = (bundle.scenario_trace
+          && typeof bundle.scenario_trace === 'object'
+          && !Array.isArray(bundle.scenario_trace))
+          ? bundle.scenario_trace : {};
+        var affectedSectors = Array.isArray(trace.affected_sector_ids)
+          ? trace.affected_sector_ids : [];
+        var affectedFirmProfiles =
+          Array.isArray(trace.affected_firm_profile_ids)
+            ? trace.affected_firm_profile_ids : [];
+        setText('universe-affected-sector-count',
+          String(affectedSectors.length));
+        setText('universe-affected-firm-count',
+          String(affectedFirmProfiles.length));
+
+        var affectedSectorSet = {};
+        for (var i = 0; i < affectedSectors.length; i++) {
+          affectedSectorSet[affectedSectors[i]] = true;
+        }
+        var affectedFirmSet = {};
+        for (var j = 0; j < affectedFirmProfiles.length; j++) {
+          affectedFirmSet[affectedFirmProfiles[j]] = true;
+        }
+
+        // Sector heatmap rows.
+        var sectorRows = Array.isArray(
+          universe.sector_sensitivity_summary
+        ) ? universe.sector_sensitivity_summary : [];
+        if (tbodySectors) {
+          while (tbodySectors.firstChild) {
+            tbodySectors.removeChild(tbodySectors.firstChild);
+          }
+          if (sectorRows.length === 0) {
+            var fallbackLabels = Array.isArray(universe.sector_labels)
+              ? universe.sector_labels : [];
+            var fallbackIds = Array.isArray(universe.sector_ids)
+              ? universe.sector_ids : [];
+            for (var k = 0; k < fallbackLabels.length; k++) {
+              var sId = fallbackIds[k] || '';
+              var tr = document.createElement('tr');
+              _appendCell(tr, safeString(fallbackLabels[k]),
+                { cls: 'mono' });
+              _appendCell(tr, '—', { cls: 'mono' });
+              _appendSensitivityCell(tr, 'unknown');
+              _appendSensitivityCell(tr, 'unknown');
+              _appendSensitivityCell(tr, 'unknown');
+              _appendSensitivityCell(tr, 'unknown');
+              _appendSensitivityCell(tr, 'unknown');
+              _appendSensitivityCell(tr, 'unknown');
+              _appendAffectedCell(tr,
+                Boolean(affectedSectorSet[sId]));
+              tbodySectors.appendChild(tr);
+            }
+          } else {
+            for (var s = 0; s < sectorRows.length; s++) {
+              var row = sectorRows[s] || {};
+              var tr2 = document.createElement('tr');
+              _appendCell(tr2,
+                safeString(row.sector_label, '—'),
+                { cls: 'mono' });
+              _appendCell(tr2,
+                safeString(row.sector_group_label, '—'),
+                { cls: 'mono' });
+              _appendSensitivityCell(tr2,
+                row.demand_sensitivity_label);
+              _appendSensitivityCell(tr2,
+                row.rate_sensitivity_label);
+              _appendSensitivityCell(tr2,
+                row.credit_sensitivity_label);
+              _appendSensitivityCell(tr2,
+                row.input_cost_sensitivity_label);
+              _appendSensitivityCell(tr2,
+                row.policy_sensitivity_label);
+              _appendSensitivityCell(tr2,
+                row.technology_disruption_sensitivity_label);
+              _appendAffectedCell(tr2,
+                Boolean(affectedSectorSet[row.sector_id]));
+              tbodySectors.appendChild(tr2);
+            }
+          }
+        }
+
+        // Firm profile rows. The v1.20.4 bundle exposes
+        // ``firm_profile_ids`` + ``firm_ids`` on the universe
+        // section but not the firm-by-firm sensitivity columns;
+        // the table rows therefore render '—' for size /
+        // funding_dependency / market_access. The Affected
+        // column is filled from scenario_trace.affected_*_ids.
+        if (tbodyFirms) {
+          while (tbodyFirms.firstChild) {
+            tbodyFirms.removeChild(tbodyFirms.firstChild);
+          }
+          var firmProfileIds = Array.isArray(universe.firm_profile_ids)
+            ? universe.firm_profile_ids : [];
+          var firmIds = Array.isArray(universe.firm_ids)
+            ? universe.firm_ids : [];
+          var sectorLabels = Array.isArray(universe.sector_labels)
+            ? universe.sector_labels : [];
+          for (var f = 0; f < firmProfileIds.length; f++) {
+            var fid = firmProfileIds[f] || '';
+            var trF = document.createElement('tr');
+            _appendCell(trF, fid, { cls: 'mono' });
+            _appendCell(trF,
+              safeString(sectorLabels[f], '—'),
+              { cls: 'mono' });
+            _appendCell(trF, '—', { cls: 'mono' });
+            _appendCell(trF, '—', { cls: 'mono' });
+            _appendCell(trF, '—', { cls: 'mono' });
+            _appendAffectedCell(trF,
+              Boolean(affectedFirmSet[fid]));
+            tbodyFirms.appendChild(trF);
+          }
+        }
+
+        // Scenario causal trace block.
+        var apps = Array.isArray(trace.scenario_application_ids)
+          ? trace.scenario_application_ids : [];
+        var shifts = Array.isArray(trace.scenario_context_shift_ids)
+          ? trace.scenario_context_shift_ids : [];
+        var scheduledIds = Array.isArray(
+          trace.scheduled_scenario_application_ids
+        ) ? trace.scheduled_scenario_application_ids : [];
+        var summaries = Array.isArray(
+          trace.scenario_application_summaries
+        ) ? trace.scenario_application_summaries : [];
+        var firstSummary = summaries[0] || {};
+        setText('trace-template-id', safeString(
+          firstSummary.scenario_driver_template_id, '—'));
+        setText('trace-scheduled-id', safeString(
+          scheduledIds[0], '—'));
+        setText('trace-applied-id', safeString(apps[0], '—'));
+        var contextSurfaces = Array.isArray(
+          trace.context_surface_labels
+        ) ? trace.context_surface_labels : [];
+        var shiftDirs = Array.isArray(
+          trace.shift_direction_labels
+        ) ? trace.shift_direction_labels : [];
+        var shiftSummary = shifts.length + ' shift(s) · '
+          + 'surfaces=[' + contextSurfaces.join(', ') + '] · '
+          + 'direction=[' + shiftDirs.join(', ') + ']';
+        setText('trace-context-shift-summary', shiftSummary);
+        var affectedSummary = affectedSectors.length + ' sectors · '
+          + affectedFirmProfiles.length + ' firms';
+        setText('trace-affected-summary', affectedSummary);
+
+        if (window.scrollX !== sx || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
       }
 
       function loadLocalBundleFromText(text) {

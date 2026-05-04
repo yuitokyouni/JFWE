@@ -367,7 +367,133 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
-## v1.20.4 forward pointer — `scenario_monthly_reference_universe` CLI export (shipped, UI rendering deferred)
+## v1.20.5 — Universe tab renders `scenario_monthly_reference_universe` bundles (shipped)
+
+v1.20.5 ships UI rendering for the v1.20.3 / v1.20.4 opt-in
+`scenario_monthly_reference_universe` profile inside this
+folder's static workbench mockup
+([`fwe_workbench_mockup.html`](fwe_workbench_mockup.html)).
+The browser **never** executes Python, never calls a backend,
+never writes files. v1.20.5 is **HTML / CSS / JS only** — no
+Python source modules touched, no test count change.
+
+### What v1.20.5 adds
+
+- **New Universe tab** — between Overview and Timeline. The
+  bottom-tabs nav now lists 11 tabs: Cover · Inputs · Overview
+  · **Universe** · Timeline · Regime Compare · Attention ·
+  Market Intent · Financing · Ledger · Appendix. The 11-tab ↔
+  11-sheet bijection is preserved.
+- **Empty-state card** — when no v1.20.4 bundle is loaded, the
+  Universe tab points the reader at the CLI command:
+  ```sh
+  python -m examples.reference_world.export_run_bundle \
+      --profile scenario_monthly_reference_universe \
+      --regime constrained \
+      --scenario credit_tightening_driver \
+      --out /tmp/fwe_scenario_universe_bundle.json
+  ```
+- **Live-state cards** (when a v1.20.4 bundle is loaded):
+  - **Universe profile header** — `reference_universe_id` +
+    `sector_taxonomy_label`.
+  - **Counts row** — sectors / firm profiles / investors /
+    banks / periods / selected scenario / affected sectors /
+    affected firms.
+  - **Sector sensitivity heatmap** — 11-row × 9-column table
+    rendered as a CSS-class colour grid (`sens-low` /
+    `sens-moderate` / `sens-high` / `sens-very-high` /
+    `sens-unknown`). Colour is decorative; the cell text
+    always echoes the underlying closed-set v1.20.0
+    sensitivity label verbatim. No numeric weight is implied,
+    no real sector index membership, no licensed taxonomy.
+  - **Firm profile table** — 11-row × 6-column table (firm
+    profile id, sector label, firm size, funding dependency,
+    market access, affected). Long ids wrap
+    (`word-break: break-word`).
+  - **Scenario causal trace** — five-step ordered list
+    (scenario template → scheduled application → applied
+    application → context shifts → affected scope).
+  - **Boundary footer** — `synthetic / generic-sector /
+    opt-in profile`; explicitly negates price formation,
+    trading, financing execution, firm decision, investor
+    action, bank approval, real data ingestion, licensed
+    taxonomy, Japan calibration, LLM execution.
+
+### Schema validation
+
+`validateBundleSchema(...)` accepts the new profile and
+additionally requires:
+
+- `metadata.reference_universe` object with non-empty
+  `sector_labels` and `firm_profile_ids` arrays;
+- `scenario_trace` object with `affected_sector_ids` and
+  `affected_firm_profile_ids` arrays;
+- `manifest.sector_count == 11`, `manifest.firm_count == 11`,
+  `manifest.investor_count == 4`, `manifest.bank_count == 3`.
+
+Validation failures surface as a readable status-line list
+("schema invalid · N issue(s) · …"). The pre-existing
+`quarterly_default` / `monthly_reference` validation paths are
+unchanged.
+
+### Inputs tab additions
+
+- **Profile badge** — distinct amber colour for the universe
+  profile so a reader can visually distinguish it from the
+  v1.19.x blue (`monthly_reference`) and green
+  (`quarterly_default`) badges.
+- **Information arrival summary card** — now also visible for
+  the universe profile (which reuses the v1.19.3 calendar
+  fixture verbatim — 51 arrivals across 12 months).
+
+### In-page Validate audit
+
+The in-page `Validate` button's audit check list gains seven
+new checks:
+
+- Universe tab present in `.bottom-tabs`,
+- `sheet-universe` `<article>` present,
+- both `tbody-universe-sectors` and `tbody-universe-firms`
+  present,
+- `renderUniverseFromBundle` function defined,
+- `SENSITIVITY_LABELS` constant carries the v1.20.0 five-rung
+  closed set,
+- `BUNDLE_EXECUTABLE_PROFILES` includes
+  `scenario_monthly_reference_universe`.
+
+### Safety (binding)
+
+- `textContent` only — no `innerHTML`, no `eval`, no script
+  injection for user-loaded JSON.
+- No `fetch` / XHR / network call. No backend. No
+  file-system write.
+- No `location.hash` mutation during bundle load
+  (capture-and-restore protocol mirrors the v1.19.4 loader).
+- No active-sheet shift during bundle load.
+- No scroll jump (capture-and-restore around scroll position).
+
+### What v1.20.5 does NOT add
+
+- **No engine execution** from the browser.
+- **No backend** — no Rails / FastAPI / Flask / HTTP server.
+- **No fetch** / XHR / file-system write.
+- **No build tooling** — vanilla HTML / CSS / JS only,
+  runnable from `file://`.
+- **No real data ingestion** — the bundle is generated by the
+  v1.20.4 CLI from a synthetic kernel; the UI is read-only.
+- **No daily simulation**, no price formation, no trading, no
+  financing execution, no firm decision, no investor action,
+  no bank approval, no LLM execution.
+
+The canonical `quarterly_default` digest stays at
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**;
+the `monthly_reference` digest stays at
+**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**;
+the v1.20.4 CLI bundle digest stays at
+**`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**.
+Test count unchanged at **4764 / 4764** (UI-only milestone).
+
+## v1.20.4 — `scenario_monthly_reference_universe` CLI export (shipped)
 
 v1.20.4 ships the CLI exporter for the v1.20.3 opt-in profile
 `scenario_monthly_reference_universe` (see
