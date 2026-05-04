@@ -367,6 +367,43 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
+## v1.19.0 forward pointer — local run bundle loader (planned)
+
+The next planned UI milestone, **v1.19.0** (docs-only — see
+[`../../docs/v1_19_local_run_bridge_and_temporal_profiles_design.md`](../../docs/v1_19_local_run_bridge_and_temporal_profiles_design.md)),
+designs a **read-only `Load local run bundle`** affordance for
+the static workbench:
+
+- A fourth top-ribbon button (`Load local run bundle`) that
+  reads a user-supplied `run_bundle.local.json` via `<input
+  type="file">`, parses it with `JSON.parse` (no `eval`),
+  validates the bundle shape via the existing `Validate`
+  audit pass, and renders into the existing tabs (Overview /
+  Timeline / Regime Compare / Scenario / Ledger / Attention /
+  Market Intent / Financing).
+- The JSON file is produced by a **CLI-first local run
+  bridge** (`python -m examples.reference_world.export_run_bundle
+  --profile <profile> --regime <regime> --scenario <scenario>
+  --out examples/ui/run_bundle.local.json`).
+- Optional v1.19.4+ tiny local server bridge: **127.0.0.1
+  FastAPI / Flask / `http.server` only — never Rails**, never
+  deployed SaaS. The static workbench remains
+  `file://`-runnable; the bridge is optional and
+  bypassable.
+- **No browser file-system write. No engine execution from
+  the UI. No daily full economic simulation. No backend
+  server in v1.19.0.**
+
+Run profiles the loader will surface (per `RunProfileLabel`
+closed-set vocabulary): `quarterly_default` (current stable
+default; preserves the canonical digest at
+`f93bdf3f…b705897c`); `monthly_reference` (opt-in 12 monthly
+periods); `scenario_monthly` (opt-in monthly + explicit
+scenario application); `daily_display_only` (display-only
+daily axis on top of a quarterly / monthly run, no daily
+economic records); `future_daily_full_simulation` (**explicitly
+out of scope for v1.19**).
+
 ## v1.18.last — scenario driver library freeze
 
 v1.18.last closes the v1.18 sequence as the first FWE milestone
