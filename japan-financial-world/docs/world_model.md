@@ -10595,8 +10595,96 @@ Both counts are deterministic on a given codebase + same inputs. Both stay well 
 
 The v1.20 sequence is now frozen. The next FWE milestone is **not** scoped at this layer; the public roadmap candidates are:
 
-- **v1.21 Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark constraints on the v1.15.5 / v1.16.2 investor-intent layer.
-- **v1.21 Multi-scenario monthly stress library** — the v1.20.0 optional opt-in 4-scenario fixture (rate_repricing month 3 / credit_tightening month 4 / liquidity_stress month 6 / information_gap month 8) wired into a `scenario_multi_monthly_reference_universe` profile.
+- **v1.21 Stress Composition Layer** (now scoped — see §130 below and [`docs/v1_21_stress_composition_layer.md`](v1_21_stress_composition_layer.md)) — auditable composition of multiple synthetic stress stimuli on the same monthly reference universe. Re-frames the previous "v1.21 Multi-scenario monthly stress library" candidate **not** as a deterministic causal-route engine but as an append-only stress-field auditor: which stresses are active, how overlapping stresses compose on context surfaces (closed-set `amplify` / `dampen` / `offset` / `coexist` / `unknown`), and which downstream records cite the composed field. Reuses the v1.18.1 `ScenarioDriverTemplate` ids verbatim. **No causality claim. No magnitudes. No price / forecast / expected return / target price / buy-sell / order / trade / execution / lending decision / firm decision / investor action / bank approval / real data / Japan calibration / LLM execution.**
+- **v1.21 Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark constraints on the v1.15.5 / v1.16.2 investor-intent layer. Decoupled from the stress composition layer; may ship in parallel.
 - **v2.0 private JFWE Japan public calibration** — gated; private repo only; would preserve every public-FWE boundary.
 - **Future LLM reasoning policy** — gated by auditability + evidence-refs + source-book immutability + boundary flags. Would replace the v1.18.x rule-based fallback under the same v1.18.0 audit shape.
 - **Future price formation** — gated until the v1.16 / v1.17 / v1.18 / v1.19 / v1.20 surface is operationally legible to a reviewer who has not read this codebase.
+
+## 130 v1.21 — Stress Composition Layer (design pointer)
+
+§130 ships **as docs only at v1.21.0** — see [`docs/v1_21_stress_composition_layer.md`](v1_21_stress_composition_layer.md) for the full design note. v1.21.0 introduces no executable code, no new tests, no new ledger event types, no new behavior; the v1.20.last digests / per-period record counts / per-run windows / pytest count (`4764 / 4764`) are all unchanged.
+
+### 130.1 What v1.21 reframes
+
+v1.20 froze a single-scenario monthly reference universe: 1 scheduled scenario application at `month_04`, 2 context shifts (`market_environment` + `financing_review_surface`), 11 affected sector ids, 11 affected firm profile ids. The reviewer can already inspect the cross-sectional reach of one scenario — but FWE has **no way to say** what happens when *two* scenarios are active in the same universe, in overlapping months, on the same context surface. The naive answer would be to add a second `apply_scenario_driver(...)` call and let the v1.18.2 context shifts pile up; that gives the reviewer raw stack but no audit of composition.
+
+v1.21 is **explicitly not** a "scenario-path comparison toy" — it does not run scenario A vs scenario B and ask which one was right. It introduces a **stress composition layer** that:
+
+1. names a *bundle* of stress steps as a `StressProgramTemplate` (the static plan);
+2. records each firing as an append-only `StressFieldApplicationRecord` (the per-month receipt);
+3. classifies each `(period, context_surface)` pair where ≥ 2 stress steps overlap as a `StressInteractionRule` with a closed-set `interaction_label` ∈ `{amplify, dampen, offset, coexist, unknown}` and a `output_context_label` (mirrors v1.18.2 `SHIFT_DIRECTION_LABELS` plus `mixed` / `neutral`);
+4. aggregates the active stress steps + interaction rules per `(period, context_surface)` into a `StressFieldReadout` carrying a closed-set `composition_label` ∈ `{single_stress, overlapping_stresses, amplified, dampened, offset, coexisting, quiescent, unknown}`;
+5. (optionally) emits a run-wide `StressFieldSummaryProjection` for the v1.21.5 CLI bundle and the v1.21.6 UI.
+
+Every label is closed-set; every record append-only; every numeric magnitude forbidden. The classifier is a deterministic rule-based table (no formula, no neural net, no LLM); the readout helper is read-only against the books and the kernel ledger.
+
+### 130.2 Six dataclass shapes (sketch)
+
+The v1.21.0 design pins the following interface sketches; v1.21.1 → v1.21.3 will land the actual `@dataclass(frozen=True)` definitions with closed-set validation, `__post_init__` guards, and `to_dict` methods mirroring the v1.18 / v1.20 patterns:
+
+1. **`StressProgramTemplate`** — `(stress_program_template_id, program_label, program_purpose_label, horizon_label, step_count, stress_step_ids, severity_label, affected_actor_scope_label, reasoning_mode = "rule_based_fallback", reasoning_policy_id, reasoning_slot = "future_llm_compatible", status, visibility, metadata)`.
+2. **`StressStep`** — `(stress_step_id, stress_program_template_id, scenario_driver_template_id, scheduled_period_indices, scheduled_month_labels, step_severity_label, step_horizon_label, decay_label, affected_sector_id_scope_label, explicit_affected_sector_ids, explicit_affected_firm_profile_ids, expected_context_surface_labels, expected_shift_direction_labels, status, visibility, metadata)`. Note `decay_label` is **a label**, not a numeric coefficient.
+3. **`StressFieldApplicationRecord`** — `(stress_field_application_id, stress_step_id, stress_program_template_id, scenario_driver_template_id, as_of_date, application_status_label, emitted_context_shift_ids, affected_sector_ids, affected_firm_profile_ids, source_information_arrival_ids, reasoning_mode, reasoning_policy_id, reasoning_slot, evidence_ref_ids, unresolved_ref_count, boundary_flags, status, visibility, metadata)`. The v1.21 analogue of the v1.18.2 `ScenarioDriverApplicationRecord` — re-emits via the existing `apply_scenario_driver(...)` helper to preserve the v1.18.2 context-shift discipline.
+4. **`StressInteractionRule`** — `(stress_interaction_rule_id, triggering_stress_step_ids, triggering_stress_field_application_ids, shared_context_surface_label, shared_month_label, interaction_label, output_context_label, classifier_rule_id, reasoning_mode, reasoning_policy_id, reasoning_slot, evidence_ref_ids, unresolved_ref_count, boundary_flags, status, visibility, metadata)`. Pairwise by default; 3-way is **opt-in** gated by `allow_three_way=True` and the v1.21.2 closed-set 3-way table.
+5. **`StressFieldReadout`** — `(stress_field_readout_id, as_of_date, period_index, month_label, context_surface_label, active_stress_step_ids, active_stress_field_application_ids, active_stress_program_template_ids, composition_label, dominant_shift_direction_label, evidence_stress_interaction_rule_ids, evidence_information_arrival_ids, affected_sector_id_count, affected_firm_profile_id_count, status, visibility, metadata)`. **At most one** readout per `(period, context_surface)`.
+6. **`StressFieldSummaryProjection`** (optional) — `(stress_field_summary_projection_id, run_id, active_stress_program_template_ids, active_stress_step_ids, per_month_readout_ids, per_context_surface_readout_ids, composition_histogram, interaction_histogram, downstream_citation_count, status, visibility, metadata)`. Derived; re-running the helper produces a byte-identical projection.
+
+### 130.3 Design constraints (binding at v1.21.0)
+
+- **Reuse existing `ScenarioDriverTemplate` ids** — every `StressStep` cites a v1.18.1 `scenario_driver_template_id` via plain id; v1.21 does **not** introduce a parallel scenario-family taxonomy.
+- **No new scenario-family vocabulary.** v1.21 introduces composition / interaction / decay vocabularies, never family vocabularies.
+- **No price, no forecast, no expected return, no target price, no buy / sell, no order, no trade, no execution, no lending decision, no firm decision, no investor action, no bank approval, no real data, no Japan calibration, no LLM output.** v1.21 extends the `FORBIDDEN_*_FIELD_NAMES` frozensets with forecast-shaped composition tokens (`stress_magnitude_in_basis_points`, `stress_magnitude_in_percent`, `stress_probability_weight`, `expected_field_response`, `expected_stress_path`, `stress_forecast_path`, `stress_buy_signal`, `stress_sell_signal`, `stress_target_price`, `stress_expected_return`, `stress_outcome_label`).
+- **Stress steps may overlap.** Two stress steps can schedule the same `(period, context_surface)`. Overlap handling is **explicit** via `StressInteractionRule`.
+- **Interaction output is labels, not numbers.** Closed set: `{amplify, dampen, offset, coexist, unknown}`.
+- **All records append-only.** Every existing source-of-truth book (PriceBook, ContractBook, ConstraintBook, OwnershipBook, InstitutionsBook, MarketEnvironmentBook, FirmFinancialStateBook, InterbankLiquidityStateBook, IndustryConditionBook) byte-identical pre / post v1.21 sweep.
+- **Reporting is read-only.**
+- **Cardinality bounded.** See §130.4 below — interaction is **pairwise** by design, the soft cap on stress programs per run is **5**, and no loop shape that scales as `O(P × I × F × stress)` or `O(P × stress × stress × stress × ...)` is allowed.
+
+### 130.4 Record-count risk analysis
+
+Soft target for the v1.21.4 default fixture (binding):
+
+- 3 stress programs × 1 step each = 3 stress steps;
+- ≤ 3 application records (one per scheduled month per active step);
+- ≤ ~50 interaction rules (most months have 0 or 1 active stress on any given surface; only the deliberate-overlap test fixture exercises ≥ 2);
+- ≤ 96 readouts (≤ 12 periods × 8 context surfaces);
+- ≤ 1 optional summary projection;
+- ≈ **~110 v1.21 records** added to a v1.20.3-style `scenario_monthly_reference_universe` run.
+
+Hard guardrail (binding):
+
+- The v1.20.4 CLI fixture currently sits at **3241 records**. v1.21 is allotted up to ~700 additional records, which the soft target stays well below.
+- `manifest.record_count` for any v1.21 opt-in profile must stay **≤ 4000** (the v1.20.0 budget, unchanged).
+
+Forbidden loop shapes (binding, repeated from v1.20):
+
+- `O(P × I × F × scenario)` / `O(P × I × F × venue)` / `O(P × F × order)` / `O(P × day × ...)` (carried forward verbatim).
+
+New at v1.21:
+
+- `O(P × I × F × stress_step)` — **forbidden**.
+- `O(P × stress_step × stress_step × stress_step × ...)` (factorial) — **forbidden**.
+- `O(P × stress_step × scenario_family × surface × actor_id)` — **forbidden**.
+- `O(P × day × stress_step)` — **forbidden** (no daily inner loop).
+- N-way interaction with N > 3 — **forbidden** unconditionally.
+- 3-way interaction — **opt-in** behind a default-`False` `allow_three_way` flag and a closed-set 3-way table; otherwise the classifier returns `unknown`.
+
+### 130.5 Sequence map
+
+| Milestone     | Module / surface                                                                     | Adds                                                                                                                                                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.21.0       | docs only (this section + the v1.21.0 design note)                                   | Stress composition design — six dataclass shapes; closed-set composition / interaction / decay vocabularies; record-count budget; per-milestone roadmap; hard boundary.                                                                                                                                            |
+| v1.21.1       | `world/stress_composition.py`                                                        | Storage layer: `StressProgramTemplate` + `StressStep` + `StressFieldApplicationRecord` + one append-only `StressCompositionBook`; closed-set frozensets; `FORBIDDEN_STRESS_FIELD_NAMES` frozenset.                                                                                                                  |
+| v1.21.2       | `world/stress_interactions.py`                                                       | Pairwise interaction classifier + `StressInteractionRule` + `StressInteractionBook`. Storage + helper only.                                                                                                                                                                                                         |
+| v1.21.3       | `world/stress_readout.py`                                                            | Aggregation helper + `StressFieldReadout` + `StressFieldReadoutBook`. Storage + helper only.                                                                                                                                                                                                                        |
+| v1.21.4       | `world/reference_living_world.py` (extended) — new `scenario_monthly_stress_composition` opt-in profile | Wires the v1.21.1–v1.21.3 layer into a new opt-in run profile **stacked on top of** v1.20.3's `scenario_monthly_reference_universe`. The pre-existing `quarterly_default` / `monthly_reference` / `scenario_monthly_reference_universe` digests stay byte-identical.                                                |
+| v1.21.5       | `examples/reference_world/export_run_bundle.py` (extended)                            | CLI export for the new profile — adds three new bundle sections (`stress_composition` / `stress_interactions` / `stress_field_readouts`) under `metadata`.                                                                                                                                                          |
+| v1.21.6       | `examples/ui/fwe_workbench_mockup.html` (extended)                                    | Stress-tab (or Universe-tab extension): per-month active-stress timeline, overlap clusters, affected-context-surface list, composition histogram, downstream-citation table.                                                                                                                                        |
+| v1.21.last    | docs only                                                                            | Single-page reader-facing summary, freeze pin, release-readiness snapshot, cross-links.                                                                                                                                                                                                                              |
+
+### 130.6 Forward pointer
+
+v1.21.0 is design-only. The v1.20.last digests (`quarterly_default` `f93bdf3f…b705897c`, `monthly_reference` `75a91cfa…91879d`, `scenario_monthly_reference_universe` test fixture `5003fdfaa45d…f15566eb6`, v1.20.4 CLI bundle `ec37715b8b55…2700731aaf`) and the test count (**4764 / 4764**) are unchanged.
+
+The v1.21 sequence will be auditable composition, never causal-route claim. See [`docs/v1_21_stress_composition_layer.md`](v1_21_stress_composition_layer.md) for the full design note.
