@@ -134,6 +134,9 @@ class RecordType(str, Enum):
     SCHEDULED_SCENARIO_APPLICATION_RECORDED = (
         "scheduled_scenario_application_recorded"
     )
+    STRESS_PROGRAM_TEMPLATE_RECORDED = (
+        "stress_program_template_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

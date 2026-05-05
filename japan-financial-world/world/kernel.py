@@ -24,6 +24,7 @@ from world.reference_universe import ReferenceUniverseBook
 from world.scenario_applications import ScenarioApplicationBook
 from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.scenario_schedule import ScenarioScheduleBook
+from world.stress_programs import StressProgramBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
 from world.constraints import ConstraintBook, ConstraintEvaluator
@@ -210,6 +211,19 @@ class WorldKernel:
     scenario_schedule: ScenarioScheduleBook = field(
         default_factory=ScenarioScheduleBook
     )
+    # v1.21.1 — stress program storage. Storage-only; v1.21.2
+    # will land ``apply_stress_program(...)`` as a thin
+    # orchestrator over the existing v1.18.2
+    # ``apply_scenario_driver(...)`` helper. Empty by default so
+    # the canonical ``quarterly_default`` / ``monthly_reference``
+    # / ``scenario_monthly_reference_universe`` digests stay
+    # byte-identical (no program registered → no ledger emission
+    # → no digest movement). Pinned by
+    # ``tests/test_stress_programs.py::test_world_kernel_empty_stress_program_book_by_default``
+    # and the digest trip-wires.
+    stress_programs: StressProgramBook = field(
+        default_factory=StressProgramBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -263,6 +277,7 @@ class WorldKernel:
             self.information_releases,
             self.reference_universe,
             self.scenario_schedule,
+            self.stress_programs,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
