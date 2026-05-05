@@ -1431,9 +1431,9 @@
       <div class="ribbon-group">
         <div class="version-strip" role="status" aria-label="Version split">
           <div class="version-pill"><span class="label">UI prototype</span> <span class="value">v0</span></div>
-          <div class="version-pill"><span class="label">Runtime engine</span> <span class="value">v1.16.last</span>
+          <div class="version-pill"><span class="label">Runtime engine</span> <span class="value">v1.20.last</span>
           </div>
-          <div class="version-pill"><span class="label">Display layer</span> <span class="value">v1.17.1</span></div>
+          <div class="version-pill"><span class="label">Display layer</span> <span class="value">v1.20.last</span></div>
           <div class="version-pill"><span class="label">Closed loop</span> <span class="value">v1.16.last</span></div>
         </div>
       </div>
@@ -1457,7 +1457,7 @@
       <article id="sheet-cover" class="sheet active">
         <div class="sheet-inner cover-page">
           <div class="cover-grid"></div>
-          <div class="cover-build">build · public prototype<br />runtime v1.16.last · display v1.17.1 · synthetic only
+          <div class="cover-build">build · public prototype<br />runtime v1.20.last · display v1.20.last · synthetic only
           </div>
           <div class="cover-rule"></div>
           <h1 class="cover-title">Fin World Engine</h1>
@@ -3591,8 +3591,8 @@
                 </tr>
                 <tr>
                   <td>Version</td>
-                  <td class="mono">runtime v1.16.last · display v1.17.1 (sample fixture snapshots an earlier engine
-                    build)</td>
+                  <td class="mono">runtime v1.20.last · display v1.20.last (sample fixture snapshots an earlier engine
+                    build at v1.16.last / v1.17.x)</td>
                 </tr>
               </table>
               <div class="note-box" style="margin-top:10px;">
@@ -3673,7 +3673,7 @@
             </div>
 
             <section class="card" style="margin-top:14px;">
-              <h3 class="card-title">v1.16 / v1.17 milestone trail</h3>
+              <h3 class="card-title">v1.16 → v1.20 milestone trail</h3>
               <table>
                 <thead>
                   <tr><th>Milestone</th><th>What it ships</th></tr>
@@ -3698,6 +3698,38 @@
                   <tr>
                     <td class="mono">v1.17.4</td>
                     <td>static workbench polish · this UI · 10-tab redesign around the closed loop</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.18.last</td>
+                    <td>scenario driver inspection layer · ScenarioDriverTemplate / ScenarioDriverApplicationRecord / ScenarioContextShiftRecord · scenario report · UI scenario selector mock</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.19.last</td>
+                    <td>local run bundle / monthly_reference profile · CLI exporter · 12-month synthetic information arrivals · static UI <strong>Load local bundle</strong> reader</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.20.1</td>
+                    <td>generic 11-sector reference universe storage · ReferenceUniverseProfile / GenericSectorReference / SyntheticSectorFirmProfile</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.20.2</td>
+                    <td>scenario schedule storage · ScenarioSchedule / ScheduledScenarioApplication</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.20.3</td>
+                    <td>scenario_monthly_reference_universe run profile · 12 months × 11 sectors × 11 firms × 4 investors × 3 banks × 51 information arrivals × 1 scheduled scenario application</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.20.4</td>
+                    <td>CLI export for scenario_monthly_reference_universe · metadata.reference_universe + scenario_trace + market_intent / financing histograms</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.20.5</td>
+                    <td>UI universe / sector / monthly scenario rendering · this Universe tab · 11×9 sector sensitivity heatmap · 11×6 firm profile table · 5-step scenario causal trace · 11-tab ↔ 11-sheet bijection</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v1.20.last</td>
+                    <td>Monthly Scenario Reference Universe freeze (docs-only) — closes the v1.20 sequence as the first FWE milestone where the engine moves from a small closed-loop demo to a richer synthetic market-like reference universe</td>
                   </tr>
                 </tbody>
               </table>
@@ -3772,16 +3804,16 @@
     "display_layer_version": "v1.17.1",
     "regime_compare_version": "v1.17.2",
     "annotation_layer_version": "v1.17.3",
-    "static_workbench_version": "v1.17.4",
+    "static_workbench_version": "v1.20.last",
     "closed_loop_version": "v1.16.last",
-    "latest_display_module": "v1.17.4 Static Workbench Polish",
+    "latest_display_module": "v1.20.5 Universe / Sector / Monthly Scenario Rendering",
     "digest": "916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379",
     "digest_kind": "sample_fixture",
     "as_of_period": "2026-Q3",
     "per_period_record_count": 83,
     "per_run_window": [324, 372],
     "fixture_kind": "sample_fixture",
-    "fixture_note": "sample manifest snapshots an earlier engine build; the live v1.16.last runtime emits 108 / 110 records per period and a [432, 480] per-run window",
+    "fixture_note": "sample manifest snapshots an earlier engine build (runtime v1.16.last / display v1.17.1); the v1.20.last public-FWE runtime now emits 108 / 110 records per period for quarterly_default ([432, 480] per-run window) and 257 / 261 for the opt-in scenario_monthly_reference_universe profile (3220 / 3241 per-run, well under the 4000 hard guardrail). Use the Load local bundle button + the v1.20.4 CLI for current-engine fixtures.",
     "synthetic_only": true
   },
   "overview": {
