@@ -10546,3 +10546,57 @@ Every invariant pinned at v1.18.0 / v1.19.0 / v1.20.1 / v1.20.2 / v1.20.3 / v1.2
 ### 129.24 Forward pointer (post-v1.20.5)
 
 v1.20.last will freeze the v1.20 sequence (docs-only) — single-page reader-facing summary, release-readiness snapshot, performance-boundary freeze pin, test-inventory header note, and cross-links from `examples/reference_world/README.md`, `examples/ui/README.md`, and `docs/fwe_reference_demo_design.md`.
+
+### 129.25 v1.20.last — Monthly Scenario Reference Universe freeze
+
+§129.25 closes the v1.20 sequence as the **first FWE milestone where the engine feels closer to a synthetic financial world**. v1.20.last is **docs-only** on top of the v1.20.0 → v1.20.5 code freezes. No new module, no new test, no new ledger event, no new label vocabulary, no new run profile.
+
+What the v1.20.last freeze ships:
+
+- the single-page reader-facing summary [`docs/v1_20_monthly_scenario_reference_universe_summary.md`](v1_20_monthly_scenario_reference_universe_summary.md);
+- this §129.25 freeze section;
+- the v1.20.last freeze pin in [`docs/performance_boundary.md`](performance_boundary.md) (incl. the explicit **3220 vs 3241** record-count distinction);
+- the v1.20.last header note in [`docs/test_inventory.md`](test_inventory.md);
+- the v1.20.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md);
+- the v1.20.last cross-link / addendum in [`examples/reference_world/README.md`](../examples/reference_world/README.md), [`examples/ui/README.md`](../examples/ui/README.md), and [`docs/fwe_reference_demo_design.md`](fwe_reference_demo_design.md).
+
+Performance pins frozen at v1.20.last (binding):
+
+| Surface                                                                                            | Value                                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Profile canonical record count** (v1.20.3 default test fixture, no `market_regime` kwarg)         | **3220**                                                                                                                                                       |
+| **CLI export bundle `manifest.record_count`** (v1.20.4, `--regime constrained --scenario credit_tightening_driver`) | **3241**                                                                                                                                                       |
+| Per-period record count (no scenario / scheduled-scenario period)                                   | **257 / 261** — within v1.20.0 target `[200, 280]`                                                                                                              |
+| Per-run target window                                                                               | `[2400, 3360]` — observed 3220 and 3241, both within target                                                                                                      |
+| Hard guardrail                                                                                      | **`≤ 4000`** — observed 3220 and 3241, both well under                                                                                                          |
+| Sector / firm / investor / bank counts                                                              | **11 / 11 / 4 / 3**                                                                                                                                              |
+| Information arrivals                                                                                 | **51** across **12** months                                                                                                                                     |
+| Scheduled scenario applications                                                                     | **1**                                                                                                                                                            |
+| Scenario context shifts                                                                              | **2** (`market_environment` + `financing_review_surface`)                                                                                                       |
+| `scenario_trace.affected_sector_ids` count                                                           | **11**                                                                                                                                                           |
+| `scenario_trace.affected_firm_profile_ids` count                                                     | **11**                                                                                                                                                           |
+| `scenario_monthly_reference_universe` `living_world_digest` (v1.20.3 default test fixture)            | **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**                                                                                          |
+| v1.20.4 CLI export bundle digest (`--regime constrained --scenario credit_tightening_driver`)        | **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**                                                                                          |
+| `quarterly_default` `living_world_digest` (unchanged across v1.20)                                  | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**                                                                                          |
+| `monthly_reference` `living_world_digest` (unchanged across v1.20)                                  | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**                                                                                          |
+| Test count (`pytest -q`)                                                                             | **4764 / 4764** (unchanged from v1.20.5)                                                                                                                        |
+
+### 129.26 The 3220 vs 3241 distinction (binding)
+
+The v1.20 sequence pins **two** record counts. They are deterministic, complementary, and **intentionally different**. The full +21 record delta lives entirely in the `observation_set_selected` record type (the v1.8.x attention-selection layer):
+
+- The v1.20.3 default test fixture (in `tests/test_living_reference_world_performance_boundary.py::_seed_v1_20_3_kernel`) calls `run_living_reference_world(profile="scenario_monthly_reference_universe")` **without** a `market_regime` kwarg — the v1.11.0 `_DEFAULT_MARKET_CONDITION_SPECS` apply. Total: **3220** records.
+- The v1.20.4 CLI exporter calls `run_living_reference_world(profile="scenario_monthly_reference_universe", market_regime="constrained")` — the v1.11.2 `_REGIME_PRESETS["constrained"]` preset is selected, which surfaces a different market-condition spec set to the v1.8.x menu builder. Over 12 periods × 7 actors (4 inv + 3 bank) the menu-builder emits **+21** more `observation_set_selected` records than the default-regime path. Total: **3241** records.
+- Pre-seeded variables / exposures (which the v1.20.3 test fixture seeds and the v1.20.4 CLI bare kernel does not) make **zero** difference: with the default regime preset both paths produce 3220; with `--regime constrained` both paths produce 3241. The delta is fully driven by the regime preset, and every other record type is identical between the two paths.
+
+Both counts are deterministic on a given codebase + same inputs. Both stay well under the v1.20.0 hard guardrail of ≤ 4000 records. Re-pinned by `tests/test_living_reference_world_performance_boundary.py::test_v1_20_3_total_record_count_within_target_window` and `tests/test_run_export_cli.py::test_v1_20_4_scenario_universe_manifest_counts`.
+
+### 129.27 v1.20 forward pointer (post-v1.20.last)
+
+The v1.20 sequence is now frozen. The next FWE milestone is **not** scoped at this layer; the public roadmap candidates are:
+
+- **v1.21 Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark constraints on the v1.15.5 / v1.16.2 investor-intent layer.
+- **v1.21 Multi-scenario monthly stress library** — the v1.20.0 optional opt-in 4-scenario fixture (rate_repricing month 3 / credit_tightening month 4 / liquidity_stress month 6 / information_gap month 8) wired into a `scenario_multi_monthly_reference_universe` profile.
+- **v2.0 private JFWE Japan public calibration** — gated; private repo only; would preserve every public-FWE boundary.
+- **Future LLM reasoning policy** — gated by auditability + evidence-refs + source-book immutability + boundary flags. Would replace the v1.18.x rule-based fallback under the same v1.18.0 audit shape.
+- **Future price formation** — gated until the v1.16 / v1.17 / v1.18 / v1.19 / v1.20 surface is operationally legible to a reviewer who has not read this codebase.

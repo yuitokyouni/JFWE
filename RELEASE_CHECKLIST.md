@@ -23,6 +23,161 @@ can pick up where the last one stopped. Replace the snapshot when a
 new review is performed.
 
 - **Date:** 2026-05-05
+- **Target:** v1.20.last monthly-scenario-reference-universe
+  freeze. The v1.19.last local-run-bundle /
+  monthly-reference freeze (snapshot below), the v1.18.last
+  scenario-driver-library freeze, the v1.17.last
+  inspection-layer freeze, the v1.16.last
+  endogenous-market-intent feedback freeze, the v1.15.last
+  securities-market-intent aggregation freeze, the
+  v1.14.last corporate-financing-intent freeze, the
+  v1.13.last settlement-substrate freeze, the v1.12.last
+  endogenous-attention-loop freeze, the v1.9.last public-
+  prototype freeze, and the v1.8.0 public release
+  (`v1.8-public-release` at commit `7fa2c42`) all remain
+  unchanged; v1.20.last freezes the v1.20 sequence as the
+  **first public-FWE milestone where the engine moves from a
+  small closed-loop demo to a richer synthetic market-like
+  reference universe** — 12 monthly periods × 11 generic
+  sectors × 11 representative synthetic firm profiles × 4
+  investor archetypes × 3 bank archetypes × 51 information
+  arrivals × 1 scheduled scenario application × 2 scenario
+  context shifts × 11 affected sector ids × 11 affected firm
+  profile ids; the chain stays CLI-first: a user runs
+  `python -m examples.reference_world.export_run_bundle
+  --profile scenario_monthly_reference_universe
+  --regime constrained --scenario credit_tightening_driver
+  --out /tmp/fwe_scenario_universe_bundle.json` to produce a
+  deterministic JSON, then loads it in the static workbench
+  via `<input type="file">` + `FileReader.readAsText` —
+  **no fetch, no XHR, no backend, no engine execution from
+  the browser, no file-system write**. The static workbench
+  gains a new **Universe** tab between Overview and Timeline
+  (11 tabs ↔ 11 sheets — bijection preserved) with an
+  11-row × 9-column sector sensitivity heatmap, an 11-row ×
+  6-column firm profile table, and a 5-step scenario causal
+  trace. Sector labels carry the `_like` suffix and no
+  public-FWE module text or test depends on bare `GICS`,
+  `MSCI`, `S&P`, `FactSet`, `Bloomberg`, `Refinitiv`,
+  `TOPIX`, `Nikkei`, or `JPX` tokens; firm ids follow the
+  synthetic `firm:reference_<sector>_a` pattern. v1.20.last
+  itself is docs-only on top of the v1.20.0 → v1.20.5 code
+  freezes. The chain is **CLI-first / read-only-loader /
+  opt-in profile / no-backend** — no price formation, no
+  market price, no predicted index, no forecast path, no
+  expected return, no target price, no trading, no orders,
+  no execution, no clearing, no settlement, no financing
+  execution, no direct firm decisions, no direct investor
+  actions, no bank approval logic, no investment advice, no
+  real data ingestion, no Japan calibration, no LLM
+  execution, no daily simulation, no browser-to-Python
+  execution, no Rails, no FastAPI, no Flask. Per-period
+  record count **257 / 261**, per-run record counts **3220**
+  (profile canonical fixture) / **3241** (CLI export bundle
+  `manifest.record_count` under `--regime constrained`) —
+  both within the v1.20.0 target `[2400, 3360]` and well
+  under the hard guardrail `≤ 4000`; the **+21 record delta
+  is fully explained by the v1.11.2 `_REGIME_PRESETS["constrained"]`
+  preset** and confined to the `observation_set_selected`
+  record type. `reasoning_mode = "rule_based_fallback"`
+  remains binding at v1.20.x. Known limitations: 11 firms is
+  a *reference fixture*, not a real-issuer set; the
+  five-rung sensitivity vocabulary is a label set, not a
+  numeric calibration; scenario context shifts are bounded
+  evidence-level annotations, not direct decisions; no real
+  data; no Japan calibration; no investment recommendation
+  surface; daily-frequency economic simulation remains
+  out-of-scope.
+- **Status:** docs + tests frozen. The freeze is conditional on
+  CI being green on the commit being tagged.
+- **Local results (v1.20.last):**
+  - `pytest -q` → 4764 passed
+  - `compileall world spaces tests examples` → clean
+  - `ruff check .` (repo root) → clean
+  - `python -m examples.reference_world.export_run_bundle
+    --profile scenario_monthly_reference_universe
+    --regime constrained
+    --scenario credit_tightening_driver
+    --out /tmp/fwe_scenario_universe_bundle.json` → writes a
+    deterministic JSON; same args → byte-identical bytes;
+    bundle JSON contains no ISO wall-clock, no absolute
+    path, no `$USER` / `$HOSTNAME`; bundle digest =
+    **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**.
+  - `bundle.manifest.record_count` = **3241** (CLI fixture);
+    `bundle.manifest.sector_count` = **11**;
+    `bundle.manifest.firm_count` = **11**;
+    `bundle.manifest.investor_count` = **4**;
+    `bundle.manifest.bank_count` = **3**;
+    `bundle.manifest.scheduled_scenario_application_count` = **1**;
+    `bundle.manifest.scenario_application_count` = **1**;
+    `bundle.manifest.scenario_context_shift_count` = **2**;
+    `bundle.manifest.information_arrival_count` = **51**.
+  - `bundle.scenario_trace.affected_sector_ids` count = **11**
+    (universe-wide); `bundle.scenario_trace.affected_firm_profile_ids`
+    count = **11** (universe-wide).
+  - profile canonical record count under the v1.20.3 default
+    test fixture = **3220** (no `market_regime` kwarg);
+    `scenario_monthly_reference_universe` `living_world_digest`
+    = **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**
+    (pinned by
+    `tests/test_living_reference_world_performance_boundary.py::test_v1_20_3_living_world_digest_is_pinned`).
+  - integration-test fixture `living_world_digest`
+    (`quarterly_default`) =
+    **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+    (unchanged from v1.18.last across the entire v1.19 +
+    v1.20 sequence — pinned across the whole v1.20 chain by
+    per-book trip-wire tests).
+  - `monthly_reference` `living_world_digest` =
+    **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**
+    (unchanged from v1.19.last).
+  - `examples/ui/fwe_workbench_mockup.html` → opens directly
+    under `file://` with no console errors. The bottom-tabs
+    nav now lists 11 tabs / 11 sheets with the new
+    **Universe** tab between Overview and Timeline; clicking
+    each tab activates the matching sheet (bijection holds).
+    The **Load local bundle** button accepts the new
+    `scenario_monthly_reference_universe` JSON via
+    `FileReader` + `JSON.parse`, validates the v1.19.1
+    schema + v1.19.0 default 8-flag boundary block + v1.20.5
+    profile-conditional schema (`metadata.reference_universe`
+    with non-empty `sector_labels` + `firm_profile_ids`
+    arrays; `scenario_trace.affected_sector_ids` +
+    `affected_firm_profile_ids` arrays;
+    `manifest.{sector,firm,investor,bank}_count` exact match
+    11/11/4/3); renders the Universe tab's 11-row × 9-column
+    sector sensitivity heatmap, 11-row × 6-column firm
+    profile table, and 5-step scenario causal trace. The
+    profile badge shows in distinct amber colour for the
+    universe profile (vs blue for `monthly_reference` and
+    green for `quarterly_default`). The pre-existing
+    `quarterly_default` and `monthly_reference` rendering
+    paths are unchanged. Rejects `scenario_monthly` /
+    `daily_display_only` / `future_daily_full_simulation`
+    with the v1.19.4 status message. Renders user-loaded
+    values via `textContent` only — never `innerHTML` for
+    user JSON; no `eval`; no `fetch` / XHR; no backend; no
+    file-system write; no `location.hash` mutation during
+    bundle load; capture-and-restore around scroll position
+    so the load never causes a scroll jump or active-sheet
+    shift. `Validate` reports `validation passed · static UI`
+    with the seven new v1.20.5 audit checks.
+  - Forbidden-token scan + public-wording audit + public /
+    private boundary review + no-confidential-content audit +
+    no-real-data audit + no-behavior-probability audit — all
+    unchanged from v1.19.last; the v1.20-specific forbidden-
+    token scan additionally pins the absence of bare
+    licensed-taxonomy tokens (`gics` / `msci` / `factset` /
+    `bloomberg` / `refinitiv` / `topix` / `nikkei` / `jpx`)
+    in `world/reference_universe.py`,
+    `world/scenario_schedule.py`, the v1.20.4 CLI module,
+    and the rendered v1.20.4 bundle JSON; the v1.20.0
+    `_like`-suffix discipline is pinned on every sector
+    label except `unknown` by
+    `tests/test_reference_universe.py::test_sector_labels_all_carry_like_suffix_except_unknown`.
+
+#### v1.19.last historical snapshot (unchanged)
+
+- **Date:** 2026-05-05
 - **Target:** v1.19.last local-run-bundle / monthly-reference
   freeze. The v1.18.last scenario-driver-library freeze
   (snapshot below), the v1.17.last inspection-layer freeze,

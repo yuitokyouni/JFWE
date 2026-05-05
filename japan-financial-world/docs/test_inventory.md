@@ -1,6 +1,79 @@
 # Test Inventory
 
-Snapshot of the test suite at **v1.19.last** (`Local Run Bundle
+Snapshot of the test suite at **v1.20.last** (`Monthly Scenario
+Reference Universe freeze` — docs-only milestone that closes
+the v1.20 sequence; ships the single-page reader-facing summary
+in
+[`v1_20_monthly_scenario_reference_universe_summary.md`](v1_20_monthly_scenario_reference_universe_summary.md),
+the v1.20.last release-readiness snapshot in
+[`RELEASE_CHECKLIST.md`](../../RELEASE_CHECKLIST.md), the
+v1.20.last freeze pin in
+[`performance_boundary.md`](performance_boundary.md), and the
+v1.20.last position-in-sequence rows in `world_model.md` §129
+(specifically §129.25 / §129.26 / §129.27); no new code, no new
+tests, no new ledger event types, no new behavior; test count
+= **4764 / 4764**, per-period record count
+(`scenario_monthly_reference_universe` default fixture) =
+**257 / 261** (no-scenario period / scheduled-scenario period
+3 = month_04), per-run target window = **`[2400, 3360]`**,
+hard guardrail = **`≤ 4000`** — observed counts **3220** (the
+v1.20.3 *profile canonical* record count under the test fixture
+with no `market_regime` kwarg) and **3241** (the v1.20.4 CLI
+exporter's `bundle.manifest.record_count` under
+`--regime constrained --scenario credit_tightening_driver`)
+are both within the target window and well under the hard
+guardrail; the +21 record delta lives entirely in the
+`observation_set_selected` record type and is fully driven by
+the v1.11.2 `_REGIME_PRESETS["constrained"]` preset (see
+§129.26 in `world_model.md` for the binding explanation);
+`scenario_monthly_reference_universe` `living_world_digest` =
+**`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**
+under the v1.20.3 default fixture; v1.20.4 CLI export bundle
+digest =
+**`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**;
+canonical `quarterly_default` `living_world_digest` =
+**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+(unchanged from v1.18.last across the entire v1.19 + v1.20
+sequence when no scenario is applied), `monthly_reference`
+`living_world_digest` =
+**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**
+(unchanged from v1.19.last across the entire v1.20 sequence);
+the v1.20 surface is the **first public-FWE milestone where
+the engine moves from a small closed-loop demo to a richer
+synthetic market-like reference universe** — 12 monthly periods
+× 11 generic sectors × 11 representative synthetic firm
+profiles × 4 investor archetypes × 3 bank archetypes × 51
+information arrivals × 1 scheduled scenario application × 2
+scenario context shifts × 11 affected sector ids × 11 affected
+firm profile ids; sector labels carry the `_like` suffix and
+no public-FWE module text or test depends on bare `GICS`,
+`MSCI`, `S&P`, `FactSet`, `Bloomberg`, `Refinitiv`, `TOPIX`,
+`Nikkei`, or `JPX` tokens; firm ids follow the synthetic
+`firm:reference_<sector>_a` pattern with no real company name;
+the static workbench mockup now renders an additional Universe
+tab (between Overview and Timeline; 11 tabs ↔ 11 sheets) with
+an 11-row × 9-column sector sensitivity heatmap, an 11-row × 6-
+column firm profile table, and a 5-step scenario causal trace;
+the CLI exporter writes a deterministic JSON bundle that the
+browser reads via `<input type="file">` + `FileReader.readAsText`;
+**no real companies, no real sector weights, no licensed
+taxonomy dependency, no real financial values, no real
+indicator values, no real institutional identifiers, no price
+formation, no market price, no predicted index, no forecast
+path, no expected return, no target price, no trading, no
+orders, no execution, no clearing, no settlement, no financing
+execution, no direct firm decisions, no direct investor
+actions, no bank approval logic, no investment advice, no real
+data ingestion, no Japan calibration, no LLM execution, no LLM
+prose as source-of-truth, no backend, no fetch / XHR, no
+file-system write, no browser-to-Python execution, no daily
+simulation, no mutation of pre-existing context records**. The
+v1.19.last, v1.18.last, v1.17.last, v1.16.last, and v1.15.last
+historical snapshots below are preserved unchanged.)
+
+---
+
+Earlier snapshot at **v1.19.last** (`Local Run Bundle
 and Monthly Reference freeze` — docs-only milestone that closes
 the v1.19 sequence; ships the single-page reader-facing summary
 in

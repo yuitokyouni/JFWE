@@ -367,6 +367,103 @@ active at once**. None ships as live behavior in the current
 public prototype. Selecting one would not enable trading,
 ordering, or price formation.
 
+## v1.20.last — Monthly Scenario Reference Universe freeze (shipped, docs-only)
+
+v1.20.last closes the v1.20 sequence as the **first FWE
+milestone where the engine moves from a small closed-loop
+demo to a richer synthetic market-like reference universe**.
+The static workbench mockup in this folder
+([`fwe_workbench_mockup.html`](fwe_workbench_mockup.html))
+is the v1.20.5 contribution to that surface; v1.20.last
+itself is **docs-only** — no HTML / CSS / JS change beyond
+this addendum.
+
+The full sequence (v1.20.0 → v1.20.5) is documented at
+[`../reference_world/README.md`](../reference_world/README.md)
+and in the single-page summary
+[`../../docs/v1_20_monthly_scenario_reference_universe_summary.md`](../../docs/v1_20_monthly_scenario_reference_universe_summary.md).
+
+What this folder ships at v1.20.last:
+
+- the v1.19.4 static-HTML loader (`Load local bundle` button +
+  `<input type="file">` + `FileReader.readAsText` +
+  `JSON.parse` + `validateBundleSchema(...)`) extended at
+  v1.20.5 to accept `scenario_monthly_reference_universe` in
+  `BUNDLE_EXECUTABLE_PROFILES`;
+- a profile-conditional schema validator that requires
+  `metadata.reference_universe` (with non-empty
+  `sector_labels` + `firm_profile_ids` arrays);
+  `scenario_trace` (with `affected_sector_ids` +
+  `affected_firm_profile_ids` arrays); and exact-match
+  manifest counts (`sector_count == 11` / `firm_count == 11`
+  / `investor_count == 4` / `bank_count == 3`);
+- the new **Universe** tab between Overview and Timeline (11
+  tabs ↔ 11 sheets — bijection preserved);
+- an empty-state card on the Universe sheet when no v1.20.4
+  bundle is loaded; a live-state card with an 11-row × 9-
+  column sector sensitivity heatmap (CSS rung classes —
+  `sens-low` / `sens-moderate` / `sens-high` /
+  `sens-very-high` / `sens-unknown` — colour decorative, cell
+  text echoes the closed-set label verbatim), an 11-row × 6-
+  column firm profile table (`word-break: break-word` so long
+  ids wrap), and a 5-step scenario causal trace;
+- an amber profile badge for the universe profile in the
+  Inputs tab's Local-run-bundle card (alongside green =
+  `quarterly_default` / blue = `monthly_reference`);
+- the v1.19.3 information-arrival summary card extended to
+  also surface for the universe profile (1 calendar / 51
+  scheduled releases / 51 arrivals);
+- in-page `Validate` audit extended with seven v1.20.5 checks
+  (Universe tab + sheet + both tbodies present,
+  `renderUniverseFromBundle` defined, `SENSITIVITY_LABELS`
+  carries the v1.20.0 five-rung closed set,
+  `BUNDLE_EXECUTABLE_PROFILES` includes the new profile).
+
+Hard boundary (binding):
+
+- `textContent` only — no `innerHTML` for user-loaded JSON.
+- No `eval`, no script injection.
+- No `fetch` / XHR / network call.
+- No backend, no file-system write, no browser-to-Python
+  execution.
+- No `location.hash` mutation during bundle load
+  (capture-and-restore protocol).
+- No active-sheet shift, no scroll jump.
+- No real companies, no real sector weights, no licensed
+  taxonomy dependency.
+- No price formation, no trading, no order book, no daily
+  simulation.
+
+Final user workflow:
+
+```sh
+cd japan-financial-world
+python -m examples.reference_world.export_run_bundle \
+    --profile scenario_monthly_reference_universe \
+    --regime constrained \
+    --scenario credit_tightening_driver \
+    --out /tmp/fwe_scenario_universe_bundle.json
+```
+
+```
+open examples/ui/fwe_workbench_mockup.html       (or just double-click)
+click "Load local bundle"                          (top ribbon)
+select /tmp/fwe_scenario_universe_bundle.json
+inspect:
+  - Overview / Universe / Timeline / Attention /
+    Market Intent / Financing / Ledger
+```
+
+CLI bundle digest at v1.20.last:
+**`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**.
+`quarterly_default` and `monthly_reference`
+`living_world_digest`s unchanged from v1.19.last across the
+entire v1.20 sequence. Test count: **4764 / 4764**.
+
+See
+[`../../docs/v1_20_monthly_scenario_reference_universe_summary.md`](../../docs/v1_20_monthly_scenario_reference_universe_summary.md)
+for the v1.20.last single-page summary.
+
 ## v1.20.5 — Universe tab renders `scenario_monthly_reference_universe` bundles (shipped)
 
 v1.20.5 ships UI rendering for the v1.20.3 / v1.20.4 opt-in

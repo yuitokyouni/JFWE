@@ -482,6 +482,64 @@ The v1.20.3 milestone adds the opt-in `scenario_monthly_reference_universe` run 
 
 If any of these pins fails, either the default `scenario_monthly_reference_universe` fixture has drifted (intentional but undocumented) or a hidden Cartesian-product loop has crept into the orchestrator.
 
+## v1.20.last freeze pins
+
+The v1.20.last freeze closes the v1.20 monthly-scenario-reference-universe sequence as a **docs-only** milestone on top of the v1.20.0 → v1.20.5 code freezes. Every pin below is binding and re-confirmed at v1.20.last.
+
+**Profile inventory at v1.20.last (binding):**
+
+- `quarterly_default` (v1.18.last canonical) — `living_world_digest` **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**, byte-identical to v1.18.last and v1.19.last;
+- `monthly_reference` (v1.19.3 opt-in) — `living_world_digest` **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**, byte-identical to v1.19.last;
+- `scenario_monthly_reference_universe` (v1.20.3 opt-in, NEW at v1.20) — `living_world_digest` **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`** under the v1.20.3 default test fixture; CLI export bundle digest **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`** under `--regime constrained --scenario credit_tightening_driver`;
+- `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` — designed-but-not-executable; the v1.20.4 CLI exits non-zero on each.
+
+**Universe topology at v1.20.last (binding, default fixture):**
+
+- 12 monthly periods,
+- 11 sectors (every label carrying the `_like` suffix),
+- 11 representative firm profiles (`firm:reference_<sector>_a`),
+- 4 investor archetypes (`benchmark_sensitive_institutional` / `active_fund_like` / `liquidity_sensitive_investor` / `stewardship_oriented_investor`),
+- 3 bank archetypes (`relationship_bank_like` / `credit_conservative_bank` / `market_liquidity_sensitive_bank`),
+- 51 information arrivals across 12 months (1 calendar / 51 scheduled releases / 51 arrivals — within the v1.19.3 `[36, 60]` budget),
+- 1 scheduled scenario application,
+- 2 scenario context shifts (`market_environment` + `financing_review_surface`),
+- 11 `scenario_trace.affected_sector_ids` (universe-wide),
+- 11 `scenario_trace.affected_firm_profile_ids` (universe-wide).
+
+**Per-period and per-run record counts at v1.20.last (binding):**
+
+- per-period record count: **257** (no-scenario period) / **261** (scheduled-scenario period 3 / month_04) — within the v1.20.0 `[200, 280]` target window;
+- per-run record count under the v1.20.3 default test fixture (no `market_regime` kwarg): **3220 records** — within the v1.20.0 `[2400, 3360]` target window and well under the **`≤ 4000`** hard guardrail;
+- per-run record count exposed by the v1.20.4 CLI exporter as `bundle.manifest.record_count` (`--regime constrained --scenario credit_tightening_driver`): **3241 records** — within the same target window and well under the same hard guardrail;
+- the **+21 record delta** between 3220 and 3241 is fully explained by the v1.11.2 `_REGIME_PRESETS["constrained"]` regime preset and lives entirely in the `observation_set_selected` record type (the v1.8.x attention-selection layer); pre-seeded variables / exposures make zero difference. See §129.26 in `docs/world_model.md` for the complete explanation. Re-pinned by `tests/test_living_reference_world_performance_boundary.py::test_v1_20_3_total_record_count_within_target_window` and `tests/test_run_export_cli.py::test_v1_20_4_scenario_universe_manifest_counts`.
+
+**Allowed loop shapes at v1.20.last (binding):**
+
+- `O(P × F) = 132` for firm states / market pressure / financing path (pinned by `test_v1_20_3_firm_state_count_is_per_period_f`),
+- `O(P × I × F) = 528` for investor market intent (pinned by `test_v1_20_3_investor_market_intent_count_is_per_period_i_times_f`),
+- `O(P × B × F) = 396` for bank credit review (pinned by `test_v1_20_3_bank_credit_review_count_is_per_period_b_times_f`),
+- `O(P × release_count) = 51` for information arrivals (reused from v1.19.3),
+- `O(scheduled_app_count × F) ≤ 11` for scenario context shifts (actual: 2 — pinned by `test_v1_20_3_scenario_fires_only_in_scheduled_period`).
+
+**Forbidden loop shapes at v1.20.last (binding):**
+
+- `O(P × I × F × scenario)` — pinned out by the scenario-fires-only-in-scheduled-period test;
+- `O(P × I × F × venue)` — pinned out by the per-period investor-market-intent count assertion;
+- `O(P × F × order)` — pinned out by `test_v1_20_3_no_forbidden_mutation_record_in_ledger_slice` (no `ORDER_SUBMITTED` / `PRICE_UPDATED` / `CONTRACT_*` / `OWNERSHIP_TRANSFERRED` records);
+- `O(P × day × ...)` — pinned out by the per-period record-count window.
+
+**UI surface at v1.20.last (binding):**
+
+- the static workbench mockup (`examples/ui/fwe_workbench_mockup.html`) lists 11 tabs and 11 sheets (Cover · Inputs · Overview · Universe · Timeline · Regime Compare · Attention · Market Intent · Financing · Ledger · Appendix); the tab ↔ sheet bijection is preserved;
+- `BUNDLE_EXECUTABLE_PROFILES` includes `quarterly_default`, `monthly_reference`, and `scenario_monthly_reference_universe`;
+- `validateBundleSchema(...)` requires for the universe profile: `metadata.reference_universe` object with non-empty `sector_labels` + `firm_profile_ids` arrays; `scenario_trace` object with `affected_sector_ids` + `affected_firm_profile_ids` arrays; `manifest.{sector, firm, investor, bank}_count` exact match (11 / 11 / 4 / 3);
+- the Universe tab renders an empty-state card when no v1.20.4 bundle is loaded and a live-state card with the 11×9 sector sensitivity heatmap, the 11×6 firm profile table, and the 5-step scenario causal trace when a v1.20.4 bundle is loaded;
+- safety: `textContent` only — no `innerHTML` for user-loaded JSON, no `eval`, no `fetch` / XHR, no backend, no file-system write, no `location.hash` mutation during bundle load.
+
+**Test count at v1.20.last:** **4764 / 4764** (unchanged from v1.20.5; v1.20.last is docs-only).
+
+If any of these pins fails, either an undocumented v1.20 fixture has drifted or a hidden Cartesian-product loop / wall-clock leak / forbidden-token has crept into the code path.
+
 ## v1.20.4 CLI export for `scenario_monthly_reference_universe` pins
 
 The v1.20.4 milestone extends [`examples/reference_world/export_run_bundle.py`](../examples/reference_world/export_run_bundle.py) so a reader can run a single CLI command to export the v1.20.3 `scenario_monthly_reference_universe` profile as a deterministic local `RunExportBundle` JSON.

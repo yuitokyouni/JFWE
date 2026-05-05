@@ -518,6 +518,144 @@ If you have not seen FWE before:
 5. [`../../docs/v1_release_summary.md`](../../docs/v1_release_summary.md)
    for the broader v1 freeze surface.
 
+## v1.20.last — Monthly Scenario Reference Universe freeze (shipped, docs-only)
+
+v1.20.last closes the v1.20 sequence as the **first FWE
+milestone where the engine moves from a small closed-loop
+demo to a richer synthetic market-like reference universe** —
+12 monthly periods × 11 generic sectors × 11 representative
+synthetic firm profiles × 4 investor archetypes × 3 bank
+archetypes × 51 information arrivals × 1 scheduled scenario
+application × 2 scenario context shifts × 11 affected sector
+ids × 11 affected firm profile ids.
+
+The sequence:
+
+- v1.20.0 design (docs-only);
+- v1.20.1 [`world/reference_universe.py`](../../world/reference_universe.py)
+  storage (3 frozen dataclasses + book + 12 closed-set
+  vocabularies + builder + register helper; +92 tests);
+- v1.20.2 [`world/scenario_schedule.py`](../../world/scenario_schedule.py)
+  storage (2 frozen dataclasses + book + 6 closed-set
+  vocabularies + default schedule helper; +90 tests);
+- v1.20.3 [`world/reference_living_world.py`](../../world/reference_living_world.py)
+  extension — the `scenario_monthly_reference_universe` run
+  profile wires the v1.20.1 universe + v1.20.2 schedule +
+  v1.18.2 `apply_scenario_driver` + v1.19.3 information
+  arrivals into the orchestrator; +40 tests;
+- v1.20.4 [`export_run_bundle.py`](export_run_bundle.py)
+  extension — CLI bundle for the new profile with
+  `metadata.reference_universe`, `scenario_trace` (universe-
+  wide `affected_sector_ids` + `affected_firm_profile_ids`),
+  and `market_intent` / `financing` histograms; +20 CLI tests;
+- v1.20.5 [`../ui/fwe_workbench_mockup.html`](../ui/fwe_workbench_mockup.html)
+  extension — new **Universe** tab between Overview and
+  Timeline (11 tabs ↔ 11 sheets — bijection preserved) with
+  an 11-row × 9-column sector sensitivity heatmap, an 11-row
+  × 6-column firm profile table, and a 5-step scenario causal
+  trace; **HTML / CSS / JS only — no Python tests**;
+- v1.20.last freeze (this section + the single-page summary
+  [`../../docs/v1_20_monthly_scenario_reference_universe_summary.md`](../../docs/v1_20_monthly_scenario_reference_universe_summary.md)
+  + the v1.20.last `RELEASE_CHECKLIST.md` snapshot + the
+  v1.20.last `performance_boundary.md` freeze pin + the
+  v1.20.last `test_inventory.md` header note + cross-links).
+
+The chain is **CLI-first**: a user runs the v1.20.4 CLI in
+a terminal to produce a deterministic `RunExportBundle` JSON,
+then loads it in the static workbench under `file://` via the
+v1.19.4 `<input type="file">` + `FileReader.readAsText` path.
+The browser **never** executes Python, never calls a backend,
+never writes files, never calls the network.
+
+Performance pins at v1.20.last (binding):
+
+- per-period record count: **257** (no-scenario period) /
+  **261** (scheduled-scenario period 3 / month_04) — within
+  v1.20.0 target `[200, 280]`,
+- profile canonical record count (v1.20.3 default test
+  fixture, no `market_regime` kwarg): **3220 records**,
+- CLI export bundle `manifest.record_count` (v1.20.4,
+  `--regime constrained --scenario credit_tightening_driver`):
+  **3241 records**,
+- the **+21 record delta** between 3220 and 3241 is fully
+  explained by the v1.11.2 `_REGIME_PRESETS["constrained"]`
+  preset and lives entirely in the `observation_set_selected`
+  record type (the v1.8.x attention-selection layer); pre-
+  seeded variables / exposures make zero difference. See
+  §129.26 in [`../../docs/world_model.md`](../../docs/world_model.md)
+  for the binding explanation.
+- both record counts are within the v1.20.0 target window
+  `[2400, 3360]` and well under the hard guardrail `≤ 4000`,
+- `scenario_monthly_reference_universe` `living_world_digest`
+  (test fixture) =
+  **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**,
+- v1.20.4 CLI bundle digest =
+  **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**,
+- canonical `quarterly_default` `living_world_digest` =
+  **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
+  (unchanged across the entire v1.20 sequence — the new
+  profile is **opt-in**),
+- `monthly_reference` `living_world_digest` =
+  **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**
+  (unchanged across the entire v1.20 sequence),
+- final test count: **4764 / 4764**.
+
+Hard boundary (binding, carried forward from v1.19.last and
+extended at v1.20):
+
+- **No real companies, no real sector weights, no licensed
+  taxonomy dependency, no real financial values, no real
+  indicator values, no real institutional identifiers, no
+  real release dates.**
+- Sector labels carry the `_like` suffix; firm ids follow the
+  synthetic `firm:reference_<sector>_a` pattern; no public-
+  FWE module text or test depends on bare `GICS`, `MSCI`,
+  `S&P`, `FactSet`, `Bloomberg`, `Refinitiv`, `TOPIX`,
+  `Nikkei`, or `JPX` tokens.
+- **No price formation, no market price, no predicted index,
+  no forecast path, no expected return, no target price, no
+  trading, no orders, no execution, no clearing, no
+  settlement, no financing execution.**
+- **No direct firm decisions, no direct investor actions, no
+  bank approval logic, no investment advice.**
+- **No real data ingestion, no Japan calibration, no LLM
+  execution, no LLM prose as source-of-truth.**
+- **No backend, no fetch / XHR, no file-system write, no
+  browser-to-Python execution, no daily simulation.**
+
+Known limitations (non-blocking; documented at v1.20.last):
+
+- 11 firms is a *reference fixture*, not a real-issuer set.
+- Sector sensitivities are closed-set labels, not calibrated
+  numeric parameters.
+- Scenario context shifts are bounded evidence-level
+  annotations, not direct decisions; per-sector / per-firm
+  impact lives on the application metadata as evidence.
+- The static UI loader is read-only; the v1.20.4 CLI is the
+  only producer of the bundle JSON.
+- The `daily_display_only` and `future_daily_full_simulation`
+  profile labels remain designed-but-not-executable.
+
+Next roadmap candidates (post-v1.20):
+
+- **v1.21 Institutional Investor Mandate / Benchmark
+  Pressure** — bounded synthetic mandate / benchmark
+  constraints on the v1.15.5 / v1.16.2 investor-intent layer.
+- **v1.21 Multi-scenario monthly stress library** — the
+  v1.20.0 optional opt-in 4-scenario fixture wired into a
+  `scenario_multi_monthly_reference_universe` profile.
+- **v2.0 private JFWE Japan public calibration** — gated;
+  private repo only; would preserve every public-FWE
+  boundary.
+- **Future LLM reasoning policy** — gated by auditability +
+  evidence-refs + source-book immutability + boundary flags.
+- **Future price formation** — gated until the v1.16 / v1.17
+  / v1.18 / v1.19 / v1.20 surface is operationally legible.
+
+See
+[`../../docs/v1_20_monthly_scenario_reference_universe_summary.md`](../../docs/v1_20_monthly_scenario_reference_universe_summary.md)
+for the v1.20.last single-page summary.
+
 ## v1.20.4 — CLI export for `scenario_monthly_reference_universe` (shipped)
 
 v1.20.4 extends this directory's CLI exporter

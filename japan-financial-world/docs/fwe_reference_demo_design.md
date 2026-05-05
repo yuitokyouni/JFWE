@@ -5,6 +5,61 @@ jurisdiction-neutral demo world that exercises every v0 + v1 record
 type through the existing v1.6 reference loop and produces a complete
 causal ledger trace.
 
+> **Note (v1.20.last freeze).** v1.20 froze the public-FWE
+> **monthly scenario reference universe layer** on top of the
+> v1.19 local-run-bundle / monthly-reference layer, the v1.18
+> scenario-driver inspection layer, the v1.17 inspection
+> layer, and the v1.16 closed loop. The chain stays
+> CLI-first: a user runs
+> `python -m examples.reference_world.export_run_bundle
+> --profile scenario_monthly_reference_universe
+> --regime constrained --scenario credit_tightening_driver
+> --out /tmp/fwe_scenario_universe_bundle.json` in a terminal
+> to produce a deterministic `RunExportBundle` JSON file
+> ([`examples/reference_world/export_run_bundle.py`](../examples/reference_world/export_run_bundle.py)
+> extended at v1.20.4); the static workbench
+> ([`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html))
+> extended at v1.20.5 then loads that file via
+> `<input type="file">` + `FileReader.readAsText` +
+> `JSON.parse` and renders a new **Universe** tab between
+> Overview and Timeline (11 tabs ↔ 11 sheets — the bijection is
+> preserved) with an 11-row × 9-column sector sensitivity
+> heatmap, an 11-row × 6-column firm profile table, and a
+> 5-step scenario causal trace. The new opt-in profile combines
+> the v1.19.3 12-month cadence with the v1.20.1 generic
+> 11-sector reference universe
+> ([`world/reference_universe.py`](../world/reference_universe.py)),
+> the v1.20.2 scenario schedule
+> ([`world/scenario_schedule.py`](../world/scenario_schedule.py)),
+> the v1.18.2 `apply_scenario_driver` helper
+> ([`world/scenario_applications.py`](../world/scenario_applications.py)),
+> 4 investor archetypes / 3 bank archetypes, and the v1.19.3
+> information-arrival calendar (51 arrivals across 12 months).
+> Performance pins at v1.20.last: per-period record count
+> **257-261**, profile canonical record count **3220**, CLI
+> export bundle `manifest.record_count` **3241** (the +21 delta
+> is fully explained by the v1.11.2 `_REGIME_PRESETS["constrained"]`
+> preset and confined to the `observation_set_selected` record
+> type — see §129.26 in [`world_model.md`](world_model.md)),
+> both within the target `[2400, 3360]` and well under the hard
+> guardrail `≤ 4000`. `scenario_monthly_reference_universe`
+> `living_world_digest` (test fixture) =
+> **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**;
+> v1.20.4 CLI bundle digest =
+> **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**;
+> the canonical `quarterly_default` and `monthly_reference`
+> `living_world_digest`s are **byte-identical** to v1.19.last
+> across the entire v1.20 sequence — v1.20 is **opt-in**.
+> Sector labels carry the `_like` suffix and no public-FWE
+> module text or test depends on bare `GICS`, `MSCI`, `S&P`,
+> `FactSet`, `Bloomberg`, `Refinitiv`, `TOPIX`, `Nikkei`, or
+> `JPX` tokens; firm ids follow the synthetic
+> `firm:reference_<sector>_a` pattern with no real company
+> name. The browser still **never** executes Python, never
+> calls a backend, never writes files. See
+> [`v1_20_monthly_scenario_reference_universe_summary.md`](v1_20_monthly_scenario_reference_universe_summary.md)
+> for the v1.20 single-page summary.
+>
 > **Note (v1.19.last freeze).** v1.19 froze the public-FWE
 > **local-run-bundle / monthly-reference inspection layer** on
 > top of the v1.18 scenario-driver inspection layer, the v1.17
