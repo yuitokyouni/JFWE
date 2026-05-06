@@ -150,6 +150,61 @@ _V1_23_2_BLOCK_RE = re.compile(
 )
 
 
+_V1_23_3_LINE_PREFIX = "v1.23.3 test count: "
+_V1_23_3_BLOCK_RE = re.compile(
+    r"<!-- v1\.23\.3 test inventory pin: BEGIN -->"
+    r".*?"
+    r"<!-- v1\.23\.3 test inventory pin: END -->",
+    re.DOTALL,
+)
+
+
+def _format_v1_23_3_block(test_count: int) -> str:
+    """Return the v1.23.3 inventory block in the canonical
+    format. Marked with HTML comments for idempotent
+    replacement."""
+    return (
+        "<!-- v1.23.3 test inventory pin: BEGIN -->\n"
+        "\n"
+        "## v1.23.3 — Attention-crowding / uncited-stress "
+        "case study\n"
+        "\n"
+        "v1.23.3 ships:\n"
+        "\n"
+        "- ``world/stress_case_study.py`` — read-only helper "
+        "that builds a deterministic case-study report dict "
+        "(cited / uncited step ids, scenario application + "
+        "shift ids, v1.21.3 readout summary, v1.23.2 "
+        "Cat 1-4 pin summary, boundary statement) over an "
+        "already stress-applied kernel + a deterministic "
+        "markdown renderer for the report;\n"
+        "- ``tests/test_attention_crowding_case_study.py`` "
+        "— pin tests covering determinism / uncited-stress "
+        "visibility / citation completeness / boundary "
+        "preservation / no-mutation / no-ledger-emission / "
+        "no-apply-helper-call / required markdown sections "
+        "/ Cat 4 visibility;\n"
+        "- ``docs/case_study_001_attention_crowding_uncited_stress.md`` "
+        "— narrative case-study doc framing the report as a "
+        "research-defensible read-only demonstration of what "
+        "the v1.21.3 stress citation graph reveals.\n"
+        "\n"
+        "Read-only / no-mutation discipline: the helper does "
+        "**not** call ``apply_stress_program`` or "
+        "``apply_scenario_driver``, does **not** mutate any "
+        "kernel book, does **not** emit a ledger record, and "
+        "introduces **no** new dataclass / RecordType / label "
+        "vocabulary / UI surface / export-schema field. All "
+        "v1.18.last / v1.19.last / v1.20.last / v1.21.last / "
+        "v1.22.last canonical ``living_world_digest`` values "
+        "remain byte-identical at v1.23.3.\n"
+        "\n"
+        f"{_V1_23_3_LINE_PREFIX}{test_count}\n"
+        "\n"
+        "<!-- v1.23.3 test inventory pin: END -->\n"
+    )
+
+
 def _format_v1_23_2_block(test_count: int) -> str:
     """Return the v1.23.2 inventory block in the canonical
     format. Marked with HTML comments for idempotent
@@ -203,11 +258,11 @@ def _format_v1_23_2_block(test_count: int) -> str:
 
 
 def refresh_inventory(test_count: int) -> None:
-    """Replace (or append) the v1.23.1 + v1.23.2 inventory
-    blocks in ``docs/test_inventory.md``. Both blocks carry
-    the same current ``test_count`` — the most recent
-    milestone's pin reflects the post-milestone collection
-    total."""
+    """Replace (or append) the v1.23.1 + v1.23.2 + v1.23.3
+    inventory blocks in ``docs/test_inventory.md``. All
+    blocks carry the same current ``test_count`` — the most
+    recent milestone's pin reflects the post-milestone
+    collection total."""
     text = _DOC_PATH.read_text(encoding="utf-8")
 
     # v1.23.1 block.
@@ -231,6 +286,17 @@ def refresh_inventory(test_count: int) -> None:
         if not text.endswith("\n"):
             text += "\n"
         text = text + "\n" + block_2
+
+    # v1.23.3 block.
+    block_3 = _format_v1_23_3_block(test_count)
+    if _V1_23_3_BLOCK_RE.search(text):
+        text = _V1_23_3_BLOCK_RE.sub(
+            block_3.rstrip("\n"), text
+        )
+    else:
+        if not text.endswith("\n"):
+            text += "\n"
+        text = text + "\n" + block_3
 
     _DOC_PATH.write_text(text, encoding="utf-8")
 
