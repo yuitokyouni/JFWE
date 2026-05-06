@@ -1082,15 +1082,36 @@ def _strip_module_docstring(text: str) -> str:
 
 def _strip_forbidden_literal(text: str) -> str:
     """Strip the ``FORBIDDEN_STRESS_PROGRAM_FIELD_NAMES``
-    frozenset literal block (case-insensitive)."""
+    frozenset literal block (case-insensitive).
+
+    v1.21.2 fix (was a v1.21.1a-flagged latent issue): use
+    balanced-paren counting on the ``frozenset(...)`` call so
+    a stray ``)`` inside an inline comment within the literal
+    block — e.g.,
+    ``# manual_annotation only — never inferred; never a
+    # dataclass field at v1.21.x)`` — does not stop the
+    scrubber early. The previous implementation used
+    ``text.find(")", open_idx)``, which terminated at the
+    first ``)`` it saw; that left the second half of the
+    literal un-stripped. No runtime change — test-helper
+    precision only."""
     lower = text.lower()
     open_idx = lower.find("forbidden_stress_program_field_names")
     if open_idx < 0:
         return text
-    close_idx = text.find(")", open_idx)
-    if close_idx <= open_idx:
+    paren_open = text.find("(", open_idx)
+    if paren_open < 0:
         return text
-    return text[: open_idx] + text[close_idx:]
+    depth = 1
+    i = paren_open + 1
+    while i < len(text) and depth > 0:
+        c = text[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        i += 1
+    return text[:open_idx] + text[i:]
 
 
 def test_module_jurisdiction_neutral_scan():

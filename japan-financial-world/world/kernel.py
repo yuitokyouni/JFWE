@@ -24,6 +24,7 @@ from world.reference_universe import ReferenceUniverseBook
 from world.scenario_applications import ScenarioApplicationBook
 from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.scenario_schedule import ScenarioScheduleBook
+from world.stress_applications import StressProgramApplicationBook
 from world.stress_programs import StressProgramBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
@@ -224,6 +225,14 @@ class WorldKernel:
     stress_programs: StressProgramBook = field(
         default_factory=StressProgramBook
     )
+    # v1.21.2 — stress program application storage. Append-only;
+    # the v1.21.2 ``apply_stress_program(...)`` thin orchestrator
+    # writes here. Empty by default — pinned by
+    # ``tests/test_stress_applications.py::test_world_kernel_empty_stress_application_book_by_default``
+    # and the existing-profile digest trip-wires.
+    stress_applications: StressProgramApplicationBook = field(
+        default_factory=StressProgramApplicationBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -278,6 +287,7 @@ class WorldKernel:
             self.reference_universe,
             self.scenario_schedule,
             self.stress_programs,
+            self.stress_applications,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
