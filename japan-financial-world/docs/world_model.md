@@ -11018,3 +11018,126 @@ fresh design pin):
   v1.22 stress surface.
 
 Silent extension of v1.22 is forbidden.
+
+### 131.9 v1.22.last freeze (binding)
+
+§131 is **frozen at v1.22.last** as a docs-only closeout of
+the v1.22 sequence. The v1.22 layer is now operationally
+complete:
+
+- **v1.22.0** shipped the docs-only design pin (§131.1 –
+  §131.8 above + the design note
+  [`docs/v1_22_static_ui_stress_readout_reflection.md`](v1_22_static_ui_stress_readout_reflection.md)).
+- **v1.22.1** shipped the descriptive-only `stress_readout`
+  payload section on `RunExportBundle`
+  ([`world/run_export.py`](../world/run_export.py)) plus
+  the kernel-aware projection helper
+  ([`world/stress_readout_export.py`](../world/stress_readout_export.py))
+  wired into all three CLI bundle builders. Empty by
+  default; omitted from JSON when no v1.21 stress program
+  has been applied — preserving every v1.21.last digest
+  byte-identical. **+13 tests.**
+- **v1.22.2** shipped the Active Stresses strip inside the
+  existing v1.20.5 Universe sheet
+  ([`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html)).
+  Read-only static rendering; `<input type="file">` +
+  `FileReader` + `JSON.parse` only; `textContent` only;
+  no new tab; no Python execution from the browser. **+15
+  tests.**
+- **v1.22.last** ships docs-only: this §131.9 freeze
+  marker; the freeze section in
+  [`docs/v1_22_static_ui_stress_readout_reflection.md`](v1_22_static_ui_stress_readout_reflection.md);
+  the refreshed roadmap rows in
+  [`docs/v1_20_monthly_scenario_reference_universe_summary.md`](v1_20_monthly_scenario_reference_universe_summary.md)
+  and `README.md`.
+
+**What v1.22 is.** A read-only reflection of the v1.21.3
+stress readout, surfaced via one new export payload section
+(`stress_readout`, 19 descriptive-only keys, empty-by-
+default with omission discipline) and one new UI region
+(the Active Stresses strip inside the existing Universe
+sheet).
+
+**What v1.22 is NOT (binding, carried forward from §131.1).**
+
+- v1.22 is **NOT** a new readout — v1.21.3
+  `StressFieldReadout` remains authoritative.
+- v1.22 is **NOT** a stress-impact view — no outcome
+  metric, no bar height, no score, no red/green
+  encoding, no arrows.
+- v1.22 is **NOT** an interaction-inference view — no
+  `amplify` / `dampen` / `offset` / `coexist` label is
+  inferred or rendered as primary UI text.
+- v1.22 is **NOT** a backend-enabled UI — no `fetch`, no
+  XHR, no WebSocket, no Python execution from the browser,
+  no file-system write.
+- v1.22 does **NOT** mutate any source-of-truth book.
+- v1.22 does **NOT** introduce a new tab — the v1.20.5
+  11-tab ↔ 11-sheet bijection is preserved.
+
+**Pinned at v1.22.last:**
+
+| Surface                                                                                       | Value                                                                       |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `pytest -q`                                                                                   | **4893 / 4893 passing**                                                     |
+| Test count delta vs. v1.21.last                                                                | **+28** across v1.22.1 (+13) / v1.22.2 (+15)                                |
+| `quarterly_default` `living_world_digest`                                                     | byte-identical to v1.21.last (`f93bdf3f…b705897c`)                          |
+| `monthly_reference` `living_world_digest`                                                     | byte-identical to v1.21.last (`75a91cfa…91879d`)                            |
+| `scenario_monthly_reference_universe` test-fixture `living_world_digest`                      | byte-identical to v1.21.last (`5003fdfa…566eb6`)                            |
+| v1.20.4 CLI bundle digest                                                                     | byte-identical to v1.21.last (`ec37715b…0731aaf`)                           |
+| Source-of-truth book mutation count                                                            | **0**                                                                       |
+| Ledger emissions from v1.22.x helpers                                                          | **0**                                                                       |
+| New tabs                                                                                       | **0** (11-tab ↔ 11-sheet bijection preserved)                              |
+
+**Design-pin vs implementation drift (resolved at
+v1.22.last).** The original v1.22.0 design note §4.3 / §4.4
+prescribed a 12-monthly-cell strip layout. The v1.22.2 brief
+simplified this to per-readout-entry rendering (one block
+per `stress_readout` entry, with summary cells, multiset
+projections, citation lists, and a Raw canonical labels
+technical-details box). The shipped v1.22.2 implementation
+follows the brief. The v1.22.last freeze **accepts the
+shipped per-entry rendering as the binding v1.22 surface**
+and supersedes the original §4.3 / §4.4 sketch (preserved
+only for git-history continuity). See the v1.22.last freeze
+section of
+[`docs/v1_22_static_ui_stress_readout_reflection.md`](v1_22_static_ui_stress_readout_reflection.md)
+for the full drift-resolution note.
+
+**StressInteractionRule re-pin (binding, carried forward
+from §130.7 / §131.8).** `StressInteractionRule` and the
+`amplify` / `dampen` / `offset` / `coexist` interaction-
+label family remain **deferred to v1.22+ (or never)**. The
+v1.22 sequence does **not** introduce them. Any future
+introduction must be `manual_annotation`-only — written by
+a human reviewer with their own analyst id and timestamp on
+the annotation record, citing explicit evidence from the
+v1.21.3 multiset readout. It MUST NEVER be inferred by a
+helper, a classifier, a closed-set rule table, an LLM, or
+any other automated layer.
+
+**Future optional candidates (NOT planned, NOT scoped).**
+
+- **v1.23 candidate — Institutional Investor Mandate /
+  Benchmark Pressure.** Bounded synthetic mandate /
+  benchmark / peer-pressure constraints on the v1.15.5 /
+  v1.16.2 investor-intent layer.
+- **manual_annotation interaction layer** (post-v1.22,
+  optional).
+- **`bundle_schema_version` field** — v1.22.1's omission
+  discipline keeps no-stress bundles byte-identical with
+  pre-v1.22 bundles, which means a consumer cannot
+  distinguish a v1.21.last-era bundle from a v1.22.1+
+  no-stress bundle. A future schema-version field would
+  address this; it is not v1.22.x scope.
+- **Consolidated forbidden-name composition.** The v1.19.0
+  `FORBIDDEN_RUN_EXPORT_FIELD_NAMES` predates v1.21 and
+  does not yet compose with the v1.21.x stress forbidden
+  sets. A future consolidation pass would reduce the
+  maintenance burden; this is not v1.22.x scope.
+
+The v1.22 sequence is **complete and frozen**. Subsequent
+work that touches the stress-readout reflection layer must
+explicitly re-open scope under a new design pin (a
+v1.22.last-correction or a v1.23+ surface); silent
+extension is forbidden.

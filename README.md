@@ -35,7 +35,7 @@ designed so that:
   inputs, explicit outputs, ledger record, no cross-space
   mutation.
 
-The current concrete capabilities at v1.21.last:
+The current concrete capabilities at v1.22.last:
 
 - An **endogenous routine + heterogeneous attention chain** that
   produces auditable ledger traces from internal cycles —
@@ -139,11 +139,71 @@ warnings — not in any reduction or interpretive label.
 
 ---
 
-## 4. Current milestone: v1.21.last
+## 4. Current milestone: v1.22.last
 
-**v1.21.last Stress Composition Layer freeze (shipped, docs-only).**
-Closes the v1.21 sequence as a **thin orchestrator + read-only
-multiset readout** over the existing v1.18 / v1.20 chain.
+**v1.22.last Static UI Stress Readout Reflection freeze
+(shipped, docs-only).** Closes the v1.22 sequence as a
+**read-only reflection of the v1.21.3 stress readout** in the
+existing v1.20.5 static workbench. v1.22 is **NOT** a new
+readout, **NOT** a stress-impact view, **NOT** an interaction-
+inference view, **NOT** a backend-enabled UI; it does not
+introduce a new tab.
+
+Shipped sequence:
+
+| Milestone     | Surface                                                        |
+| ------------- | -------------------------------------------------------------- |
+| v1.22.0       | Docs-only design pin in [`docs/v1_22_static_ui_stress_readout_reflection.md`](japan-financial-world/docs/v1_22_static_ui_stress_readout_reflection.md) + §131 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md). |
+| v1.22.1       | Descriptive-only `stress_readout` payload section on `RunExportBundle` (19-key whitelist, empty-by-default, omitted from JSON when empty). New module [`world/stress_readout_export.py`](japan-financial-world/world/stress_readout_export.py); extended [`world/run_export.py`](japan-financial-world/world/run_export.py); wired into the CLI exporter. **+13 tests.** |
+| v1.22.2       | Active Stresses strip inside the existing Universe sheet, above the existing sector heatmap. Per-readout-entry rendering: `as_of_date` / template id / `resolved / total` counter / Partial application badge / context-surface · shift-direction · scenario-family multisets / Cited records / Downstream citations / Warnings / Raw canonical labels technical-details box. Read-only static rendering only — `<input type="file">` + `FileReader` + `JSON.parse`; `textContent` only. **+15 tests.** |
+| **v1.22.last**| Docs-only freeze. Final pin section in [`docs/v1_22_static_ui_stress_readout_reflection.md`](japan-financial-world/docs/v1_22_static_ui_stress_readout_reflection.md); §131.9 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md); refreshed roadmap row in [`docs/v1_20_monthly_scenario_reference_universe_summary.md`](japan-financial-world/docs/v1_20_monthly_scenario_reference_universe_summary.md); this README. |
+
+**Pinned at v1.22.last:**
+
+- `pytest -q`: **4893 / 4893 passing** (+28 vs v1.21.last)
+- `ruff check .`: clean
+- `python -m compileall -q world spaces tests examples`: clean
+- All v1.21.last canonical digests preserved
+  byte-identical: `quarterly_default` (`f93bdf3f…b705897c`),
+  `monthly_reference` (`75a91cfa…91879d`),
+  `scenario_monthly_reference_universe` test-fixture
+  (`5003fdfa…566eb6`), v1.20.4 CLI bundle
+  (`ec37715b…0731aaf`).
+- Source-of-truth book mutations: **0**
+- Ledger emissions from v1.22.x helpers: **0**
+- New tabs: **0** (v1.20.5 11-tab ↔ 11-sheet bijection
+  preserved)
+
+v1.22.last sits **alongside** the parallel-track freezes;
+none is modified:
+
+- **Stress composition layer — v1.21.last freeze.** Thin
+  orchestrator + read-only multiset readout over the
+  v1.18 / v1.20 chain. v1.22 reflects this layer; it does
+  not extend it.
+- **Runtime milestone — v1.9.last public prototype.** The
+  runnable living reference world (3 firms × 2 investors ×
+  2 banks × 3 industries × 4 quarters), reconstructable
+  from the append-only ledger.
+- **UI prototype — v1.20.5 static workbench.** HTML / CSS /
+  JS only, loaded under `file://`; renders the v1.20.4
+  bundle in 11 tabs with no backend, no fetch / XHR, no
+  file-system write. v1.22.2 added the Active Stresses
+  strip inside the existing Universe sheet without
+  introducing a new tab.
+- **Frozen loop — v1.16.last closed-loop freeze** +
+  **v1.12.last endogenous attention loop freeze.** Time-
+  crossing firm latent state, attention-conditioned
+  mechanisms, finite **actor attention** budget with
+  deterministic decay / crowding / saturation.
+- **Settlement substrate — v1.13.last generic central-bank
+  settlement infrastructure freeze.** Storage and labels
+  only; no payment system, no real balances, no monetary-
+  policy decisions.
+
+**Earlier concrete code milestone: v1.21.last Stress Composition Layer freeze
+(shipped, docs-only).** Closed the v1.21 sequence as a **thin orchestrator
++ read-only multiset readout** over the existing v1.18 / v1.20 chain.
 
 Shipped sequence:
 
@@ -176,25 +236,9 @@ Shipped sequence:
   (byte-identical to v1.20.last)
 - Source-of-truth book mutations: **0**
 
-v1.21.last sits **alongside** the parallel-track freezes; none of
-those is modified:
-
-- **Runtime milestone — v1.9.last public prototype.** The runnable
-  living reference world (3 firms × 2 investors × 2 banks × 3
-  industries × 4 quarters), reconstructable from the append-only
-  ledger.
-- **UI prototype — v1.20.5 static workbench.** HTML / CSS / JS
-  only, loaded under `file://`; renders the v1.20.4 bundle in 11
-  tabs with no backend, no fetch / XHR, no file-system write.
-- **Frozen loop — v1.16.last closed-loop freeze** + **v1.12.last
-  endogenous attention loop freeze**. Time-crossing firm latent
-  state, attention-conditioned mechanisms, finite **actor
-  attention** budget with deterministic decay / crowding /
-  saturation.
-- **Settlement substrate — v1.13.last generic central-bank
-  settlement infrastructure freeze.** Storage and labels only;
-  no payment system, no real balances, no monetary-policy
-  decisions.
+(The full parallel-track freeze list is in §4 above under
+v1.22.last; v1.21.last is itself listed there as a parallel
+track.)
 
 ---
 
@@ -389,7 +433,7 @@ pytest, and ruff. CI runs the same step.
 python -m pytest -q
 ```
 
-Expected at v1.21.last: **`4865 passed`**.
+Expected at v1.22.last: **`4893 passed`**.
 
 **Run the v1.9.last living reference world** (from
 `japan-financial-world/`):
@@ -446,7 +490,7 @@ ruff check .
 python -m compileall -q world spaces tests examples
 ```
 
-Both should report clean at v1.21.last.
+Both should report clean at v1.22.last.
 
 ---
 
@@ -469,9 +513,10 @@ before any code lands. Silent extension of v1.21 is forbidden.
 | v1.18.last | Synthetic scenario-driver library                                                                           | **Shipped**                                                     |
 | v1.19.last | Local run bundle + monthly reference profile                                                                | **Shipped**                                                     |
 | v1.20.last | Monthly scenario reference universe                                                                         | **Shipped**                                                     |
-| **v1.21.last** | **Stress Composition Layer freeze**                                                                     | **Shipped — current**                                           |
-| **v1.22.0** | **Static UI Stress Readout Reflection — design pin (docs-only).** Reflects the v1.21.3 read-only multiset readout in the existing v1.20.5 Universe tab. v1.22.1: new descriptive-only `stress_readout` payload section on `RunExportBundle` (empty-by-default; v1.21.last digests preserved byte-identical). v1.22.2: new "Active Stresses" strip with 12 monthly cells above the sector heatmap, family tokens, `resolved / total` counter, `partial: N` text badge, details-panel multisets + citation lists. No new tab; no bar height; no score; no `impact` / `outcome` / `risk score` / `prediction` / `recommendation` / `magnitude` wording; no backend. | **Design scoped — current.** See [`docs/v1_22_static_ui_stress_readout_reflection.md`](japan-financial-world/docs/v1_22_static_ui_stress_readout_reflection.md) and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §131. |
+| v1.21.last | Stress Composition Layer freeze                                                                         | Shipped                                                          |
+| **v1.22.last** | **Static UI Stress Readout Reflection freeze.** v1.22.0 design pin (docs-only); v1.22.1 descriptive-only `stress_readout` payload section on `RunExportBundle` (empty-by-default; omitted from JSON when empty so v1.21.last digests stay byte-identical); v1.22.2 Active Stresses strip in the existing Universe sheet (per-readout-entry rendering: `as_of_date` / template id / `resolved / total` counter / Partial application badge / context-surface · shift-direction · scenario-family multisets / citation lists / Raw canonical labels technical-details box). No new tab. No bar height. No score. Read-only static rendering only. | **Shipped — current.** See [`docs/v1_22_static_ui_stress_readout_reflection.md`](japan-financial-world/docs/v1_22_static_ui_stress_readout_reflection.md) "v1.22.last freeze" section and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §131.9. |
 | v1.23 candidate | **Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark / peer-pressure constraints on the v1.15.5 / v1.16.2 investor-intent layer. | Optional candidate. Not started. Requires a fresh design pin. |
+| v1.23 candidate (alt) | **manual_annotation interaction layer** — `amplify` / `dampen` / `offset` / `coexist` annotation over the v1.21.3 multiset readout. **MUST NEVER be inferred by a helper, classifier, closed-set rule table, LLM, or any other automated layer.** Manual only. | Optional candidate. Not started. Requires a fresh design pin. |
 | v2.x       | Japan public calibration — only after data / license boundaries are designed.                              | Not started. Gated by license review and boundary design.       |
 | v3.x       | Japan proprietary calibration — not public; would live in a private repository and would preserve every public-FWE boundary. | Not started. Not public.                                        |
 

@@ -776,3 +776,205 @@ No runtime code change. No UI implementation. No new tests. No
 new dataclass. No new ledger event. No new label vocabulary. No
 digest movement. No record-count change. No pytest-count
 change.
+
+---
+
+## v1.22.last freeze (docs-only)
+
+v1.22.last closes the v1.22 sequence as a **read-only
+reflection of the v1.21.3 stress readout in the existing
+v1.20.5 static workbench**, shipped via:
+
+- **v1.22.1** — descriptive-only `stress_readout` payload
+  section on `RunExportBundle`, omitted from JSON when
+  empty (preserves all v1.21.last digests byte-identical).
+- **v1.22.2** — Active Stresses strip in the existing
+  Universe sheet, above the existing sector heatmap. No new
+  tab. No backend. No Python execution from the browser.
+- **v1.22.last** — this freeze section (docs-only).
+
+v1.22.last itself is **docs-only** on top of the v1.22.0 →
+v1.22.1 → v1.22.2 code freezes. No new module. No new test.
+No new ledger event. No new label vocabulary. No behavior
+change. No record-count change. No digest movement.
+
+### Shipped sequence
+
+| Milestone     | Surface                                                                  | What it shipped                                                                                                                                                                                                                                                                       |
+| ------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| v1.22.0       | docs only                                                                | This design note (sections 1–11 above) + §131 in `world_model.md` + roadmap-row refresh in `README.md` and `v1_20_monthly_scenario_reference_universe_summary.md`. Test count: 4865 / 4865 (unchanged).                                                                                |
+| v1.22.1       | export code: `world/run_export.py` + `world/stress_readout_export.py` (NEW) + `examples/reference_world/export_run_bundle.py` | New top-level `stress_readout` payload section on `RunExportBundle` (descriptive-only, 19-key whitelist, empty-by-default, omitted from JSON when empty); kernel-aware projection helper `build_stress_readout_export_section`; wired into all three CLI bundle builders. **+13 tests.** |
+| v1.22.2       | static UI: `examples/ui/fwe_workbench_mockup.html` (+~650 lines)         | Active Stresses strip inside the existing Universe sheet, above the existing sector heatmap. Read-only static rendering only. `<input type="file">` + `FileReader` + `JSON.parse` discipline preserved. `textContent` only. **+15 tests.**                                            |
+| **v1.22.last**| docs only (this section)                                                 | This freeze section + §131.9 freeze in `world_model.md` + refreshed roadmap rows in `README.md` and `v1_20_monthly_scenario_reference_universe_summary.md`.                                                                                                                            |
+
+### What v1.22 is
+
+- A **read-only reflection** of the v1.21.3 stress
+  readout. v1.22 produces no new readout; it surfaces the
+  v1.21.3 multiset projection and the per-step resolution
+  state via two new artifacts (one bundle payload section,
+  one UI region).
+- An **export-side projection** (`stress_readout`, 19
+  descriptive-only keys, empty-by-default with omission
+  discipline) that lets a downstream consumer render the
+  readout without re-running the engine.
+- A **single new UI region** (the Active Stresses strip
+  inside the existing Universe sheet) that renders the
+  payload section verbatim.
+
+### What v1.22 is NOT (binding)
+
+- v1.22 is **NOT** a new readout. v1.21.3
+  `StressFieldReadout` remains the authoritative read-only
+  projection.
+- v1.22 is **NOT** a stress-impact view — no outcome
+  metric, no bar height, no score, no numeric intensity, no
+  red / green encoding, no arrows implying causal
+  propagation.
+- v1.22 is **NOT** an interaction-inference view — no
+  `amplify` / `dampen` / `offset` / `coexist` label is
+  inferred or rendered as primary UI text.
+- v1.22 is **NOT** a backend-enabled UI — no `fetch`, no
+  XHR, no WebSocket, no Python execution from the browser,
+  no file-system write, no `eval`, no `new Function(`.
+- v1.22 does **NOT** change any export digest for a no-
+  stress run profile. The empty-section omission strategy
+  in `RunExportBundle.to_dict()` keeps every v1.21.last
+  digest byte-identical.
+- v1.22 does **NOT** mutate any source-of-truth book. The
+  v1.22.1 export helpers are read-only by construction;
+  the v1.22.2 UI is rendering-only.
+- v1.22 does **NOT** introduce a new tab. The v1.20.5
+  11-tab ↔ 11-sheet bijection is preserved.
+
+### Final freeze pin (binding)
+
+| Surface                                                                                       | Value                                                                       |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `pytest -q`                                                                                   | **4893 / 4893 passing**                                                     |
+| `python -m compileall -q world spaces tests examples`                                         | clean                                                                       |
+| `ruff check .`                                                                                | clean                                                                       |
+| Test count delta vs. v1.21.last                                                                | **+28 tests** (4865 → 4893): v1.22.1 (+13) / v1.22.2 (+15)                  |
+| `quarterly_default` `living_world_digest`                                                     | **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (byte-identical to v1.21.last) |
+| `monthly_reference` `living_world_digest`                                                     | **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`** (byte-identical to v1.21.last) |
+| `scenario_monthly_reference_universe` test-fixture `living_world_digest`                       | **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`** (byte-identical to v1.21.last) |
+| v1.20.4 CLI export bundle digest (no-stress profile)                                           | **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`** (byte-identical to v1.21.last) |
+| Source-of-truth book mutation count                                                            | **0**                                                                       |
+| Ledger emissions from v1.22.x helpers                                                          | **0**                                                                       |
+| New ledger event types                                                                         | **0**                                                                       |
+| New label vocabularies                                                                         | **0**                                                                       |
+| New dataclasses                                                                                | **0** (v1.21.3 `StressFieldReadout` reused)                                  |
+| New tabs                                                                                       | **0** (11-tab ↔ 11-sheet bijection preserved)                               |
+
+### Design-pin vs implementation drift (resolved at v1.22.last)
+
+The original v1.22.0 design note at §4.3 / §4.4 (above)
+prescribed a **12 monthly cells** strip layout — one cell
+per monthly period, each listing the active stress family
+tokens with hover-revealed multisets. The v1.22.2 brief
+**simplified** this to **per-readout-entry rendering**: one
+block per `stress_readout` entry, with summary cells
+(`as_of_date` / template id / `resolved / total` counter),
+multiset projections (context surfaces / shift directions /
+scenario families), citation lists, warnings, and a Raw
+canonical labels technical-details box. The shipped v1.22.2
+implementation follows the brief, not the original §4.3 /
+§4.4 sketch.
+
+This drift is **resolved at v1.22.last by accepting the
+shipped per-entry rendering as the binding v1.22 surface**.
+The §4.3 / §4.4 12-monthly-cell text above is **superseded**
+and preserved only for git-history continuity. Future
+contributors reading this document should treat §4.3 / §4.4
+as historical sketch and the v1.22.last freeze section as
+the authoritative spec.
+
+The simplification is consistent with the v1.21.0a doctrine
+that the audit value is in the **citations + per-step
+resolution state**, not in any visualisation that risks
+being read as a temporal causal claim. Per-entry rendering
+makes the readout's structure (one entry per program
+application, citation arrays preserved in emission order)
+visible without overlaying a synthetic timeline that would
+have invited "this stress happened in month N → that
+stress happened in month N+1, therefore …" misreadings.
+
+### Hard boundary (re-pinned at v1.22.last)
+
+v1.22.last carries forward every v1.21.last hard boundary in
+full. The boundary list at v1.22.last is therefore identical
+to v1.21.last, plus the v1.22.x-specific UI / export
+boundaries pinned in §7 / §8 above:
+
+- **No real-world output** — no price formation, no forecast
+  path, no expected return, no target price, no order /
+  trade / execution / clearing / settlement / financing
+  execution, no firm decision / investor action / bank
+  approval, no recommendation / investment advice.
+- **No real-world input** — no real data, no real
+  institutional identifiers, no licensed taxonomy
+  dependency, no Japan calibration.
+- **No autonomous reasoning** — no LLM execution at runtime,
+  no LLM prose as source-of-truth, `reasoning_mode =
+  "rule_based_fallback"` binding, no interaction
+  auto-inference (`amplify` / `dampen` / `offset` /
+  `coexist` deferred to v1.22+ as `manual_annotation`-only).
+- **No source-of-truth book mutation** — every pre-existing
+  book byte-identical pre / post any v1.22 call.
+- **No backend in the UI** — `<input type="file">` +
+  `FileReader` + `JSON.parse` only.
+- **No digest movement** — empty-section omission
+  discipline preserves every v1.21.last digest
+  byte-identical for the no-stress run profiles.
+
+### Future optional candidates (NOT planned, NOT scoped)
+
+The v1.22 sequence ends here. None of the following is on
+the roadmap; each requires a fresh design pin under a new
+milestone:
+
+- **v1.23 candidate — Institutional Investor Mandate /
+  Benchmark Pressure.** Bounded synthetic mandate /
+  benchmark / peer-pressure constraints on the v1.15.5 /
+  v1.16.2 investor-intent layer. Decoupled from the v1.21 /
+  v1.22 stress surface.
+- **manual_annotation interaction layer (post-v1.22,
+  optional).** A `manual_annotation`-only annotation layer
+  over the v1.21.3 multiset readout. Human-authored only;
+  never auto-inferred by a helper, a classifier, a closed-
+  set rule table, an LLM, or any other automated layer.
+  MUST cite explicit evidence from the multiset readout.
+  MUST NOT replace the readout.
+- **A `bundle_schema_version` field on `RunExportBundle`.**
+  v1.22.1's omission discipline keeps no-stress bundles
+  byte-identical with pre-v1.22 bundles, which means a
+  consumer cannot distinguish a v1.21.last-era bundle from
+  a v1.22.1+ no-stress bundle. A future schema-version
+  field would address this; it is not v1.22.x scope.
+- **A consolidated forbidden-name composition.** The four
+  v1.21.x forbidden frozensets compose explicitly; the
+  v1.19.0 `FORBIDDEN_RUN_EXPORT_FIELD_NAMES` predates v1.21
+  and does not yet compose with the stress sets. A future
+  consolidation pass could reduce the maintenance burden
+  before v1.23 ships.
+
+These are **candidates**, not commitments. The v1.22
+sequence is frozen as-is.
+
+### Read-in order (for a v1.22 reviewer)
+
+1. [`v1_21_stress_composition_layer.md`](v1_21_stress_composition_layer.md)
+   — the v1.21 layer v1.22 reflects.
+2. This document — the v1.22 design pin (this freeze section
+   is the authoritative shipped spec; §4.3 / §4.4 above are
+   superseded historical sketch).
+3. [`world_model.md`](world_model.md) §131.1 — §131.9 — the
+   constitutional position of v1.22.
+4. [`research_note_001_stress_composition_without_outcome_inference.md`](research_note_001_stress_composition_without_outcome_inference.md)
+   — the research framing v1.22 inherits.
+
+The v1.22 sequence is **complete and frozen**. Subsequent
+work that touches the stress-readout reflection layer must
+explicitly re-open scope under a new design pin (a
+v1.22.last-correction or a v1.23+ surface); silent extension
+is forbidden.
