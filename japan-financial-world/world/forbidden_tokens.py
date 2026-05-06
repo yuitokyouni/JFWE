@@ -361,6 +361,44 @@ FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA: frozenset[str] = (
 
 
 # ---------------------------------------------------------------------------
+# v1.26.0 UNIVERSE / CALENDAR delta — generic, country-neutral
+# substrate primitives. Hard-forbids event-to-price /
+# earnings-surprise / event-study language; hard-forbids real-
+# data adapter names; hard-forbids portfolio / index weight
+# tokens.
+# ---------------------------------------------------------------------------
+
+
+FORBIDDEN_TOKENS_V1_26_0_UNIVERSE_CALENDAR_DELTA: frozenset[str] = (
+    frozenset(
+        {
+            # v1.26.0 calendar / event-as-action prohibitions
+            "earnings_surprise",
+            "earnings_beat",
+            "earnings_miss",
+            "event_study_alpha",
+            "event_window_return",
+            "post_event_drift",
+            "calendar_arbitrage",
+            # v1.26.0 real-data / Japan-specific adapter
+            # prohibitions
+            "edinet",
+            "edinet_xbrl",
+            "edinet_filing_id",
+            "j_quants",
+            "tdnet",
+            "fsa_filing",
+            # v1.26.0 universe-as-portfolio prohibitions
+            "universe_weight",
+            "constituent_weight",
+            "index_weight_change",
+            "rebalance_event",
+        }
+    )
+)
+
+
+# ---------------------------------------------------------------------------
 # Composed canonical sets
 #
 # These are the canonical re-compositions that the existing
@@ -474,8 +512,28 @@ FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES: frozenset[str] = (
 )
 
 
+# v1.26.0 universe / calendar substrate forbidden-name set —
+# composes the v1.25.0 canonical set with the v1.26.0 delta.
+# v1.26.1 / v1.26.2 / v1.26.3 / v1.26.4 storage + readout +
+# export scan every dataclass field name, payload key,
+# metadata key, and label value against this composed set.
+FORBIDDEN_UNIVERSE_CALENDAR_FIELD_NAMES: frozenset[str] = (
+    FORBIDDEN_TOKENS_BASE
+    | FORBIDDEN_TOKENS_V1_19_0_RUN_EXPORT_DELTA
+    | FORBIDDEN_TOKENS_V1_19_3_REAL_INDICATOR_DELTA
+    | FORBIDDEN_TOKENS_V1_20_0_REAL_ISSUER_DELTA
+    | FORBIDDEN_TOKENS_V1_20_0_LICENSED_TAXONOMY_DELTA
+    | FORBIDDEN_TOKENS_V1_21_0A_STRESS_DELTA
+    | FORBIDDEN_TOKENS_V1_22_0_EXPORT_DELTA
+    | FORBIDDEN_TOKENS_V1_24_0_MANUAL_ANNOTATION_DELTA
+    | FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA
+    | FORBIDDEN_TOKENS_V1_26_0_UNIVERSE_CALENDAR_DELTA
+)
+
+
 __all__ = [
     "FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES",
+    "FORBIDDEN_UNIVERSE_CALENDAR_FIELD_NAMES",
     "FORBIDDEN_MANUAL_ANNOTATION_FIELD_NAMES",
     "FORBIDDEN_RUN_EXPORT_FIELD_NAMES",
     "FORBIDDEN_STRESS_APPLICATION_FIELD_NAMES",
@@ -491,4 +549,5 @@ __all__ = [
     "FORBIDDEN_TOKENS_V1_22_0_EXPORT_DELTA",
     "FORBIDDEN_TOKENS_V1_24_0_MANUAL_ANNOTATION_DELTA",
     "FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA",
+    "FORBIDDEN_TOKENS_V1_26_0_UNIVERSE_CALENDAR_DELTA",
 ]

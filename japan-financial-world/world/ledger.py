@@ -152,6 +152,18 @@ class RecordType(str, Enum):
     INVESTOR_MANDATE_PROFILE_RECORDED = (
         "investor_mandate_profile_recorded"
     )
+    # v1.26.1 — entity lifecycle event (generic, country-
+    # neutral). Emitted exactly once per successful
+    # ``UniverseEventBook.add_event(...)`` call. An empty
+    # book emits no record (digest preservation).
+    UNIVERSE_EVENT_RECORDED = "universe_event_recorded"
+    # v1.26.2 — per-entity reporting calendar profile
+    # (generic). Emitted exactly once per successful
+    # ``ReportingCalendarProfileBook.add_profile(...)``
+    # call. Empty book → no record.
+    REPORTING_CALENDAR_PROFILE_RECORDED = (
+        "reporting_calendar_profile_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

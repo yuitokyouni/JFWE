@@ -28,6 +28,7 @@ from world.investor_mandates import InvestorMandateBook
 from world.manual_annotations import ManualAnnotationBook
 from world.stress_applications import StressProgramApplicationBook
 from world.stress_programs import StressProgramBook
+from world.universe_events import UniverseEventBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
 from world.constraints import ConstraintBook, ConstraintEvaluator
@@ -255,6 +256,15 @@ class WorldKernel:
     investor_mandates: InvestorMandateBook = field(
         default_factory=InvestorMandateBook
     )
+    # v1.26.1 — generic, country-neutral entity lifecycle
+    # event ledger. Append-only; one
+    # ``UNIVERSE_EVENT_RECORDED`` event per add_event;
+    # empty by default — empty book → no record → no
+    # digest movement; static-universe semantics
+    # preserved for every existing fixed fixture.
+    universe_events: UniverseEventBook = field(
+        default_factory=UniverseEventBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -312,6 +322,7 @@ class WorldKernel:
             self.stress_applications,
             self.manual_annotations,
             self.investor_mandates,
+            self.universe_events,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
