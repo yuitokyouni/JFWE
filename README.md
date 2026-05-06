@@ -139,7 +139,111 @@ warnings — not in any reduction or interpretive label.
 
 ---
 
-## 4. Current milestone: v1.27.last
+## 4. Current milestone: v2.0.0
+
+**v2.0.0 Japan Public Calibration Boundary Design —
+design pin (shipped, docs-only).** First non-generic
+milestone in the public FWE roadmap. Defines the boundary
+between (1) the generic public FWE substrate already
+shipped at v1.27.last, (2) future Japan public
+calibration using legally accessible public data, and (3)
+Japan proprietary calibration using paid data, expert
+interviews, manually curated relationship maps, or
+non-public assumptions. v2.0.0 does **NOT** calibrate
+Japan, does **NOT** import Japanese data, does **NOT**
+introduce real Japanese company names / securities codes /
+filing data / cross-shareholding data / reporting-calendar
+data / index constituent data / price-impact models /
+investment recommendations. v2.0.0 ships **only** a
+binding three-layer boundary, an enumerated candidate-
+public-data category list (D.1–D.11) for *future*
+consideration only, mandatory citation + v1.27.3
+provenance discipline for any future Japan-related
+manual annotation, an entity-identity policy that keeps
+real-id mapping module-isolated and license-review-gated,
+and design invariants that pin jurisdiction-neutrality,
+opt-in Japan calibration, no-investment-advice, no-alpha-
+without-validation, no-proprietary-data-in-public-repo,
+no-private-annotation-leakage, and no-digest-impact-for-
+existing-canonical-fixtures. v2.0.0 introduces no runtime
+module, no new dataclass, no new ledger event, no new
+test, no new label vocabulary, no new fixture. Every
+v1.21.last canonical `living_world_digest` is preserved
+byte-identically.
+
+Shipped runtime / UI / loop / settlement set:
+
+- **Runtime milestone — v1.9.last public prototype.**
+- **UI prototype — v1.20.5 static workbench**
+  (with the v1.22.2 Active Stresses strip).
+- **Frozen loop — v1.16.last closed-loop freeze**
+  + **v1.12.last endogenous attention loop freeze**.
+- **Settlement substrate — v1.13.last generic
+  central-bank settlement infrastructure freeze.**
+
+v2.0.0 deliverables:
+
+| Artifact | Surface |
+| -------- | ------- |
+| **v2.0.0 design pin** | [`docs/v2_0_japan_public_calibration_boundary.md`](japan-financial-world/docs/v2_0_japan_public_calibration_boundary.md) — sections A–M covering purpose, three-layer boundary, candidate categories, explicitly-forbidden list, public-data license policy, entity-identity policy, calibration policy, provenance and annotation policy, digest and fixture policy, future v2.x roadmap (proposal only), commercial boundary, and design invariants. |
+| **§137 in `world_model.md`** | [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §137 constitutional pointer to the v2.0.0 design pin. |
+| **§9 roadmap row** | This README §9 — promoted v2.0 from "candidate" to "Design scoped — current"; v2.1 / v2.2 / v2.3 / v2.4 / v2.5 candidates listed but not scheduled. |
+
+**Pinned at v2.0.0:**
+
+- `pytest -q`: **5113 / 5113 passing** (unchanged from v1.27.last)
+- `ruff check .`: clean
+- `python -m compileall -q world spaces tests examples`:
+  clean
+- All v1.21.last canonical living-world digests preserved
+  byte-identical at v2.0.0:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- New runtime files: **0**
+- New runtime modules: **0**
+- New dataclasses: **0**
+- New `RecordType` values: **0**
+- New tests: **0**
+- New tabs: **0**
+- Export schema changes: **0**
+- New real-data adapters: **0**
+- New real Japanese company names: **0**
+- New real securities codes: **0**
+
+**Three-layer boundary (binding):**
+
+- **Layer 1 — Generic FWE substrate** (public, shipped
+  at v1.27.last): jurisdiction-neutral; synthetic
+  fixtures only; no real-data adapter; no real filing-
+  system reference; safe to publish.
+- **Layer 2 — Japan public calibration** (gated, future):
+  legally accessible public data only; citation-bound;
+  v1.27.3 provenance-bound; raw-source separation from
+  derived generic records; no investment-advice
+  semantics; publishable only after data-license
+  review per source.
+- **Layer 3 — Japan proprietary calibration** (closed,
+  not open-sourced): paid datasets, expert interviews,
+  manually curated proprietary relationship maps,
+  proprietary scoring rules, alpha hypotheses, client-
+  specific calibration. Lives outside this repository
+  as a separate proprietary v3.x track.
+
+The next milestone (provisional) is **v2.0.last
+docs-only freeze**. v2.1 / v2.2 / v2.3 / v2.4 / v2.5
+candidates exist on the roadmap but are not scheduled.
+v3.x proprietary calibration belongs to a separate
+proprietary track and is **not** open-sourced.
+
+---
+
+### Earlier concrete code milestone: v1.27.last (frozen)
 
 **v1.27.last Generic Strategic Relationship Network +
 Annotation Provenance Hardening freeze (shipped, docs-
@@ -801,12 +905,14 @@ forbidden.
 | v1.24.last | Manual Annotation Interaction Layer freeze (human-authored append-only audit overlay; `source_kind = "human"` / `reasoning_mode = "human_authored"`; no auto-annotation; no causal proof; no interaction inference). | **Shipped.** |
 | v1.25.last | **Generic Institutional Investor Mandate / Benchmark Pressure freeze.** v1.25.0 design pin (docs-only); v1.25.1 storage (`InvestorMandateProfile` + `InvestorMandateBook`, closed-set vocabularies, `INVESTOR_MANDATE_PROFILE_RECORDED` ledger event type, empty-by-default kernel field); v1.25.2 read-only `InvestorMandateReadout` projecting closed-set `MANDATE_REVIEW_CONTEXT_LABELS` + `MANDATE_ATTENTION_BIAS_LABELS`; v1.25.3 optional descriptive-only `investor_mandate_readout` payload section + minimal "Investor mandate context" panel inside the existing Universe sheet (no new tab; `textContent` only); v1.25.4 read-only case study; v1.25.last freeze. **Generic and jurisdiction-neutral** — `_like` archetype labels only; **NOT Japan calibration**; no real Japanese issuer ids; no JPX / TOPIX / Nikkei / GICS / EDINET dependency. **No portfolio allocation. No target weight. No rebalancing. No buy / sell / order / trade / execution. No expected return / target price / recommendation. No tracking-error value. No benchmark identifier. No actor decision. No investor / market intent emitted from the mandate surface. No source-of-truth mutation beyond the one `investor_mandate_profile_recorded` ledger event per caller-initiated `add_profile` call. No digest movement.** | **Shipped.** See [`docs/v1_25_institutional_investor_mandate_benchmark_pressure.md`](japan-financial-world/docs/v1_25_institutional_investor_mandate_benchmark_pressure.md) §21 "v1.25.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §134.6. |
 | v1.26.last | **Entity Lifecycle + Reporting Calendar Foundation freeze (generic).** v1.26.0 design pin; v1.26.1 `UniverseEventRecord` storage (closed-set `UNIVERSE_EVENT_TYPE_LABELS`: entity_listed / delisted / merged / renamed / split / status_changed / unknown; `UNIVERSE_EVENT_RECORDED` ledger event); v1.26.2 `ReportingCalendarProfile` storage (closed-set `MONTH_LABELS` 1-12 + unknown; `DISCLOSURE_CLUSTER_LABELS`; `REPORTING_INTENSITY_LABELS`; `REPORTING_CALENDAR_PROFILE_RECORDED` ledger event); v1.26.3 read-only `UniverseCalendarReadout` (active/inactive entity walk; reporting-due via deterministic month-label extraction); v1.26.4 optional descriptive-only `universe_calendar_readout` payload section + minimal "Universe / calendar" panel inside the existing Universe sheet (no new tab; textContent only); v1.26.last freeze. **Empty-by-default rule preserves every existing fixed fixture byte-identically** — a kernel without UniverseEventRecord + ReportingCalendarProfile records continues to behave as a static universe exactly as it did at v1.25.last. **Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / JPX / TOPIX / Nikkei / GICS / MSCI / S&P / FactSet / Bloomberg / Refinitiv dependency. No event-to-price mapping. No earnings-surprise / event-study / calendar-arbitrage inference. No portfolio / universe weight / constituent weight / rebalance event. No actor decision. No source-of-truth book mutation. No digest movement.** | **Shipped.** See [`docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md`](japan-financial-world/docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md) §15 and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §135.6. |
-| **v1.27.last** | **Generic Strategic Relationship Network + Annotation Provenance Hardening freeze.** v1.27.0 design pin; v1.27.1 `StrategicRelationshipRecord` storage (closed-set `RELATIONSHIP_TYPE_LABELS`: strategic_holding_like / supplier_customer_like / group_affiliation_like / lender_relationship_like / governance_relationship_like / commercial_relationship_like / unknown; closed-set `DIRECTION_LABELS`; `STRATEGIC_RELATIONSHIP_RECORDED` ledger event; empty-by-default kernel field; 13 tests); v1.27.2 read-only `StrategicRelationshipReadout` (counts only — no centrality, no rank, no risk score) + optional descriptive-only `strategic_relationship_readout` payload section omitted-when-empty (13 tests); v1.27.3 `ManualAnnotationProvenanceRecord` storage (pseudonymous; closed-set `AUTHORITY_LABELS`: self_review / delegated_review / supervisory_review / audit_review / unknown; closed-set `EVIDENCE_ACCESS_SCOPE_LABELS`: public_synthetic / internal_synthetic / restricted_synthetic / unknown; anti-email-leak guard rejects `@` in `annotator_id_label`; `MANUAL_ANNOTATION_PROVENANCE_RECORDED` ledger event; 11 tests); v1.27.last freeze. **v1.27 closes the last generic substrate addition in public v1.x.** Next milestone is v2.0 Japan Public Calibration Boundary Design (docs-only). **Empty-by-default kernel fields. Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / EDGAR. No real-company name / relationship claim. No ownership percentage / voting power / market value / fair value / centrality score / systemic-importance score. No real-person name / email / phone / national-id / employee-id. No SOC2 / FISC / ISO27001 / regulatory-attestation compliance claim. No LLM authoring. No source-of-truth book mutation. No digest movement.** | **Shipped — current.** See [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md) §7 "v1.27.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §136.6. |
-| v2.0 candidate | **Japan Public Calibration Boundary Design (docs-only)** — design packet only; no data ingestion. Public data only; license / redistribution policy gated. EDINET adapter is candidate; JPX / TOPIX / Nikkei / GICS dependencies forbidden unless license + redistribution policy is explicitly designed. | Optional candidate. Not started. Gated by license review and boundary design. |
-| v2.1 candidate | **Japan Universe + Disclosure Calendar Public Calibration** — synthetic v1.26 universe + reporting calendar substrate calibrated to public Japanese data (license-permitting). Real Japanese issuer ids only after v2.0 boundary design pins them. | Optional candidate. Not started. Gated by v2.0. |
-| v2.2 candidate | **Japan Cross-Shareholding Public Data Adapter** — public extraction adapter design for v1.27 strategic-relationship substrate. Adapter design first; implementation only after license / redistribution policy is pinned. | Optional candidate. Not started. Gated by v2.0 + v1.27. |
-| v2.x       | Japan public calibration — only after data / license boundaries are designed.                              | Not started. Gated by license review and boundary design.       |
-| v3.x       | Japan proprietary calibration — not public; would live in a private repository and would preserve every public-FWE boundary. | Not started. Not public.                                        |
+| v1.27.last | **Generic Strategic Relationship Network + Annotation Provenance Hardening freeze.** v1.27.0 design pin; v1.27.1 `StrategicRelationshipRecord` storage (closed-set `RELATIONSHIP_TYPE_LABELS`: strategic_holding_like / supplier_customer_like / group_affiliation_like / lender_relationship_like / governance_relationship_like / commercial_relationship_like / unknown; closed-set `DIRECTION_LABELS`; `STRATEGIC_RELATIONSHIP_RECORDED` ledger event; empty-by-default kernel field; 13 tests); v1.27.2 read-only `StrategicRelationshipReadout` (counts only — no centrality, no rank, no risk score) + optional descriptive-only `strategic_relationship_readout` payload section omitted-when-empty (13 tests); v1.27.3 `ManualAnnotationProvenanceRecord` storage (pseudonymous; closed-set `AUTHORITY_LABELS`: self_review / delegated_review / supervisory_review / audit_review / unknown; closed-set `EVIDENCE_ACCESS_SCOPE_LABELS`: public_synthetic / internal_synthetic / restricted_synthetic / unknown; anti-email-leak guard rejects `@` in `annotator_id_label`; `MANUAL_ANNOTATION_PROVENANCE_RECORDED` ledger event; 11 tests); v1.27.last freeze. **v1.27 closes the last generic substrate addition in public v1.x.** **Empty-by-default kernel fields. Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / EDGAR. No real-company name / relationship claim. No ownership percentage / voting power / market value / fair value / centrality score / systemic-importance score. No real-person name / email / phone / national-id / employee-id. No SOC2 / FISC / ISO27001 / regulatory-attestation compliance claim. No LLM authoring. No source-of-truth book mutation. No digest movement.** | **Shipped.** See [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md) §7 "v1.27.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §136.6. |
+| **v2.0.0** | **Japan Public Calibration Boundary Design — design pin (docs-only).** First non-generic milestone; defines the boundary between (1) the generic public FWE substrate already shipped at v1.27.last, (2) future Japan public calibration using legally accessible public data, and (3) Japan proprietary calibration using paid data, expert interviews, manually curated relationship maps, or non-public assumptions (which belongs to a separate proprietary v3.x track and is **not** open-sourced). Three-layer boundary (Layer 1 generic substrate / Layer 2 Japan public calibration / Layer 3 Japan proprietary calibration) with a layer-disjointness invariant. Candidate public data categories enumerated (D.1–D.11) for future v2.x consideration only — none approved for ingestion at v2.0.0. Mandatory citation discipline + v1.27.3 provenance binding for any future Japan-related manual annotation. Real-identity bridge (if ever approved) must be module-isolated, kernel-optional, digest-neutral, and license-review-gated. Empty-by-default rule re-pinned. **No runtime change. No new dataclass. No new ledger event. No new test. No new label vocabulary. No new fixture. No real-data adapter. No real Japanese company name. No real securities code. No real filing data. No real cross-shareholding data. No real reporting-calendar data. No index constituent data. No price-impact model. No investment recommendation. No alpha claim. No backtest claim.** v2.0.0 = docs-only design pin; v2.0.last (provisional) = docs-only freeze; v2.1 / v2.2 / v2.3 / v2.4 / v2.5 candidates = future, gated by license review per sub-milestone. | **Design scoped — current.** See [`docs/v2_0_japan_public_calibration_boundary.md`](japan-financial-world/docs/v2_0_japan_public_calibration_boundary.md) and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §137. |
+| v2.1 candidate | **Japan public entity-universe schema boundary** — synthetic examples only; design-only on what a future Japan-cited `UniverseEventRecord` would look like. No real ids; no real-data adapter at v2.1. | Optional candidate. Not started. Gated by v2.0.0 + license review. |
+| v2.2 candidate | **Japan reporting-calendar public-source mapping design** — synthetic examples only; design-only on what a future Japan-cited `ReportingCalendarProfile` would look like. | Optional candidate. Not started. Gated by v2.1. |
+| v2.3 candidate | **Japan public relationship-source mapping design** — synthetic examples only; design-only on what a future Japan-cited `StrategicRelationshipRecord` + provenance would look like. | Optional candidate. Not started. Gated by v2.2. |
+| v2.4 candidate | **Japan public disclosure metadata boundary design** — what disclosure metadata may be cited; what may not. | Optional candidate. Not started. Gated by v2.3. |
+| v2.5 candidate | **License-safe adapter interface design** — interface only; no real adapter implementation. | Optional candidate. Not started. Gated by v2.4 + license review. |
+| v3.x       | **Japan proprietary calibration — not public.** Lives outside this repository as a separate proprietary track. Paid datasets, expert interviews, manually curated proprietary relationship maps, proprietary scoring rules, alpha hypotheses, and client-specific calibration belong here. **Not open-sourced.** | Not started. Not public. |
 
 **Deferred (or never).** `StressInteractionRule` and the
 `amplify` / `dampen` / `offset` / `coexist` interaction-label

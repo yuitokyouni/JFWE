@@ -12214,3 +12214,138 @@ Japan Public Calibration Boundary Design**
 (docs-only design pin), which begins the explicit
 Japan calibration work that v1.24 / v1.25 / v1.26 /
 v1.27 prepared the substrate for.
+
+## 137 v2.0 — Japan Public Calibration Boundary Design (design pointer, **v2.0.0 design-only**)
+
+*Constitutional position of the v2.0 boundary between
+the generic public FWE substrate and any future Japan
+public calibration. Anchored to the v1.27.last freeze
+(§136.6) and to the v1.26.last freeze (§135.6).*
+
+The binding design pin lives in
+[`v2_0_japan_public_calibration_boundary.md`](v2_0_japan_public_calibration_boundary.md).
+
+### 137.1 Scope
+
+v2.0 is **the first non-generic milestone** in the
+public FWE roadmap. It defines a boundary; it does
+not perform calibration. v2.0:
+
+- does **not** calibrate Japan;
+- does **not** import Japanese data;
+- does **not** introduce real Japanese company /
+  market / ownership / calendar / filing / index
+  facts;
+- introduces **no** runtime module, no new dataclass,
+  no new ledger event, no new test, no new label
+  vocabulary, no new fixture; and
+- preserves every v1.21.last canonical
+  `living_world_digest` byte-identically.
+
+v2.0 only commits to the boundary that constrains
+all future v2.x work.
+
+### 137.2 Three-layer boundary
+
+- **Layer 1 — Generic FWE substrate (public,
+  shipped at v1.27.last):** jurisdiction-neutral,
+  synthetic fixtures only, no real-data adapter, no
+  real filing-system reference. v1.18 through v1.27
+  ship entirely in Layer 1.
+- **Layer 2 — Japan public calibration (gated,
+  future):** legally accessible public data only;
+  citation-bound; provenance-bound (v1.27.3
+  required); raw-source separation from derived
+  generic records; no investment-advice semantics;
+  publishable only after data-license review per
+  source.
+- **Layer 3 — Japan proprietary calibration (closed,
+  not open-sourced):** paid datasets, expert
+  interviews, manually curated proprietary
+  relationship maps, proprietary scoring rules,
+  alpha hypotheses, client-specific calibration.
+  Layer 3 lives outside this repository as a
+  proprietary v3.x track.
+
+### 137.3 Generic substrate dependencies
+
+v2.0 binds future Japan calibration to existing v1.26
++ v1.27 generic record shapes:
+
+- v1.26 `UniverseEventRecord` carries any future
+  Japan listing-lifecycle event. Closed-set
+  `UNIVERSE_EVENT_TYPE_LABELS` is binding.
+- v1.26 `ReportingCalendarProfile` carries any
+  future Japan fiscal-year-end profile. Closed-set
+  `MONTH_LABELS` / `REPORTING_INTENSITY_LABELS` /
+  `DISCLOSURE_CLUSTER_LABELS` are binding.
+- v1.27 `StrategicRelationshipRecord` carries any
+  future Japan cross-shareholding /
+  supplier-customer / group-affiliation /
+  lender-relationship / governance-relationship /
+  commercial-relationship signal. Closed-set
+  `RELATIONSHIP_TYPE_LABELS` is binding; the
+  `_like` archetype suffix is binding; the
+  no-percentages / no-voting-power /
+  no-market-value / no-centrality-score boundary
+  is binding.
+- v1.27.3 `ManualAnnotationProvenanceRecord` is
+  **mandatory** for any future Japan-specific
+  manually curated record. The pseudonymous-id +
+  anti-email-leak guard is binding.
+
+### 137.4 Forbidden at v2.0
+
+EDINET / TDnet / J-Quants / FSA filing / EDGAR /
+SEDAR adapter implementation; scraping real
+filings; importing real company lists; importing
+real securities codes; importing real
+cross-shareholding data; importing real index
+constituent data; importing real price / volume
+data; using paid data; using employer / private
+data; using expert-interview content; using
+non-public assumptions; generating investment
+recommendations; event-to-price mapping;
+target-price / buy / sell / hold output; portfolio
+construction output; alpha claims; backtest claims.
+
+The v1.x composed forbidden-name sets cover the
+storage / readout / export surfaces; v2.0 binds
+any v2.x record shape to inherit at least one of
+those composed sets verbatim and to extend it only
+with new prohibitions, never with relaxations.
+
+### 137.5 Future v2.x roadmap (proposal only)
+
+- v2.0.0 docs-only design pin (this document)
+- v2.0.last docs-only freeze (provisional)
+- v2.1 candidate Japan public entity-universe
+  schema boundary (synthetic examples only)
+- v2.2 candidate Japan reporting-calendar public-
+  source mapping design
+- v2.3 candidate Japan public relationship-source
+  mapping design
+- v2.4 candidate Japan public disclosure metadata
+  boundary design
+- v2.5 candidate license-safe adapter interface
+  design (no real adapter implementation)
+- v3.0 candidate proprietary calibration boundary
+  (not open-sourced)
+
+v2.0 commits to v2.0.0 and (provisionally) to a
+v2.0.last freeze. Every other line above requires
+its own design pin and license review.
+
+### 137.6 Design invariants
+
+Public FWE remains jurisdiction-neutral by default.
+Japan calibration is opt-in. Real data is
+citation-bound. Source license is tracked before
+ingestion. No investment advice. No alpha claim
+without validation (and validated alpha belongs to
+proprietary v3, not public v2). No proprietary data
+in the public repository. No private annotation
+leakage. No digest impact for existing canonical
+fixtures.
+
+Silent extension of v2 is forbidden.
