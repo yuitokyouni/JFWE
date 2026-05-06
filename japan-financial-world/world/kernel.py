@@ -26,6 +26,9 @@ from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.scenario_schedule import ScenarioScheduleBook
 from world.investor_mandates import InvestorMandateBook
 from world.manual_annotations import ManualAnnotationBook
+from world.reporting_calendar_profiles import (
+    ReportingCalendarProfileBook,
+)
 from world.stress_applications import StressProgramApplicationBook
 from world.stress_programs import StressProgramBook
 from world.universe_events import UniverseEventBook
@@ -265,6 +268,13 @@ class WorldKernel:
     universe_events: UniverseEventBook = field(
         default_factory=UniverseEventBook
     )
+    # v1.26.2 — generic per-entity reporting calendar
+    # profiles. Append-only; one
+    # ``REPORTING_CALENDAR_PROFILE_RECORDED`` event per
+    # add_profile; empty by default.
+    reporting_calendars: ReportingCalendarProfileBook = (
+        field(default_factory=ReportingCalendarProfileBook)
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -323,6 +333,7 @@ class WorldKernel:
             self.manual_annotations,
             self.investor_mandates,
             self.universe_events,
+            self.reporting_calendars,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
