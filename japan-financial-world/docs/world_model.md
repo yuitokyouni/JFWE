@@ -10797,3 +10797,224 @@ work that touches the stress composition layer must
 explicitly re-open scope under a new design pin (a
 v1.22.0a or later correction); silent extension is
 forbidden.
+
+## 131 v1.22 — Static UI Stress Readout Reflection (design pointer, **v1.22.0 design-only**)
+
+§131 ships **as docs only at v1.22.0**. See
+[`docs/v1_22_static_ui_stress_readout_reflection.md`](v1_22_static_ui_stress_readout_reflection.md)
+for the full design note. v1.22.0 introduces no
+executable code, no new tests, no new dataclasses, no
+new ledger event types, no new label vocabulary, no new
+behavior; the v1.21.last digests / per-period record
+counts / per-run windows / pytest count (`4865 / 4865`)
+are all unchanged.
+
+### 131.1 Scope statement (binding)
+
+v1.22 reflects the existing v1.21 read-only stress
+readout in the static UI. **It does not produce a new
+readout.** v1.21.3 already produces the authoritative
+`StressFieldReadout` and the deterministic markdown
+summary; v1.22 surfaces that same readout in the
+v1.20.5 static workbench's existing **Universe** tab.
+
+What v1.22 is (binding):
+
+1. A new top-level **descriptive-only** payload section
+   on `RunExportBundle` named `stress_readout`, mirroring
+   the v1.21.3 readout's plain-id citation surface plus
+   per-step resolution counts and warnings.
+2. A new **Active Stresses** strip inside the existing
+   v1.20.5 Universe tab, above the sector sensitivity
+   heatmap. 12 monthly cells. Reads the v1.22.1 section
+   from the loaded JSON. No new tab.
+
+What v1.22 is **not** (binding):
+
+- Not a new readout — v1.22 is a reflection of v1.21.3.
+- Not a stress-impact view — no outcome metric, no bar
+  height, no score, no numeric intensity.
+- Not an interaction-inference view — no
+  `amplify` / `dampen` / `offset` / `coexist` label.
+- Not a backend-enabled UI — `<input type="file">` +
+  `FileReader` + `JSON.parse` only; no fetch, no XHR,
+  no backend, no file-system write, no Python execution
+  from the browser.
+
+### 131.2 Sequence map
+
+| Sub-milestone | Surface     | Description                                                                                                                                |
+| ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **v1.22.0**   | docs only   | This design pointer + the design note. Test count: 4865 / 4865 (unchanged). All v1.21.last digests preserved.                              |
+| v1.22.1       | export code | New `stress_readout` payload section on `RunExportBundle`. Empty-by-default (omitted from JSON when no stress program); preserves all v1.21.last digests. |
+| v1.22.2       | static UI   | Active Stresses strip in the existing Universe tab. Reads v1.22.1 section. 11-tab ↔ 11-sheet bijection preserved.                          |
+| v1.22.last    | docs only   | Final freeze: shipped sequence map, what-v1.22-is / what-v1.22-is-NOT, pinned test count, preserved digests, hard-boundary re-pin, future optional candidates. |
+
+The sequence is **strictly serial**: v1.22.2 must not
+start until v1.22.1's bundle schema is byte-stable and
+its tests are green; v1.22.1 must not start until
+v1.22.0 (this design pin) is merged.
+
+### 131.3 Bundle schema (binding for v1.22.1)
+
+The new `stress_readout` payload key is a **list of
+zero or one entry**, descriptive-only. Each entry
+contains exactly these 19 keys (mirroring
+`StressFieldReadout` plain-id surfaces +
+`StressProgramApplicationRecord` resolution counts):
+
+```
+stress_program_application_id
+stress_program_template_id
+as_of_date
+total_step_count
+resolved_step_count
+unresolved_step_count
+active_step_ids
+unresolved_step_ids
+unresolved_reason_labels         (closed set: template_missing / unknown_failure)
+is_partial                       (== unresolved_step_count > 0)
+scenario_driver_template_ids
+scenario_application_ids
+scenario_context_shift_ids
+context_surface_labels           (multiset, parallel array)
+shift_direction_labels           (multiset, parallel array)
+scenario_family_labels           (multiset, parallel array)
+source_context_record_ids
+downstream_citation_ids
+warnings
+```
+
+**Empty-section omission (binding).** When no v1.21
+stress program has been applied to the run, the
+`stress_readout` key is **omitted** from the JSON
+output entirely (not emitted as `[]`). This preserves
+byte-identity with pre-v1.22 bundles and keeps every
+existing pinned digest unchanged at v1.22.1:
+
+- `quarterly_default` `living_world_digest`
+  (`f93bdf3f…b705897c`)
+- `monthly_reference` `living_world_digest`
+  (`75a91cfa…91879d`)
+- `scenario_monthly_reference_universe` test-fixture
+  `living_world_digest` (`5003fdfa…566eb6`)
+- v1.20.4 CLI bundle digest (`ec37715b…0731aaf`)
+
+**Forbidden field-name discipline (binding for v1.22.1).** The
+`stress_readout` section MUST NOT contain any of the
+following keys, nested keys, or string values:
+`impact`, `outcome`, `risk_score`, `amplification`,
+`dampening`, `offset_effect`, `dominant_stress`,
+`net_pressure`, `composite_risk`, `forecast`,
+`expected_response`, `prediction`, `recommendation`,
+`expected_return`, `target_price`, `magnitude`,
+`severity_score`, `probability`, `interaction_label`,
+`composition_label`, any `aggregate_*` /
+`combined_*` / `net_*` / `dominant_*` / `composite_*`
+prefix, or any of `amplify` / `dampen` / `offset` /
+`coexist` as label values. The forbidden set
+**composes** with — does not replace —
+`FORBIDDEN_STRESS_PROGRAM_FIELD_NAMES`,
+`FORBIDDEN_STRESS_APPLICATION_FIELD_NAMES`,
+`FORBIDDEN_STRESS_READOUT_FIELD_NAMES`, and
+`FORBIDDEN_RUN_EXPORT_FIELD_NAMES`.
+
+### 131.4 UI placement (binding for v1.22.2)
+
+- **No new tab.** The v1.20.5 sheet-tab set is frozen
+  at 11 tabs by the 11-tab ↔ 11-sheet bijection; v1.22.2
+  MUST preserve it.
+- **Active Stresses strip** sits inside the existing
+  Universe sheet, above the sector sensitivity heatmap,
+  below the universe-profile header. The strip MUST NOT
+  displace, resize, or otherwise reflow the existing
+  v1.20.5 widgets.
+- **12 monthly cells.** Each cell shows: active scenario
+  family tokens (verbatim), a `resolved / total` text
+  counter, and a `partial: N` text badge when
+  `unresolved_step_count > 0`.
+- **Details panel / hover** shows the per-cell context-
+  surface multiset, shift-direction multiset, scenario-
+  family multiset, source context record ids,
+  downstream citation ids, and warnings. Multisets
+  rendered as `label × N` lines.
+- **Empty-state** when `stress_readout` is absent or
+  empty: the strip renders a one-line neutral
+  placeholder (`No stress program applied to this
+  run.`) and 12 em-dash cells; no further vertical
+  space.
+
+### 131.5 Visual boundaries (binding for v1.22.2)
+
+The strip MUST NOT use any of:
+
+- bar height / vertical magnitude encoding
+- numeric score / intensity / amplification / severity
+- red-green performance encoding
+- arrows implying causal propagation
+- the words `impact`, `outcome`, `risk score`,
+  `prediction`, `forecast`, `expected response`,
+  `recommendation`, `investment advice`, `magnitude`,
+  `basis points`, `bps`, `percent intensity`,
+  `amplify`, `dampen`, `offset` (as a label), `coexist`
+- aggregate / combined / net / dominant / composite
+  language anywhere
+
+Required wording (verbatim, case-sensitive):
+
+- `Active stresses` (strip title)
+- `Read-only stress readout` (subtitle)
+- `Context surfaces` (details-panel section header)
+- `Shift directions` (details-panel section header)
+- `Cited records` (details-panel section header)
+- `Downstream citations` (details-panel section header)
+- `Partial application` (details-panel banner when
+  unresolved)
+- `Multiset projection` (caption on multiset rendering)
+
+### 131.6 Cardinality (binding for the v1.22 sequence)
+
+- **0** new dataclasses.
+- **0** new ledger event types.
+- **0** new label vocabularies.
+- **1** new bundle payload key (`stress_readout`).
+- **1** new UI region (the Active Stresses strip).
+- **0** new tabs.
+- v1.22.1 expected test delta: **+ ~ 13** (bundle-schema
+  pin tests).
+- v1.22.2 expected test delta: **+ ~ 16** (UI selector +
+  forbidden-wording pin tests).
+- v1.22.last final test count target: **~ 4894**, exact
+  count pinned at each sub-milestone.
+
+### 131.7 Hard boundary (re-pinned at v1.22.0)
+
+v1.22 inherits and re-pins the v1.21.last hard boundary
+in full: no real-world output (no price formation, no
+forecast, no recommendation, no firm decision, no
+investor action, no bank approval, no order / trade /
+execution / clearing / settlement / financing
+execution); no real-world input (no real data, no real
+institutional identifiers, no licensed taxonomies, no
+Japan calibration); no autonomous reasoning (no LLM
+execution, no LLM prose as source-of-truth, no
+interaction auto-inference); no source-of-truth book
+mutation; no backend in the UI.
+
+### 131.8 Future optional candidates (NOT planned, NOT scoped)
+
+The v1.22 sequence ends at v1.22.last. Optional
+candidates for any later milestone (each requires a
+fresh design pin):
+
+- **manual_annotation interaction layer** (deferred
+  from v1.21.0a §130.7) — `manual_annotation`-only,
+  human-authored, citing explicit evidence from the
+  multiset readout. Never auto-inferred.
+- **v1.23 Institutional Investor Mandate / Benchmark
+  Pressure** — bounded synthetic mandate / benchmark /
+  peer-pressure constraints on the v1.15.5 / v1.16.2
+  investor-intent layer. Decoupled from the v1.21 /
+  v1.22 stress surface.
+
+Silent extension of v1.22 is forbidden.
