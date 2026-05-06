@@ -79,6 +79,15 @@
       font-size: 12px;
       color: #2d2d2d;
       white-space: nowrap;
+      /* v1.23.2a — overflow guard. Without ``min-width: 0`` +
+         ``overflow: hidden``, growing the ``load-status`` /
+         ``digest`` content past the viewport width pushes the
+         left-side brand chip + button group out of view (the
+         "left side flying out" symptom). With these guards,
+         excess content clips inside the ribbon and the brand
+         chip + buttons stay anchored. */
+      min-width: 0;
+      overflow: hidden;
     }
 
     .brand-chip {
@@ -99,6 +108,13 @@
       display: flex;
       gap: 6px;
       align-items: center;
+      /* v1.23.2a — flex-shrink: 0 keeps the action-button
+         group anchored at full width even when the status
+         stack grows. The combination of group {shrink: 0} +
+         status stack {min-width: 0 + overflow: hidden} +
+         ribbon {min-width: 0 + overflow: hidden} converges
+         the layout: buttons stay anchored, status clips. */
+      flex-shrink: 0;
     }
 
     .ribbon-btn {
@@ -588,12 +604,23 @@
       align-items: flex-end;
       line-height: 1.15;
       margin-right: 8px;
+      /* v1.23.2a — let the status stack shrink. Without
+         ``min-width: 0`` + ``overflow: hidden``, growing the
+         load-status text past the available ribbon width
+         pushes the digest pill / version-strip off-screen
+         right (the "right side flying out" symptom). */
+      min-width: 0;
+      overflow: hidden;
     }
 
     .load-status {
       font-family: var(--font-mono);
       font-size: 11px;
       color: var(--muted);
+      /* v1.23.2a — clip overlong status messages. */
+      max-width: 38ch;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .load-status.ok {
@@ -612,6 +639,10 @@
       font-family: var(--font-mono);
       font-size: 9px;
       letter-spacing: 0.02em;
+      /* v1.23.2a — clip overlong substatus lines. */
+      max-width: 42ch;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* v1.17.4 — Strategy / behavior modules disclosure */
@@ -1552,17 +1583,16 @@
     <header class="top-ribbon">
       <div class="brand-chip">FWE</div>
       <div class="ribbon-group">
-        <button id="btn-load-sample" class="ribbon-btn primary" type="button">Load sample run</button>
+        <button id="btn-run" class="ribbon-btn primary" type="button"
+          title="Static UI run — loads the inline sample manifest and applies the selected (regime, scenario) fixture. The Python engine is not invoked.">Run</button>
         <button id="btn-load-local-bundle" class="ribbon-btn" type="button"
           title="v1.19.4 — read a local RunExportBundle JSON produced by the v1.19.2 / v1.19.3.1 CLI exporter. Read-only; no engine execution from the browser.">Load local bundle</button>
         <input id="input-local-bundle" type="file" accept="application/json,.json"
           style="display:none;" aria-hidden="true" />
-        <button id="btn-run-mock" class="ribbon-btn" type="button"
-          title="Static UI run — reads the selected regime fixture; the Python engine is not invoked.">Run mock</button>
         <button id="btn-validate" class="ribbon-btn" type="button"
-          title="Client-side JSON / tab / fixture sanity checks.">Validate</button>
+          title="Client-side JSON / tab / fixture sanity checks. Stays on the active sheet.">Validate</button>
         <button id="btn-compare" class="ribbon-btn" type="button"
-          title="Jump to the Outputs sheet and the regime comparison card.">Compare Regimes</button>
+          title="Surface a status note. Stays on the active sheet (use the Outputs tab for the full regime-compare card).">Compare Regimes</button>
         <button id="btn-export" class="ribbon-btn" type="button"
           title="Static prototype — use the browser's Save / Print dialog.">Export HTML</button>
       </div>
@@ -1572,11 +1602,16 @@
       </div>
       <div class="ribbon-group">
         <div class="version-strip" role="status" aria-label="Version split">
-          <div class="version-pill"><span class="label">UI prototype</span> <span class="value">v0</span></div>
-          <div class="version-pill"><span class="label">Runtime engine</span> <span class="value">v1.20.last</span>
-          </div>
-          <div class="version-pill"><span class="label">Display layer</span> <span class="value">v1.20.last</span></div>
+          <!-- v1.23.2a — pill rotation. Per README §4 / memory
+               convention: keep runtime milestone / UI prototype
+               / frozen loop / settlement substrate as separate
+               pills; do not collapse into one "current version".
+               Pre-v1.23.2a values were stuck at v1.20.last; v1.23.2a
+               rotates them to the actual frozen surfaces. -->
+          <div class="version-pill"><span class="label">UI prototype</span> <span class="value">v1.22.2</span></div>
+          <div class="version-pill"><span class="label">Runtime milestone</span> <span class="value">v1.22.last</span></div>
           <div class="version-pill"><span class="label">Closed loop</span> <span class="value">v1.16.last</span></div>
+          <div class="version-pill"><span class="label">Settlement substrate</span> <span class="value">v1.13.last</span></div>
         </div>
       </div>
       <div class="ribbon-spacer"></div>
@@ -1599,7 +1634,7 @@
       <article id="sheet-cover" class="sheet active">
         <div class="sheet-inner cover-page">
           <div class="cover-grid"></div>
-          <div class="cover-build">build · public prototype<br />runtime v1.20.last · display v1.20.last · synthetic only
+          <div class="cover-build">build · public prototype<br />runtime v1.22.last · UI v1.22.2 · synthetic only
           </div>
           <div class="cover-rule"></div>
           <h1 class="cover-title">Fin World Engine</h1>
@@ -3775,7 +3810,7 @@
                 </tr>
                 <tr>
                   <td>Version</td>
-                  <td class="mono">runtime v1.20.last · display v1.20.last (sample fixture snapshots an earlier engine
+                  <td class="mono">runtime v1.22.last · display v1.22.last (sample fixture snapshots an earlier engine
                     build at v1.16.last / v1.17.x)</td>
                 </tr>
               </table>
@@ -5081,6 +5116,17 @@
       }
 
       function loadSample() {
+        // v1.23.2a — scroll + active-sheet restoration. Mirror
+        // the runMock no-jump discipline: capture position
+        // BEFORE mutations, restore AFTER if any populate
+        // helper accidentally shifted the viewport.
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+        var activeSheet = document.querySelector(
+          'article.sheet.active'
+        );
+        var activeId = activeSheet ? activeSheet.id : null;
+
         var node = $id('fwe-sample-manifest');
         if (!node) return;
         var data;
@@ -5107,10 +5153,38 @@
           src.textContent = 'sample_manifest';
           src.dataset.source = 'sample_manifest';
         }
+
+        // Defensive restore.
+        if (window.scrollX !== sx || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+        var activeAfter = document.querySelector(
+          'article.sheet.active'
+        );
+        var activeIdAfter = activeAfter
+          ? activeAfter.id : null;
+        if (activeId !== null
+            && activeIdAfter !== activeId) {
+          // The sample loader must never change the active
+          // sheet. If it did, surface via load-status.
+          var ls2 = $id('load-status');
+          if (ls2) {
+            ls2.textContent = 'load sample · WARNING · '
+              + 'active sheet shifted';
+          }
+        }
       }
 
-      var btn = $id('btn-load-sample');
-      if (btn) btn.addEventListener('click', loadSample);
+      // v1.23.2a — Run consolidation. The previous mockup
+      // shipped two separate ribbon buttons (``Load sample
+      // run`` + ``Run mock``) that, in practice, the user
+      // always pressed in sequence. v1.23.2a merges them
+      // into a single ``Run`` button. The IIFE that wires
+      // the v1.17.4 ``runMock`` handler (further below)
+      // composes ``loadSample`` first, then ``runMock``,
+      // so the consolidated button reproduces the previous
+      // two-click behaviour with a single click.
+      window.__fweLoadSample = loadSample;
     })();
 
     // -----------------------------------------------------------------
@@ -6120,28 +6194,51 @@
       }
 
       function compareRegimes() {
-        // v1.17.4 redesign: activate the dedicated Regime Compare
-        // sheet and flash the card. We click the tab so the existing
-        // tab-switching IIFE handles active state + URL hash.
-        var regimeTab = document.querySelector(
-          '.sheet-tab[data-sheet="regime-compare"]'
+        // v1.23.2a — Compare Regimes no longer navigates.
+        //
+        // Pre-v1.23.2a: clicking ``Compare Regimes`` clicked the
+        // ``regime-compare`` sheet tab, swapped the active
+        // sheet, and ``scrollIntoView``'d the card. The user
+        // perceived this as an unwanted page transition; the
+        // ribbon also exhibited a layout shift while the sheet
+        // swap settled.
+        //
+        // v1.23.2a: status-only — surface a one-line note in
+        // the top ribbon, like the v1.17.4 ``Run mock`` and
+        // ``Validate`` already do. The user can still navigate
+        // to the regime-compare sheet via the bottom tab strip
+        // when they actually want to read it.
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+        var activeSheet = document.querySelector(
+          'article.sheet.active'
         );
-        if (regimeTab) regimeTab.click();
-        var card = $id('card-regime-compare');
-        if (card) {
-          // Defer scroll to next frame so the sheet swap completes.
-          window.setTimeout(function () {
-            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            card.classList.add('flash');
-            window.setTimeout(function () {
-              card.classList.remove('flash');
-            }, 800);
-          }, 30);
-        }
+        var activeId = activeSheet ? activeSheet.id : null;
         setStatus(
-          'regime compare · static fixture · no engine execution',
+          'compare regimes · static fixture · no engine '
+          + 'execution · open the Outputs tab for the '
+          + 'regime-compare card',
           'ok'
         );
+        // Defensive scroll / sheet-id restore (mirrors the
+        // ``runMock`` no-jump discipline).
+        if (window.scrollX !== sx || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+        var activeAfter = document.querySelector(
+          'article.sheet.active'
+        );
+        var activeIdAfter = activeAfter
+          ? activeAfter.id : null;
+        if (activeId !== null
+            && activeIdAfter !== activeId) {
+          setStatus(
+            'compare regimes · WARNING · active sheet '
+            + 'shifted from '
+            + activeId + ' to ' + activeIdAfter,
+            'warn'
+          );
+        }
       }
 
       function exportHtml() {
@@ -7531,11 +7628,27 @@
         });
       }
 
-      var btnRun = $id('btn-run-mock');
+      // v1.23.2a — Single ``Run`` button. Composes the v1.19.x
+      // ``loadSample`` (inline sample manifest → state /
+      // attention / firms / investors / banks / outputs /
+      // ledger renderers) with the v1.17.4 ``runMock`` (selected
+      // (regime, scenario) → overview / KPI / scenario fixture)
+      // in one click. Both helpers are scroll-stable
+      // (loadSample mutates well-scoped slots; runMock captures
+      // and restores scrollX/scrollY), so the consolidation
+      // does not introduce a sheet-jump.
+      var btnRun = $id('btn-run');
       var btnValid = $id('btn-validate');
       var btnCompare = $id('btn-compare');
       var btnExport = $id('btn-export');
-      if (btnRun) btnRun.addEventListener('click', runMock);
+      if (btnRun) {
+        btnRun.addEventListener('click', function () {
+          if (typeof window.__fweLoadSample === 'function') {
+            window.__fweLoadSample();
+          }
+          runMock();
+        });
+      }
       if (btnValid) btnValid.addEventListener('click', validate);
       if (btnCompare) btnCompare.addEventListener('click', compareRegimes);
       if (btnExport) btnExport.addEventListener('click', exportHtml);
