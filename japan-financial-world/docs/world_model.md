@@ -11141,3 +11141,242 @@ work that touches the stress-readout reflection layer must
 explicitly re-open scope under a new design pin (a
 v1.22.last-correction or a v1.23+ surface); silent
 extension is forbidden.
+
+## 132 v1.23 — Substrate Hardening + Validation Foundation (design pointer, **v1.23.0 design-only**)
+
+§132 ships **as docs only at v1.23.0**. See
+[`docs/v1_23_substrate_hardening_validation_foundation.md`](v1_23_substrate_hardening_validation_foundation.md)
+for the full design note. v1.23.0 introduces no executable
+code, no new tests, no new dataclasses, no new ledger event
+types, no new label vocabulary, no new behavior; the
+v1.22.last digests / per-period record counts / per-run
+windows / pytest count (`4893 / 4893`) are all unchanged.
+
+### 132.1 Scope statement (binding)
+
+v1.23 has two parallel goals, both narrow:
+
+1. **Substrate hardening.** Five concrete contracts that
+   v1.21.x / v1.22.x rely on are not pinned at the
+   substrate level: canonical digests duplicated across
+   tests, six non-composing forbidden-name frozensets, an
+   unpinned cross-layer metadata stamp, an unenforced
+   runtime cardinality cap, and a stale test inventory.
+   v1.23 closes each gap **without changing existing
+   behavior** (no digest movement; no test-count drift
+   beyond additive new pin tests; no runtime side-effect
+   under no-stress profiles).
+2. **Validation foundation.** The v1.21.3 stress readout
+   is currently audit-only — there is no framework for
+   asking "is this readout trustworthy as an audit
+   object?" beyond the boundary-scan / forbidden-name
+   discipline. v1.23 lays the **minimum** scaffolding for
+   six question categories (determinism / boundary
+   preservation / citation completeness / partial-
+   application visibility / inter-reviewer reproducibility
+   placeholder / null-model comparison placeholder). Four
+   are pinnable now; two are placeholders for v1.24+ work.
+
+What v1.23 is (binding):
+
+- Substrate-only. All five hardening sub-tasks preserve
+  existing behavior; the only new runtime artifact is one
+  frozen constant (`STRESS_PROGRAM_RUN_RECORD_CAP`) and
+  one trip-wire check inside `apply_stress_program(...)`.
+- Read-only validation. Every validation pin reads
+  existing records and asserts a property; nothing emits
+  a ledger record, mutates a book, or invents a new
+  label.
+- Additive tests only. v1.23 adds tests; it does not
+  rename, restructure, or remove any existing test.
+- Digest-stable. All v1.21.last canonical digests
+  (`f93bdf3f…b705897c` / `75a91cfa…91879d` /
+  `5003fdfa…566eb6` / `ec37715b…0731aaf`) remain
+  byte-identical at every v1.23.x sub-milestone.
+
+What v1.23 is **NOT** (binding):
+
+- v1.23 is **NOT** the institutional investor mandate /
+  benchmark pressure layer. That candidate is deferred to
+  **v1.25**.
+- v1.23 is **NOT** the manual_annotation interaction
+  layer. That candidate is deferred to **v1.24**.
+- v1.23 is **NOT** an outcome / impact / risk-score view.
+  No magnitude, no probability, no expected response.
+- v1.23 is **NOT** a price / forecast / trading /
+  recommendation surface.
+- v1.23 does **NOT** introduce real data, Japan
+  calibration, or LLM execution.
+- v1.23 is **NOT** a refactor of the v1.21.x / v1.22.x
+  surface. It pins the existing surface; it does not
+  change it.
+
+### 132.2 Sequence map
+
+| Sub-milestone | Surface     | Description                                                                                                                                |
+| ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **v1.23.0**   | docs only   | This design pointer + the design note. Test count: 4893 / 4893 (unchanged). All v1.22.last digests preserved.                              |
+| v1.23.1       | runtime + tests | Substrate hardening: canonical digests module + forbidden-token consolidation + metadata stamp pin + record-cap trip-wire + test-inventory currency. **No digest movement.** **No no-stress behavior change.** |
+| v1.23.2       | tests + docs | Validation foundation: 4 pinnable categories + 2 placeholder categories + research note 002.                                                |
+| v1.23.3       | example + tests | Attention-crowding read-only demo case study.                                                                                              |
+| v1.23.last    | docs only   | Final freeze. Sequence map, what-v1.23-is / what-v1.23-is-NOT, pinned test count, preserved digests, hard-boundary re-pin, future optional candidates. |
+
+The sequence is **strictly serial**: v1.23.2 must not start
+until v1.23.1 is byte-stable; v1.23.3 must not start until
+v1.23.2 validation pins are in place.
+
+### 132.3 Substrate hardening (binding for v1.23.1)
+
+Five sub-tasks, each closing a concrete gap surfaced by the
+post-v1.22.2 review:
+
+- **132.3.A — Canonical digest sprawl.** New module
+  `tests/_canonical_digests.py` exporting the four
+  canonical constants (`QUARTERLY_DEFAULT_LIVING_WORLD_DIGEST`,
+  `MONTHLY_REFERENCE_LIVING_WORLD_DIGEST`,
+  `SCENARIO_MONTHLY_REFERENCE_UNIVERSE_FIXTURE_DIGEST`,
+  `V1_20_4_CLI_BUNDLE_DIGEST`). Existing test sites with
+  hex literals migrate to imports. **No digest changes.**
+
+- **132.3.B — Forbidden-token set composition.** New module
+  `world/forbidden_tokens.py` decomposes existing forbidden
+  sets into `BASE` + per-milestone deltas, then re-composes
+  them. The composed sets re-export under existing public
+  names; existing imports continue to work unchanged. The
+  consolidation also closes the round-1-flagged leak:
+  `FORBIDDEN_RUN_EXPORT_FIELD_NAMES` (v1.19.0) currently
+  does not compose with the v1.21.0a stress tokens — the
+  composition fixes this. **No token is added or removed
+  beyond the composition; a dry-run scan over existing
+  fixtures must confirm no current payload contains a
+  previously-leaky token before merge.**
+
+- **132.3.C — Cross-layer metadata contract.** Pin
+  `metadata["stress_program_application_id"]` and
+  `metadata["stress_step_id"]` contracts (v1.21.2 writes,
+  v1.21.3 reads). Add explicit forward / reverse / round-
+  trip / boundary-scan tests in
+  `tests/test_metadata_stamp_contract.py`.
+
+- **132.3.D — Runtime cardinality constant.** Add
+  `STRESS_PROGRAM_RUN_RECORD_CAP = 60` as a module-level
+  constant in `world/stress_applications.py`. Add a trip-
+  wire check at the end of `apply_stress_program(...)` that
+  raises `StressProgramRecordCapExceededError` when the
+  total record delta exceeds the cap. **No no-stress
+  behavior change.** **Existing fixtures emit well under
+  60 records; the trip-wire fires only on regressions.**
+
+- **132.3.E — Test inventory freshness.** Generator script
+  `examples/tools/refresh_test_inventory.py` regenerates
+  `docs/test_inventory.md` deterministically. Freshness
+  pin test `tests/test_test_inventory_currency.py` asserts
+  the pinned total matches the current `pytest --collect-
+  only` total.
+
+### 132.4 Validation foundation (binding for v1.23.2)
+
+Six question categories — four pinnable now, two
+placeholders:
+
+**Pinnable:**
+
+1. **Determinism** — same kernel + arguments → byte-
+   identical readout (markdown, dict, export entry).
+2. **Boundary preservation** — every readout's emission
+   satisfies the v1.21.0a + v1.22.0 forbidden-name
+   boundary across dataclass field, metadata key,
+   markdown render, and export entry scans.
+3. **Citation completeness** — every
+   `cited_source_context_record_id` resolves to an actual
+   record in the source-of-truth book; dangling citations
+   raise.
+4. **Partial-application visibility** — when
+   `is_partial == True`, every visibility field
+   propagates through the v1.22.1 export entry AND the
+   v1.21.3 markdown summary's PARTIAL APPLICATION banner.
+
+**Placeholders (design-only at v1.23.2; no actual pin):**
+
+5. **Inter-reviewer reproducibility** — fixture format for
+   reviewer notes; v1.23.2 ships a parseable stub format,
+   not a populated reviewer panel.
+6. **Null-model comparison** — fixture pair (kernel
+   with-stress / without-stress); test asserts readout
+   build succeeds for both AND
+   `bundle.stress_readout` is empty for the without-stress
+   kernel.
+
+Validation must NOT claim:
+
+- price prediction
+- causal proof
+- investment advice
+- real-data calibration
+- forecast / expected response / outcome metric
+- magnitude / probability / target / risk score
+
+### 132.5 Demo case study — attention crowding (binding for v1.23.3)
+
+A read-only research-defensible demo that surfaces the
+v1.12 attention-budget saturation behavior as a
+**citation-graph difference**. Two sequential synthetic
+runs (v1.21.0a constraint: ≤ 1 stress program per run; the
+case study uses two **sequential** runs with different
+programs, not concurrent).
+
+Output: two byte-deterministic markdown audit summaries
+written to a user-supplied `--out` directory. The case
+study reuses v1.21.3 readout + markdown summary verbatim;
+no new ledger event types; no new label vocabulary; no new
+dataclasses.
+
+### 132.6 Cardinality (binding for the v1.23 sequence)
+
+- **0** new dataclasses
+- **0** new ledger event types
+- **0** new label vocabularies
+- **2** new runtime modules at v1.23.1
+  (`tests/_canonical_digests.py`,
+  `world/forbidden_tokens.py`)
+- **1** new runtime constant at v1.23.1
+  (`STRESS_PROGRAM_RUN_RECORD_CAP = 60`)
+- **0** new UI regions; **0** new tabs
+- v1.23.1 expected test delta: **+ ~ 15**
+- v1.23.2 expected test delta: **+ ~ 12**
+- v1.23.3 expected test delta: **+ ~ 8**
+- v1.23.last final test count target: **~ 4928**
+
+### 132.7 Hard boundary (re-pinned at v1.23.0)
+
+v1.23 inherits and re-pins the v1.22.last hard boundary in
+full: no real-world output (no price formation, no
+forecast, no recommendation, no firm decision, no investor
+action, no bank approval, no order / trade / execution /
+clearing / settlement / financing execution); no real-world
+input (no real data, no real institutional identifiers, no
+licensed taxonomies, no Japan calibration); no autonomous
+reasoning (no LLM execution, no LLM prose as source-of-
+truth, no interaction auto-inference); no source-of-truth
+book mutation; no backend in the UI; no digest movement.
+
+### 132.8 Future optional candidates (NOT planned, NOT scoped at v1.23.0)
+
+- **v1.24 candidate — manual_annotation interaction
+  layer.** `manual_annotation`-only annotation layer over
+  the v1.21.3 multiset readout. Closed sets `source_kind
+  = {"human"}` and `reasoning_mode = {"human_authored"}`.
+  **MUST NEVER be inferred by a helper, classifier,
+  closed-set rule table, LLM, or any other automated
+  layer.**
+- **v1.25 candidate — Institutional Investor Mandate /
+  Benchmark Pressure.** Bounded synthetic mandate /
+  benchmark / peer-pressure constraints on the v1.15.5 /
+  v1.16.2 investor-intent layer. Decoupled from the
+  v1.21 / v1.22 / v1.23 stress + audit surface.
+- **v2.x — Japan public calibration.** Gated; requires
+  data / license boundary design first.
+- **v3.x — proprietary Japan calibration.** Not public;
+  preserves every public-FWE boundary.
+
+Silent extension of v1.23 is forbidden.
