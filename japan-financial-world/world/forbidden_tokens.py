@@ -531,8 +531,109 @@ FORBIDDEN_UNIVERSE_CALENDAR_FIELD_NAMES: frozenset[str] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# v1.27.0 STRATEGIC RELATIONSHIP delta — generic, country-
+# neutral substrate primitive. Hard-forbids ownership /
+# voting / market-value tokens; hard-forbids network
+# centrality / systemic-importance scoring; hard-forbids
+# real-data adapters; hard-forbids real-company-relationship
+# claims.
+# ---------------------------------------------------------------------------
+
+
+FORBIDDEN_TOKENS_V1_27_0_RELATIONSHIP_DELTA: frozenset[str] = (
+    frozenset(
+        {
+            # v1.27.0 ownership / voting / value prohibitions
+            "ownership_percentage",
+            "voting_power",
+            "voting_share",
+            "controlling_interest_pct",
+            "share_count",
+            "share_class",
+            "fair_value",
+            "carrying_value",
+            # v1.27.0 network-score prohibitions
+            "centrality_score",
+            "systemic_importance_score",
+            "network_centrality",
+            "betweenness_centrality",
+            "eigenvector_centrality",
+            # v1.27.0 real-data adapter prohibitions
+            "edgar_filing",
+            "tepco_holding",
+        }
+    )
+)
+
+
+# ---------------------------------------------------------------------------
+# v1.27.3 ANNOTATION PROVENANCE delta — hardens the v1.24
+# manual annotation surface with closed-set reviewer-role /
+# authority / authorization metadata. Hard-forbids real-
+# person identity tokens (name / email / phone / national-id
+# / employee-id) and hard-forbids regulatory compliance
+# claim tokens (SOC2 / FISC / ISO27001 / regulatory
+# attestation). v1.27.3 storage additionally rejects any
+# ``@`` character in ``annotator_id_label`` (anti-email-leak
+# guard).
+# ---------------------------------------------------------------------------
+
+
+FORBIDDEN_TOKENS_V1_27_3_PROVENANCE_DELTA: frozenset[str] = (
+    frozenset(
+        {
+            # v1.27.3 real-identity prohibitions
+            "real_person_name",
+            "personal_email",
+            "phone_number",
+            "national_id",
+            "employee_id",
+            # v1.27.3 compliance-claim prohibitions
+            "soc2_compliance",
+            "fisc_compliance",
+            "iso27001_certified",
+            "regulatory_attestation",
+        }
+    )
+)
+
+
+# v1.27.1 strategic relationship forbidden-name set —
+# composes the v1.26.0 canonical set with the v1.27.0
+# relationship delta. v1.27.1 storage + v1.27.2 readout +
+# export scan every dataclass field name, payload key,
+# metadata key, and label value against this composed set.
+FORBIDDEN_STRATEGIC_RELATIONSHIP_FIELD_NAMES: frozenset[str] = (
+    FORBIDDEN_TOKENS_BASE
+    | FORBIDDEN_TOKENS_V1_19_0_RUN_EXPORT_DELTA
+    | FORBIDDEN_TOKENS_V1_19_3_REAL_INDICATOR_DELTA
+    | FORBIDDEN_TOKENS_V1_20_0_REAL_ISSUER_DELTA
+    | FORBIDDEN_TOKENS_V1_20_0_LICENSED_TAXONOMY_DELTA
+    | FORBIDDEN_TOKENS_V1_21_0A_STRESS_DELTA
+    | FORBIDDEN_TOKENS_V1_22_0_EXPORT_DELTA
+    | FORBIDDEN_TOKENS_V1_24_0_MANUAL_ANNOTATION_DELTA
+    | FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA
+    | FORBIDDEN_TOKENS_V1_26_0_UNIVERSE_CALENDAR_DELTA
+    | FORBIDDEN_TOKENS_V1_27_0_RELATIONSHIP_DELTA
+)
+
+
+# v1.27.3 annotation provenance forbidden-name set —
+# composes the v1.27.1 canonical set with the v1.27.3
+# provenance delta. v1.27.3 storage scans every dataclass
+# field name, payload key, metadata key, and label value
+# against this composed set.
+FORBIDDEN_ANNOTATION_PROVENANCE_FIELD_NAMES: frozenset[str] = (
+    FORBIDDEN_STRATEGIC_RELATIONSHIP_FIELD_NAMES
+    | FORBIDDEN_TOKENS_V1_27_3_PROVENANCE_DELTA
+)
+
+
 __all__ = [
+    "FORBIDDEN_ANNOTATION_PROVENANCE_FIELD_NAMES",
     "FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES",
+    "FORBIDDEN_STRATEGIC_RELATIONSHIP_FIELD_NAMES",
     "FORBIDDEN_UNIVERSE_CALENDAR_FIELD_NAMES",
     "FORBIDDEN_MANUAL_ANNOTATION_FIELD_NAMES",
     "FORBIDDEN_RUN_EXPORT_FIELD_NAMES",
@@ -550,4 +651,6 @@ __all__ = [
     "FORBIDDEN_TOKENS_V1_24_0_MANUAL_ANNOTATION_DELTA",
     "FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA",
     "FORBIDDEN_TOKENS_V1_26_0_UNIVERSE_CALENDAR_DELTA",
+    "FORBIDDEN_TOKENS_V1_27_0_RELATIONSHIP_DELTA",
+    "FORBIDDEN_TOKENS_V1_27_3_PROVENANCE_DELTA",
 ]

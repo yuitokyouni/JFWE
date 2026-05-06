@@ -164,6 +164,21 @@ class RecordType(str, Enum):
     REPORTING_CALENDAR_PROFILE_RECORDED = (
         "reporting_calendar_profile_recorded"
     )
+    # v1.27.1 — generic strategic relationship (cross-
+    # shareholding-like / supplier-customer-like / etc.)
+    # Emitted exactly once per successful
+    # ``StrategicRelationshipBook.add_relationship(...)``
+    # call. Empty book → no record (digest preservation).
+    STRATEGIC_RELATIONSHIP_RECORDED = (
+        "strategic_relationship_recorded"
+    )
+    # v1.27.3 — manual annotation provenance companion
+    # record. Emitted exactly once per successful
+    # ``ManualAnnotationProvenanceBook.add_provenance(...)``
+    # call. Empty book → no record.
+    MANUAL_ANNOTATION_PROVENANCE_RECORDED = (
+        "manual_annotation_provenance_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

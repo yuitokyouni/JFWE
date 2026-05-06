@@ -31,6 +31,9 @@ from world.reporting_calendar_profiles import (
 )
 from world.stress_applications import StressProgramApplicationBook
 from world.stress_programs import StressProgramBook
+from world.strategic_relationships import (
+    StrategicRelationshipBook,
+)
 from world.universe_events import UniverseEventBook
 from world.balance_sheet import BalanceSheetProjector
 from world.clock import Clock
@@ -275,6 +278,17 @@ class WorldKernel:
     reporting_calendars: ReportingCalendarProfileBook = (
         field(default_factory=ReportingCalendarProfileBook)
     )
+    # v1.27.1 — generic strategic relationship network
+    # (cross-shareholding-like / supplier-customer-like /
+    # group-affiliation-like / lender-relationship-like /
+    # governance-relationship-like / commercial-
+    # relationship-like). Append-only; one
+    # ``STRATEGIC_RELATIONSHIP_RECORDED`` event per
+    # add_relationship; empty by default — empty book →
+    # no record → no digest movement.
+    strategic_relationships: StrategicRelationshipBook = (
+        field(default_factory=StrategicRelationshipBook)
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -334,6 +348,7 @@ class WorldKernel:
             self.investor_mandates,
             self.universe_events,
             self.reporting_calendars,
+            self.strategic_relationships,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
