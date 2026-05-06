@@ -758,6 +758,47 @@ def _normalize_investor_mandate_readout(
     return tuple(out)
 
 
+def _normalize_universe_calendar_readout(
+    value: (
+        Iterable[Mapping[str, Any]]
+        | tuple[Mapping[str, Any], ...]
+        | None
+    ),
+    *,
+    field_name: str = "universe_calendar_readout",
+) -> tuple[dict[str, Any], ...]:
+    """Normalise the v1.26.4
+    ``universe_calendar_readout`` payload section.
+    Cardinality: ``len(value) ∈ {0, 1}``."""
+    from world.universe_calendar_export import (
+        _scan_export_entry_for_forbidden,
+    )
+    if value is None:
+        return ()
+    if isinstance(value, Mapping):
+        raise ValueError(
+            f"{field_name} must be a list / tuple"
+        )
+    entries = list(value)
+    if len(entries) > 1:
+        raise ValueError(
+            f"{field_name} cardinality (binding): at "
+            f"most 1 entry; got {len(entries)}"
+        )
+    out: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                f"{field_name} entries must be Mapping"
+            )
+        normalised = dict(entry)
+        _scan_export_entry_for_forbidden(
+            normalised, field_name=field_name
+        )
+        out.append(normalised)
+    return tuple(out)
+
+
 def _normalize_boundary_flags(
     value: Mapping[str, Any] | Iterable[tuple[str, bool]] | None,
     *,
@@ -875,6 +916,14 @@ class RunExportBundle:
     investor_mandate_readout: tuple[Mapping[str, Any], ...] = (
         field(default_factory=tuple)
     )
+    # v1.26.4 — descriptive-only universe / calendar
+    # readout reflection section. Cardinality 0 or 1
+    # entry. Empty by default; omitted from to_dict /
+    # bundle_to_json output when empty so pre-v1.26
+    # bundles stay byte-identical.
+    universe_calendar_readout: tuple[Mapping[str, Any], ...] = (
+        field(default_factory=tuple)
+    )
 
     REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
         "bundle_id",
@@ -965,6 +1014,14 @@ class RunExportBundle:
                 field_name="investor_mandate_readout",
             ),
         )
+        object.__setattr__(
+            self,
+            "universe_calendar_readout",
+            _normalize_universe_calendar_readout(
+                self.universe_calendar_readout,
+                field_name="universe_calendar_readout",
+            ),
+        )
 
     # -- serialisation -----------------------------------------------
 
@@ -1022,6 +1079,14 @@ class RunExportBundle:
                 dict(e)
                 for e in self.investor_mandate_readout
             ]
+        # v1.26.4 — universe / calendar readout omitted
+        # when empty (default), preserving every
+        # pre-v1.26 bundle digest byte-identical.
+        if self.universe_calendar_readout:
+            out["universe_calendar_readout"] = [
+                dict(e)
+                for e in self.universe_calendar_readout
+            ]
         return out
 
 
@@ -1065,6 +1130,11 @@ def build_run_export_bundle(
         | None
     ) = None,
     investor_mandate_readout: (
+        Iterable[Mapping[str, Any]]
+        | tuple[Mapping[str, Any], ...]
+        | None
+    ) = None,
+    universe_calendar_readout: (
         Iterable[Mapping[str, Any]]
         | tuple[Mapping[str, Any], ...]
         | None
@@ -1125,6 +1195,14 @@ def build_run_export_bundle(
                 for e in investor_mandate_readout
             )
             if investor_mandate_readout
+            else ()
+        ),
+        universe_calendar_readout=(
+            tuple(
+                dict(e)
+                for e in universe_calendar_readout
+            )
+            if universe_calendar_readout
             else ()
         ),
     )

@@ -1403,6 +1403,64 @@
       margin-bottom: 14px;
     }
 
+    /* v1.26.4 — Universe / calendar panel. Mirrors the
+       v1.25.3 investor-mandate-panel CSS for visual
+       consistency; sits below the mandate panel in the
+       Universe sheet. No new tab; no new sheet;
+       textContent only. */
+    .universe-calendar-panel {
+      margin-bottom: 14px;
+    }
+
+    .universe-calendar-empty {
+      padding: 10px 12px;
+      border: 1px dashed #cdcac1;
+      background: #fafaf6;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .universe-calendar-content {
+      margin-top: 6px;
+    }
+
+    .universe-calendar-entry {
+      padding: 10px 12px;
+      border: 1px solid #e1ddd2;
+      background: #fdfdf9;
+      margin-top: 8px;
+    }
+
+    .universe-calendar-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      font-size: 12px;
+    }
+
+    .universe-calendar-summary .label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .universe-calendar-summary .value {
+      font-family: var(--font-mono);
+    }
+
+    .universe-calendar-list {
+      margin-top: 8px;
+      list-style: none;
+      padding-left: 0;
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .universe-calendar-list li {
+      padding: 2px 0;
+    }
+
     /* v1.25.3 — Investor mandate context panel. Mirrors
        the v1.24.3 manual-annotations-panel CSS for visual
        consistency; sits below the manual-annotations panel
@@ -3106,6 +3164,41 @@
               >
                 <div class="investor-mandate-entries"
                   id="investor-mandate-entries"></div>
+              </div>
+            </section>
+
+            <!-- =============================================================== -->
+            <!-- v1.26.4 — Universe / calendar panel.                            -->
+            <!-- Read-only reflection of the v1.26.3                             -->
+            <!-- UniverseCalendarReadout via the v1.26.4                         -->
+            <!-- ``bundle.universe_calendar_readout`` payload section.           -->
+            <!-- Sits below the v1.25.3 Investor mandate panel.                  -->
+            <!-- No new tab. No allocation. No performance. No chart.            -->
+            <!-- No real Japanese fiscal-year distribution claim.                -->
+            <!-- =============================================================== -->
+            <section
+              class="card universe-calendar-panel"
+              data-section="universe-calendar"
+              id="card-universe-calendar"
+              aria-live="polite"
+            >
+              <h3 class="card-title">
+                Universe / calendar
+                <span class="tag">v1.26.4 · Read-only universe + calendar readout</span>
+              </h3>
+              <div
+                class="universe-calendar-empty muted"
+                id="universe-calendar-empty"
+              >
+                No universe / calendar readout in this bundle.
+              </div>
+              <div
+                class="universe-calendar-content"
+                id="universe-calendar-content"
+                style="display:none;"
+              >
+                <div class="universe-calendar-entries"
+                  id="universe-calendar-entries"></div>
               </div>
             </section>
 
@@ -5403,6 +5496,13 @@
         if (typeof renderInvestorMandateFromBundle === 'function') {
           renderInvestorMandateFromBundle({});
         }
+        // v1.26.4 — also reset the Universe / calendar
+        // panel; the legacy inline manifest predates the
+        // v1.26.4 ``universe_calendar_readout`` payload
+        // section.
+        if (typeof renderUniverseCalendarFromBundle === 'function') {
+          renderUniverseCalendarFromBundle({});
+        }
         // v1.23.2b — record that the visible state came from
         // the LEGACY inline sample fixture (a v1.16-era
         // snapshot kept only so the workbench loads under
@@ -6453,6 +6553,23 @@
             "renderInvestorMandateFromBundle missing"
           );
         }
+        // v1.26.4 self-check — Universe / calendar panel.
+        if (!$id('card-universe-calendar')) {
+          failures.push("Universe / calendar panel missing");
+        }
+        if (!$id('universe-calendar-empty')
+            || !$id('universe-calendar-content')
+            || !$id('universe-calendar-entries')) {
+          failures.push(
+            "Universe / calendar panel slots missing"
+          );
+        }
+        if (typeof renderUniverseCalendarFromBundle
+            !== 'function') {
+          failures.push(
+            "renderUniverseCalendarFromBundle missing"
+          );
+        }
         if (typeof SENSITIVITY_LABELS === 'undefined'
             || !Array.isArray(SENSITIVITY_LABELS)
             || SENSITIVITY_LABELS.indexOf('low') === -1
@@ -7095,6 +7212,10 @@
         // (which is the pre-v1.25 / no-mandate case for
         // every existing run profile).
         renderInvestorMandateFromBundle(bundle);
+        // v1.26.4 — Universe / calendar panel. Reads
+        // ``bundle.universe_calendar_readout`` (v1.26.4
+        // descriptive-only payload section).
+        renderUniverseCalendarFromBundle(bundle);
       }
 
       // -----------------------------------------------------------------
@@ -8149,6 +8270,133 @@
           }
           entriesEl.appendChild(
             _buildInvestorMandateEntry(entry)
+          );
+        }
+        emptyEl.style.display = 'none';
+        contentEl.style.display = '';
+        if (window.scrollX !== sx
+            || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+      }
+
+      // v1.26.4 — Universe / calendar renderer. Reads
+      // ``bundle.universe_calendar_readout``. textContent
+      // only.
+      function _buildUniverseCalendarEntry(entry) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'universe-calendar-entry';
+        var summary = document.createElement('div');
+        summary.className = 'universe-calendar-summary';
+        var pairs = [
+          ['As-of period', String(entry.as_of_period_id || '—')],
+          ['Active entity count',
+           String((entry.active_entity_ids || []).length)],
+          ['Inactive entity count',
+           String((entry.inactive_entity_ids || []).length)],
+          ['Lifecycle event count',
+           String((entry.lifecycle_event_ids || []).length)],
+          ['Reporting calendar profile count',
+           String((entry.reporting_calendar_profile_ids || []).length)],
+          ['Reporting-due entity count',
+           String((entry.reporting_due_entity_ids || []).length)],
+        ];
+        for (var i = 0; i < pairs.length; i++) {
+          var lEl = document.createElement('div');
+          lEl.className = 'label';
+          lEl.textContent = pairs[i][0];
+          var vEl = document.createElement('div');
+          vEl.className = 'value';
+          vEl.textContent = pairs[i][1];
+          summary.appendChild(lEl);
+          summary.appendChild(vEl);
+        }
+        wrapper.appendChild(summary);
+
+        function _appendCountList(title, pairs) {
+          var heading = document.createElement('div');
+          heading.className = 'label';
+          heading.style.marginTop = '8px';
+          heading.textContent = title;
+          wrapper.appendChild(heading);
+          var ul = document.createElement('ul');
+          ul.className = 'universe-calendar-list';
+          if (!pairs || pairs.length === 0) {
+            var li0 = document.createElement('li');
+            li0.textContent = '(none)';
+            ul.appendChild(li0);
+          } else {
+            for (var j = 0; j < pairs.length; j++) {
+              var li = document.createElement('li');
+              li.textContent = String(pairs[j][0]) + ' (' + String(pairs[j][1]) + ')';
+              ul.appendChild(li);
+            }
+          }
+          wrapper.appendChild(ul);
+        }
+        _appendCountList(
+          'Fiscal-year-end month distribution',
+          entry.fiscal_year_end_month_counts || []
+        );
+        _appendCountList(
+          'Disclosure cluster distribution',
+          entry.disclosure_cluster_counts || []
+        );
+        _appendCountList(
+          'Reporting intensity distribution',
+          entry.reporting_intensity_counts || []
+        );
+        var warnings = entry.warnings || [];
+        if (warnings.length > 0) {
+          var hW = document.createElement('div');
+          hW.className = 'label';
+          hW.style.marginTop = '8px';
+          hW.textContent = 'Warnings';
+          wrapper.appendChild(hW);
+          var ulW = document.createElement('ul');
+          ulW.className = 'universe-calendar-list';
+          for (var w = 0; w < warnings.length; w++) {
+            var liW = document.createElement('li');
+            liW.textContent = String(warnings[w]);
+            ulW.appendChild(liW);
+          }
+          wrapper.appendChild(ulW);
+        }
+        return wrapper;
+      }
+
+      function renderUniverseCalendarFromBundle(bundle) {
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+        var emptyEl = $id('universe-calendar-empty');
+        var contentEl = $id('universe-calendar-content');
+        var entriesEl = $id('universe-calendar-entries');
+        if (!emptyEl || !contentEl || !entriesEl) {
+          return;
+        }
+        while (entriesEl.firstChild) {
+          entriesEl.removeChild(entriesEl.firstChild);
+        }
+        var section = (bundle && Array.isArray(
+          bundle.universe_calendar_readout
+        )) ? bundle.universe_calendar_readout : [];
+        if (section.length === 0) {
+          emptyEl.style.display = '';
+          contentEl.style.display = 'none';
+          if (window.scrollX !== sx
+              || window.scrollY !== sy) {
+            window.scrollTo(sx, sy);
+          }
+          return;
+        }
+        for (var i = 0; i < section.length; i++) {
+          var entry = section[i];
+          if (!entry || typeof entry !== 'object'
+              || Array.isArray(entry)) {
+            continue;
+          }
+          entriesEl.appendChild(
+            _buildUniverseCalendarEntry(entry)
           );
         }
         emptyEl.style.display = 'none';
