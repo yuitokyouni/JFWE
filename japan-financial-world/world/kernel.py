@@ -25,6 +25,9 @@ from world.scenario_applications import ScenarioApplicationBook
 from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.scenario_schedule import ScenarioScheduleBook
 from world.investor_mandates import InvestorMandateBook
+from world.manual_annotation_provenance import (
+    ManualAnnotationProvenanceBook,
+)
 from world.manual_annotations import ManualAnnotationBook
 from world.reporting_calendar_profiles import (
     ReportingCalendarProfileBook,
@@ -289,6 +292,18 @@ class WorldKernel:
     strategic_relationships: StrategicRelationshipBook = (
         field(default_factory=StrategicRelationshipBook)
     )
+    # v1.27.3 — manual annotation provenance hardening
+    # (pseudonymous reviewer-role / authority /
+    # authorization companion records over the v1.24
+    # ManualAnnotationBook). Append-only; one
+    # ``MANUAL_ANNOTATION_PROVENANCE_RECORDED`` event
+    # per add_provenance; empty by default; no real-
+    # person identity; anti-email-leak guard.
+    manual_annotation_provenance: (
+        ManualAnnotationProvenanceBook
+    ) = field(
+        default_factory=ManualAnnotationProvenanceBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -349,6 +364,7 @@ class WorldKernel:
             self.universe_events,
             self.reporting_calendars,
             self.strategic_relationships,
+            self.manual_annotation_provenance,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger
