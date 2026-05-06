@@ -139,7 +139,86 @@ warnings — not in any reduction or interpretive label.
 
 ---
 
-## 4. Current milestone: v1.25.last
+## 4. Current milestone: v1.27.last
+
+**v1.27.last Generic Strategic Relationship Network +
+Annotation Provenance Hardening freeze (shipped, docs-
+only).** Closes the v1.27 sequence — and with it, the
+**last generic substrate addition** in public v1.x. v1.27
+adds two independent primitives: (1) a generic, country-
+neutral strategic relationship record type
+(`strategic_holding_like` / `supplier_customer_like` /
+`group_affiliation_like` / `lender_relationship_like` /
+`governance_relationship_like` /
+`commercial_relationship_like` / `unknown` — all `_like`
+archetype labels, no real company names, no percentages,
+no voting power, no market value, no centrality score),
+and (2) annotation provenance hardening over the v1.24
+manual-annotation surface (pseudonymous reviewer-role /
+authority / audit-context companion records, anti-email-
+leak guard rejecting any `@` in `annotator_id_label`, no
+real-person identity, no compliance claim, no LLM
+authoring). v1.27 is **NOT Japan calibration**, **NOT** a
+real-data adapter, **NOT** a real-company relationship
+claim, **NOT** an ownership-percentage / voting-power /
+market-value / centrality / systemic-importance surface,
+**NOT** a real-person identity / compliance attestation /
+LLM authoring surface. The next milestone is **v2.0
+Japan Public Calibration Boundary Design** (docs-only).
+
+Shipped runtime / UI / loop / settlement set:
+
+- **Runtime milestone — v1.9.last public prototype.**
+- **UI prototype — v1.20.5 static workbench**
+  (with the v1.22.2 Active Stresses strip).
+- **Frozen loop — v1.16.last closed-loop freeze**
+  + **v1.12.last endogenous attention loop freeze**.
+- **Settlement substrate — v1.13.last generic
+  central-bank settlement infrastructure freeze.**
+
+v1.27 sequence:
+
+| Milestone | Surface |
+| --------- | ------- |
+| v1.27.0 | Docs-only design pin in [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md) + §136 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md). |
+| v1.27.1 | `StrategicRelationshipRecord` + `StrategicRelationshipBook` storage in [`world/strategic_relationships.py`](japan-financial-world/world/strategic_relationships.py); closed-set `RELATIONSHIP_TYPE_LABELS` + `DIRECTION_LABELS` + 22 default boundary flags + `STRATEGIC_RELATIONSHIP_RECORDED` ledger event type; `strategic_relationships: StrategicRelationshipBook` field on `WorldKernel` (empty by default). **+13 tests.** |
+| v1.27.2 | `StrategicRelationshipReadout` + read-only `build_strategic_relationship_readout(...)` in [`world/strategic_relationship_readout.py`](japan-financial-world/world/strategic_relationship_readout.py); optional descriptive-only `strategic_relationship_readout` payload section on `RunExportBundle` (cardinality 0 or 1; empty-by-default; omitted from JSON when empty so pre-v1.27 bundles stay byte-identical) via [`world/strategic_relationship_export.py`](japan-financial-world/world/strategic_relationship_export.py). **+13 tests.** |
+| v1.27.3 | `ManualAnnotationProvenanceRecord` + `ManualAnnotationProvenanceBook` storage in [`world/manual_annotation_provenance.py`](japan-financial-world/world/manual_annotation_provenance.py); closed-set `AUTHORITY_LABELS` + `EVIDENCE_ACCESS_SCOPE_LABELS` + 22 default boundary flags + anti-email-leak guard + `MANUAL_ANNOTATION_PROVENANCE_RECORDED` ledger event type; `manual_annotation_provenance: ManualAnnotationProvenanceBook` field on `WorldKernel` (empty by default). **+11 tests.** |
+| **v1.27.last** | Docs-only freeze. Final pin section §7 in [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md); §136.6 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md); this README. |
+
+**Pinned at v1.27.last:**
+
+- `pytest -q`: **5113 / 5113 passing** (+37 vs v1.26.last)
+- `ruff check .`: clean
+- `python -m compileall -q world spaces tests examples`:
+  clean
+- All v1.21.last canonical living-world digests preserved
+  byte-identical at every v1.27.x sub-milestone.
+- Source-of-truth book mutations from v1.27.x helpers: **0**
+- Ledger emissions from v1.27.x helpers (other than the
+  one `STRATEGIC_RELATIONSHIP_RECORDED` /
+  `MANUAL_ANNOTATION_PROVENANCE_RECORDED` event per
+  caller-initiated `add_relationship` /
+  `add_provenance` call): **0**
+- New `RecordType` values: **2**
+- New dataclasses: **3** (`StrategicRelationshipRecord`,
+  `StrategicRelationshipReadout`,
+  `ManualAnnotationProvenanceRecord`)
+- New tabs: **0**
+- Export schema changes: **1 optional /
+  omitted-when-empty field**
+  (`strategic_relationship_readout`)
+
+**v1.27 closes the last generic substrate addition in
+public v1.x.** The next milestone is **v2.0 — Japan
+Public Calibration Boundary Design** (docs-only design
+pin), which begins the explicit Japan calibration work
+that v1.24 / v1.25 / v1.26 / v1.27 prepared the substrate
+for.
+
+---
+
+### Earlier concrete code milestone: v1.25.last (frozen)
 
 **v1.25.last Generic Institutional Investor Mandate /
 Benchmark Pressure freeze (shipped, docs-only).** Closes
@@ -720,9 +799,9 @@ forbidden.
 | v1.22.last | Static UI Stress Readout Reflection freeze (descriptive-only `stress_readout` payload section + Active Stresses strip in the existing Universe sheet; no new tab). | **Shipped**                                                     |
 | v1.23.last | Substrate Hardening + Validation Foundation freeze (canonical digest module, composable forbidden-token vocabulary, metadata-stamp constants, runtime cardinality cap, four pinnable validation categories + two placeholders, attention-crowding / uncited-stress case study). | **Shipped.** |
 | v1.24.last | Manual Annotation Interaction Layer freeze (human-authored append-only audit overlay; `source_kind = "human"` / `reasoning_mode = "human_authored"`; no auto-annotation; no causal proof; no interaction inference). | **Shipped.** |
-| **v1.25.last** | **Generic Institutional Investor Mandate / Benchmark Pressure freeze.** v1.25.0 design pin (docs-only); v1.25.1 storage (`InvestorMandateProfile` + `InvestorMandateBook`, closed-set vocabularies, `INVESTOR_MANDATE_PROFILE_RECORDED` ledger event type, empty-by-default kernel field); v1.25.2 read-only `InvestorMandateReadout` projecting closed-set `MANDATE_REVIEW_CONTEXT_LABELS` + `MANDATE_ATTENTION_BIAS_LABELS`; v1.25.3 optional descriptive-only `investor_mandate_readout` payload section + minimal "Investor mandate context" panel inside the existing Universe sheet (no new tab; `textContent` only); v1.25.4 read-only case study; v1.25.last freeze. **Generic and jurisdiction-neutral** — `_like` archetype labels only; **NOT Japan calibration**; no real Japanese issuer ids; no JPX / TOPIX / Nikkei / GICS / EDINET dependency. **No portfolio allocation. No target weight. No rebalancing. No buy / sell / order / trade / execution. No expected return / target price / recommendation. No tracking-error value. No benchmark identifier. No actor decision. No investor / market intent emitted from the mandate surface. No source-of-truth mutation beyond the one `investor_mandate_profile_recorded` ledger event per caller-initiated `add_profile` call. No digest movement.** | **Shipped — current.** See [`docs/v1_25_institutional_investor_mandate_benchmark_pressure.md`](japan-financial-world/docs/v1_25_institutional_investor_mandate_benchmark_pressure.md) §21 "v1.25.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §134.6. |
-| **v1.26.last** | **Entity Lifecycle + Reporting Calendar Foundation freeze (generic).** v1.26.0 design pin; v1.26.1 `UniverseEventRecord` storage (closed-set `UNIVERSE_EVENT_TYPE_LABELS`: entity_listed / delisted / merged / renamed / split / status_changed / unknown; `UNIVERSE_EVENT_RECORDED` ledger event); v1.26.2 `ReportingCalendarProfile` storage (closed-set `MONTH_LABELS` 1-12 + unknown; `DISCLOSURE_CLUSTER_LABELS`; `REPORTING_INTENSITY_LABELS`; `REPORTING_CALENDAR_PROFILE_RECORDED` ledger event); v1.26.3 read-only `UniverseCalendarReadout` (active/inactive entity walk; reporting-due via deterministic month-label extraction); v1.26.4 optional descriptive-only `universe_calendar_readout` payload section + minimal "Universe / calendar" panel inside the existing Universe sheet (no new tab; textContent only); v1.26.last freeze. **Empty-by-default rule preserves every existing fixed fixture byte-identically** — a kernel without UniverseEventRecord + ReportingCalendarProfile records continues to behave as a static universe exactly as it did at v1.25.last. **Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / JPX / TOPIX / Nikkei / GICS / MSCI / S&P / FactSet / Bloomberg / Refinitiv dependency. No event-to-price mapping. No earnings-surprise / event-study / calendar-arbitrage inference. No portfolio / universe weight / constituent weight / rebalance event. No actor decision. No source-of-truth book mutation. No digest movement.** | **Shipped — current.** See [`docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md`](japan-financial-world/docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md) §15 and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §135.6. |
-| **v1.27.0** | **Generic Strategic Relationship Network + Annotation Provenance Hardening — design pin (docs-only).** Designs `StrategicRelationshipRecord` (closed-set `RELATIONSHIP_TYPE_LABELS`: strategic_holding_like / supplier_customer_like / group_affiliation_like / lender_relationship_like / governance_relationship_like / commercial_relationship_like / unknown; closed-set `DIRECTION_LABELS`; no percentages, no voting power, no market value, no centrality score) + `ManualAnnotationProvenanceRecord` (pseudonymous; closed-set `AUTHORITY_LABELS`: self_review / delegated_review / supervisory_review / audit_review / unknown; closed-set `EVIDENCE_ACCESS_SCOPE_LABELS`: public_synthetic / internal_synthetic / restricted_synthetic / unknown; anti-email-leak rule rejects `@` in `annotator_id_label`; no real-person name / email / national-id / employee-id; no SOC2 / FISC / ISO27001 / regulatory-attestation compliance claim; no LLM authoring). v1.27.0 = docs-only design; v1.27.1 = relationship storage; v1.27.2 = relationship readout + optional export; v1.27.3 = provenance storage; v1.27.last = freeze. **Empty-by-default kernel fields. Synthetic only. No real data. No EDINET / TDnet / J-Quants / EDGAR. No real-company-relationship claim. No source-of-truth book mutation. No digest movement.** | **Design scoped — current.** See [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md) and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §136. |
+| v1.25.last | **Generic Institutional Investor Mandate / Benchmark Pressure freeze.** v1.25.0 design pin (docs-only); v1.25.1 storage (`InvestorMandateProfile` + `InvestorMandateBook`, closed-set vocabularies, `INVESTOR_MANDATE_PROFILE_RECORDED` ledger event type, empty-by-default kernel field); v1.25.2 read-only `InvestorMandateReadout` projecting closed-set `MANDATE_REVIEW_CONTEXT_LABELS` + `MANDATE_ATTENTION_BIAS_LABELS`; v1.25.3 optional descriptive-only `investor_mandate_readout` payload section + minimal "Investor mandate context" panel inside the existing Universe sheet (no new tab; `textContent` only); v1.25.4 read-only case study; v1.25.last freeze. **Generic and jurisdiction-neutral** — `_like` archetype labels only; **NOT Japan calibration**; no real Japanese issuer ids; no JPX / TOPIX / Nikkei / GICS / EDINET dependency. **No portfolio allocation. No target weight. No rebalancing. No buy / sell / order / trade / execution. No expected return / target price / recommendation. No tracking-error value. No benchmark identifier. No actor decision. No investor / market intent emitted from the mandate surface. No source-of-truth mutation beyond the one `investor_mandate_profile_recorded` ledger event per caller-initiated `add_profile` call. No digest movement.** | **Shipped.** See [`docs/v1_25_institutional_investor_mandate_benchmark_pressure.md`](japan-financial-world/docs/v1_25_institutional_investor_mandate_benchmark_pressure.md) §21 "v1.25.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §134.6. |
+| v1.26.last | **Entity Lifecycle + Reporting Calendar Foundation freeze (generic).** v1.26.0 design pin; v1.26.1 `UniverseEventRecord` storage (closed-set `UNIVERSE_EVENT_TYPE_LABELS`: entity_listed / delisted / merged / renamed / split / status_changed / unknown; `UNIVERSE_EVENT_RECORDED` ledger event); v1.26.2 `ReportingCalendarProfile` storage (closed-set `MONTH_LABELS` 1-12 + unknown; `DISCLOSURE_CLUSTER_LABELS`; `REPORTING_INTENSITY_LABELS`; `REPORTING_CALENDAR_PROFILE_RECORDED` ledger event); v1.26.3 read-only `UniverseCalendarReadout` (active/inactive entity walk; reporting-due via deterministic month-label extraction); v1.26.4 optional descriptive-only `universe_calendar_readout` payload section + minimal "Universe / calendar" panel inside the existing Universe sheet (no new tab; textContent only); v1.26.last freeze. **Empty-by-default rule preserves every existing fixed fixture byte-identically** — a kernel without UniverseEventRecord + ReportingCalendarProfile records continues to behave as a static universe exactly as it did at v1.25.last. **Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / JPX / TOPIX / Nikkei / GICS / MSCI / S&P / FactSet / Bloomberg / Refinitiv dependency. No event-to-price mapping. No earnings-surprise / event-study / calendar-arbitrage inference. No portfolio / universe weight / constituent weight / rebalance event. No actor decision. No source-of-truth book mutation. No digest movement.** | **Shipped.** See [`docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md`](japan-financial-world/docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md) §15 and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §135.6. |
+| **v1.27.last** | **Generic Strategic Relationship Network + Annotation Provenance Hardening freeze.** v1.27.0 design pin; v1.27.1 `StrategicRelationshipRecord` storage (closed-set `RELATIONSHIP_TYPE_LABELS`: strategic_holding_like / supplier_customer_like / group_affiliation_like / lender_relationship_like / governance_relationship_like / commercial_relationship_like / unknown; closed-set `DIRECTION_LABELS`; `STRATEGIC_RELATIONSHIP_RECORDED` ledger event; empty-by-default kernel field; 13 tests); v1.27.2 read-only `StrategicRelationshipReadout` (counts only — no centrality, no rank, no risk score) + optional descriptive-only `strategic_relationship_readout` payload section omitted-when-empty (13 tests); v1.27.3 `ManualAnnotationProvenanceRecord` storage (pseudonymous; closed-set `AUTHORITY_LABELS`: self_review / delegated_review / supervisory_review / audit_review / unknown; closed-set `EVIDENCE_ACCESS_SCOPE_LABELS`: public_synthetic / internal_synthetic / restricted_synthetic / unknown; anti-email-leak guard rejects `@` in `annotator_id_label`; `MANUAL_ANNOTATION_PROVENANCE_RECORDED` ledger event; 11 tests); v1.27.last freeze. **v1.27 closes the last generic substrate addition in public v1.x.** Next milestone is v2.0 Japan Public Calibration Boundary Design (docs-only). **Empty-by-default kernel fields. Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / EDGAR. No real-company name / relationship claim. No ownership percentage / voting power / market value / fair value / centrality score / systemic-importance score. No real-person name / email / phone / national-id / employee-id. No SOC2 / FISC / ISO27001 / regulatory-attestation compliance claim. No LLM authoring. No source-of-truth book mutation. No digest movement.** | **Shipped — current.** See [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md) §7 "v1.27.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §136.6. |
 | v2.0 candidate | **Japan Public Calibration Boundary Design (docs-only)** — design packet only; no data ingestion. Public data only; license / redistribution policy gated. EDINET adapter is candidate; JPX / TOPIX / Nikkei / GICS dependencies forbidden unless license + redistribution policy is explicitly designed. | Optional candidate. Not started. Gated by license review and boundary design. |
 | v2.1 candidate | **Japan Universe + Disclosure Calendar Public Calibration** — synthetic v1.26 universe + reporting calendar substrate calibrated to public Japanese data (license-permitting). Real Japanese issuer ids only after v2.0 boundary design pins them. | Optional candidate. Not started. Gated by v2.0. |
 | v2.2 candidate | **Japan Cross-Shareholding Public Data Adapter** — public extraction adapter design for v1.27 strategic-relationship substrate. Adapter design first; implementation only after license / redistribution policy is pinned. | Optional candidate. Not started. Gated by v2.0 + v1.27. |
