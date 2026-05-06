@@ -159,6 +159,61 @@ _V1_23_3_BLOCK_RE = re.compile(
 )
 
 
+_V1_23_LAST_LINE_PREFIX = "v1.23.last test count: "
+_V1_23_LAST_BLOCK_RE = re.compile(
+    r"<!-- v1\.23\.last test inventory pin: BEGIN -->"
+    r".*?"
+    r"<!-- v1\.23\.last test inventory pin: END -->",
+    re.DOTALL,
+)
+
+
+def _format_v1_23_last_block(test_count: int) -> str:
+    """Return the v1.23.last final-freeze inventory block."""
+    return (
+        "<!-- v1.23.last test inventory pin: BEGIN -->\n"
+        "\n"
+        "## v1.23.last — Substrate Hardening + Validation "
+        "Foundation freeze (docs-only)\n"
+        "\n"
+        "Final freeze section for the v1.23 sequence. "
+        "v1.23.last ships **no** new code, **no** new tests, "
+        "**no** new RecordTypes, **no** new dataclasses, "
+        "**no** new label vocabularies, **no** UI regions, "
+        "**no** export-schema changes. The v1.23 sequence is "
+        "closed.\n"
+        "\n"
+        "Sub-milestones shipped in the v1.23 sequence:\n"
+        "\n"
+        "- v1.23.0 (docs-only design pin)\n"
+        "- v1.23.1 (substrate hardening — canonical digest "
+        "module + composable forbidden-token vocabulary + "
+        "cross-layer metadata stamp constants + "
+        "``STRESS_PROGRAM_RUN_RECORD_CAP = 60`` + "
+        "test-inventory currency pin)\n"
+        "- v1.23.2 (validation foundation — four pinnable "
+        "categories + two placeholder categories + research "
+        "note 002)\n"
+        "- v1.23.2a / v1.23.2b (static-UI maintenance — "
+        "single Run button, ribbon overflow hardened, "
+        "inline fixture labelled legacy, Meta trail "
+        "extended)\n"
+        "- v1.23.3 (attention-crowding / uncited-stress "
+        "case study — read-only helper + deterministic "
+        "markdown + companion narrative)\n"
+        "- v1.23.last (this freeze)\n"
+        "\n"
+        "All v1.21.last canonical ``living_world_digest`` "
+        "values remain byte-identical at every v1.23.x "
+        "sub-milestone. v1.23.x ships a validation "
+        "foundation, not a validation proof.\n"
+        "\n"
+        f"{_V1_23_LAST_LINE_PREFIX}{test_count}\n"
+        "\n"
+        "<!-- v1.23.last test inventory pin: END -->\n"
+    )
+
+
 def _format_v1_23_3_block(test_count: int) -> str:
     """Return the v1.23.3 inventory block in the canonical
     format. Marked with HTML comments for idempotent
@@ -297,6 +352,17 @@ def refresh_inventory(test_count: int) -> None:
         if not text.endswith("\n"):
             text += "\n"
         text = text + "\n" + block_3
+
+    # v1.23.last freeze block.
+    block_last = _format_v1_23_last_block(test_count)
+    if _V1_23_LAST_BLOCK_RE.search(text):
+        text = _V1_23_LAST_BLOCK_RE.sub(
+            block_last.rstrip("\n"), text
+        )
+    else:
+        if not text.endswith("\n"):
+            text += "\n"
+        text = text + "\n" + block_last
 
     _DOC_PATH.write_text(text, encoding="utf-8")
 

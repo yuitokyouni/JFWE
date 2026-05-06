@@ -883,3 +883,161 @@ The v1.23 sequence is scoped. Subsequent work that touches
 the substrate or validation layer must explicitly re-open
 scope under a new design pin (a v1.23.0a or later
 correction); silent extension is forbidden.
+
+---
+
+## 12. v1.23.last freeze (docs-only)
+
+*Final pin section for the v1.23 sequence. Closes the
+substrate-hardening + validation-foundation milestone as a
+docs-only freeze; v1.23.last ships **no** new code, **no**
+new tests, **no** new ledger event types, **no** new
+RecordTypes, **no** new label vocabularies, **no** UI
+changes, and **no** export-schema changes. Subsequent work
+must re-open scope under a fresh design pin.*
+
+### 12.1 Shipped sequence
+
+| Sub-milestone | Surface | What it shipped |
+| ------------- | ------- | --------------- |
+| **v1.23.0** | docs only | This design pin (§§1-11), §132 in `world_model.md`, roadmap-row refresh in [`v1_20_monthly_scenario_reference_universe_summary.md`](v1_20_monthly_scenario_reference_universe_summary.md), README §9. |
+| v1.23.1 | runtime + tests | Substrate hardening (§3.A-E): canonical digest module ([`tests/_canonical_digests.py`](../tests/_canonical_digests.py)) + composable forbidden-token vocabulary ([`world/forbidden_tokens.py`](../world/forbidden_tokens.py)) + cross-layer metadata stamp constants in [`world/stress_applications.py`](../world/stress_applications.py) + runtime cardinality cap `STRESS_PROGRAM_RUN_RECORD_CAP = 60` + trip-wire + test-inventory currency pin. |
+| v1.23.2 | tests + docs | Validation foundation (§4): four pinnable validation categories — determinism, boundary preservation, citation completeness, partial-application visibility — across [`tests/test_validation_*.py`](../tests/) + two placeholder categories (inter-reviewer reproducibility, null-model comparison) at [`tests/fixtures/inter_reviewer/`](../tests/fixtures/inter_reviewer/) + [`tests/test_validation_placeholder_categories.py`](../tests/test_validation_placeholder_categories.py). Companion [`research_note_002_validating_stress_citation_graphs_without_price_prediction.md`](research_note_002_validating_stress_citation_graphs_without_price_prediction.md). |
+| v1.23.2a | UI behavior fix | Static UI cleanup over [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html): consolidated `Run` button, `Compare Regimes` no longer hijacks the active sheet, ribbon overflow hardened, version pills refreshed. **No new tab. No runtime / export change.** |
+| v1.23.2b | UI staleness fix | Inline sample fixture explicitly labelled `legacy_sample_fixture`, Meta milestone trail extended through v1.23.x, Active Stresses strip reset on Run, tooltip + Status block refresh, pin tests. **No new tab. No runtime / export change.** |
+| v1.23.3 | example + tests | Attention-crowding / uncited-stress case study (§5): read-only helper [`world/stress_case_study.py`](../world/stress_case_study.py) + deterministic markdown renderer + [`tests/test_attention_crowding_case_study.py`](../tests/test_attention_crowding_case_study.py) + companion [`case_study_001_attention_crowding_uncited_stress.md`](case_study_001_attention_crowding_uncited_stress.md). |
+| **v1.23.last** | docs only | This freeze section. §132 final freeze pin in `world_model.md`. README §4 / §9 refresh. v1.23 sequence frozen. |
+
+### 12.2 Pinned at v1.23.last
+
+- `pytest -q`: **4947 / 4947 passing** (+54 vs v1.22.last
+  4893; +ssub-milestone deltas: v1.23.1 + 20, v1.23.2 + 15,
+  v1.23.2b + 10, v1.23.3 + 9).
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests preserved
+  byte-identical at every v1.23.x sub-milestone:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+    (byte-identical to v1.18.last);
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+    (byte-identical to v1.19.last);
+  - `scenario_monthly_reference_universe` test-fixture —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+    (byte-identical to v1.20.last);
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+    (byte-identical to v1.20.last).
+- Source-of-truth book mutations from v1.23.x helpers:
+  **0**.
+- Ledger emissions from v1.23.x helpers: **0**.
+- New `RecordType` values: **0**.
+- New dataclasses: **0**.
+- New label vocabularies: **0**.
+- New tabs: **0** (v1.20.5 11-tab ↔ 11-sheet bijection
+  preserved at v1.23.last).
+- Export schema changes: **0**.
+- Runtime constants added at v1.23.x:
+  - `STRESS_PROGRAM_RUN_RECORD_CAP = 60` in
+    [`world/stress_applications.py`](../world/stress_applications.py).
+- Runtime modules added at v1.23.x (consolidation only —
+  no behavior change):
+  - [`tests/_canonical_digests.py`](../tests/_canonical_digests.py)
+    (canonical digest constants).
+  - [`world/forbidden_tokens.py`](../world/forbidden_tokens.py)
+    (composable forbidden-name vocabulary).
+  - [`world/stress_case_study.py`](../world/stress_case_study.py)
+    (read-only case-study helper).
+
+### 12.3 Hard boundary re-pinned at v1.23.last
+
+The v1.23.last hard boundary is identical to the v1.22.last
+boundary, re-pinned in full:
+
+**No real-world output.**
+- No price formation. No market price. No order. No trade.
+  No execution. No clearing. No settlement. No financing
+  execution.
+- No forecast path. No expected return. No target price.
+  No recommendation. No investment advice.
+- No magnitude. No probability. No expected response.
+- No firm decision. No investor action. No bank approval
+  logic.
+
+**No real-world input.**
+- No real data ingestion. No real institutional
+  identifiers. No licensed taxonomy dependency. No Japan
+  calibration.
+
+**No autonomous reasoning.**
+- No LLM execution at runtime.
+- No LLM prose accepted as source-of-truth.
+- No interaction auto-inference.
+- No aggregate / combined / net / dominant / composite
+  stress output.
+- No `manual_annotation` interaction layer at v1.23.last
+  — that candidate is deferred to v1.24 (see §12.4) and
+  remains design-only.
+
+**No source-of-truth book mutation.**
+- v1.23.x ships substrate hardening + validation pins +
+  one read-only case-study helper. No v1.23.x helper
+  mutates any kernel book; pre-existing book snapshots
+  remain byte-identical pre / post any v1.23.x helper
+  call.
+
+**No backend in the UI.**
+- v1.23.2a / v1.23.2b touched only [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html);
+  the v1.20.5 / v1.22.2 loader discipline is preserved.
+  No new tab. No new sheet. No backend / fetch / XHR /
+  file-system write.
+
+**No digest movement.**
+- Every v1.23.x sub-milestone preserved every v1.21.last
+  canonical living-world digest byte-identical.
+
+### 12.4 Future optional candidates (NOT planned at v1.23.last)
+
+| Future milestone | Description | Status |
+| ---------------- | ----------- | ------ |
+| v1.24 candidate | **Manual-annotation interaction layer** — `manual_annotation`-only annotation layer over the v1.21.3 multiset readout; closed sets `source_kind = {"human"}` and `reasoning_mode = {"human_authored"}`. **MUST NEVER be inferred by a helper, classifier, closed-set rule table, LLM, or any other automated layer.** Design-only first. | Optional candidate. Not in v1.23 scope. |
+| v1.25 candidate | **Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark / peer-pressure constraints on the v1.15.5 / v1.16.2 investor-intent layer. Decoupled from the v1.21 / v1.22 / v1.23 stress + audit surface. | Optional candidate. Not in v1.23 scope. |
+| v2.x | **Japan public calibration** — only after data / license boundaries are designed. | Gated. |
+| v3.x | **Proprietary Japan calibration** — not public. | Not public. |
+
+The two candidates v1.24 and v1.25 advance on **independent**
+cadences. Neither is required for the v1.23.last freeze;
+neither is blocked by v1.23.last; neither is pre-committed
+beyond "candidate" status. Each must enter under its own
+design pin before any code change.
+
+### 12.5 Closing statement
+
+v1.23.last frees the v1.23 sequence as a **substrate-
+hardening + validation-foundation** milestone with one
+research-defensible read-only case study attached. The
+sequence:
+
+1. Did not move any digest.
+2. Did not introduce a new dataclass, ledger event,
+   RecordType, label vocabulary, UI region, or export-
+   schema field.
+3. Did not infer interactions, aggregate stresses, or
+   produce any predictive metric.
+4. Pinned five concrete substrate risks (canonical digest
+   sprawl, forbidden-token composition, cross-layer
+   metadata stamp, runtime cardinality cap, test inventory
+   freshness).
+5. Pinned four validation categories (determinism, boundary
+   preservation, citation completeness, partial-application
+   visibility) and scaffolded two placeholders (inter-
+   reviewer reproducibility, null-model comparison).
+6. Demonstrated the citation graph's read-only legibility
+   via the attention-crowding / uncited-stress case study.
+
+The v1.23 sequence is **frozen**. Subsequent work touching
+the substrate, validation, or case-study layer requires a
+fresh design pin. v1.24 and v1.25 candidates remain
+optional and unscheduled.

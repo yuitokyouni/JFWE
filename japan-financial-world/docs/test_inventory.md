@@ -1815,3 +1815,24 @@ Read-only / no-mutation discipline: the helper does **not** call ``apply_stress_
 v1.23.3 test count: 4947
 
 <!-- v1.23.3 test inventory pin: END -->
+
+<!-- v1.23.last test inventory pin: BEGIN -->
+
+## v1.23.last — Substrate Hardening + Validation Foundation freeze (docs-only)
+
+Final freeze section for the v1.23 sequence. v1.23.last ships **no** new code, **no** new tests, **no** new RecordTypes, **no** new dataclasses, **no** new label vocabularies, **no** UI regions, **no** export-schema changes. The v1.23 sequence is closed.
+
+Sub-milestones shipped in the v1.23 sequence:
+
+- v1.23.0 (docs-only design pin)
+- v1.23.1 (substrate hardening — canonical digest module + composable forbidden-token vocabulary + cross-layer metadata stamp constants + ``STRESS_PROGRAM_RUN_RECORD_CAP = 60`` + test-inventory currency pin)
+- v1.23.2 (validation foundation — four pinnable categories + two placeholder categories + research note 002)
+- v1.23.2a / v1.23.2b (static-UI maintenance — single Run button, ribbon overflow hardened, inline fixture labelled legacy, Meta trail extended)
+- v1.23.3 (attention-crowding / uncited-stress case study — read-only helper + deterministic markdown + companion narrative)
+- v1.23.last (this freeze)
+
+All v1.21.last canonical ``living_world_digest`` values remain byte-identical at every v1.23.x sub-milestone. v1.23.x ships a validation foundation, not a validation proof.
+
+v1.23.last test count: 4947
+
+<!-- v1.23.last test inventory pin: END -->

@@ -139,7 +139,63 @@ warnings — not in any reduction or interpretive label.
 
 ---
 
-## 4. Current milestone: v1.22.last
+## 4. Current milestone: v1.23.last
+
+**v1.23.last Substrate Hardening + Validation Foundation freeze
+(shipped, docs-only).** Closes the v1.23 sequence as a
+**substrate-hardening + validation-foundation milestone** with
+one read-only attention-crowding / uncited-stress case study
+attached. v1.23 is **NOT** a new runtime behavior, **NOT** a
+new export schema, **NOT** an interaction-inference layer,
+**NOT** a UI rebuild, **NOT** a validation *proof* — every pin
+is a property of the audit object, never a comparison to a
+real-world series.
+
+Shipped sequence:
+
+| Milestone | Surface |
+| --------- | ------- |
+| v1.23.0 | Docs-only design pin in [`docs/v1_23_substrate_hardening_validation_foundation.md`](japan-financial-world/docs/v1_23_substrate_hardening_validation_foundation.md) + §132 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md). |
+| v1.23.1 | Substrate hardening: canonical digest module ([`tests/_canonical_digests.py`](japan-financial-world/tests/_canonical_digests.py)), composable forbidden-token vocabulary ([`world/forbidden_tokens.py`](japan-financial-world/world/forbidden_tokens.py)), cross-layer metadata stamp constants in [`world/stress_applications.py`](japan-financial-world/world/stress_applications.py), runtime cardinality cap `STRESS_PROGRAM_RUN_RECORD_CAP = 60` + trip-wire, test inventory currency pin. **+20 tests.** |
+| v1.23.2 | Validation foundation: four pinnable categories — determinism, boundary preservation, citation completeness, partial-application visibility — across [`tests/test_validation_*.py`](japan-financial-world/tests/) + two placeholder categories (inter-reviewer reproducibility, null-model comparison) at [`tests/fixtures/inter_reviewer/`](japan-financial-world/tests/fixtures/inter_reviewer/). Companion [`docs/research_note_002_validating_stress_citation_graphs_without_price_prediction.md`](japan-financial-world/docs/research_note_002_validating_stress_citation_graphs_without_price_prediction.md). **+15 tests.** |
+| v1.23.2a | Static UI behavior fix in [`examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html): consolidated `Run` button, `Compare Regimes` no longer hijacks the active sheet, ribbon overflow hardened, version pills refreshed. **No new tab. No runtime / export change.** |
+| v1.23.2b | Static UI staleness fix: inline sample fixture explicitly labelled `legacy_sample_fixture`, Meta milestone trail extended through v1.23.x, Active Stresses strip reset on Run, tooltip + Status block refresh. **+10 pin tests. No new tab. No runtime / export change.** |
+| v1.23.3 | Attention-crowding / uncited-stress case study: read-only helper [`world/stress_case_study.py`](japan-financial-world/world/stress_case_study.py) + deterministic markdown renderer + companion narrative [`docs/case_study_001_attention_crowding_uncited_stress.md`](japan-financial-world/docs/case_study_001_attention_crowding_uncited_stress.md). **+9 tests.** |
+| **v1.23.last** | Docs-only freeze. Final pin section §12 in [`docs/v1_23_substrate_hardening_validation_foundation.md`](japan-financial-world/docs/v1_23_substrate_hardening_validation_foundation.md); §132.9 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md); this README. |
+
+**Pinned at v1.23.last:**
+
+- `pytest -q`: **4947 / 4947 passing** (+54 vs v1.22.last)
+- `ruff check .`: clean
+- `python -m compileall -q world spaces tests examples`: clean
+- All v1.21.last canonical living-world digests preserved
+  byte-identical at every v1.23.x sub-milestone:
+  `quarterly_default` (`f93bdf3f…b705897c`),
+  `monthly_reference` (`75a91cfa…91879d`),
+  `scenario_monthly_reference_universe` test-fixture
+  (`5003fdfa…566eb6`), v1.20.4 CLI bundle
+  (`ec37715b…0731aaf`).
+- Source-of-truth book mutations from v1.23.x helpers: **0**
+- Ledger emissions from v1.23.x helpers: **0**
+- New `RecordType` values: **0**
+- New dataclasses: **0**
+- New label vocabularies: **0**
+- New tabs: **0** (v1.20.5 11-tab ↔ 11-sheet bijection
+  preserved)
+- Export schema changes: **0**
+
+**v1.23 ships a validation foundation, not a validation
+proof.** Every v1.23.2 pin asserts a *property* of the audit
+object — determinism, boundary preservation, citation
+completeness, partial-application visibility — not a
+predictive-accuracy claim against any external series. The
+v1.23.3 case study is a research-defensible read-only
+demonstration of what the citation graph reveals; it makes no
+forecast / outcome / impact / recommendation claim.
+
+---
+
+### Earlier concrete code milestone: v1.22.last (frozen)
 
 **v1.22.last Static UI Stress Readout Reflection freeze
 (shipped, docs-only).** Closes the v1.22 sequence as a
@@ -496,9 +552,10 @@ Both should report clean at v1.22.last.
 
 ## 9. Roadmap
 
-The v1.21 sequence is **complete and frozen**. The next steps are
-candidates, not commitments; each requires a fresh design pin
-before any code lands. Silent extension of v1.21 is forbidden.
+The v1.23 sequence is **complete and frozen** at v1.23.last. The
+next steps are candidates, not commitments; each requires a fresh
+design pin before any code lands. Silent extension of v1.23 is
+forbidden.
 
 | Version    | Goal                                                                                                        | Status                                                          |
 | ---------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -513,11 +570,11 @@ before any code lands. Silent extension of v1.21 is forbidden.
 | v1.18.last | Synthetic scenario-driver library                                                                           | **Shipped**                                                     |
 | v1.19.last | Local run bundle + monthly reference profile                                                                | **Shipped**                                                     |
 | v1.20.last | Monthly scenario reference universe                                                                         | **Shipped**                                                     |
-| v1.21.last | Stress Composition Layer freeze                                                                         | Shipped                                                          |
-| **v1.22.last** | **Static UI Stress Readout Reflection freeze.** v1.22.0 design pin (docs-only); v1.22.1 descriptive-only `stress_readout` payload section on `RunExportBundle` (empty-by-default; omitted from JSON when empty so v1.21.last digests stay byte-identical); v1.22.2 Active Stresses strip in the existing Universe sheet (per-readout-entry rendering: `as_of_date` / template id / `resolved / total` counter / Partial application badge / context-surface · shift-direction · scenario-family multisets / citation lists / Raw canonical labels technical-details box). No new tab. No bar height. No score. Read-only static rendering only. | **Shipped — current.** See [`docs/v1_22_static_ui_stress_readout_reflection.md`](japan-financial-world/docs/v1_22_static_ui_stress_readout_reflection.md) "v1.22.last freeze" section and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §131.9. |
-| **v1.23.0** | **Substrate Hardening + Validation Foundation — design pin (docs-only).** Closes 5 concrete substrate gaps surfaced by the post-v1.22.2 review: canonical digest sprawl (new `tests/_canonical_digests.py` module), forbidden-token set composition (new `world/forbidden_tokens.py` re-composing the 6 existing forbidden frozensets so v1.21.0a stress tokens propagate to all payload sections), cross-layer metadata stamp pin (`metadata["stress_program_application_id"]` / `metadata["stress_step_id"]`), runtime cardinality cap (`STRESS_PROGRAM_RUN_RECORD_CAP = 60` + trip-wire), test inventory currency. Also lays the validation foundation: 4 pinnable categories (determinism / boundary preservation / citation completeness / partial-application visibility) + 2 placeholders (inter-reviewer reproducibility / null-model comparison). v1.23.0 = docs-only design; v1.23.1 = substrate hardening; v1.23.2 = validation fixtures + research note 002; v1.23.3 = attention-crowding read-only demo case study; v1.23.last = freeze. **No digest movement. No no-stress behavior change. No new dataclass / ledger event / label vocabulary.** | **Design scoped — current.** See [`docs/v1_23_substrate_hardening_validation_foundation.md`](japan-financial-world/docs/v1_23_substrate_hardening_validation_foundation.md) and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §132. |
-| v1.24 candidate | **manual_annotation interaction layer** — `amplify` / `dampen` / `offset` / `coexist` annotation over the v1.21.3 multiset readout. Closed sets `source_kind = {"human"}` and `reasoning_mode = {"human_authored"}`. **MUST NEVER be inferred by a helper, classifier, closed-set rule table, LLM, or any other automated layer.** Manual only. | Optional candidate. Not started. Requires a fresh design pin. |
-| v1.25 candidate | **Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark / peer-pressure constraints on the v1.15.5 / v1.16.2 investor-intent layer. Decoupled from the v1.21 / v1.22 / v1.23 stress + audit surface. | Optional candidate. Not started. Requires a fresh design pin. |
+| v1.21.last | Stress Composition Layer freeze                                                                         | **Shipped**                                                          |
+| v1.22.last | Static UI Stress Readout Reflection freeze (descriptive-only `stress_readout` payload section + Active Stresses strip in the existing Universe sheet; no new tab). | **Shipped**                                                     |
+| **v1.23.last** | **Substrate Hardening + Validation Foundation freeze.** v1.23.0 design pin (docs-only); v1.23.1 substrate hardening (canonical digest module, composable forbidden-token vocabulary, cross-layer metadata stamp constants, `STRESS_PROGRAM_RUN_RECORD_CAP = 60` + trip-wire, test inventory currency); v1.23.2 validation **foundation** — four pinnable categories (determinism / boundary preservation / citation completeness / partial-application visibility) + two placeholders (inter-reviewer reproducibility / null-model comparison) + research note 002; v1.23.2a / v1.23.2b static-UI maintenance (single Run button, ribbon overflow hardened, inline sample fixture explicitly labelled `legacy_sample_fixture`, Meta milestone trail extended through v1.23.x); v1.23.3 attention-crowding / uncited-stress case study (read-only helper + deterministic markdown + companion narrative doc); v1.23.last freeze. **No digest movement.** **No new dataclass / ledger event / label vocabulary / RecordType.** **No UI region. No new tab. No export-schema change.** v1.23.x ships a *validation foundation*, not a validation proof — every pin is a property of the audit object, never a comparison to a real-world series. | **Shipped — current.** See [`docs/v1_23_substrate_hardening_validation_foundation.md`](japan-financial-world/docs/v1_23_substrate_hardening_validation_foundation.md) §12 "v1.23.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §132.9. |
+| v1.24 candidate | **Manual-Annotation Interaction Layer** — `manual_annotation`-only annotation surface over the v1.21.3 multiset readout. Closed sets `source_kind = {"human"}` and `reasoning_mode = {"human_authored"}`. **MUST NEVER be inferred by a helper, classifier, closed-set rule table, LLM, or any other automated layer.** Design-only first. | Optional candidate. Not started. Requires a fresh design pin. |
+| v1.25 candidate | **Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark / peer-pressure constraints on the v1.15.5 / v1.16.2 investor-intent layer. Decoupled from the v1.21 / v1.22 / v1.23 stress + audit surface; not blocked by v1.24, advances on its own cadence. | Optional candidate. Not started. Requires a fresh design pin. |
 | v2.x       | Japan public calibration — only after data / license boundaries are designed.                              | Not started. Gated by license review and boundary design.       |
 | v3.x       | Japan proprietary calibration — not public; would live in a private repository and would preserve every public-FWE boundary. | Not started. Not public.                                        |
 

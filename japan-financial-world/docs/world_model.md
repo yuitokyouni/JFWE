@@ -11380,3 +11380,86 @@ book mutation; no backend in the UI; no digest movement.
   preserves every public-FWE boundary.
 
 Silent extension of v1.23 is forbidden.
+
+### 132.9 v1.23.last freeze (docs-only)
+
+*Final freeze section for the v1.23 sequence. v1.23.last
+ships **no** new code, **no** new tests, **no** new
+RecordTypes, **no** new dataclasses, **no** new label
+vocabularies, **no** UI regions, **no** export-schema
+changes. The v1.23 sequence is closed.*
+
+**v1.23 is complete.** The four sub-milestones — v1.23.0
+design pin, v1.23.1 substrate hardening, v1.23.2 validation
+foundation + research note 002, v1.23.3 attention-crowding /
+uncited-stress case study — plus the two static-UI
+maintenance passes v1.23.2a and v1.23.2b are all shipped and
+frozen at v1.23.last.
+
+**Pinned at v1.23.last:**
+
+- `pytest -q`: 4947 / 4947 passing.
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests preserved
+  byte-identical at every v1.23.x sub-milestone:
+  `quarterly_default` (`f93bdf3f…b705897c`),
+  `monthly_reference` (`75a91cfa…91879d`),
+  `scenario_monthly_reference_universe` test-fixture
+  (`5003fdfa…566eb6`), v1.20.4 CLI bundle
+  (`ec37715b…0731aaf`).
+- Source-of-truth book mutations from v1.23.x helpers: 0.
+- Ledger emissions from v1.23.x helpers: 0.
+- New `RecordType` values: 0.
+- New dataclasses: 0.
+- New label vocabularies: 0.
+- New tabs: 0.
+- Export schema changes: 0.
+
+**Hard boundary re-pinned at v1.23.last** (identical to
+v1.22.last):
+
+- No price formation. No trading. No order. No execution.
+  No clearing. No settlement. No financing execution.
+- No forecast / expected return / target price /
+  recommendation / investment advice.
+- No magnitude / probability / expected response.
+- No firm decision / investor action / bank approval logic.
+- No real data ingestion / real institutional identifiers /
+  licensed taxonomy dependency / Japan calibration.
+- No LLM execution at runtime. No LLM prose accepted as
+  source-of-truth.
+- No interaction auto-inference. No aggregate / combined /
+  net / dominant / composite stress output.
+- No `manual_annotation` interaction layer at v1.23.last
+  (deferred to v1.24 candidate; design-only first).
+- No source-of-truth book mutation by v1.23.x.
+- No new tab / sheet / backend in the static UI.
+
+**Future candidates (NOT scheduled, NOT pre-committed at
+v1.23.last):**
+
+- **v1.24 candidate — manual_annotation interaction
+  layer.** Remains a candidate; design-only first. The
+  closed-set discipline (`source_kind = {"human"}`,
+  `reasoning_mode = {"human_authored"}`) is re-pinned at
+  v1.23.last. **MUST NEVER be inferred by a helper,
+  classifier, closed-set rule table, LLM, or any other
+  automated layer** — that prohibition extends past the
+  v1.23.last freeze and is itself part of the freeze.
+- **v1.25 candidate — institutional investor mandate /
+  benchmark pressure.** Remains a candidate; bounded
+  synthetic mandate / benchmark / peer-pressure constraints
+  on the v1.15.5 / v1.16.2 investor-intent layer.
+  Decoupled from the v1.21 / v1.22 / v1.23 stress + audit
+  surface. Not blocked by v1.24; advances on its own
+  cadence.
+- **v2.x — Japan public calibration.** Gated; requires
+  data / license boundary design first.
+- **v3.x — proprietary Japan calibration.** Not public.
+
+The v1.23 sequence is **frozen**. Any subsequent change to
+the substrate, validation, or case-study layer requires a
+fresh design pin under a v1.23.0a or later correction.
+Silent extension of v1.23.last is forbidden.
