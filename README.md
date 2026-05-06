@@ -1,782 +1,400 @@
-# Japan Financial World Engine (JFWE) / Financial World Engine (FWE)
+# Financial World Engine (FWE) / Japan Financial World Engine (JFWE)
 
-**FWE / JFWE is a jurisdiction-neutral financial-world simulation
-substrate.** It models a financial economy through layered "spaces"
-(Corporate, Banking, Investors, Exchange, Real Estate, Information,
-Policy, External) coordinated by a world kernel, and now ships an
-**endogenous routine + heterogeneous attention chain** that produces
-auditable ledger traces from internal cycles — corporate reporting,
-attention building, and review — without external shocks.
+FWE is a public, jurisdiction-neutral **synthetic financial world**
+simulation substrate. It models a financial economy through layered
+"spaces" (Corporate, Banking, Investors, Exchange, Real Estate,
+Information, Policy, External) coordinated by a single world kernel,
+and records every state-changing event in an **append-only ledger**
+that is byte-deterministic across runs and reconstructable as a
+causal graph.
 
-This is **research software**. It demonstrates *how* a financial
-world can be modeled with explicit identity, time, ownership,
-contracts, prices, signals, constraints, variables, exposures,
-attention, and routines.
+This is **research software**. The public v1.x line ships only a
+synthetic reference world; it is not calibrated to any real economy
+or institution and contains no real prices, real holdings, or real
+data feeds. The repository keeps its legacy directory name
+`japan-financial-world/` for git history; renaming is a separate
+migration.
 
-The current public prototype is **not a forecasting model**, **not
-investment advice**, and **not calibrated** to any real economy or
-institution. What it currently demonstrates is **auditable
-endogenous information and review flows** across a small synthetic
-world, with deterministic Markdown reports, replay-determinism
-manifests (SHA-256 digest), and explicit no-economic-behavior
-boundaries. **Financial decision behavior is intentionally
-limited.** Mechanism layers (firm-financial, valuation,
-credit-review, investor-intent, market) attach to the substrate one
-milestone at a time and are documented in
-[`docs/model_mechanism_inventory.md`](japan-financial-world/docs/model_mechanism_inventory.md)
-and
-[`docs/behavioral_gap_audit.md`](japan-financial-world/docs/behavioral_gap_audit.md).
-The reference data is fully synthetic; Japan calibration is v2 / v3
-territory.
+---
 
-**Current runtime milestone: v1.12.last endogenous attention loop
-freeze.** v1.12 is now frozen as the first public FWE milestone
-where the living reference world has (1) time-crossing firm
-latent state, (2) actor-specific attention-conditioned
-mechanisms (investor intent, valuation lite, bank credit review
-lite), (3) next-period attention feedback, and (4) a finite
-attention budget with deterministic decay, crowding, and
-saturation. The v1.12.last freeze is **docs-only** — same code,
-same tests, same `living_world_digest` as v1.12.9; the freeze
-ships the single-page reader-facing summary in
-[`docs/v1_12_endogenous_attention_loop_summary.md`](japan-financial-world/docs/v1_12_endogenous_attention_loop_summary.md),
-the regime-comparison demo section in
-[`examples/reference_world/README.md`](japan-financial-world/examples/reference_world/README.md),
-the v1.12.last release-readiness snapshot in
-[`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), and the
-v1.12.last position-in-sequence row in `docs/world_model.md`
-§92. v1.12.last sits **alongside** the v1.9.last public
-prototype (the runnable substrate); the v1.9.last freeze is
-unchanged.
+## 1. What FWE is
 
-**v1.12.9 (the underlying runtime layer that v1.12.last
-freezes): attention budget / decay / saturation.** Disciplines the v1.12.8 cross-period feedback loop
-with a **finite synthetic attention budget**.
-`ActorAttentionStateRecord` now carries `per_dimension_budget=3`
-/ `decay_horizon=2` / `saturation_policy="drop_oldest"`;
-`max_selected_refs` is capped at 12. Inherited focus labels halve
-in weight each period without reinforcement and drop once
-`stale_count` exceeds `decay_horizon`; reinforcement resets
-weight to 1.0 and stale_count to 0; saturation above 8 focus
-labels triggers drop-oldest. A new
-`apply_attention_budget(...)` helper bounds candidate selected
-refs by per-dimension and total caps deterministically.
+FWE is an **audit-first** financial-world engine. Each layer is
+designed so that:
 
-The headline crowding pin (in
-`tests/test_attention_feedback.py::test_crowding_new_focus_replaces_decayed_focus_in_memory`)
-shows a 3-period synthetic where period 0 is `engagement_watch`,
-periods 1-2 are `risk_flag_watch`: at period 1 the state mixes
-risk + decayed engagement; by period 2 engagement has dropped
-entirely and the state is fully risk-shaped. **New focus has
-crowded out old focus.**
+- Every state-changing record is written to an **append-only
+  ledger**, with stable world identifiers and explicit source /
+  target citations.
+- Every output is a **deterministic function of inputs**: same
+  fixture → same records → same SHA-256 `living_world_digest`.
+- Every actor decision is **explicit, traceable, and bounded**:
+  a closed set of `reasoning_mode` values, a closed set of
+  evidence reference ids, and explicit `unresolved_ref_count` /
+  `boundary_flags` audit fields on every reasoning record.
+- Every action follows a **four-property contract**: explicit
+  inputs, explicit outputs, ledger record, no cross-space
+  mutation.
 
-Per-period record count and per-run window are unchanged from
-v1.12.8 (the v1.12.9 changes are internal to attention-state
-field shapes and memory-selection contents). Default-fixture
-`living_world_digest` moves from `3002a499...` to
-`e508b4bf10df217f7b561b41aea845f841b12215d5bf815587375c52cffcdcb5`
-by design — pinned in a regression test. With v1.12.9 shipped,
-attention is no longer a monotonically widening surface; it is
-**scarce, budgeted, decaying, and saturating** — a constrained
-adaptive process whose shape changes in deterministic response
-to outcomes, never just by accumulation.
+The current concrete capabilities at v1.21.last:
 
-**Frozen scenario driver library: v1.18.last.** v1.18 is now
-frozen as the **first public-FWE scenario-driver inspection
-layer** over the v1.17 inspection surface and the v1.16 closed
-loop. The freeze ships [`docs/v1_18_scenario_driver_library_summary.md`](japan-financial-world/docs/v1_18_scenario_driver_library_summary.md),
-§127 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md),
-the v1.18.last freeze-pin section in
-[`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md),
-the v1.18.last release-readiness snapshot in
-[`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), and the
-v1.18.last header note in
-[`docs/test_inventory.md`](japan-financial-world/docs/test_inventory.md).
-v1.18.last itself is **docs-only** on top of the v1.18.0 →
-v1.18.4 code freezes. The chain — synthetic
-`ScenarioDriverTemplate` storage (v1.18.1) → append-only
-`ScenarioDriverApplicationRecord` / `ScenarioContextShiftRecord`
-helper that emits new records citing the scenario driver via
-plain-id citations and never mutates a pre-existing context
-record (v1.18.2) → deterministic event / causal annotations
-rendered through the v1.17.1 display surface plus a markdown
-scenario report driver (v1.18.3) → static UI scenario selector
-mock with seven options (v1.18.4) — is **append-only,
-stimulus-only, and inspection-only**. Scenario driver is the
-stimulus, never the response. No firm decisions, no investor
-actions, no bank approval logic, no price formation, no
-trading, no financing execution, no investment advice, no
-forecast, no real data, no Japan calibration, no LLM
-execution. `reasoning_mode = "rule_based_fallback"` is binding
-at v1.18.x; the `future_llm_compatible` slot marker is an
-architectural commitment, not a runtime capability. Test count
-= **4334 / 4334**, per-period record count = **108 / 110**,
-per-run window = **`[432, 480]`**, `living_world_digest` =
-**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
-— all unchanged from v1.17.last by design when no scenario is
-applied. v1.18.last sits **alongside** the v1.17.last
-inspection-layer freeze, the v1.16.last closed-loop freeze,
-the v1.13.last settlement substrate, the v1.12.last attention
-loop, and the v1.9.last public prototype; none of those are
-modified.
+- An **endogenous routine + heterogeneous attention chain** that
+  produces auditable ledger traces from internal cycles —
+  corporate quarterly reporting, **actor attention** building
+  with a finite budget, and review routines — without external
+  shocks.
+- A **scenario-driver library** (v1.18) that lets a caller apply
+  a synthetic stimulus to the world by emitting append-only
+  context-shift records that cite the driver. The driver is the
+  stimulus; nothing in the engine produces the *response*.
+- A **monthly reference universe** (v1.20): 12 monthly periods
+  × 11 generic sectors × 11 representative synthetic firm
+  profiles × 4 investor archetypes × 3 bank archetypes × 51
+  synthetic information arrivals from a jurisdiction-neutral
+  release calendar.
+- A **stress composition layer** (v1.21): one `StressProgramTemplate`
+  + up to three `StressStep` entries → a thin
+  `apply_stress_program(...)` orchestrator that walks the steps
+  and reuses the v1.18.2 `apply_scenario_driver(...)` helper →
+  a **read-only multiset projection** (`StressFieldReadout`)
+  describing what was emitted on each **context surface**, in
+  what direction, by which scenario family → a deterministic
+  markdown summary suitable for an audit note.
+- A **CLI export bundle** (v1.19.2 / v1.20.4) and a **static
+  HTML analyst workbench** (v1.18.4 / v1.19.4 / v1.20.5) that
+  loads the bundle locally — the browser never executes Python,
+  never calls a backend, never writes files.
 
-**Frozen local run bundle and monthly reference layer:
-v1.19.last.** v1.19 is now frozen as the **first public-FWE
-local-run-bundle inspection layer**. The freeze ships
-[`docs/v1_19_local_run_bundle_and_monthly_reference_summary.md`](japan-financial-world/docs/v1_19_local_run_bundle_and_monthly_reference_summary.md),
-§128.20 in
-[`docs/world_model.md`](japan-financial-world/docs/world_model.md),
-the v1.19.last freeze-pin section in
-[`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md),
-the v1.19.last release-readiness snapshot in
-[`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), and the
-v1.19.last header note in
-[`docs/test_inventory.md`](japan-financial-world/docs/test_inventory.md).
-v1.19.last itself is **docs-only** on top of the v1.19.0 →
-v1.19.4 code freezes (plus the v1.19.3.1 reconciliation
-follow-up). The chain — `RunExportBundle` JSON writer (v1.19.1)
-+ CLI exporter (v1.19.2 / v1.19.3.1) + `monthly_reference`
-profile + `InformationReleaseCalendar` (v1.19.3) + read-only
-static UI loader (v1.19.4) — is **CLI-first / read-only-loader
-/ opt-in-monthly / no-backend**. The CLI generates a
-deterministic JSON bundle for `quarterly_default` (4 periods,
-canonical digest) or `monthly_reference` (12 monthly periods,
-51 synthetic information arrivals from a jurisdiction-neutral
-calendar); the static workbench loads the JSON via
-`<input type="file">` + `FileReader` + `JSON.parse` — **no
-fetch, no XHR, no backend, no engine execution from the
-browser, no file-system write**. **Information arrival is not
-data ingestion** — no real values, no real release dates, no
-real institutional identifiers. No price formation, no trading,
-no financing execution, no investment advice, no Japan
-calibration, no LLM execution. Test count = **4522 / 4522**,
-per-period record count (`quarterly_default`) = **108 / 110**,
-per-run window = **`[432, 480]`**, `living_world_digest`
-(`quarterly_default`) =
-**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
-(unchanged from v1.18.last by design across the entire v1.19
-sequence); `monthly_reference` `living_world_digest` =
-**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**.
-v1.19.last sits **alongside** the v1.18.last scenario-driver-
-library freeze, the v1.17.last inspection-layer freeze, the
-v1.16.last closed-loop freeze, the v1.13.last settlement
-substrate, the v1.12.last attention loop, and the v1.9.last
-public prototype; none of those are modified.
+---
 
-**Latest milestone: v1.21.last Stress Composition Layer
-freeze (shipped, docs-only).** Closes the v1.21 sequence as
-a **thin orchestrator + read-only multiset readout** over
-the existing v1.18 / v1.20 chain. v1.21 is **NOT** a causal-
-route engine, **NOT** an interaction inference engine, and
-**NOT** a composition reducer; it does not infer combined
-stress effects. The shipped sequence is
-**v1.21.0 → v1.21.0a (scope correction) → v1.21.1 (storage:
-[`world/stress_programs.py`](japan-financial-world/world/stress_programs.py))
-→ v1.21.2 (thin orchestrator:
-[`world/stress_applications.py`](japan-financial-world/world/stress_applications.py))
-→ v1.21.3 (read-only multiset readout + deterministic
-markdown summary:
-[`world/stress_readout.py`](japan-financial-world/world/stress_readout.py))
-→ v1.21.last freeze (docs-only)**. v1.21.last itself ships
-only the freeze section in
-[`docs/v1_21_stress_composition_layer.md`](japan-financial-world/docs/v1_21_stress_composition_layer.md),
-the §130.8 freeze marker in
-[`docs/world_model.md`](japan-financial-world/docs/world_model.md),
-the refreshed v1.20-summary roadmap row in
-[`docs/v1_20_monthly_scenario_reference_universe_summary.md`](japan-financial-world/docs/v1_20_monthly_scenario_reference_universe_summary.md),
-this README anchor refresh, and a one-line docstring fix
-on `render_stress_field_summary_markdown(...)` ("9 required
-sections" → "11 sections, 9 pinned by the required-sections
-test"). Pinned at v1.21.last: **`pytest -q` 4865 / 4865**
-(+101 tests vs v1.20.last across v1.21.1 (+35) / v1.21.2
-(+33) / v1.21.3 (+33)); `quarterly_default`
-`living_world_digest` (`f93bdf3f…b705897c`),
-`monthly_reference` `living_world_digest`
-(`75a91cfa…91879d`),
-`scenario_monthly_reference_universe` test-fixture
-`living_world_digest` (`5003fdfa…566eb6`), and the v1.20.4
-CLI bundle digest (`ec37715b…0731aaf`) are **byte-identical**
-to v1.20.last; **0 source-of-truth book mutations**. The
-forbidden-name list (composes v1.18.0 / v1.19.3 / v1.20.0 /
-v1.21.0a forbidden tokens) carries forward unchanged;
-`StressInteractionRule` and the `amplify` / `dampen` /
-`offset` / `coexist` interaction-label family remain
-**deferred to v1.22+ (or never)** and may only ever appear
-as `manual_annotation`-only — never auto-inferred. Hard
-boundary re-pinned at v1.21.last: no causality claims, no
-magnitudes, no probabilities, no aggregate / combined / net
-/ dominant / composite stress output, no interaction auto-
-inference, no price formation, no forecast path, no expected
-return, no target price, no trading / order / execution /
-clearing / settlement, no firm decision, no investor action,
-no bank approval logic, no investment advice, no real data
-ingestion, no Japan calibration, no LLM execution, no LLM
-prose as source-of-truth. **Future optional candidates (NOT
-planned, NOT scoped):** a static UI strip over the v1.21.3
-markdown summary, and a v1.22 manual-annotation-only stress
-interaction layer. Each would require a fresh design pin;
-silent extension is forbidden.
+## 2. What FWE is not
 
-**Earlier concrete code milestone: v1.20.last Monthly Scenario Reference
-Universe freeze (shipped, docs-only).** Closes the v1.20
-sequence as the **first FWE milestone where the engine moves
-from a small closed-loop demo to a richer synthetic
-market-like reference universe** — 12 monthly periods × 11
-generic sectors × 11 representative synthetic firm profiles ×
-4 investor archetypes × 3 bank archetypes × 51 information
-arrivals × 1 scheduled scenario application × 2 scenario
-context shifts × 11 affected sector ids × 11 affected firm
-profile ids. v1.20.last itself is **docs-only** on top of the
-v1.20.0 → v1.20.5 code freezes; ships the single-page
-reader-facing summary
-[`docs/v1_20_monthly_scenario_reference_universe_summary.md`](japan-financial-world/docs/v1_20_monthly_scenario_reference_universe_summary.md),
-the v1.20.last release-readiness snapshot in
-[`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.20.last
-position-in-sequence rows in
-[`docs/world_model.md`](japan-financial-world/docs/world_model.md)
-§129.25 (freeze) / §129.26 (the binding **3220 vs 3241**
-record-count distinction — profile canonical record count vs
-CLI export bundle `manifest.record_count`, with the +21 delta
-fully explained by the v1.11.2 `_REGIME_PRESETS["constrained"]`
-preset and confined to the `observation_set_selected` record
-type) / §129.27 (post-v1.20 forward pointer), the v1.20.last
-freeze pin in
-[`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md),
-the v1.20.last header note in
-[`docs/test_inventory.md`](japan-financial-world/docs/test_inventory.md),
-and the v1.20.last cross-link in
-[`docs/fwe_reference_demo_design.md`](japan-financial-world/docs/fwe_reference_demo_design.md).
-The chain is **CLI-first**: a user runs
-`python -m examples.reference_world.export_run_bundle --profile scenario_monthly_reference_universe --regime constrained --scenario credit_tightening_driver --out /tmp/fwe_scenario_universe_bundle.json`
-in a terminal, then loads the JSON in the static workbench
-under `file://`; the browser **never** executes Python, never
-calls a backend, never writes files. The static workbench
-gains a new **Universe** tab between Overview and Timeline
-(11 tabs ↔ 11 sheets — bijection preserved) with an
-11-row × 9-column sector sensitivity heatmap, an 11-row × 6-
-column firm profile table, and a 5-step scenario causal trace.
-Performance pins at v1.20.last (binding): per-period record
-count **257 / 261**; profile canonical record count **3220**
-(v1.20.3 default test fixture, no `market_regime` kwarg); CLI
-export bundle `manifest.record_count` **3241** (v1.20.4 with
-`--regime constrained --scenario credit_tightening_driver`) —
-both within the v1.20.0 target `[2400, 3360]` and well under
-the hard guardrail `≤ 4000`. The +21 record delta is fully
-driven by the v1.11.2 `_REGIME_PRESETS["constrained"]` preset
-and confined to the `observation_set_selected` record type;
-pre-seeded variables / exposures make zero difference.
-`scenario_monthly_reference_universe` `living_world_digest`
-(test fixture) =
-**`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**;
-v1.20.4 CLI bundle digest =
-**`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**;
-the canonical `quarterly_default` `living_world_digest`
-(`f93bdf3f…b705897c`) and the `monthly_reference`
-`living_world_digest` (`75a91cfa…91879d`) are **byte-identical**
-to v1.19.last across the entire v1.20 sequence — the new
-profile is **opt-in**. Sector labels carry the `_like` suffix
-and no public-FWE module text or test depends on bare `GICS`,
-`MSCI`, `S&P`, `FactSet`, `Bloomberg`, `Refinitiv`, `TOPIX`,
-`Nikkei`, or `JPX` tokens; firm ids follow the synthetic
-`firm:reference_<sector>_a` pattern with no real company name.
-Hard boundary preserved: no real companies, no real sector
-weights, no licensed taxonomy dependency, no real financial
-values, no real indicator values, no real institutional
-identifiers, no price formation, no market price, no
-predicted index, no forecast path, no expected return, no
-target price, no trading, no orders, no execution, no
-clearing, no settlement, no financing execution, no direct
-firm decisions, no direct investor actions, no bank approval
-logic, no investment advice, no real data ingestion, no Japan
-calibration, no LLM execution, no LLM prose as
-source-of-truth, no backend, no fetch / XHR, no file-system
-write, no browser-to-Python execution, no daily simulation.
-Test count: **4764 / 4764** (unchanged from v1.20.5; v1.20.last
-is docs-only).
+FWE is **not**:
 
-**Earlier concrete code milestone: v1.20.5 UI universe /
-sector / monthly scenario rendering.** Fifth concrete code
-milestone of the v1.20 sequence — extends the static workbench
-mockup
-([`examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html))
-so it can render the v1.20.4 `scenario_monthly_reference_universe`
-bundle. The browser **never** executes Python, never calls a
-backend, never writes files. v1.20.5 is **HTML / CSS / JS only**
-— no Python source modules touched, no test count change. Adds
-a new **Universe** tab between Overview and Timeline, preserving
-the tab ↔ sheet bijection (11 tabs · 11 sheets: Cover · Inputs ·
-Overview · Universe · Timeline · Regime Compare · Attention ·
-Market Intent · Financing · Ledger · Appendix). When a
-`scenario_monthly_reference_universe` bundle is loaded, the
-Universe tab renders: a counts row (sectors / firm profiles /
-investors / banks / periods / selected scenario / affected
-sectors / affected firms); an **11-row × 9-column sector
-sensitivity heatmap** rendered as a CSS-class colour grid
-(`sens-low` / `sens-moderate` / `sens-high` / `sens-very-high` /
-`sens-unknown` — colour is decorative, the cell text always
-echoes the underlying closed-set v1.20.0 sensitivity label
-verbatim, no numeric weight is implied); an **11-row × 6-column
-firm profile table** with `word-break: break-word` so long ids
-wrap; a **scenario causal-trace** five-step ordered list
-(scenario template → scheduled application → applied
-application → context shifts → affected scope); and an
-always-visible boundary footer. `BUNDLE_EXECUTABLE_PROFILES`
-extended additively with `scenario_monthly_reference_universe`;
-`validateBundleSchema(...)` requires for the new profile:
-`metadata.reference_universe` object with non-empty
-`sector_labels` + `firm_profile_ids` arrays; `scenario_trace`
-object with `affected_sector_ids` + `affected_firm_profile_ids`
-arrays; `manifest.sector_count == 11` / `firm_count == 11` /
-`investor_count == 4` / `bank_count == 3`. Profile badge gains
-a distinct amber colour for the universe profile (vs blue for
-`monthly_reference` and green for `quarterly_default`); the
-v1.19.3 information-arrival summary card is now also visible
-for the universe profile (51 arrivals across 12 months); the
-in-page `Validate` audit gained seven new checks (Universe tab
-+ sheet + both tbodies present, `renderUniverseFromBundle`
-defined, `SENSITIVITY_LABELS` carries the v1.20.0 five-rung
-closed set, `BUNDLE_EXECUTABLE_PROFILES` includes the new
-profile). Safety: `textContent` only — never `innerHTML` for
-user-loaded JSON; no `eval`; no `fetch` / XHR; no backend; no
-file-system write; no `location.hash` mutation during bundle
-load; capture-and-restore around scroll position so the load
-never causes a scroll jump. The canonical `quarterly_default`
-digest stays at `f93bdf3f…b705897c`, the `monthly_reference`
-digest stays at `75a91cfa…91879d`, and the v1.20.4 CLI bundle
-digest stays at `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
-— v1.20.5 touches no Python source. Test count unchanged at
-**4764 / 4764**.
+- A price-prediction engine. There is no price formation, no
+  market microstructure, no order matching, no expected return,
+  no target price.
+- A forecasting model. There is no forecast path, no scenario
+  probability, no expected response.
+- A causal-proof engine. The ledger records *what was emitted*
+  and *which records cite which sources*; it does not claim
+  that any input *causes* any output in the real world.
+- An interaction inference engine. Overlapping stresses are
+  preserved as an ordered multiset on each context surface;
+  the engine never auto-classifies them as
+  `amplify` / `dampen` / `offset` / `coexist`.
+- A composition reducer. There is no `aggregate_*` /
+  `combined_*` / `net_*` / `dominant_*` / `composite_*`
+  field anywhere in the v1.21 surface.
+- An investment system. No trading, no order, no execution, no
+  clearing, no settlement, no financing execution, no firm
+  decision, no investor action, no bank approval logic, no
+  investment advice.
+- A real-data pipeline. No real prices, no real holdings, no
+  real institutional identifiers, no licensed taxonomies, no
+  paid feeds, no client communications.
+- A Japan-calibrated model. v1.x is fully jurisdiction-neutral.
+  Japan calibration begins in v2.x (public data) and v3.x
+  (proprietary data). Any reference to BOJ / MUFG / GPIF /
+  Toyota / TSE / TOPIX / Nikkei / JPX in the v1.x docs appears
+  only to mark what is *prohibited* in v1.x or *deferred* to
+  v2.x / v3.x.
+- An LLM-driven system. No LLM execution at runtime; no LLM
+  prose accepted as source-of-truth. The
+  `reasoning_slot = "future_llm_compatible"` marker is an
+  architectural commitment, not a runtime capability.
 
-**Earlier concrete code milestone: v1.20.4 CLI export for
-`scenario_monthly_reference_universe`.** Fourth concrete code
-milestone of the v1.20 sequence — extends
-[`examples/reference_world/export_run_bundle.py`](japan-financial-world/examples/reference_world/export_run_bundle.py)
-so a user can run a single CLI command to write a deterministic
-`RunExportBundle` JSON for the v1.20.3 opt-in
-`scenario_monthly_reference_universe` profile. `EXECUTABLE_PROFILES`
-extended additively from
-`("quarterly_default", "monthly_reference")` to
-`("quarterly_default", "monthly_reference", "scenario_monthly_reference_universe")`;
-`world.run_export.RUN_PROFILE_LABELS` extended additively;
-new module-level
-`SCENARIO_UNIVERSE_PROFILE_SUPPORTED_SCENARIOS = ("none_baseline", "credit_tightening_driver")`
-— `credit_tightening_driver` is **only** valid under the new
-profile; combining it with `quarterly_default` /
-`monthly_reference` exits non-zero. The new
-`_build_bundle_for_scenario_monthly_reference_universe(...)`
-mirrors the v1.19.3.1 monthly_reference shape and adds three
-v1.20.x-specific bundle sections: **`metadata.reference_universe`**
-(universe profile id + 11 sector ids + 11 firm profile ids +
-11 firm ids + 11 sector labels with the `_like` suffix +
-per-sector sensitivity summary on the v1.20.0 six-dimension
-five-rung closed set); **`scenario_trace`** (scheduled-
-application + applied-application + emitted context-shift
-ids; merged context-surface labels — `market_environment` +
-`financing_review_surface` — and shift-direction labels —
-`tighten`; per-application `affected_sector_ids` (11) +
-`affected_firm_profile_ids` (11) read from the v1.20.4
-orchestrator's application metadata so a downstream consumer
-can render per-sector / per-firm impact without recomputing
-the universe; merged `boundary_flags` AND view; v1.18.0
-`reasoning_modes` / `reasoning_slots` audit shape); and
-**`market_intent`** / **`financing`** (compact label-only
-histograms with closed-loop cardinality counts —
-`O(P × I × F) = 528` market intents and `O(P × F) = 132`
-aggregated interest / indicative pressure / financing path /
-capital-structure review). Reuses the v1.19.3.1
-`information_arrival_summary` (1 calendar / 51 scheduled
-releases / 51 arrivals across 12 months); `ledger_excerpt`
-bounded at 20 records with v1.20.x-setup-priority selection;
-volatile fields (`record_id`, `timestamp`) stripped per
-v1.19.2 convention. The
-[`world/reference_living_world.py`](japan-financial-world/world/reference_living_world.py)
-orchestrator now stamps the scenario application metadata
-with universe-wide `affected_sector_ids` (all 11) and
-`affected_firm_profile_ids` (all 11) so the per-sector /
-per-firm impact is visible to the v1.20.4 CLI bundle (and to
-the v1.20.5 UI) without recomputing the universe — the
-application stays at exactly 1 record + 2 context shifts.
-Bundle is fully deterministic: same CLI args → byte-identical
-JSON; no wall-clock timestamp anywhere; no absolute path
-leakage. Pinned CLI bundle digest:
-**`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**.
-The canonical `quarterly_default` digest stays at
-`f93bdf3f…b705897c` and the `monthly_reference` digest stays
-at `75a91cfa…91879d`. **CLI-only** — the static workbench
-(`examples/ui/fwe_workbench_mockup.html`) **does not yet
-render** the new bundle (deferred to v1.20.5); no backend,
-no fetch / XHR, no daily simulation, no LLM execution. +20
-CLI tests in `tests/test_run_export_cli.py`; total test count
-= **4764 / 4764**.
+---
 
-**Earlier concrete code milestone: v1.20.3
-`scenario_monthly_reference_universe` run profile.** Third
-concrete code milestone of the v1.20 sequence — wires the
-v1.20.1 reference-universe storage, the v1.20.2 scenario
-schedule storage, and the v1.18.2 `apply_scenario_driver`
-helper into [`world/reference_living_world.py`](japan-financial-world/world/reference_living_world.py).
-The new opt-in profile `scenario_monthly_reference_universe`
-is the **first FWE run profile that combines** the v1.19.3
-12-month cadence with **11 sectors** / **11 firms** /
-**4 investor archetypes** / **3 bank archetypes** / **51
-information arrivals** / **1 scheduled scenario application**
-(credit-tightening) firing at `period_index == 3` /
-`month_04`. Bounded performance: per-period record count
-**257-261** (within v1.20.0 target `[200, 280]`); per-run
-window **3220 records** (within target `[2400, 3360]`; under
-hard guardrail `≤ 4000`). Pinned `living_world_digest` for
-the new profile is
-**`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**;
-the canonical `quarterly_default` digest stays at
-`f93bdf3f…b705897c` and the `monthly_reference` digest stays
-at `75a91cfa…91879d`. The closed-loop chain (attention →
-investor market intent → aggregated market interest →
-indicative market pressure → capital structure review /
-financing path → next-period attention) runs unchanged on
-the larger fixture; the engagement / dialogue / escalation /
-strategic-response / valuation / investor-intent /
-stewardship-themes layer is skipped under the new profile to
-keep the per-period record count under the v1.20.0 budget.
-`LivingReferencePeriodSummary` and `LivingReferenceWorldResult`
-extended with seven v1.20.3 tuple fields
-(`reference_universe_ids` / `sector_ids` / `firm_profile_ids` /
-`scenario_schedule_ids` / `scheduled_scenario_application_ids` /
-`scenario_application_ids` / `scenario_context_shift_ids`).
-The canonical-form view in
-`examples/reference_world/living_world_replay.py` is extended
-additively — new keys appear in canonical JSON only when
-non-empty so pre-existing digests stay byte-identical. Wall-
-clock leakage in v1.20.x book ledger entries is closed by
-adding `simulation_date` kwargs to `add_*` methods (orchestrator
-passes `iso_dates[0]` for setup records) and by stamping
-scenario-application + context-shift ledger entries with
-`record.as_of_date`. **No CLI extension** (deferred to v1.20.4),
-**no UI extension** (deferred to v1.20.5). +40 tests across
-`tests/test_living_reference_world.py` and
-`tests/test_living_reference_world_performance_boundary.py`;
-total test count = **4744 / 4744**.
+## 3. Why this exists
 
-**Earlier concrete code milestone: v1.20.2 scenario schedule
-storage.** Second concrete code milestone of the v1.20 sequence
-— adds [`world/scenario_schedule.py`](japan-financial-world/world/scenario_schedule.py)
-with two immutable frozen dataclasses (`ScenarioSchedule`,
-`ScheduledScenarioApplication`), one append-only
-`ScenarioScheduleBook` with 17 read methods, six closed-set
-frozensets (`RUN_PROFILE_LABELS` 5 / `SCHEDULE_POLICY_LABELS` 5
-/ `APPLICATION_POLICY_LABELS` 6 / `SCHEDULED_MONTH_LABELS` 13 /
-`STATUS_LABELS` 6 / `VISIBILITY_LABELS` 5), and the v1.20.0
-hard-naming-boundary `FORBIDDEN_SCENARIO_SCHEDULE_FIELD_NAMES`
-frozenset. Two new `RecordType` enum values
-(`SCENARIO_SCHEDULE_RECORDED` /
-`SCHEDULED_SCENARIO_APPLICATION_RECORDED`).
-`MONTHLY_PERIOD_INDEX_MIN` / `MONTHLY_PERIOD_INDEX_MAX`
-constants pin the `[0, 11]` bound for monthly period indices;
-period-index validation rejects `bool`, negatives, and values
-> 11. Deterministic
-`build_default_scenario_monthly_schedule(...)` helper
-constructs the v1.20.0 default single-scenario schedule (one
-schedule + one scheduled application — `credit_tightening_driver`
-at month 4 / period index 3 on the `generic_11_sector` universe
-with `apply_after_information_arrivals` policy) **without**
-auto-registering on a kernel. `WorldKernel.scenario_schedule`
-empty by default — pinned trip-wire tests confirm the
-`quarterly_default` digest stays at `f93bdf3f…b705897c` and the
-`monthly_reference` digest stays at `75a91cfa…91879d`.
-**Storage only** — no run profile (now shipped at v1.20.3), no
-scenario application execution (the schedule stores *intent*),
-no CLI extension (v1.20.4), no UI extension (v1.20.5).
-References (`scenario_driver_template_id`,
-`affected_reference_universe_id`, `affected_sector_ids`,
-`affected_firm_profile_ids`) are stored as plain ids; v1.20.3
-resolves / validates at run time. +90 tests.
+The public motivation is narrow and structural: most production
+financial systems do not expose a single, append-only causal trace
+that a reviewer who has never seen the codebase can read end-to-end.
+FWE is an attempt to make the *engine* legible — to fix the
+substrate before any layer that produces a market view sits on top
+of it.
 
-**Earlier concrete code milestone: v1.20.1 reference universe
-storage.** First concrete code milestone of the v1.20 sequence
-— adds [`world/reference_universe.py`](japan-financial-world/world/reference_universe.py)
-with three immutable frozen dataclasses
-(`ReferenceUniverseProfile`, `GenericSectorReference`,
-`SyntheticSectorFirmProfile`), one append-only
-`ReferenceUniverseBook` with 17 read methods, twelve closed-set
-frozensets, and the v1.20.0 hard-naming-boundary
-`FORBIDDEN_REFERENCE_UNIVERSE_FIELD_NAMES` frozenset
-(composes v1.18.0 actor-decision tokens with v1.20.0
-real-issuer / real-financial / licensed-taxonomy tokens —
-`real_company_name` / `real_sector_weight` / `market_cap` /
-`leverage_ratio` / `revenue` / `ebitda` / `net_income` /
-`real_financial_value` / `gics` / `msci` / `sp_index` /
-`topix` / `nikkei` / `jpx`). Three new `RecordType` enum
-values. Deterministic
-`build_generic_11_sector_reference_universe(...)` helper
-constructs the v1.20.0 default fixture (1 universe profile +
-11 sector references + 11 firm profiles) **without**
-auto-registering on a kernel; explicit
-`register_generic_11_sector_reference_universe(book, ...)`
-helper writes to a kernel's book. `WorldKernel.reference_universe`
-empty by default — pinned trip-wire tests confirm the
-canonical `quarterly_default` digest stays at `f93bdf3f…b705897c`
-and the `monthly_reference` digest stays at `75a91cfa…91879d`.
-**No real company names, no real sector index membership, no
-licensed taxonomy dependency** — every sector label carries
-the `_like` suffix; firm ids follow `firm:reference_<sector>_a`.
-**Storage only** — no run profile (deferred to v1.20.3), no
-scenario schedule (v1.20.2), no CLI extension (v1.20.4), no UI
-extension (v1.20.5). +92 tests; total test count =
-**4614 / 4614**.
+That goal implies four hard discipline rules:
 
-**Earlier concrete code milestone: v1.19.4 UI local run bundle
-loader (read-only).** The static workbench at
-[`examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html)
-gains a top-ribbon **Load local bundle** button. The browser
-reads a user-supplied `RunExportBundle` JSON produced by the
-v1.19.2 / v1.19.3.1 CLI exporter via `<input type="file">` +
-`FileReader.readAsText` — **no backend, no fetch, no engine
-execution from the browser, no file-system write**. The loader
-validates the v1.19.1 top-level key set + v1.19.0 default
-8-flag boundary block, accepts `quarterly_default` /
-`monthly_reference`, rejects `scenario_monthly` /
-`daily_display_only` / `future_daily_full_simulation` with a
-clear status message. Renders user-loaded values via
-`textContent` only; caps the ledger excerpt at 20 rows. New
-`current_data_source` label distinguishes `inline_fixture` /
-`sample_manifest` / `local_bundle`. Workflow: run the CLI in a
-terminal, open the static HTML under `file://`, click
-**Load local bundle**, inspect. No test count change
-(HTML/JS-only) — pytest unchanged at **4522 / 4522**. v1.19.last
-freeze is the next milestone in the v1.19 sequence.
+1. **Audit-first, behavior-second.** Storage shape, citation
+   shape, and ledger shape are designed before any actor
+   behavior is written.
+2. **Append-only ledger.** Pre-existing source-of-truth books
+   (`PriceBook`, `ContractBook`, `ConstraintBook`,
+   `OwnershipBook`, …) are never mutated by a later layer; new
+   information is added as new records that cite the originals.
+3. **Closed-set vocabularies.** Every label that influences a
+   downstream record (sensitivity rung, severity, direction,
+   surface, family) is drawn from an explicit frozenset
+   enforced at construction time.
+4. **Boundary as code.** Forbidden tokens (real institutions,
+   real taxonomies, price-formation language, interaction-
+   inference language) are scanned in tests; a regression that
+   smuggles one in fails CI.
 
-**Earlier concrete code milestone: v1.19.3 monthly_reference
-profile + InformationReleaseCalendar layer.** Third concrete
-code milestone of the v1.19 local-run-bridge sequence — adds
-[`world/information_release.py`](japan-financial-world/world/information_release.py)
-with three immutable frozen record shapes
-(`InformationReleaseCalendar` / `ScheduledIndicatorRelease` /
-`InformationArrivalRecord`) and one append-only
-`InformationReleaseBook`; nine closed-set frozensets
-(`RELEASE_CADENCE_LABELS` / `INDICATOR_FAMILY_LABELS` /
-`RELEASE_IMPORTANCE_LABELS` / `JURISDICTION_SCOPE_LABELS` /
-`ARRIVAL_STATUS_LABELS` / `REASONING_MODE_LABELS` /
-`REASONING_SLOT_LABELS` / `STATUS_LABELS` /
-`VISIBILITY_LABELS`); the v1.19.3 hard-naming-boundary
-`FORBIDDEN_INFORMATION_RELEASE_FIELD_NAMES` frozenset
-composes the v1.18.0 actor-decision tokens with the v1.19.3
-Japan-real-data tokens (`real_indicator_value` / `cpi_value`
-/ `gdp_value` / `policy_rate` / `real_release_date` and the
-boundary identifiers — none of which appear as bare
-identifiers in module text); three new `RecordType` enum
-values (`INFORMATION_RELEASE_CALENDAR_RECORDED` /
-`SCHEDULED_INDICATOR_RELEASE_RECORDED` /
-`INFORMATION_ARRIVAL_RECORDED`); kernel wired with
-`information_releases: InformationReleaseBook` empty by
-default; `run_living_reference_world(..., profile=...)`
-accepts `quarterly_default` (default, byte-identical to
-v1.19.1) and `monthly_reference` (12 monthly periods on a
-synthetic month-end ISO schedule). The default monthly
-fixture emits **3-5 information arrivals per month, total 51
-across 12 months** (within the [36, 60] design budget).
-Arrivals carry the v1.18.0 reasoning-mode audit shape
-(`reasoning_mode = "rule_based_fallback"`,
-`reasoning_slot = "future_llm_compatible"`) and the v1.19.0
-default 8-flag boundary-flag set verbatim. The
-`monthly_reference` `living_world_digest` is **deterministic**
-across two kernels and pinned at
-**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**.
-The `quarterly_default` `living_world_digest` stays
-byte-identical at
-**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**
-because the new book is empty by default. **Information
-arrival is not data ingestion** — no real values, no real
-release dates, no real institutional identifiers; Japan
-release cadence is a design reference only. +88 tests in
-`tests/test_information_release.py`, +13 in
-`tests/test_living_reference_world.py`, +3 in
-`tests/test_living_reference_world_performance_boundary.py`.
+The audit value of v1.21 is in the **downstream citation trail**
+— per-program / per-step plain-id citations + per-shift surface /
+direction / family multisets + per-step resolution state +
+warnings — not in any reduction or interpretive label.
 
-**Earlier concrete code milestone: v1.19.2 CLI run exporter.**
-Second concrete code milestone of the v1.19 local-run-bridge
-sequence — adds
-[`examples/reference_world/export_run_bundle.py`](japan-financial-world/examples/reference_world/export_run_bundle.py),
-the CLI driver runnable as `python -m
-examples.reference_world.export_run_bundle …` and `python
-examples/reference_world/export_run_bundle.py …`. Composes the
-v1.17.2 regime-comparison driver (the read-only path that runs
-the v1.16 closed loop on a fresh kernel for a chosen regime
-preset) with the v1.19.1 `world.run_export` infrastructure
-(`build_run_export_bundle` + `write_run_export_bundle`); writes
-a deterministic `RunExportBundle` JSON artifact to a
-caller-supplied `--out` path. CLI surface: `--profile` (the
-v1.19.2 ship executable set was `quarterly_default` only —
-v1.19.3.1 reconciliation extended this to `quarterly_default`
-+ `monthly_reference`); `--regime` (one of the v1.11.2 presets
-— `constructive` / `mixed` / `constrained` / `tightening`);
-`--scenario` (defaults to `none_baseline`; other v1.18.4
-selector labels exit non-zero with stderr `"scenario
-'<scenario>' is not yet wired into the CLI in v1.19.2"`);
-`--out` (required; the path is **not** embedded in the
-bundle); `--indent` (default 2); `--quiet` (suppresses the
-success line). Bundle sections populated: `manifest`,
-`overview`, `timeline`, `scenario_trace`, `ledger_excerpt`
-(bounded at 20 records), `boundary_flags` (v1.19.0 default
-8-flag set carried unchanged), `metadata`. Determinism: same
-CLI args → byte-identical JSON bytes regardless of `--out`
-path; no ISO-style wall-clock timestamp anywhere;
-deterministic `simulation_date` `YYYY-MM-DD` strings
-explicitly permitted. +20 tests in
-`tests/test_run_export_cli.py`. **CLI export only** — no UI
-bridge (v1.19.4).
+---
 
-**Earlier concrete code milestone: v1.19.1 RunExportBundle
-dataclass + JSON writer.** First concrete code milestone of the
-v1.19 local-run-bridge sequence — adds
-[`world/run_export.py`](japan-financial-world/world/run_export.py)
-with one immutable frozen `RunExportBundle` dataclass + four
-closed-set vocabularies + the v1.19.0 hard-naming-boundary
-`FORBIDDEN_RUN_EXPORT_FIELD_NAMES` frozenset (35+ entries,
-scanned recursively at any depth across every payload +
-boundary-flag + metadata mapping); five module-level helpers
-(`build_run_export_bundle` / `bundle_to_dict` / `bundle_to_json`
-deterministic via `sort_keys=True` / `write_run_export_bundle`
-/ `read_run_export_bundle` returns plain `dict`); v1.19.0
-default boundary-flag set (`synthetic_only` /
-`no_price_formation` / `no_trading` / `no_investment_advice` /
-`no_real_data` / `no_japan_calibration` / `no_llm_execution` /
-`display_or_export_only`); same `(bundle_id, run_profile_label,
-regime_label, selected_scenario_label, period_count, digest,
-generated_at_policy_label, *payload sections, boundary_flags,
-status, visibility, metadata)` arguments → byte-identical
-`to_dict()` and byte-identical JSON file; **export
-infrastructure only** — no engine run, no monthly profile, no
-CLI, no UI bridge; +56 tests; per-period record count, per-run
-window, default 4-period sweep total, and
-`living_world_digest` all unchanged from v1.18.last by design.
+## 4. Current milestone: v1.21.last
 
-**Latest design milestone: v1.20.0 monthly scenario reference
-universe design.** A docs-only design note (see
-[`docs/v1_20_monthly_scenario_reference_universe_design.md`](japan-financial-world/docs/v1_20_monthly_scenario_reference_universe_design.md)
-and `docs/world_model.md` §129) opening the v1.20 sequence as a
-**realism / granularity layer** that combines two upgrades into
-one new opt-in profile: temporal granularity (the v1.19.3
-12-month `monthly_reference` cadence carried over) and
-**cross-sectional breadth** (the tiny 3-firm fixture replaced
-by a generic **11-sector / 11-company synthetic reference
-universe** with 4 investor archetypes + 3 bank archetypes). The
-new profile is `scenario_monthly_reference_universe` (opt-in;
-the canonical `quarterly_default` and `monthly_reference`
-digests stay byte-identical unless explicitly invoked). The
-design pins three new dataclasses (`ReferenceUniverseProfile`,
-`GenericSectorReference`, `SyntheticSectorFirmProfile`), a new
-`ScenarioSchedule` storage layer, a closed-set 11-sector
-taxonomy (`energy_like` / `materials_like` / `industrials_like`
-/ `consumer_discretionary_like` / `consumer_staples_like` /
-`health_care_like` / `financials_like` /
-`information_technology_like` / `communication_services_like`
-/ `utilities_like` / `real_estate_like`) with a 6-dimensional
-sensitivity matrix (`demand` / `rate` / `credit` / `input_cost`
-/ `policy` / `technology_disruption` × `very_low` / `low` /
-`moderate` / `high` / `very_high`), a deterministic scenario-
-to-sector impact map, a bounded performance budget (target
-2400-3360 records / run; upper guardrail 4000 records), and
-the v1.18.0 future-LLM-compatibility audit shape carried
-verbatim. **No real company names, no real sector index
-membership, no licensed taxonomy dependency** — the `_like`
-suffix on every sector label makes the non-real-membership
-discipline visible at every read site, and tests pin the
-absence of bare `GICS` / `MSCI` / `S&P` / `FactSet` /
-`Bloomberg` / `Refinitiv` / `TOPIX` / `Nikkei` / `JPX` tokens.
-Per-milestone roadmap (v1.20.1 storage / v1.20.2 scenario
-schedule / v1.20.3 run profile / v1.20.4 CLI export / v1.20.5
-UI rendering / v1.20.last freeze) pinned. **Docs-only — no
-runtime behaviour, no engine execution from the browser, no
-backend server, no daily full economic simulation, no price
-formation, no trading, no real data ingestion, no Japan
-calibration, no LLM execution, no real companies, no real
-sector weights; every real-taxonomy / real-company concept
-remains private JFWE (v2 / v3).**
+**v1.21.last Stress Composition Layer freeze (shipped, docs-only).**
+Closes the v1.21 sequence as a **thin orchestrator + read-only
+multiset readout** over the existing v1.18 / v1.20 chain.
 
-**Earlier design milestone: v1.19.0 local run bridge / report
-export / temporal run profile design.** A docs-only design note
-(see
-[`docs/v1_19_local_run_bridge_and_temporal_profiles_design.md`](japan-financial-world/docs/v1_19_local_run_bridge_and_temporal_profiles_design.md)
-and `docs/world_model.md` §128) opening the v1.19 sequence as a
-**bridge layer** between the v1.18.4 static UI and local engine
-runs, plus a **temporal run profile design** that names five
-profiles (`quarterly_default` preserves the canonical digest;
-`monthly_reference` / `scenario_monthly` are opt-in monthly
-profiles; `daily_display_only` is display-only;
-`future_daily_full_simulation` is **explicitly out of scope for
-v1.19**) and adds an `InformationReleaseCalendar` layer so
-monthly profiles are not naive 12× quarterly loops. The
-calendar layer pins three new closed-set vocabularies
-(`ReleaseCadenceLabel` 8 entries / `IndicatorFamilyLabel` 12
-entries / `ReleaseImportanceLabel` 5 entries) and three record
-shapes (`InformationReleaseCalendar` / `ScheduledIndicatorRelease`
-/ `InformationArrivalRecord`). Information arrival is **not**
-data ingestion — no real values, no real dates, no real
-institutional identifiers; Japan release cadence is a **design
-reference only**, not encoded as canonical data. The local run
-bridge is **CLI-first** (`python -m
-examples.reference_world.export_run_bundle …` writing JSON the
-static UI loads via `<input type="file">`); a tiny optional
-local server bridge is deferred to v1.19.4+ and is **127.0.0.1
-FastAPI / Flask / `http.server` only — never Rails, never
-deployed SaaS**. **Docs-only — no runtime behaviour, no engine
-execution from the browser, no backend server, no daily full
-economic simulation, no price formation, no trading, no real
-data ingestion, no Japan calibration, no LLM execution; every
-Japan-shaped concept is private JFWE (v2 / v3).**
+Shipped sequence:
 
-**Earlier design milestone: v1.13.0 generic central bank settlement
-infrastructure design.** A docs-only design note (see
-[`docs/v1_13_generic_central_bank_settlement_design.md`](japan-financial-world/docs/v1_13_generic_central_bank_settlement_design.md)
-and `docs/world_model.md` §87) defining a jurisdiction-neutral
-vocabulary — `CentralBankSettlementSystem`,
-`SettlementAccountRecord` / `SettlementAccountBook` /
-`ReserveAccountBook`, `PaymentInstructionRecord`,
-`SettlementEvent`, `InterbankLiquidityState`,
-`CollateralEligibilitySignal`, `CentralBankOperationSignal` — for
-a future settlement substrate. **Docs-only — no runtime
-behaviour, no settlement execution, no BOJ-NET / RTGS / DvP /
-PvP / repo execution, no central-bank accounting, no monetary-
-policy decisions, no Japan calibration; every Japan-shaped
-concept is private JFWE (v2 / v3).**
+| Milestone     | Surface                                                        |
+| ------------- | -------------------------------------------------------------- |
+| v1.21.0       | Original design (superseded; preserved only in git history).   |
+| v1.21.0a      | Scope correction. `StressInteractionRule` deferred to v1.22+ (or never); aggregate / composite / net / dominant fields removed; cardinality tightened (≤ 1 program / run, ≤ 3 steps / program, ≤ 60 added records). |
+| v1.21.1       | `StressProgramTemplate` + `StressStep` storage in [`world/stress_programs.py`](japan-financial-world/world/stress_programs.py). +35 tests. |
+| v1.21.2       | `apply_stress_program(...)` thin orchestrator in [`world/stress_applications.py`](japan-financial-world/world/stress_applications.py); walks `StressStep` entries by dense `step_index` order; reuses the v1.18.2 `apply_scenario_driver(...)` helper. +33 tests. |
+| v1.21.3       | `StressFieldReadout` + `build_stress_field_readout(...)` + `render_stress_field_summary_markdown(...)` in [`world/stress_readout.py`](japan-financial-world/world/stress_readout.py). Read-only; no ledger emission. +33 tests. |
+| **v1.21.last**| Docs-only freeze. Final pin section in [`docs/v1_21_stress_composition_layer.md`](japan-financial-world/docs/v1_21_stress_composition_layer.md); §130.8 in [`docs/world_model.md`](japan-financial-world/docs/world_model.md); refreshed roadmap row in [`docs/v1_20_monthly_scenario_reference_universe_summary.md`](japan-financial-world/docs/v1_20_monthly_scenario_reference_universe_summary.md); this README. |
 
-Layered on top of v1.12.4
-attention-conditioned investor intent, v1.12.3 EvidenceResolver /
-ActorContextFrame, v1.12.2 market environment state, v1.12.1
-investor intent signal, v1.12.0 firm financial latent state,
-v1.11.2 demo market regime presets,
-v1.11.1 capital-market readout, v1.11.0 capital-market surface,
-v1.10.5 living-world integration, and the **v1.9.last public
-prototype freeze**. v1.9 layered
-three review-only synthetic mechanisms (firm operating-pressure
-assessment, valuation refresh lite, bank credit review lite) onto
-the v1.8 endogenous activity stack and integrated them into a
-deterministic four-quarter sweep over a small synthetic fixture.
-v1.10.x added a non-binding engagement / strategic-response storage
-layer on top: stewardship themes → portfolio-company dialogue
-metadata → investor escalation candidates → corporate strategic
-response candidates, with industry demand condition context.
-v1.10.5 wires that layer into the living reference world demo as
-five new per-period phases plus one setup-time phase. The headline
-artifact is the **living reference world**: 3 firms × 2 investors ×
-2 banks × 3 industries × 4 quarters, runnable from a clean clone
-with a single command, byte-deterministic across runs, and fully
-reconstructable from the kernel's append-only ledger. **No
-autonomous economic behavior is added in v1 / v1.8 / v1.9 / v1.10**
-— no price formation, no trading, no lending decisions, no
-voting / proxy filing / corporate-action execution, no
-disclosure-filing execution, no demand or revenue forecasting, no
-firm financial-statement updates, no Japan calibration.
+**Pinned at v1.21.last:**
 
-## Current public prototype (v1.9.last)
+- `pytest -q`: **4865 / 4865 passing** (+101 vs v1.20.last)
+- `ruff check .`: clean
+- `python -m compileall -q world spaces tests examples`: clean
+- `quarterly_default` `living_world_digest`:
+  `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  (byte-identical to v1.20.last)
+- `monthly_reference` `living_world_digest`:
+  `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  (byte-identical to v1.20.last)
+- `scenario_monthly_reference_universe` test-fixture
+  `living_world_digest`:
+  `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  (byte-identical to v1.20.last)
+- v1.20.4 CLI bundle digest:
+  `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+  (byte-identical to v1.20.last)
+- Source-of-truth book mutations: **0**
 
-The v1.9.last public prototype freezes a **single runnable artifact**:
-the **living reference world** — a deterministic four-quarter sweep
-over a small synthetic fixture. From a clean clone:
+v1.21.last sits **alongside** the parallel-track freezes; none of
+those is modified:
+
+- **Runtime milestone — v1.9.last public prototype.** The runnable
+  living reference world (3 firms × 2 investors × 2 banks × 3
+  industries × 4 quarters), reconstructable from the append-only
+  ledger.
+- **UI prototype — v1.20.5 static workbench.** HTML / CSS / JS
+  only, loaded under `file://`; renders the v1.20.4 bundle in 11
+  tabs with no backend, no fetch / XHR, no file-system write.
+- **Frozen loop — v1.16.last closed-loop freeze** + **v1.12.last
+  endogenous attention loop freeze**. Time-crossing firm latent
+  state, attention-conditioned mechanisms, finite **actor
+  attention** budget with deterministic decay / crowding /
+  saturation.
+- **Settlement substrate — v1.13.last generic central-bank
+  settlement infrastructure freeze.** Storage and labels only;
+  no payment system, no real balances, no monetary-policy
+  decisions.
+
+---
+
+## 5. Architecture overview
+
+FWE layers from substrate to reference behavior:
+
+| Layer    | Owns                                                          | Examples                                                                       |
+| -------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| v0.x     | Structural contract: books, projections, transport, identity, scheduler, append-only ledger, event bus, the four-property `bind()` contract | `BalanceSheetView`, `EventBus`, `DomainSpace`, `OwnershipBook`, `Clock`, `Ledger` |
+| v1.0–1.7 | Reference content: valuation / institution / external-process / relationship / closed-loop record types and their books | `ValuationBook`, `InstitutionBook`, `RelationshipCapitalBook`, `ReferenceLoopRunner` |
+| v1.8.x   | Endogenous activity: interactions, routines, attention, reference variables, exposures, the chain harness, the ledger trace report | `RoutineBook`, `AttentionBook`, `WorldVariableBook`, `ExposureBook`            |
+| v1.9.x   | Living reference world + three review-only mechanisms + performance-boundary discipline | `run_living_reference_world`, `firm_operating_pressure_assessment`             |
+| v1.10–11 | Stewardship / industry-condition / market-condition record types + capital-market readout | `IndustryConditionBook`, `MarketConditionBook`, `CapitalMarketReadoutBook`     |
+| v1.12.x  | Time-crossing latent state + attention-conditioned mechanisms + finite attention budget | `FirmFinancialStateBook`, `MarketEnvironmentBook`, `EvidenceResolver`, `ActorContextFrame` |
+| v1.13.x  | Generic central-bank settlement substrate (label-only)        | `InterbankLiquidityStateBook`                                                  |
+| v1.16.x  | First **closed-loop** between firm decision-postures and downstream books | `FinancingPathBook`                                                            |
+| v1.17.x  | Inspection layer over the v1.16 closed loop                   | display surface, audit views                                                   |
+| v1.18.x  | Synthetic scenario-driver inspection layer; stimulus-only, append-only | `ScenarioDriverTemplate`, `ScenarioDriverApplicationRecord`, `ScenarioContextShiftRecord` |
+| v1.19.x  | CLI run-bundle export + read-only static UI loader + monthly reference profile + information release calendar | `RunExportBundle`, `InformationReleaseCalendar`                                |
+| v1.20.x  | Monthly scenario reference universe + sector / firm sensitivity surface + Universe-tab UI | `scenario_monthly_reference_universe` profile                                  |
+| v1.21.x  | Stress composition layer (this milestone)                     | `StressProgramBook`, `StressApplicationBook`, `StressFieldReadout`             |
+
+The constitutional design document is
+[`docs/world_model.md`](japan-financial-world/docs/world_model.md);
+every milestone has a section. The boundary inventory is
+[`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md);
+the naming policy is
+[`docs/naming_policy.md`](japan-financial-world/docs/naming_policy.md);
+the performance-boundary discipline is
+[`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md).
+
+---
+
+## 6. Stress programs in v1.21
+
+A v1.21 **stress program** is a small, ordered bundle of synthetic
+stimuli applied to the v1.20 monthly reference universe. The
+shape is intentionally narrow:
+
+```
+StressProgramTemplate
+    stress_program_template_id
+    program_label                  (closed-set vocabulary)
+    program_purpose_label          (closed-set vocabulary)
+    horizon_label                  (closed-set vocabulary)
+    step_count                     ∈ {1, 2, 3}
+    stress_step_ids                (ordered list, dense step_index)
+    severity_label                 (closed-set vocabulary)
+    affected_actor_scope_label     (closed-set vocabulary)
+    reasoning_mode = "rule_based_fallback"
+    reasoning_policy_id
+    reasoning_slot = "future_llm_compatible"
+    status, visibility, metadata
+
+StressStep
+    stress_step_id
+    step_index                     (0..step_count-1, dense)
+    scenario_driver_template_id    (cites a v1.18.1 template)
+    severity_label                 (closed-set vocabulary)
+    metadata
+```
+
+The orchestrator is **thin**:
+
+```python
+record = apply_stress_program(
+    kernel=kernel,
+    stress_program_template_id="stress_program_template:demo",
+    issued_at=clock.now(),
+)
+# record.unresolved_step_count == 0  → all steps resolved
+# record.unresolved_step_ids       == ()
+# record.unresolved_reason_labels  == ()
+# record.scenario_application_ids  → cites underlying v1.18.2 receipts
+```
+
+It walks `stress_step_ids` by dense `step_index` order, calls the
+existing v1.18.2 `apply_scenario_driver(...)` helper once per step,
+emits exactly **one** program-level
+`StressProgramApplicationRecord`, and surfaces partial application
+via a closed-set `unresolved_reason_labels` vocabulary
+(`template_missing` / `unknown_failure`).
+
+The readout is a **read-only multiset projection**:
+
+```python
+readout = build_stress_field_readout(kernel=kernel)
+markdown = render_stress_field_summary_markdown(readout)
+```
+
+The readout describes — for each **context surface** touched by
+the program — which `shift_direction_label` values were emitted,
+in what scenario family, and which downstream records cite them.
+It does **not** reduce the multiset to a single label; preserved
+emission order is the audit value. The renderer emits 11 markdown
+sections (9 pinned by the required-sections test as load-bearing).
+
+What the readout does **not** do:
+
+- It does not call `apply_stress_program(...)` or
+  `apply_scenario_driver(...)` — it only reads what is already in
+  the books.
+- It does not emit a ledger record.
+- It does not mutate any source-of-truth book.
+- It does not auto-infer interaction labels. If an
+  interaction-style annotation is ever introduced (no earlier
+  than v1.22, possibly never), it must be `manual_annotation`-
+  only — written by a human reviewer with their own analyst id
+  and timestamp on the annotation record, citing explicit
+  evidence from the multiset readout. It must never be inferred
+  by a helper, a classifier, a closed-set rule table, an LLM, or
+  any other automated layer.
+
+For the full design discussion see
+[`docs/v1_21_stress_composition_layer.md`](japan-financial-world/docs/v1_21_stress_composition_layer.md)
+and §130 of
+[`docs/world_model.md`](japan-financial-world/docs/world_model.md).
+
+---
+
+## 7. Public v1.x boundaries
+
+Every public-FWE milestone preserves the same hard boundary. v1.21
+re-pins the full list:
+
+**No real-world output.**
+
+- No price formation, no market price, no order, no execution,
+  no clearing, no settlement, no financing execution.
+- No forecast path, no expected return, no target price, no
+  scenario probability weight, no magnitude.
+- No firm decision, no investor action, no bank approval logic,
+  no investment recommendation, no investment advice.
+
+**No real-world input.**
+
+- No real data ingestion, no public-data licenses are wired.
+- No real institutional identifiers (BOJ / MUFG / GPIF / Toyota
+  / TSE / TOPIX / Nikkei / JPX appear only as prohibited or
+  deferred tokens in v1.x docs).
+- No licensed taxonomy dependency (no bare GICS / MSCI / S&P /
+  FactSet / Bloomberg / Refinitiv / TOPIX / Nikkei / JPX
+  tokens in module text or test names; sector labels carry the
+  `_like` suffix).
+- No Japan calibration (deferred to v2.x / v3.x).
+
+**No autonomous reasoning.**
+
+- No LLM execution at runtime; no LLM prose accepted as
+  source-of-truth.
+- `reasoning_mode = "rule_based_fallback"` is binding across
+  v1.18.x → v1.21.x; the `future_llm_compatible` slot is an
+  architectural commitment, not a runtime capability.
+- No interaction auto-inference (`amplify` / `dampen` /
+  `offset` / `coexist` are forbidden as helper-emitted field
+  names).
+- No aggregate / combined / net / dominant / composite stress
+  output.
+
+**No source-of-truth book mutation.** Every pre-existing book
+(`PriceBook`, `ContractBook`, `ConstraintBook`, `OwnershipBook`,
+`InstitutionsBook`, `MarketEnvironmentBook`,
+`FirmFinancialStateBook`, `InterbankLiquidityStateBook`,
+`IndustryConditionBook`, `MarketConditionBook`,
+`InvestorMarketIntentBook`, `FinancingPathBook`) is byte-identical
+pre / post any v1.21 call.
+
+**No backend in the UI.** The static workbench is HTML / CSS / JS
+only, loaded under `file://`; the browser never executes Python,
+never calls a backend, never fetches over XHR, never writes files.
+
+For the public / restricted artifact rules see
+[`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md).
+
+---
+
+## 8. How to run tests / export a local bundle / open the static UI
+
+**Install** (from the repo root):
 
 ```bash
 pip install -e ".[dev]"
-cd japan-financial-world
+```
 
+This brings in PyYAML 6.x (pinned `>=6,<7` in `pyproject.toml`),
+pytest, and ruff. CI runs the same step.
+
+**Run the full test suite** (from `japan-financial-world/`):
+
+```bash
+python -m pytest -q
+```
+
+Expected at v1.21.last: **`4865 passed`**.
+
+**Run the v1.9.last living reference world** (from
+`japan-financial-world/`):
+
+```bash
 # Compact operational trace:
 python -m examples.reference_world.run_living_reference_world
 
@@ -790,695 +408,133 @@ python -m examples.reference_world.run_living_reference_world \
 
 Each mode is byte-identical across consecutive runs.
 
-**What runs each period:**
-
-| Phase                                       | Source        |
-| ------------------------------------------- | ------------- |
-| Corporate quarterly reporting               | v1.8.7        |
-| Firm operating-pressure assessment          | v1.9.4 mech   |
-| Heterogeneous investor / bank attention     | v1.8.11/12    |
-| Valuation refresh lite                      | v1.9.5 mech   |
-| Bank credit review lite                     | v1.9.7 mech   |
-| Investor / bank review routines             | v1.8.13       |
-| Ledger trace report                         | v1.9.1        |
-| Replay / manifest / digest                  | v1.9.2        |
-| Performance-boundary discipline             | v1.9.8        |
-
-**Default fixture:** 3 firms, 2 investors, 2 banks, 4 quarters.
-Per-period work writes 37 ledger records; a full run total
-sits in `[148, 180]` records (formula + small one-off setup
-allowance). All identifiers follow the `*_reference_*`
-synthetic-only convention.
-
-**What v1.9.last deliberately does NOT do:**
-
-- no price formation, no trading, no order matching;
-- no lending decisions, no loan origination, no covenant
-  enforcement, no contract or constraint mutation;
-- no firm financial-statement updates;
-- no canonical valuations (each `ValuationRecord` is one
-  valuer's opinionated synthetic claim, stamped with
-  `no_price_movement` / `no_investment_advice` / `synthetic_only`);
-- no Japan calibration, no real-data ingestion, no scenarios;
-- no investment advice — direct or indirect.
-
-For the single-page reader-facing summary see
-[`docs/v1_9_public_prototype_summary.md`](japan-financial-world/docs/v1_9_public_prototype_summary.md).
-For the performance boundary that gates production-scale
-traversal see
-[`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md).
-
-### On top of v1.9.last: v1.12.last + v1.13.last (substrate-only)
-
-Two later freezes ship on top of the v1.9.last public-prototype
-artifact without changing it:
-
-- **v1.12.last endogenous attention loop freeze** — the
-  v1.12 attention-feedback substrate, watch-label classifier,
-  finite attention budget, deterministic decay / crowding /
-  saturation, and per-actor memory selection. See
-  [`docs/v1_12_endogenous_attention_loop_summary.md`](japan-financial-world/docs/v1_12_endogenous_attention_loop_summary.md).
-- **v1.13.last generic central-bank settlement
-  infrastructure freeze** — a jurisdiction-neutral, label-only,
-  synthetic substrate for settlement accounts, payment
-  instructions / settlement events, interbank-liquidity states,
-  and central-bank operation / collateral-eligibility signals.
-  Storage and labels only. **No payment system, no real
-  balances, no monetary-policy decisions, no Japan
-  calibration.** See
-  [`docs/v1_13_generic_settlement_infrastructure_summary.md`](japan-financial-world/docs/v1_13_generic_settlement_infrastructure_summary.md).
-
-Both freezes are additive on top of the v1.9.last runnable
-artifact. Test count: **2988 / 2988** passing at v1.13.last.
-
-## Current capability
-
-What the v1.8 stack ships:
-
-- **World kernel** (v0) — `WorldKernel` orchestrating identity, time,
-  registry, scheduler, ledger, state, and event bus.
-- **Eight domain spaces** (v0) — Corporate, Banking, Investors,
-  Exchange, Real Estate, Information, Policy, External; wired through
-  a shared `DomainSpace` contract.
-- **Ledger / registry / event bus** — append-only causal trace, stable
-  WorldIDs, and `bind()`-mediated cross-space transport.
-- **Valuation / institution / relationship layers** (v1.1, v1.3, v1.5)
-  — `ValuationBook`, `InstitutionBook`, `RelationshipCapitalBook`, plus
-  the four-property action contract.
-- **Reference variable + exposure layers** (v1.8.9, v1.8.10) —
-  `WorldVariableBook` (kernel-level reference variables and observations
-  with vintage / look-ahead-safe filtering) and `ExposureBook` (per-actor
-  variable dependencies as data, not as calculation).
-- **Interaction topology** (v1.8.3) — `InteractionBook` + sparse
-  tensor / matrix views over the inter-space channel graph.
-- **Routine infrastructure** (v1.8.4 / v1.8.6 / v1.8.7) —
-  `RoutineBook` + `RoutineEngine` + the first concrete routine
-  (`corporate_quarterly_reporting`).
-- **Attention infrastructure** (v1.8.5 / v1.8.11 / v1.8.12) —
-  `AttentionBook` (profiles / menus / selections), the
-  `ObservationMenuBuilder` join service, and the heterogeneous
-  investor / bank attention demo.
-- **Review routines** (v1.8.13) — `investor_review` and `bank_review`
-  on Investors → Investors and Banking → Banking self-loops; consume
-  selected observations and emit synthetic review notes.
-- **Endogenous chain harness** (v1.8.14) —
-  `world/reference_chain.py::run_reference_endogenous_chain`
-  orchestrates the full chain in one helper call.
-- **Ledger trace report** (v1.8.15) — `world/ledger_trace_report.py`
-  turns the chain's ledger slice into a deterministic
-  `LedgerTraceReport` plus a compact Markdown rendering.
-
-## What the reference demo can do now
-
-With v1.8.14 + v1.8.15, a single helper produces this auditable
-non-shock chain:
-
-```
-corporate quarterly reporting
-  -> RoutineRunRecord + corporate-report InformationSignal
-heterogeneous investor / bank attention
-  -> 2 ObservationMenu records
-  -> 2 SelectedObservationSet records (investor and bank diverge)
-investor / bank review routines
-  -> 2 RoutineRunRecords
-  -> 2 review-note InformationSignals
-human-readable ledger trace report
-  -> deterministic Markdown summary of every record the chain wrote
-```
-
-Every step is caller-initiated. Every record is reconstructable from
-the kernel's ledger alone. Two fresh kernels seeded identically
-produce byte-identical chains and byte-identical reports. Selection
-between actors is heterogeneous *as data*, not as decision: the
-investor and the bank, looking at the same world, record different
-selected refs because their `AttentionProfile` watch fields differ.
-
-## What it still does not do
-
-The v1.8 stack is **infrastructure for endogenous activity**, not
-behavior. It deliberately does not implement:
-
-- price formation, order matching, or any market microstructure
-- trading, portfolio rebalancing, or allocation decisions
-- bank credit / lending decisions, default detection, covenant trips
-- valuation refresh (the comparator stays read-only; no impact
-  estimation, sensitivity, DSCR, LTV, or covenant stress)
-- corporate actions, earnings dynamics, or cash-flow projection
-- policy reaction functions, rate-setting rules, or scenario engines
-- any Japan-specific calibration (BOJ, MUFG, GPIF, JGB / USDJPY
-  series, TSE listings — all v2 / v3 territory)
-- real data ingestion (no public-data licenses are wired)
-- investment advice of any form
-
-If your use case requires any of the above, this repository is the
-**substrate** below them, not the implementation of them.
-
-## Quickstart
-
-From the repo root, install the project plus dev dependencies:
+**Export a CLI bundle for the static UI** (from
+`japan-financial-world/`):
 
 ```bash
-pip install -e ".[dev]"
+# Quarterly default profile (4 periods):
+python -m examples.reference_world.export_run_bundle \
+    --profile quarterly_default \
+    --out /tmp/fwe_quarterly_bundle.json
+
+# Monthly reference profile (12 monthly periods, 51 information arrivals):
+python -m examples.reference_world.export_run_bundle \
+    --profile monthly_reference \
+    --out /tmp/fwe_monthly_bundle.json
+
+# Monthly scenario reference universe (12 monthly periods, scenario applied):
+python -m examples.reference_world.export_run_bundle \
+    --profile scenario_monthly_reference_universe \
+    --regime constrained \
+    --scenario credit_tightening_driver \
+    --out /tmp/fwe_scenario_universe_bundle.json
 ```
 
-Then, from `japan-financial-world/`:
+**Open the static workbench:**
+
+Open
+[`japan-financial-world/examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html)
+directly in a browser (under `file://`). Use the bundle picker
+to load a JSON exported above. The browser renders 11 tabs over
+the bundle and **never** executes Python, calls a backend, or
+writes files.
+
+**Lint and compile checks:**
 
 ```bash
-# Tests
-python -m pytest -q
-
-# v1.7-era reference demo (single-day causal trace)
-python -m examples.reference_world.run_reference_loop
-
-# v1.8.14 endogenous chain demo (compact operational trace)
-python -m examples.reference_world.run_endogenous_chain
-
-# v1.8.15 ledger trace report appended to the operational trace
-python -m examples.reference_world.run_endogenous_chain --markdown
+ruff check .
+python -m compileall -q world spaces tests examples
 ```
 
-Both demos use only synthetic, jurisdiction-neutral identifiers, run
-in well under a second, and are deterministic across invocations.
+Both should report clean at v1.21.last.
 
-## Roadmap
+---
 
-| Version       | Goal                                                      | Status                       |
-| ------------- | --------------------------------------------------------- | ---------------------------- |
-| v1.8.0–v1.8.16 | Endogenous activity infrastructure + freeze              | Shipped |
-| v1.9.0        | Living Reference World Demo (multi-period sweep)          | Shipped |
-| v1.9.1-prep   | Living world report contract audit                        | Shipped |
-| v1.9.1        | Living World Trace Report                                 | Shipped |
-| v1.9.2        | Living World Replay / Manifest / Digest                   | Shipped |
-| v1.9.3        | Model Mechanism Inventory + Behavioral Gap Audit + Mechanism Interface | Shipped |
-| v1.9.3.1      | Mechanism Interface Hardening (deep-freeze + rename + ordering clarification) | Shipped |
-| v1.9.4        | Reference Firm Operating Pressure Assessment Mechanism (first concrete `MechanismAdapter`) | Shipped |
-| v1.9.5        | Reference Valuation Refresh Lite Mechanism (`valuation_mechanism` adapter) | Shipped |
-| v1.9.6        | Living-world Mechanism Integration (wires v1.9.4 + v1.9.5 into the multi-period sweep) | Shipped |
-| v1.9.7        | Reference Bank Credit Review Lite Mechanism (`credit_review_mechanism` adapter; integrated into the multi-period sweep) | Shipped |
-| v1.9.8        | Performance Boundary / Sparse Traversal Discipline (docs + tests pinning loop shapes; no new behaviour) | Shipped |
-| **v1.9.last** | **Public Prototype Freeze** (synthetic-only, CLI-first, deterministic, explainability-first; living reference world as the headline artifact) | **Shipped** |
-| v1.10.0       | Universal Engagement / Strategic Response Consolidation (docs-only design naming the engagement / response layer; signal-only, jurisdiction-neutral; no code, no test count change) | Shipped |
-| v1.10.1       | Stewardship theme signal (`StewardshipThemeRecord` + `StewardshipBook` + ledger `STEWARDSHIP_THEME_ADDED` + kernel wiring + 58 tests; storage / audit only) | Shipped |
-| v1.10.2       | Portfolio-company dialogue record (`PortfolioCompanyDialogueRecord` + `DialogueBook` + ledger `PORTFOLIO_COMPANY_DIALOGUE_RECORDED` + kernel wiring + 53 tests; engagement metadata storage / audit only — no transcript, content, notes, minutes, attendees, verbatim, or paraphrase fields) | Shipped |
-| v1.10.3       | Investor escalation candidate + corporate strategic response candidate (`InvestorEscalationCandidate` + `EscalationCandidateBook` added to `world/engagement.py`; `CorporateStrategicResponseCandidate` + `StrategicResponseCandidateBook` in new `world/strategic_response.py`; ledger `INVESTOR_ESCALATION_CANDIDATE_ADDED` + `CORPORATE_STRATEGIC_RESPONSE_CANDIDATE_ADDED` + kernel wiring + 107 tests; candidate-metadata storage / audit only — no execution, no vote_cast / proposal_filed / campaign_executed / exit_executed / letter_sent on the investor side, no buyback_executed / dividend_changed / divestment_executed / merger_executed / board_change_executed / disclosure_filed on the corporate side) | Shipped |
-| v1.10.4       | Industry demand condition signal (`IndustryDemandConditionRecord` + `IndustryConditionBook` in new `world/industry.py`; ledger `INDUSTRY_DEMAND_CONDITION_ADDED` + kernel wiring + 84 tests; synthetic, jurisdiction-neutral context evidence — bounded `demand_strength` and `confidence` in `[0.0, 1.0]`; no forecast_value / revenue_forecast / sales_forecast / market_size / vendor_consensus fields; not a demand forecast, not a revenue model, not real data) | Shipped |
-| v1.10.4.1     | Type-correct industry-condition cross-reference slot (additive `trigger_industry_condition_ids` field + `list_by_industry_condition` filter on `CorporateStrategicResponseCandidate` / `StrategicResponseCandidateBook`; +4 tests; backward-compatible — disambiguates `signal_id` vs `condition_id` by field, not by payload introspection; no new primitive, no new book, no new ledger record type) | Shipped |
-| v1.10.5       | Living-world integration (wires v1.10.1 → v1.10.4 (+ v1.10.4.1) into `world/reference_living_world.py` as five new per-period phases — industry demand → dialogue → escalation → corporate response — plus one setup-time phase — stewardship themes; `LivingReferencePeriodSummary` / `LivingReferenceWorldResult` / `LivingWorldTraceReport` / canonical / manifest grow additively; CLI surfaces new counts; +15 integration tests; per-run record window widens from `[148, 180]` to `[220, 252]`; `living_world_digest` value differs from v1.9.last by design; no new mechanism, no new `RecordType`, no new book, no executed action) | Shipped |
-| v1.11.0       | Capital-market surface (`MarketConditionRecord` + `MarketConditionBook` in new `world/market_conditions.py`; ledger `MARKET_CONDITION_ADDED` + kernel wiring; additive `trigger_market_condition_ids` slot + `list_by_market_condition` filter on `CorporateStrategicResponseCandidate` / `StrategicResponseCandidateBook`; living-world demo gains a per-period capital-market phase covering rates / credit spreads / equity valuation / funding window / liquidity & volatility regime; +96 tests; per-run record window widens from `[220, 252]` to `[240, 272]`; `living_world_digest` value differs from v1.10.5 by design; no price formation, no yield-curve calibration, no order matching, no clearing, no security recommendation, no DCM / ECM execution, no portfolio-allocation decisions) | Shipped |
-| v1.11.1       | Capital-market readout (`CapitalMarketReadoutRecord` + `CapitalMarketReadoutBook` + deterministic `build_capital_market_readout` builder in new `world/market_surface_readout.py`; ledger `CAPITAL_MARKET_READOUT_ADDED` + kernel wiring; living-world demo gains a per-period readout that summarizes that period's market conditions into rates / credit / equity / funding-window / liquidity / volatility tone tags + an `open_or_constructive` / `selective_or_constrained` / `mixed` overall market-access label + a banker-summary label; Markdown report adds a `## Capital market surface` section; +79 tests; per-run record window widens from `[240, 272]` to `[244, 276]`; `living_world_digest` value differs from v1.11.0 by design; readout / report only — no pricing, no spread calibration, no yield calibration, no market forecast, no deal advice, no transaction recommendation) | Shipped |
-| v1.11.2       | Demo market regime presets (four named synthetic presets — `constructive` / `mixed` / `constrained` / `tightening` — selectable via the `--market-regime` CLI flag and the `market_regime` kwarg on `run_living_reference_world`; +15 tests; default behavior preserved bit-for-bit when the flag is omitted, so the v1.11.1 default-fixture digest is unchanged; per-run record-count window unchanged at `[244, 276]`; demo-config layer only — no real data, no calibrated yields / spreads / index levels, no forecasts, no recommendations, no transaction execution) | Shipped |
-| v1.12.0       | Firm financial latent state (`FirmFinancialStateRecord` + `FirmFinancialStateBook` + `run_reference_firm_financial_state_update` in new `world/firm_state.py`; ledger `FIRM_LATENT_STATE_UPDATED` + kernel wiring; living-world demo gains a per-period firm-state phase between the v1.11.1 readout and the attention phase; one state per (firm, period) chained via `previous_state_id` to the prior period's state; six bounded synthetic pressure / readiness scalars in `[0, 1]` updated by a small documented rule set; +122 tests; per-run record-count window widens from `[244, 276]` to `[256, 288]`; default-fixture `living_world_digest` changes by design; **first time-crossing endogenous state-update layer in public FWE** — market regimes / readouts / industry demand / pressure evidence accumulate over time into per-firm latent state, while every anti-claim from v1.10.x / v1.11.x is preserved bit-for-bit: no revenue / sales / EBITDA / net_income / cash_balance / debt_amount / real_financial_statement / forecast_value / actual_value / accounting_value / investment_recommendation, no contract mutation, no covenant enforcement, no pricing, no Japan calibration) | Shipped |
-| v1.12.1       | Investor intent signal (`InvestorIntentRecord` + `InvestorIntentBook` + `run_reference_investor_intent_signal` in new `world/investor_intent.py`; ledger `INVESTOR_INTENT_SIGNAL_ADDED` + kernel wiring; living-world demo gains a per-period investor-intent phase between v1.10.3 escalation and v1.10.3 corporate response; one intent per (investor, firm, period) with eight evidence id tuples cited from the period's selection / readout / market_condition / firm_state / valuation / dialogue / escalation / theme; deterministic priority-order classifier across `deepen_due_diligence` / `risk_flag_watch` / `decrease_confidence` / `engagement_watch` / `hold_review`; +90 tests; per-run record-count window widens from `[256, 288]` to `[280, 312]`; default-fixture `living_world_digest` changes by design; **non-binding labels only** — no order, no trade, no rebalance, no target weight, no overweight / underweight execution, no expected return, no target price, no security recommendation, no investment advice, no portfolio allocation, no execution; pre-action review posture only) | Shipped |
-| v1.12.2       | Market environment state (`MarketEnvironmentStateRecord` + `MarketEnvironmentBook` + `build_market_environment_state` in new `world/market_environment.py`; ledger `MARKET_ENVIRONMENT_STATE_ADDED` + kernel wiring; living-world demo gains a per-period market-environment phase between the v1.11.1 readout and the v1.12.0 firm-state phase; one environment record per period with nine compact regime labels — `liquidity_regime` / `volatility_regime` / `credit_regime` / `funding_regime` / `risk_appetite_regime` / `rate_environment` / `refinancing_window` / `equity_valuation_regime` / `overall_market_access_label` — derived from v1.11.0 conditions + v1.11.1 readout by a small documented mapping rule set; type-correct additive cross-link slots `evidence_market_environment_state_ids` on `FirmFinancialStateRecord` and `InvestorIntentRecord` plus `trigger_market_environment_state_ids` on `CorporateStrategicResponseCandidate` (never overloaded into `signal_id` / `industry_condition_id` / `market_condition_id` slots); +107 tests; per-run record-count window widens from `[280, 312]` to `[284, 316]`; default-fixture `living_world_digest` changes by design; **labels-only context** — no price, no yield, no spread, no index level, no forecast, no expected return, no recommendation, no target price, no target weight, no order, no trade, no allocation; compact substrate for downstream LLM-agent / attention-conditioned consumers) | Shipped |
-| v1.12.3       | EvidenceResolver / ActorContextFrame (`EvidenceRef` + `ActorContextFrame` + `EvidenceResolver` + `resolve_actor_context` in new `world/evidence.py`; optional `WorldKernel.evidence_resolver` field; read-only evidence resolution layer that turns SelectedObservationSet ids and explicit evidence ids into a structured, actor-specific context frame partitioned across eleven buckets — signals / variable observations / exposures / market_conditions / market_readouts / market_environment_states / industry_conditions / firm_states / valuations / dialogues / escalation_candidates — plus an `unresolved_refs` tail; deterministic prefix dispatch over every v1.9 → v1.12.2 id type with explicit-kwarg override as an escape hatch; tolerant by default with optional `strict=True` mode; +84 tests; per-run record-count window unchanged from v1.12.2 (substrate-only — no new ledger record, no new per-period state); default-fixture `living_world_digest` unchanged from v1.12.2 by design; **substrate only** — no trading, no price formation, no lending decisions, no investment recommendations, no portfolio allocation, no order submission, no real data ingestion, no Japan calibration, no LLM-agent execution, no behavior probabilities, no ledger writes by default, no mutation of any other source-of-truth book; this is the attention bottleneck future v1.12.4 → v1.12.7 attention-conditioned mechanisms will consume) | Shipped (2540 tests) |
-| v1.12.4       | Attention-conditioned investor intent (new `run_attention_conditioned_investor_intent_signal` in `world/investor_intent.py` calling `world/evidence.resolve_actor_context` to build an `ActorContextFrame` and classifying intent on the resolved frame ids only; orchestrator's per-period investor-intent phase switched to the new helper; pre-existing `run_reference_investor_intent_signal` preserved for backward compatibility; additive `stewardship_theme` bucket on `ActorContextFrame` so theme ids resolve through the same substrate; record metadata grows with `attention_conditioned` / `context_frame_id` / `context_frame_status` / `context_frame_confidence` plus an `unresolved_refs` list when the resolver could not place every cited id; classification preserves the v1.12.1 priority-order labels — `deepen_due_diligence` / `risk_flag_watch` / `decrease_confidence` / `engagement_watch` / `hold_review` — with one additive rule path: a v1.12.2 market-environment record with `overall_market_access_label="selective_or_constrained"` OR `risk_appetite_regime="risk_off"` also fires rule 2; +23 tests including the headline divergence test (three investors → three different intent labels on the same target firm and same period); per-run record-count window unchanged from v1.12.3 (`[284, 316]`); default-fixture `living_world_digest` unchanged from v1.12.3 by design; **first mechanism-level use of attention as a real information bottleneck** — investor intent now reflects what an investor *saw*, not everything in the world; still pre-action review posture only — no order, no trade, no rebalance, no target weight, no overweight / underweight execution, no expected return, no target price, no security recommendation, no investment advice, no portfolio allocation, no execution; this prepares attention-conditioned valuation lite (anticipated v1.12.5) and bank credit review (anticipated v1.12.6)) | Shipped (2563 tests) |
-| v1.12.5       | Attention-conditioned valuation lite (new `run_attention_conditioned_valuation_refresh_lite` in `world/reference_valuation_refresh_lite.py` calling `world/evidence.resolve_actor_context` with `actor_type="valuer"` to build an `ActorContextFrame` and running the v1.9.5 pressure-haircut adapter on only the resolved frame ids; pre-existing `run_reference_valuation_refresh_lite` preserved for backward compatibility; produced `ValuationRecord.metadata` grows with `attention_conditioned` / `context_frame_id` / `context_frame_status` / `context_frame_confidence` / `resolved_buckets_present` / `restrictive_market_resolved` / `risk_off_environment_resolved` plus an `unresolved_refs` list when the resolver could not place every cited id; small documented synthetic delta on top of the v1.9.5 formula — resolved-evidence-breadth confidence bonus (`+0.02 × resolved_buckets`, capped at `+0.10`), unresolved-refs confidence penalty (`-0.05 × unresolved_count`, capped at `-0.20`), restrictive-market value haircut (`× 1 - 0.02` when a resolved readout / environment carries `overall_market_access_label="selective_or_constrained"`), risk-off appetite haircut (`× 1 - 0.01` when a resolved environment carries `risk_appetite_regime="risk_off"`); +17 tests including the headline divergence test (three valuers → at least two distinct `(estimated_value, confidence)` triples on the same firm and same period); per-run record-count window unchanged from v1.12.4 (`[284, 316]`); default-fixture `living_world_digest` unchanged from v1.12.4 by design; **helper-level + tests milestone — orchestrator wiring deferred** — the orchestrator continues to call the pre-existing v1.9.5 helper; still a synthetic opinionated valuation claim only — no target price, no expected return, no recommendation, no investment advice, no buy / sell / overweight / underweight, no rebalance, no target weight, no portfolio allocation, no execution, no order, no trade, no forecast value, no real data value, no beta / WACC / D/E / cost-of-capital computation, no impairment decision, no price formation, no order matching, no DCM/ECM execution, no LLM-agent dispatch, no Japan calibration) | Shipped (2580 tests) |
-| v1.12.6       | Attention-conditioned bank credit review lite (new `run_attention_conditioned_bank_credit_review_lite` in `world/reference_bank_credit_review_lite.py` calling `world/evidence.resolve_actor_context` with `actor_type="bank"` to build an `ActorContextFrame` and running the v1.9.7 pressure-score adapter on only the resolved frame ids; pre-existing `run_reference_bank_credit_review_lite` preserved for backward compatibility; produced `bank_credit_review_note` signal payload + metadata grow with a deterministic non-binding **watch label** — `information_gap_review` / `liquidity_watch` / `refinancing_watch` / `market_access_watch` / `collateral_watch` / `heightened_review` / `routine_monitoring` — plus `attention_conditioned` / `context_frame_id` / `context_frame_status` / `context_frame_confidence` / `resolved_evidence_buckets` keys; priority-order classifier reads resolved firm-state / market-environment / market-readout slots (`liquidity_pressure ≥ 0.65` → liquidity_watch; `funding_need_intensity ≥ 0.7` OR `debt_service_pressure ≥ 0.65` → refinancing_watch; `overall_market_access_label="selective_or_constrained"` → market_access_watch; `market_access_pressure ≥ 0.65` → collateral_watch; `overall_credit_review_pressure ≥ 0.6` → heightened_review); +22 tests including the headline divergence test (three banks → three distinct `(watch_label, status)` audit shapes on the same borrower and same period); per-run record-count window unchanged from v1.12.4 (`[284, 316]`); default-fixture `living_world_digest` unchanged from v1.12.4 by design; **helper-level + tests milestone — orchestrator wiring deferred**; the v1.9.7 boundary anti-claim metadata is preserved bit-for-bit (`no_lending_decision` / `no_covenant_enforcement` / `no_contract_mutation` / `no_constraint_mutation` / `no_default_declaration` / `no_internal_rating` / `no_probability_of_default` / `synthetic_only`); still a synthetic diagnostic note only — no lending decision, no loan origination, no covenant enforcement, no contract mutation, no default declaration, no internal rating, no probability of default, no LGD/EAD, no credit pricing, no underwriting, no rating grade, no loan terms, no investment advice, no recommendation, no buy / sell, no order, no trade, no real data ingestion, no Japan calibration, no LLM-agent execution; with v1.12.6 shipped, attention is now load-bearing at the helper level for three mechanisms — investor intent (v1.12.4), valuation lite (v1.12.5), bank credit review lite (v1.12.6)) | Shipped (2602 tests) |
-| v1.12.7       | Attention-conditioned mechanism integration (orchestrator-integration milestone that closes the v1.12.4 → v1.12.6 sequence; `world/reference_living_world.py` per-period valuation phase switches from `run_reference_valuation_refresh_lite` to `run_attention_conditioned_valuation_refresh_lite`, and per-period bank credit review phase switches from `run_reference_bank_credit_review_lite` to `run_attention_conditioned_bank_credit_review_lite`; both pre-existing helpers preserved for backward compatibility; the default living reference world demo now uses the v1.12.3 `EvidenceResolver` substrate for **three mechanisms end-to-end** — investor intent (since v1.12.4), valuation lite (new in v1.12.7), bank credit review lite (new in v1.12.7); +11 living-world integration tests pinning the new audit shape on every produced valuation and credit review signal, the orchestrator's per-actor `context_frame_id` correctness, no-forbidden-payload-keys / no-forbidden-event-types end-to-end, the new pinned `living_world_digest`, the v1.12.1 / v1.12.4 constrained-regime intent divergence preservation, the constrained-regime credit-review watch-label divergence, and markdown-report renders-without-error; per-period record count unchanged (71); per-run record window unchanged (`[284, 316]`); default-fixture `living_world_digest` moves from `d6b25704014c3f19da330f534d5f8266ce8a9b73b9ee8da378b19c4691cb5dfe` (v1.12.4 → v1.12.6) to `2c748aa6e37b679d9d52984e7f2c252d434e6a2192f7fa58b71866e59f54b709` (v1.12.7) by design — pinned in a regression test; every v1.9.5 / v1.9.7 anti-claim flag preserved bit-for-bit on every produced record; still synthetic review-only behaviour — no trading, no price formation, no lending decisions, no loan origination, no underwriting, no covenant enforcement, no contract mutation, no internal rating, no PD / LGD / EAD, no recommendation, no investment advice, no portfolio allocation, no real data ingestion, no Japan calibration, no LLM-agent execution) | Shipped (2613 tests) |
-| v1.12.8       | Next-period attention feedback (first cross-period attention feedback layer; new `world/attention_feedback.py` with `ActorAttentionStateRecord` + `AttentionFeedbackRecord` + `AttentionFeedbackBook` + `build_attention_feedback`; new ledger event types `attention_state_created` + `attention_feedback_recorded`; `WorldKernel.attention_feedback` wired; orchestrator builds 1 attention state + 1 feedback per investor + per bank per period chained via `previous_attention_state_id`; from period 1+ orchestrator builds a memory `SelectedObservationSet` per actor whose `selected_refs` are drawn from the prior period's `source_*_ids` gated by `focus_labels`, then passes it alongside the regular per-period selection to v1.12.4 / v1.12.5 / v1.12.6 helpers; deterministic priority-order rule set with closed `ALL_FOCUS_LABELS` (13) + 6 `TRIGGER_*` constants — `risk_intent_observed` / `engagement_intent_observed` / `valuation_confidence_low` / `liquidity_or_refinancing_credit_review` / `restrictive_market_observed` / `routine_observed`; +112 tests including the headline cross-period pin (period N+1's investor-intent record references 2 selections vs period N's 1; resolved dialogue evidence strictly wider); per-period record count moves from 71 to 79 (period 0) / 81 (period 1+); per-run window widens from `[284, 316]` to `[316, 364]`; default-fixture `living_world_digest` moves to `3002a499df6aff5c37628df5f14fbb3186481b276fab36a4fe2f13a89c5feeff` by design — pinned in regression tests; every v1.9.5 / v1.9.7 / v1.12.x anti-claim preserved bit-for-bit; still synthetic, deterministic, non-binding — no trading, no price formation, no lending decisions, no loan origination, no underwriting, no covenant enforcement, no contract mutation, no internal rating, no PD / LGD / EAD, no recommendation, no investment advice, no portfolio allocation, no behavior probability, no real data ingestion, no Japan calibration, no LLM-agent execution; **the living reference world now has a closed cross-period feedback loop** — what an actor saw and concluded in period N changes what it attends to in period N+1) | Shipped (2725 tests) |
-| v1.12.9       | Attention budget / decay / saturation (disciplines the v1.12.8 feedback loop with a finite synthetic attention budget; `ActorAttentionStateRecord` gains `per_dimension_budget=3` / `decay_horizon=2` / `saturation_policy="drop_oldest"` fields; `max_selected_refs` capped at 12; new `apply_attention_budget` pure helper bounds candidate selected refs by per-dimension and total caps deterministically; `build_attention_feedback` extended with deterministic decay rule — inherited focus halves in weight each period without reinforcement, drops once stale_count exceeds decay_horizon; reinforcement resets weight to 1.0 + stale_count to 0; saturation above 8 focus labels triggers drop-oldest; orchestrator's memory selection refs now bounded by the budget; +26 tests including the headline crowding pin (3-period synthetic where new risk focus crowds out old engagement focus); per-period record count and per-run window unchanged from v1.12.8 (changes are internal); default-fixture `living_world_digest` moves to `e508b4bf10df217f7b561b41aea845f841b12215d5bf815587375c52cffcdcb5` by design — pinned in regression tests; every v1.9.5 / v1.9.7 / v1.12.x anti-claim preserved bit-for-bit; still synthetic, deterministic, non-binding — no trading, no price formation, no lending decisions, no investment recommendations, no portfolio allocation, no behavior probability, no real data ingestion, no Japan calibration, no LLM-agent execution, no probabilistic forgetting / random decay; **attention is now scarce, budgeted, decaying, and saturating** — a constrained adaptive process whose shape changes in deterministic response to outcomes, never just by accumulation) | Shipped (2751 tests) |
-| v1.12.last    | Endogenous attention loop freeze (docs-only freeze that closes the v1.12 endogenous-attention sequence; ships [`docs/v1_12_endogenous_attention_loop_summary.md`](japan-financial-world/docs/v1_12_endogenous_attention_loop_summary.md), the regime-comparison demo section in `examples/reference_world/README.md`, the v1.12.last release-readiness snapshot in `RELEASE_CHECKLIST.md`, the v1.12.last position-in-sequence row in `docs/world_model.md` §92, and the v1.12.last test-inventory headline; same code, same tests, same `living_world_digest` as v1.12.9; v1.12 is now frozen as the first public FWE milestone where the living reference world has — (1) time-crossing firm latent state, (2) actor-specific attention-conditioned mechanisms, (3) next-period attention feedback, (4) finite attention budget with deterministic decay / crowding / saturation; **FWE v1.12 is not a market simulator** — it is a synthetic, deterministic, replayable financial-world substrate with a minimal endogenous attention-feedback loop; banker / asset-manager-facing reading: this engine documents an information-and-attention process, never a market view; no trading, no price formation, no lending decisions, no portfolio allocation, no investment advice, no real data, no Japan calibration, no LLM-agent execution, no behavior probabilities, no probabilistic forgetting) | Shipped (2751 tests) |
-| v1.13.1       | `SettlementAccountBook` (first concrete code milestone in the v1.13 generic settlement infrastructure sequence; new `world/settlement_accounts.py` with `SettlementAccountRecord` + `SettlementAccountBook`; new ledger event type `settlement_account_registered`; `WorldKernel.settlement_accounts` wired; +34 tests; storage-only; **no real balances, no central-bank accounting, no real payment processing, no real-system mapping, no Japan calibration**) | Shipped (2785 tests) |
-| v1.13.2       | `PaymentInstructionRecord` + `SettlementEventRecord` (new `world/settlement_payments.py` with both records + `SettlementInstructionBook`; two new ledger event types `payment_instruction_registered` + `settlement_event_recorded`; `WorldKernel.settlement_payments` wired; +47 tests; storage-only; synthetic-size labels replace any real currency value; **no real amounts, no settlement execution, no RTGS queue mechanics, no securities settlement execution, no central-bank accounting**) | Shipped (2832 tests) |
-| v1.13.3       | `InterbankLiquidityStateRecord` (new `world/interbank_liquidity.py` with `InterbankLiquidityStateRecord` + `InterbankLiquidityStateBook`; new ledger event type `interbank_liquidity_state_recorded`; `WorldKernel.interbank_liquidity` wired; four label fields — `liquidity_regime` / `settlement_pressure` / `reserve_access_label` / `funding_stress_label` — plus a `[0,1]` synthetic confidence and four plain-id source-reference tuples; +63 tests; storage-only; **no real balances, no calibrated liquidity model, no bank default, no lending decision, no Japan calibration**) | Shipped (2895 tests) |
-| v1.13.4       | `CentralBankOperationSignalRecord` + `CollateralEligibilitySignalRecord` (new `world/central_bank_signals.py` with both records + `CentralBankSignalBook`; two new ledger event types `central_bank_operation_signal_recorded` + `collateral_eligibility_signal_recorded`; `WorldKernel.central_bank_signals` wired; operation labels `operation_label` / `direction_label` / `horizon_label`, eligibility labels `eligibility_label` / `haircut_tier_label` (tier label, **never a percentage**); +78 tests; storage-only; **no operation amount, no policy rate, no monetary-policy stance numeric, no haircut percentage, no margin number, no real central-bank operation execution, no real collateral revaluation, no securities settlement execution, no Japan calibration**) | Shipped (2973 tests) |
-| v1.13.5       | MarketEnvironment + BankCreditReview integration (additive cross-link: `MarketEnvironmentStateRecord` gains `evidence_interbank_liquidity_state_ids` slot, `build_market_environment_state` accepts the same kwarg; `run_attention_conditioned_bank_credit_review_lite` accepts `explicit_interbank_liquidity_state_ids` and stamps the resolved ids on the produced signal's payload + metadata (citation-only — the v1.12.6 watch-label classifier is unchanged bit-for-bit); orchestrator emits one `InterbankLiquidityStateRecord` per bank per period in the default fixture (placeholder labels `normal` / `low` / `available` / `low`, `confidence=0.5`); per-period record count moves from 79 to 81 (+`banks=2`), per-run window from `[316, 364]` to `[324, 372]`; integration-test `living_world_digest` moves to `916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379` by design; +15 tests; **no calibrated liquidity model, no bank default, no lending decision, no classifier-rule change, no Japan calibration**) | Shipped (2988 tests) |
-| v1.13.last    | Generic central-bank settlement infrastructure freeze (docs-only summary closing the v1.13.1 → v1.13.5 sequence; ships [`docs/v1_13_generic_settlement_infrastructure_summary.md`](japan-financial-world/docs/v1_13_generic_settlement_infrastructure_summary.md), §98 in `docs/world_model.md`, the v1.13.last release-readiness snapshot in `RELEASE_CHECKLIST.md`, the v1.13.last performance-boundary update in `docs/performance_boundary.md`, and this roadmap row; same code, same tests, same `living_world_digest` as v1.13.5; **storage and labels only — no payment system, no real balances, no calibrated liquidity model, no monetary-policy decisions, no haircut percentages, no margin numbers, no real-system mapping, no Japan calibration**; the v1.9.last public-prototype freeze and the v1.8.0 public release remain bit-for-bit unchanged) | Shipped (2988 tests) |
-| v1.14.0       | Corporate financing intent design (docs-only design note in [`docs/v1_14_corporate_financing_intent_design.md`](japan-financial-world/docs/v1_14_corporate_financing_intent_design.md); defines three orthogonal label-only record types — `CorporateFinancingNeedRecord` (need labels: `funding_horizon_label` / `funding_purpose_label` / `urgency_label` / `synthetic_size_label`), `FundingOptionCandidate` (option labels: `option_type_label` / `instrument_class_label` / `maturity_band_label` / `seniority_label` / `accessibility_label`), `CapitalStructureReviewCandidate` (review labels: `review_motivation_label` / `posture_label` / `time_horizon_label`); cross-references the v1.12.0 `FirmFinancialStateRecord`, v1.12.2 `MarketEnvironmentStateRecord`, and v1.13.3 `InterbankLiquidityStateRecord` via plain-id slots planned for v1.14.4; proposes the v1.14.x sequence — v1.14.1 need storage / v1.14.2 option-candidate storage / v1.14.3 capital-structure-review storage / v1.14.4 cross-links / v1.14.5 living-world wiring / v1.14.last freeze; **records financing-attention discipline, never executes financing** — no application, no underwriting, no allocation, no rating, no covenant, no contract or constraint mutation, no price / yield / spread / coupon, no calibrated probability of any external action, no real corporate-finance data, no Japan calibration; no test count change, no `living_world_digest` change, no per-run window change) | Docs-only (design note) |
-| v1.14.1       | `CorporateFinancingNeedRecord` (first concrete code milestone in the v1.14 corporate-financing-intent sequence; new `world/corporate_financing.py` with `CorporateFinancingNeedRecord` + `CorporateFinancingNeedBook`; new ledger event type `corporate_financing_need_recorded`; `WorldKernel.corporate_financing_needs` wired; four label fields — `funding_horizon_label` / `funding_purpose_label` / `urgency_label` / `synthetic_size_label` — plus a `[0,1]` synthetic confidence and three plain-id source-reference tuples (firm financial states, market environment states, corporate signals); +64 tests; storage-only; **no application, no underwriting, no allocation, no rating, no covenant, no contract or constraint mutation, no price / yield / spread / coupon, no calibrated probability of any external action, no real corporate-finance data, no Japan calibration, no investment advice**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.13.last) | Shipped (3052 tests) |
-| **v1.14.2**   | **`FundingOptionCandidate`** (second concrete code milestone in the v1.14 corporate-financing-intent sequence; new `world/funding_options.py` with `FundingOptionCandidate` + `FundingOptionCandidateBook`; new ledger event type `funding_option_candidate_recorded`; `WorldKernel.funding_options` wired; seven **closed-set-enforced** label fields — `option_type_label` / `instrument_class_label` / `maturity_band_label` / `seniority_label` / `accessibility_label` / `urgency_fit_label` / `market_fit_label` — plus a `[0,1]` synthetic confidence and six plain-id source-reference tuples (need ids, market environment states, interbank liquidity states, firm states, bank credit review signals, investor intents); book methods `add_candidate` / `get_candidate` / `list_candidates` / `list_by_firm` / `list_by_option_type` / `list_by_instrument_class` / `list_by_accessibility` / `list_by_status` / `list_by_date` / `list_by_need` / `snapshot`; +99 tests; storage-only; **no loan origination, no DCM execution, no ECM execution, no underwriting, no syndication, no security issuance, no bookbuilding, no allocation, no loan approval, no interest rate, no spread, no fee, no offering price, no calibrated take-up probability, no investment advice, no real data ingestion, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.13.last) | **Shipped (3165 tests)** |
-| **v1.14.3**   | **`CapitalStructureReviewCandidate`** (third concrete code milestone in the v1.14 corporate-financing-intent sequence; new `world/capital_structure.py` with `CapitalStructureReviewCandidate` + `CapitalStructureReviewBook`; new ledger event type `capital_structure_review_candidate_recorded`; `WorldKernel.capital_structure_reviews` wired; eight **closed-set-enforced** label fields — `review_type_label` / `leverage_pressure_label` / `liquidity_pressure_label` / `maturity_wall_label` / `dilution_concern_label` / `covenant_headroom_label` / `market_access_label` / `rating_perception_label` — plus a `[0,1]` synthetic confidence and seven plain-id source-reference tuples (need ids, funding option ids, firm state ids, market environment states, interbank liquidity states, bank credit review signals, investor intents); book methods `add_candidate` / `get_candidate` / `list_candidates` / `list_by_firm` / `list_by_review_type` / `list_by_market_access` / `list_by_status` / `list_by_date` / `list_by_need` / `list_by_funding_option` / `snapshot`; +105 tests; storage-only; **no optimal-capital-structure decision, no loan approval, no bond issuance, no equity issuance, no underwriting, no syndication, no pricing, no covenant enforcement, no rating model, no PD / LGD / EAD, no real leverage ratio, no real D/E, no WACC calculation, no investment advice, no real data ingestion, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.13.last) | **Shipped (3270 tests)** |
-| **v1.14.4**   | **`CorporateFinancingPathRecord`** (fourth concrete code milestone in the v1.14 corporate-financing-intent sequence — closes the storage / audit phase by linking need → option → capital-structure review into one auditable subgraph; new `world/financing_paths.py` with `CorporateFinancingPathRecord` + `CorporateFinancingPathBook` + deterministic `build_corporate_financing_path` helper; new ledger event type `corporate_financing_path_recorded`; `WorldKernel.financing_paths` wired; five **closed-set-enforced** label fields — `path_type_label` / `path_status_label` / `coherence_label` / `constraint_label` / `next_review_label` — plus a `[0,1]` synthetic confidence and seven plain-id cross-reference tuples (need ids, funding option ids, capital structure review ids, market environment states, interbank liquidity states, bank credit review signals, investor intents); book methods `add_path` / `get_path` / `list_paths` / `list_by_firm` / `list_by_path_type` / `list_by_path_status` / `list_by_coherence` / `list_by_constraint` / `list_by_status` / `list_by_date` / `list_by_need` / `list_by_funding_option` / `list_by_capital_structure_review` / `snapshot`; helper reads only cited ids (no global scan — pinned by a trip-wire test on every `list_*` / `snapshot` of the cited books) and synthesises labels deterministically (purpose → path type, market_access agreement → coherence, first-match priority over reviews → constraint, coherence × constraint → next review); +106 tests; **graph / audit object — not execution; no choice of optimal option, no loan approval, no bond / equity issuance, no underwriting, no syndication, no bookbuilding, no pricing, no capital-structure optimisation, no investment recommendation, no real leverage / D/E / WACC calculation, no real data ingestion, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.13.last by design — orchestrator wiring lands at v1.14.5) | **Shipped (3376 tests)** |
-| **v1.14.5**   | **Living-world corporate financing integration** (first living-world integration of the v1.14 storage chain — turns need / option / review / path into a per-period reasoning chain on the default sweep; per firm per period: 1 `CorporateFinancingNeedRecord` + 2 `FundingOptionCandidate` records + 1 `CapitalStructureReviewCandidate` + 1 `CorporateFinancingPathRecord` (built via the v1.14.4 helper); bounded by `P × F` — no `I × F × option_count` or `B × F × option_count` dense loop; `LivingReferencePeriodSummary` gains 4 new id-tuple fields; canonical view + markdown report + CLI all updated; report adds a concise `## Corporate financing` section with five histograms (purpose / option-type / market-access / path-coherence / path-constraint); per-period record count moves from 81 to 96 (`+5 × firms`), per-run window from `[324, 372]` to `[384, 432]`; **integration-test `living_world_digest` moves from `916e410d829bec0be26b92989fa2d5438b80637a5c56afd785e0b56cfbebb379` (v1.13.5/v1.13.6, unchanged through v1.14.1–v1.14.4) to `3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71` (v1.14.5)** by design; +15 integration tests covering count shapes, citation graph (option → need, review → need + option, path → need + option + review), upstream MES + firm-state + IBL citations, no forbidden ledger event types, no anti-field payload keys, replay determinism, canonical-view tuple presence, markdown-section presence, and synthetic-only id scan; **storage / audit / graph-linking only — no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no bookbuilding, no allocation, no interest rate / spread / fee / coupon / offering price, no optimal capital structure decision, no capital-structure optimisation, no real leverage / D/E / WACC calculation, no lending decision, no investment recommendation, no trading, no price formation, no real data ingestion, no Japan calibration**) | **Shipped (3391 tests)** |
-| **v1.14.last** | **Corporate Financing Intent freeze** (docs-only milestone closing the v1.14 sequence; ships the single-page reader-facing summary [`docs/v1_14_corporate_financing_intent_summary.md`](japan-financial-world/docs/v1_14_corporate_financing_intent_summary.md), §105 in `docs/world_model.md`, the v1.14.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.14.last freeze pin section in [`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md), the v1.14.last test-inventory header note, the v1.14.last addendum in [`examples/reference_world/README.md`](japan-financial-world/examples/reference_world/README.md), and the v1.14.last cross-link in [`docs/fwe_reference_demo_design.md`](japan-financial-world/docs/fwe_reference_demo_design.md); no new code, no new tests, no new ledger event types; test count = **3391 / 3391**, per-period record count = **96 / 98**, per-run window = **`[384, 432]`**, `living_world_digest` = **`3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71`** — all unchanged from v1.14.5 by design; first FWE milestone where the living reference world carries a bounded corporate financing reasoning chain `market environment → firm latent state → investor intent / valuation / bank credit review → corporate financing need → funding option candidates → capital structure review → financing path`; **storage / audit / graph-linking only — no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no bookbuilding, no allocation, no pricing, no optimal capital structure decision, no investment advice, no real data, no Japan calibration**) | **Shipped (3391 tests)** |
-| v1.15.0       | Securities market intent aggregation design (planned docs-only design note for [`docs/v1_15_securities_market_intent_aggregation_design.md`](japan-financial-world/docs/v1_15_securities_market_intent_aggregation_design.md); proposes the missing broker / exchange / market-venue abstraction between investor intent and price formation — investor intents do not directly update prices, they are first aggregated into security-level market pressure that can later feed back into equity-issuance accessibility, dilution concern, market access, and the capital-structure review; defines five jurisdiction-neutral record types — `ListedSecurityRecord`, `MarketVenueRecord`, `InvestorTradingIntentRecord` (with safe labels: `increase_interest`, `reduce_interest`, `hold_review`, `liquidity_watch`, `rebalance_review`, `risk_reduction_review`, `engagement_linked_review` — never `buy` / `sell` / `order` / `target_weight` / `overweight` / `underweight` / `execution`), `AggregatedMarketInterestRecord`, `IndicativeMarketPressureRecord`; **records market interest aggregation, never market trading** — no order submission, no order matching, no trade execution, no clearing, no settlement, no real exchange mechanics, no real price formation, no target price, no investment recommendation, no real data ingestion, no Japan calibration; subsequent v1.15.x milestones will ship the storage modules; no test count change, no `living_world_digest` change, no per-run window change at v1.15.0) | Planned (docs-only design) |
-| **v1.15.1**   | **`ListedSecurityRecord` + `MarketVenueRecord`** (first concrete code milestone in the v1.15 securities-market-intent sequence; new `world/securities.py` with two frozen dataclasses + `SecurityMarketBook` (append-only, single book covering both record types); two new ledger event types `listed_security_registered` + `market_venue_registered`; `WorldKernel.security_market` wired; eight **closed-set-enforced** label fields total — `security_type_label` / `listing_status_label` / `issue_profile_label` / `liquidity_profile_label` / `investor_access_label` (security side); `venue_type_label` / `venue_role_label` / venue `status` (venue side) — plus two closed-set tuple slots on the venue (`supported_security_type_labels` against the security-type vocabulary; `supported_intent_labels` against the v1.15 `SAFE_INTENT_LABELS` set, which **rejects** the forbidden trading verbs `buy` / `sell` / `order` / `target_weight` / `overweight` / `underweight` / `execution` by closed-set membership); book methods `add_security` / `get_security` / `list_securities` / `list_by_issuer` / `list_by_security_type` / `list_by_listing_status` / `list_by_primary_venue` / `add_venue` / `get_venue` / `list_venues` / `list_by_venue_type` / `list_by_venue_role` / `snapshot`; +132 tests; storage-only; **market surface, not trading — no order submission, no order matching, no trade execution, no clearing, no settlement, no price formation, no quote dissemination, no real exchange mechanics, no target prices, no expected returns, no investment recommendations, no real data ingestion, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.14.last) | **Shipped (3523 tests)** |
-| **v1.15.2**   | **`InvestorMarketIntentRecord`** (second concrete code milestone in the v1.15 securities-market-intent sequence; **naming decision** — ships as `InvestorMarketIntentRecord` rather than the v1.15.0 design note's proposed `InvestorTradingIntentRecord` because public FWE deliberately models *market interest* before *trading*; new `world/market_intents.py` with `InvestorMarketIntentRecord` + `InvestorMarketIntentBook`; new ledger event type `investor_market_intent_recorded`; `WorldKernel.investor_market_intents` wired; four **closed-set-enforced** label fields — `intent_direction_label` (pinned as exactly `SAFE_INTENT_LABELS ∪ {"unknown"}` so the forbidden trading verbs `buy` / `sell` / `order` / `target_weight` / `overweight` / `underweight` / `execution` are rejected by closed-set membership) / `intensity_label` / `horizon_label` / `status` — plus a `[0,1]` synthetic confidence and six plain-id evidence-tuple slots (investor intent ids, valuation ids, market environment state ids, firm state ids, security ids, venue ids); book methods `add_intent` / `get_intent` / `list_intents` / `list_by_investor` / `list_by_security` / `list_by_intent_direction` / `list_by_intensity` / `list_by_horizon` / `list_by_status` / `list_by_date` / `snapshot`; ledger record routes `source = investor_id` / `target = security_id`; +87 tests; storage-only; **market interest, not trading — no buy / sell / hold recommendation, no order submission, no order book, no matching, no execution, no clearing, no settlement, no target weight, no overweight / underweight, no portfolio rebalancing, no expected return, no target price, no security recommendation, no real price formation, no real data ingestion, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.14.last) | **Shipped (3610 tests)** |
-| **v1.15.3**   | **`AggregatedMarketInterestRecord`** (third concrete code milestone in the v1.15 securities-market-intent sequence; new `world/market_interest.py` with `AggregatedMarketInterestRecord` + `AggregatedMarketInterestBook` + deterministic `build_aggregated_market_interest` helper; new ledger event type `aggregated_market_interest_recorded`; `WorldKernel.aggregated_market_interest` wired; **seven non-negative integer count fields** — `increased_interest_count` / `reduced_interest_count` / `neutral_or_hold_review_count` / `liquidity_watch_count` / `risk_reduction_review_count` / `engagement_linked_review_count` / `total_intent_count` — plus four **closed-set-enforced** label fields (`net_interest_label` / `liquidity_interest_label` / `concentration_label` / `status`), `[0,1]` synthetic confidence, two plain-id source-tuple slots (market intent ids, market environment state ids); book methods `add_record` / `get_record` / `list_records` / `list_by_venue` / `list_by_security` / `list_by_date` / `list_by_net_interest` / `list_by_liquidity_interest` / `list_by_status` / `list_by_source_market_intent` / `snapshot`; ledger record routes `source = venue_id` / `target = security_id`; helper reads only cited intent ids (no global scan — pinned by a trip-wire test on every `list_*` / `snapshot` of `kernel.investor_market_intents`), maps every `intent_direction_label` to a fixed bucket (including `rebalance_review` and `unknown` to neutral), records `mismatched_security_id_count` and `unresolved_market_intent_count` in metadata, derives `net_interest_label` / `liquidity_interest_label` / `concentration_label` deterministically from documented threshold rules; +121 tests; storage + helper only; **market interest aggregation, not trading — no order submission, no order book, no order imbalance, no buy / sell labels, no bid / ask, no quote dissemination, no matching, no execution, no clearing, no settlement, no price formation, no target price, no expected return, no recommendation, no investment advice, no real data ingestion, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.14.last) | **Shipped (3731 tests)** |
-| **v1.15.4**   | **`IndicativeMarketPressureRecord`** (fourth concrete code milestone in the v1.15 securities-market-intent sequence; new `world/market_pressure.py` with `IndicativeMarketPressureRecord` + `IndicativeMarketPressureBook` + deterministic `build_indicative_market_pressure` helper; new ledger event type `indicative_market_pressure_recorded`; `WorldKernel.indicative_market_pressure` wired; **five closed-set-enforced pressure labels** — `demand_pressure_label` / `liquidity_pressure_label` / `volatility_pressure_label` / `market_access_label` / `financing_relevance_label` — plus closed-set `status`, `[0,1]` synthetic confidence, four plain-id source-tuple slots (aggregated interest ids, market environment state ids, security ids, venue ids); the `market_access_label` is the **same frozenset object** as v1.14.3 `CapitalStructureReviewCandidate.MARKET_ACCESS_LABELS` (pinned by an `is`-identity test) so the two layers compose cleanly when v1.15.6 wires pressure-id citations into capital-structure review; book methods `add_record` / `get_record` / `list_records` / `list_by_security` / `list_by_date` / `list_by_demand_pressure` / `list_by_liquidity_pressure` / `list_by_volatility_pressure` / `list_by_market_access` / `list_by_status` / `list_by_source_aggregated_interest` / `snapshot`; ledger record routes `source = security_id`; helper reads only cited aggregated-interest ids (no global scan — pinned by a trip-wire test), sums v1.15.3 count fields across matched records and re-derives v1.15.3 net/liquidity-interest labels from the sums, then maps deterministically to v1.15.4 pressure labels (`adverse` demand or `stressed` liquidity → constrained; `supportive` + `ample`/`normal` → open; `mixed`/`cautious` → selective; etc.); records `mismatched_security_id_count`, `unresolved_aggregated_interest_count`, and `matched_aggregated_record_count` in metadata; **dedicated `PriceBook` no-mutation test** pins that the helper does not write to `kernel.prices` even when synthesising a pressure record from real aggregated-interest data; +118 tests; storage + helper only; **indicative pressure, not price — no price formation, no price update, no `PriceBook` mutation, no order book, no order imbalance, no order submission, no bid / ask, no quote dissemination, no matching, no execution, no clearing, no settlement, no target price, no expected return, no recommendation, no investment advice, no real data ingestion, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.14.last) | **Shipped (3849 tests)** |
-| **v1.15.5**   | **Living-world securities market intent integration** (first living-world integration of the v1.15 storage / helper chain — turns listed-security setup + investor market intent + aggregated market interest + indicative market pressure into a per-period chain on the default sweep; setup-once: 1 `MarketVenueRecord` + `F` `ListedSecurityRecord`; per firm per period: `I × F` `InvestorMarketIntentRecord` + `F` `AggregatedMarketInterestRecord` (built via the v1.15.3 helper) + `F` `IndicativeMarketPressureRecord` (built via the v1.15.4 helper); bounded by `P × I × F + 2 × P × F` — no `P × I × F × venue` or `P × I × F × option` dense loop; `LivingReferencePeriodSummary` gains 3 new id-tuple fields; `LivingReferenceWorldResult` gains 2 new setup-level id-tuple fields (`listed_security_ids`, `market_venue_ids`); canonical view + markdown report + CLI all updated; report adds a concise `## Securities market intent` section with four histograms (intent direction / aggregated net interest / pressure market access / pressure financing relevance); per-period record count moves from 96 to 108 (`+I × F + 2 × F`), per-run window from `[384, 432]` to `[432, 480]`; **integration-test `living_world_digest` moves from `3df73fd4f152c16d1188f5c15b69bdc8a5cd6061b637ea35af671e86c6fa2d71` (v1.14.5, unchanged through v1.15.1–v1.15.4) to `041686b0c69eea751cb24e3e3e5b4ac25e56a8ae20d4b1bd40a41dc5303403a5` (v1.15.5)** by design; +14 integration tests covering setup shape, per-period count shapes, citation graph (intent → security + venue, aggregated → intents, pressure → aggregated), `PriceBook` no-mutation invariant, no forbidden ledger event types (with explicit name-based pin for `trade_executed` / `quote_disseminated` / `clearing_completed` / `settlement_completed`), no anti-field payload keys, replay determinism, canonical-view tuple presence, markdown-section presence, and synthetic-only id scan; **storage / aggregation only — no order submission, no buy / sell labels, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no real data ingestion, no Japan calibration**) | **Shipped (3863 tests)** |
-| **v1.15.last** | **Securities Market Intent Aggregation freeze** (docs-only milestone closing the v1.15 sequence; ships the single-page reader-facing summary [`docs/v1_15_securities_market_intent_summary.md`](japan-financial-world/docs/v1_15_securities_market_intent_summary.md), §113 in `docs/world_model.md`, the v1.15.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.15.last freeze pin section in [`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md), the v1.15.last test-inventory header note, the v1.15.last addendum in [`examples/reference_world/README.md`](japan-financial-world/examples/reference_world/README.md), and the v1.15.last cross-link in [`docs/fwe_reference_demo_design.md`](japan-financial-world/docs/fwe_reference_demo_design.md); no new code, no new tests, no new ledger event types; test count = **3883 / 3883**, per-period record count = **108 / 110**, per-run window = **`[432, 480]`**, `living_world_digest` = **`bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8`** — all unchanged from v1.15.6 by design; first FWE milestone where the living reference world carries a bounded **securities-market-interest aggregation** chain plus a **deterministic feedback path** back into the corporate financing chain (`investor intent / valuation / firm state / market environment → investor market intent → aggregated market interest → indicative market pressure → capital-structure review / financing path`); **market-interest aggregation, not market trading; indicative pressure, not price formation; feedback to corporate financing review, not financing execution — no order submission, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no investment advice, no real data, no Japan calibration**; **known limitation** flagged: v1.15.5 uses a deterministic rotation for `intent_direction_label`; v1.16 will replace the rotation with an evidence-conditioned classifier over `InvestorIntentRecord.intent_direction` / `ValuationRecord.confidence` / `FirmFinancialStateRecord.market_access_pressure` / `MarketEnvironmentStateRecord.overall_market_access_regime_label` / `ActorAttentionStateRecord.focus_labels`) | **Shipped (3883 tests)** |
-| **v1.20.last** | **Monthly Scenario Reference Universe freeze** (docs-only milestone that closes the v1.20 sequence — ships the single-page reader-facing summary in [`docs/v1_20_monthly_scenario_reference_universe_summary.md`](japan-financial-world/docs/v1_20_monthly_scenario_reference_universe_summary.md), the v1.20.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.20.last position-in-sequence rows in `docs/world_model.md` §129.25 (freeze) / §129.26 (the binding **3220 vs 3241** record-count distinction — profile canonical record count vs CLI export bundle `manifest.record_count`, with the +21 delta fully explained by the v1.11.2 `_REGIME_PRESETS["constrained"]` preset and confined to the `observation_set_selected` record type) / §129.27 (post-v1.20 forward pointer), the v1.20.last freeze pin in `docs/performance_boundary.md`, the v1.20.last header note in `docs/test_inventory.md`, and the v1.20.last cross-link / addendum in `examples/reference_world/README.md`, `examples/ui/README.md`, and `docs/fwe_reference_demo_design.md`; no new code, no new tests, no new ledger event types, no new behavior; **first public-FWE milestone where the engine moves from a small closed-loop demo to a richer synthetic market-like reference universe** — 12 monthly periods × 11 generic sectors × 11 representative synthetic firm profiles × 4 investor archetypes × 3 bank archetypes × 51 information arrivals × 1 scheduled scenario application × 2 scenario context shifts × 11 affected sector ids × 11 affected firm profile ids; CLI-first / read-only-loader / opt-in profile / no-backend; per-period record count 257 / 261 (within `[200, 280]`); per-run record counts 3220 (profile canonical fixture) / 3241 (CLI export bundle `manifest.record_count` under `--regime constrained`) — both within `[2400, 3360]` and well under `≤ 4000`; `scenario_monthly_reference_universe` `living_world_digest` (test fixture) = **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**; v1.20.4 CLI bundle digest = **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**; canonical `quarterly_default` `living_world_digest` (`f93bdf3f…b705897c`) and `monthly_reference` `living_world_digest` (`75a91cfa…91879d`) **byte-identical** to v1.19.last across the entire v1.20 sequence — the new profile is **opt-in**; sector labels carry the `_like` suffix and no public-FWE module text or test depends on bare `GICS` / `MSCI` / `S&P` / `FactSet` / `Bloomberg` / `Refinitiv` / `TOPIX` / `Nikkei` / `JPX` tokens; firm ids follow the synthetic `firm:reference_<sector>_a` pattern with no real company name; **no real companies, no real sector weights, no licensed taxonomy dependency, no real financial values, no real indicator values, no real institutional identifiers, no price formation, no market price, no predicted index, no forecast path, no expected return, no target price, no trading, no orders, no execution, no clearing, no settlement, no financing execution, no direct firm decisions, no direct investor actions, no bank approval logic, no investment advice, no real data ingestion, no Japan calibration, no LLM execution, no LLM prose as source-of-truth, no backend, no fetch / XHR, no file-system write, no browser-to-Python execution, no daily simulation, no mutation of pre-existing context records**; test count = **4764 / 4764** (unchanged from v1.20.5)) | **Shipped (4764 tests)** |
-| **v1.20.5**   | **UI universe / sector / monthly scenario rendering** (fifth concrete code milestone of the v1.20 sequence — extends the static workbench mockup [`examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html) so it can render v1.20.4 `scenario_monthly_reference_universe` bundles; **HTML / CSS / JS only** — no Python source modules touched, no test count change; adds a new **Universe** tab between Overview and Timeline (the bottom-tabs nav now lists 11 tabs and 11 sheets — Cover · Inputs · Overview · Universe · Timeline · Regime Compare · Attention · Market Intent · Financing · Ledger · Appendix — and the tab ↔ sheet bijection is preserved); the Universe tab renders an **empty-state card** when no v1.20.4 bundle is loaded (pointing the reader at the CLI command) and a **live-state card** when a bundle is loaded with: a profile-id header carrying the `reference_universe_id` + `sector_taxonomy_label`; an eight-card counts row (sectors / firm profiles / investors / banks / periods / selected scenario / affected sectors / affected firms); an **11-row × 9-column sector sensitivity heatmap** rendered as a CSS-class colour grid (`sens-low` / `sens-moderate` / `sens-high` / `sens-very-high` / `sens-unknown` — colour is decorative, the cell text always echoes the underlying closed-set v1.20.0 sensitivity label verbatim, no numeric weight is implied, no real sector index membership, no licensed taxonomy); an **11-row × 6-column firm profile table** (firm profile id / sector label / firm size / funding dependency / market access / affected) with `word-break: break-word` so long ids wrap; a **scenario causal-trace** five-step ordered list (scenario template → scheduled application → applied application → context shifts (count + surfaces + directions) → affected scope (sector + firm counts)); and an always-visible boundary-statement footer; `BUNDLE_EXECUTABLE_PROFILES` extended additively with `scenario_monthly_reference_universe` (the three deferred labels — `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` — stay deferred); `validateBundleSchema(...)` now requires for the new profile: `metadata.reference_universe` object with non-empty `sector_labels` + `firm_profile_ids` arrays; `scenario_trace` object with `affected_sector_ids` + `affected_firm_profile_ids` arrays; `manifest.sector_count == 11` / `firm_count == 11` / `investor_count == 4` / `bank_count == 3`; the Inputs tab's "Local run bundle" card now shows a distinct amber profile badge for the universe profile (alongside green=`quarterly_default` / blue=`monthly_reference`); the v1.19.3 information-arrival summary card is now also visible for the universe profile (which reuses the v1.19.3 calendar fixture verbatim — 51 arrivals across 12 months); the in-page `Validate` audit gained seven new checks (Universe tab + sheet + both tbodies present, `renderUniverseFromBundle` function defined, `SENSITIVITY_LABELS` constant carries the v1.20.0 five-rung closed set `{low, moderate, high, very_high, unknown}`, `BUNDLE_EXECUTABLE_PROFILES` includes the new profile); safety: `textContent` only — never `innerHTML` for user-loaded JSON; no `eval`; no `fetch` / XHR; no backend; no file-system write; no `location.hash` mutation during bundle load; capture-and-restore protocol around scroll position and active-sheet so the load never causes a scroll jump or active-sheet shift; the canonical `quarterly_default` digest stays at `f93bdf3f…b705897c`, the `monthly_reference` digest stays at `75a91cfa…91879d`, and the v1.20.4 CLI bundle digest stays at `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf` — v1.20.5 touches no Python source; **read-only static viewer — no engine execution, no backend, no fetch / XHR, no daily simulation, no LLM execution, no real data ingestion, no licensed taxonomy dependency, no Japan calibration**; manual smoke: open the HTML directly under `file://` → click **Load local bundle** → pick the v1.20.4 JSON → switch to the Universe tab → see the 11-sector sensitivity heatmap, the 11-firm table, and the scenario causal trace; test count = **4764 / 4764** (unchanged — UI-only milestone)) | **Shipped (4764 tests)** |
-| **v1.20.4**   | **CLI export for `scenario_monthly_reference_universe`** (fourth concrete code milestone of the v1.20 sequence — extends [`examples/reference_world/export_run_bundle.py`](japan-financial-world/examples/reference_world/export_run_bundle.py) so the CLI can build a deterministic `RunExportBundle` JSON for the v1.20.3 opt-in profile; `EXECUTABLE_PROFILES` extended additively from `("quarterly_default", "monthly_reference")` to `("quarterly_default", "monthly_reference", "scenario_monthly_reference_universe")`; `world.run_export.RUN_PROFILE_LABELS` extended additively; new module-level `SCENARIO_UNIVERSE_PROFILE_SUPPORTED_SCENARIOS = ("none_baseline", "credit_tightening_driver")` — the new `credit_tightening_driver` scenario selector label is **only** valid under the universe profile, every other (scenario, profile) combination exits non-zero; new `_build_bundle_for_scenario_monthly_reference_universe(...)` mirrors the v1.19.3.1 monthly_reference shape and adds three v1.20.x-specific bundle sections: **`metadata.reference_universe`** (universe profile id + 11 sector ids + 11 firm profile ids + 11 firm ids + 11 sector labels with the `_like` suffix + per-sector sensitivity summary on the v1.20.0 six-dimension five-rung closed set), **`scenario_trace`** (scheduled-application + applied-application + emitted context-shift ids; merged context-surface labels — `market_environment` + `financing_review_surface` — and shift-direction labels — `tighten`; per-application **`affected_sector_ids` (11)** + **`affected_firm_profile_ids` (11)** read from the v1.20.4 orchestrator's application metadata so a downstream consumer can render per-sector / per-firm impact without recomputing the universe; merged `boundary_flags` AND view; v1.18.0 `reasoning_modes` / `reasoning_slots` audit shape), and **`market_intent`** + **`financing`** (compact label-only histograms with closed-loop cardinality counts — `O(P × I × F) = 528` market intents and `O(P × F) = 132` aggregated interest / indicative pressure / financing path / capital-structure review); reuses the v1.19.3.1 `information_arrival_summary` (1 calendar / 51 scheduled releases / 51 arrivals across 12 months); `ledger_excerpt` bounded at `LEDGER_EXCERPT_LIMIT = 20` with v1.20.x-setup-priority selection (universe profile / sector / firm profile / scenario template / schedule / scheduled application / applied application / context shift) before falling back to first-N; volatile fields (`record_id`, `timestamp`) stripped per v1.19.2 convention; the [`world/reference_living_world.py`](japan-financial-world/world/reference_living_world.py) orchestrator now stamps the scenario application metadata with universe-wide `affected_sector_ids` (all 11) and `affected_firm_profile_ids` (all 11) so the per-sector / per-firm impact is visible without recomputing the universe — the application stays at exactly 1 record + 2 context shifts; bundle is fully deterministic — same CLI args → byte-identical JSON; no wall-clock timestamp anywhere; no absolute path leakage (`/tmp/` / `/Users/` / `/home/` / the `--out` path itself); pinned CLI bundle digest for `--profile scenario_monthly_reference_universe --regime constrained --scenario credit_tightening_driver`: **`ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`**; the canonical `quarterly_default` `living_world_digest` (`f93bdf3f…b705897c`) and `monthly_reference` `living_world_digest` (`75a91cfa…91879d`) are unchanged; +20 CLI tests in `tests/test_run_export_cli.py` covering parsable JSON / two-run byte-identity / digest pin / manifest counts (`sector_count = 11` / `firm_count = 11` / `investor_count = 4` / `bank_count = 3` / `scheduled_scenario_application_count = 1` / `scenario_application_count = 1` / `scenario_context_shift_count = 2` / `information_arrival_count = 51` / `record_count <= 4000` / `synthetic_only = True` / `no_backend = True` / `no_ui_execution = True`) / reference_universe section shape (universe profile id + 11 sectors + 11 firm profiles + sensitivity summary) / scenario_trace section shape (universe-wide affected_sector_ids + affected_firm_profile_ids + reasoning audit shape + boundary flags) / per-application summary surfaces affected ids / information_arrival_summary / market_intent + financing summaries (528 / 132 / 132 / 132 / 132) / ledger excerpt cap + scenario-priority selection / no ISO wall-clock / no absolute paths / no real indicator values / no licensed-taxonomy tokens via `_LICENSED_TAXONOMY_TOKENS` + `_JURISDICTION_TOKENS` / no quarterly_default / monthly_reference digest move / rejects `credit_tightening_driver` under unrelated profiles / rejects unrelated scenario labels under universe profile / accepts `none_baseline` under universe profile / designed-but-not-executable labels still rejected; **CLI-only — no UI rendering changes (deferred to v1.20.5), no backend, no fetch / XHR, no daily simulation, no LLM execution**; test count = **4764 / 4764**) | **Shipped (4764 tests)** |
-| **v1.20.3**   | **`scenario_monthly_reference_universe` run profile** (third concrete code milestone of the v1.20 monthly-scenario-reference-universe sequence — extends [`world/reference_living_world.py`](japan-financial-world/world/reference_living_world.py) with the opt-in profile `scenario_monthly_reference_universe`; `_SUPPORTED_RUN_PROFILE_LABELS` extended from `{"quarterly_default", "monthly_reference"}` to `{"quarterly_default", "monthly_reference", "scenario_monthly_reference_universe"}`; existing profile digests stay byte-identical (`quarterly_default` `f93bdf3f…b705897c`; `monthly_reference` `75a91cfa…91879d`); when the new profile is invoked, the orchestrator idempotently registers (a) the v1.20.1 generic 11-sector reference universe (1 + 11 + 11 = 23 setup records), (b) the v1.18.1 credit-tightening scenario template (1 setup record), and (c) the v1.20.2 default scenario schedule (1 + 1 = 2 setup records); reuses the v1.19.3 `InformationReleaseCalendar` for monthly arrivals (3-5 per month, total 51 over 12 months); fires exactly one scheduled scenario application at `period_index == 3` / `month_04` via the v1.18.2 `apply_scenario_driver(...)` helper, emitting 1 `ScenarioDriverApplicationRecord` + 2 `ScenarioContextShiftRecord` (one per affected context surface — `market_environment` and `financing_review_surface`) — bounded by `O(scheduled_app_count × F) = 1 × 11 = 11` shifts; the closed-loop chain (attention → investor market intent → aggregated market interest → indicative market pressure → capital structure review / financing path → next-period attention) runs unchanged on the larger 4-investor / 3-bank fixture; the heavyweight engagement / dialogue / escalation / strategic-response / valuation / investor-intent / stewardship-themes layer is skipped under the new profile to keep the per-period record count under the v1.20.0 budget — downstream phases that filter by those id tuples gracefully accept empty lists; bounded performance: per-period record count **257-261** (within v1.20.0 target `[200, 280]`); per-run window **3220 records** (within v1.20.0 target `[2400, 3360]`; under hard guardrail `≤ 4000`); pinned `living_world_digest` for the new profile is **`5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`**; `LivingReferencePeriodSummary` and `LivingReferenceWorldResult` extended with seven v1.20.3 tuple fields (`reference_universe_ids` / `sector_ids` / `firm_profile_ids` / `scenario_schedule_ids` / `scheduled_scenario_application_ids` / `scenario_application_ids` / `scenario_context_shift_ids`) — empty for `quarterly_default` / `monthly_reference`; the canonical-form view in `examples/reference_world/living_world_replay.py::canonicalize_living_world_result` is extended additively (new keys appear in canonical JSON only when non-empty so pre-existing digests stay byte-identical); wall-clock leakage in v1.20.x book ledger entries is closed by adding a `simulation_date` kwarg to every `add_*` method on `world/reference_universe.py`, `world/scenario_drivers.py`, `world/scenario_schedule.py` (orchestrator passes `iso_dates[0]` for setup records) and by stamping `world/scenario_applications.py::add_application` / `add_context_shift` ledger entries with `record.as_of_date`; default investor archetype ids: `investor:reference_benchmark_sensitive_institutional` / `investor:reference_active_fund_like` / `investor:reference_liquidity_sensitive_investor` / `investor:reference_stewardship_oriented_investor`; default bank archetype ids: `bank:reference_relationship_bank_like` / `bank:reference_credit_conservative_bank` / `bank:reference_market_liquidity_sensitive_bank` (bounded synthetic archetypes — not real institutions); default firm ids resolve through `world.reference_universe.default_firm_id_order()` (`firm:reference_<sector>_a` per sector); the new profile leaves `PriceBook` / `ContractBook` / `ConstraintBook` / `OwnershipBook` / `InstitutionsBook` snapshots byte-identical pre/post run, emits no `ORDER_SUBMITTED` / `PRICE_UPDATED` / `CONTRACT_*` / `OWNERSHIP_TRANSFERRED` records, and `quarterly_default` / `monthly_reference` profiles leave all four v1.20.x books empty; **no CLI extension** (deferred to v1.20.4), **no UI extension** (deferred to v1.20.5); +40 tests across `tests/test_living_reference_world.py` (functional + boundary scans — profile recognized, no v1.20.3 setup records under quarterly_default / monthly_reference, universe / template / schedule registered only when invoked, scenario application + context shifts only at scheduled month, engagement layer skipped under universe profile, attention chain still runs end-to-end, per-period summary carries universe ids, info arrivals 3-5/month + 51 total, archetype id checks, v1.18.0 audit shape on emitted records, scenario application metadata boundary flags, no real company name in firm ids, no licensed-taxonomy in sector labels, no actor-decision record types, unknown profile rejected) and `tests/test_living_reference_world_performance_boundary.py` (cardinality budget — 12 periods, F=11, sectors=11, firm_profiles=11, I=4, B=3, scheduled apps=1, scenario fires only at `period_index == 3`, total ≤ 4000, per-period in `[200, 280]`, total in `[2400, 3360]`, no forbidden mutation record types, `O(P × I × F) = 528` market intents per period, `O(P × B × F) = 396` bank reviews per period, `O(P × F) = 132` firm states per period, deterministic digest pin); test count = **4744 / 4744**) | **Shipped (4744 tests)** |
-| **v1.20.2**   | **Scenario schedule storage** (second concrete code milestone of the v1.20 monthly-scenario-reference-universe sequence — adds [`world/scenario_schedule.py`](japan-financial-world/world/scenario_schedule.py) with two immutable frozen dataclasses (`ScenarioSchedule`, `ScheduledScenarioApplication`), one append-only `ScenarioScheduleBook` with 17 read methods (`add_schedule` / `get_schedule` / `list_schedules` / `list_by_run_profile` / `list_by_reference_universe` / `list_by_schedule_policy` / `list_by_status` / `add_scheduled_application` / `get_scheduled_application` / `list_scheduled_applications` / `list_applications_by_schedule` / `list_applications_by_template` / `list_applications_by_month` / `list_applications_by_period_index` / `list_applications_by_application_policy` / `list_applications_by_reference_universe` / `snapshot`), six closed-set frozensets (`RUN_PROFILE_LABELS` 5 entries: `scenario_monthly_reference_universe` / `monthly_reference` / `scenario_monthly` / `quarterly_default` / `unknown`; `SCHEDULE_POLICY_LABELS` 5 entries: `single_scenario` / `multi_scenario_bounded` / `display_only` / `inactive` / `unknown`; `APPLICATION_POLICY_LABELS` 6 entries: `apply_at_period_start` / `apply_before_information_arrivals` / `apply_after_information_arrivals` / `apply_before_attention_update` / `display_only` / `unknown`; `SCHEDULED_MONTH_LABELS` 13 entries: `month_01` … `month_12` + `unknown`; `STATUS_LABELS` 6; `VISIBILITY_LABELS` 5); the v1.20.0 hard-naming-boundary `FORBIDDEN_SCENARIO_SCHEDULE_FIELD_NAMES` frozenset composing the v1.18.0 actor-decision tokens with the v1.20.0 real-issuer / real-financial / licensed-taxonomy tokens (`real_company_name` / `real_sector_weight` / `gics` / `msci` / `factset` / `bloomberg` / `refinitiv` / `topix` / `nikkei` / `jpx`); two new `RecordType` enum values (`SCENARIO_SCHEDULE_RECORDED` / `SCHEDULED_SCENARIO_APPLICATION_RECORDED`); `MONTHLY_PERIOD_INDEX_MIN` / `MONTHLY_PERIOD_INDEX_MAX` constants pinning the `[0, 11]` bound for monthly profile period indices; period-index validation rejects `bool`, negatives, and values `> 11`; kernel wired with `WorldKernel.scenario_schedule: ScenarioScheduleBook` empty by default; deterministic `build_default_scenario_monthly_schedule(...)` helper constructs the v1.20.0 default single-scenario schedule (1 `ScenarioSchedule` + 1 `ScheduledScenarioApplication` — `credit_tightening_driver` at month 4 / period index 3 on the `generic_11_sector` universe with `apply_after_information_arrivals` policy) — same args -> byte-identical records, **does not auto-register** on a kernel; references (`scenario_driver_template_id`, `affected_reference_universe_id`, `affected_sector_ids`, `affected_firm_profile_ids`) are stored as plain ids — the storage layer does **not** resolve / validate them (v1.20.3 will check at run time); **storage only** — no run profile (deferred to v1.20.3), no scenario application execution (the schedule stores *intent*), no CLI extension (v1.20.4), no UI extension (v1.20.5); +90 tests in `tests/test_scenario_schedule.py` covering closed-set vocabularies, hard-naming-boundary disjointness from vocab + dataclass field names + `to_dict` keys + payload keys + metadata keys, frozen immutability, every per-label rejection path, `scheduled_period_index` `bool` rejection, `scheduled_period_index` negative rejection, `scheduled_period_index > 11` rejection, period-index 0 and 11 acceptance, `scheduled_period_indices` tuple per-entry validation (bool / negative / `>11` rejection), duplicate id rejection (no extra ledger record) on each kind, unknown id `KeyError` on each kind, every `list_*` / filter method on each kind, `snapshot()` determinism, ledger one-record-per-add for each kind, kernel wiring, no-`PriceBook`-mutation on each kind, no-`quarterly_default`-`living_world_digest`-move trip-wire (digest stays at `f93bdf3f…b705897c`), no-`monthly_reference`-`living_world_digest`-move trip-wire (digest stays at `75a91cfa…91879d`), no-actor-decision-event-types (incl. no `scenario_driver_application_recorded` / `scenario_context_shift_recorded` — the schedule stores intent, not application), helper produces 1+1 records at month_04 / period 3 with the credit_tightening driver on the generic_11_sector universe, helper does not auto-register, helper accepts plain-id citations without resolution, jurisdiction-neutral identifier scan + licensed-taxonomy dependency scan over both module + test text (with module-docstring + FORBIDDEN literal stripped); per-period record count (`quarterly_default` 108 / 110), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), `quarterly_default` `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**), and `monthly_reference` `living_world_digest` (**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**) all unchanged from v1.20.1 / v1.19.last by design — v1.20.2 is opt-in storage; only when a caller explicitly registers a schedule does the kernel ledger gain scenario-schedule records, and even then no other source-of-truth book is mutated; v1.20.3 will add the `scenario_monthly_reference_universe` run profile + the v1.20.0 scenario-to-sector impact map; v1.20.4 will extend the CLI exporter; v1.20.5 will extend the static UI; v1.20.last will freeze the v1.20 sequence (docs-only)) | **Shipped (4704 tests)** |
-| **v1.20.1**   | **Reference universe storage** (first concrete code milestone of the v1.20 monthly-scenario-reference-universe sequence — adds [`world/reference_universe.py`](japan-financial-world/world/reference_universe.py) with three immutable frozen dataclasses (`ReferenceUniverseProfile`, `GenericSectorReference`, `SyntheticSectorFirmProfile`), one append-only `ReferenceUniverseBook` with 17 read methods (`add_universe_profile` / `get_universe_profile` / `list_universe_profiles` / `list_universe_profiles_by_profile_label` / `add_sector_reference` / `get_sector_reference` / `list_sector_references` / `list_sectors_by_label` / `list_sectors_by_group` / `list_sectors_by_sensitivity` / `add_firm_profile` / `get_firm_profile` / `list_firm_profiles` / `list_firms_by_sector` / `list_firms_by_size` / `list_firms_by_funding_dependency` / `list_firms_by_market_access_sensitivity` / `snapshot`), twelve closed-set frozensets (`UNIVERSE_PROFILE_LABELS` 5 entries / `SECTOR_TAXONOMY_LABELS` 4 / `SECTOR_LABELS` 12 / `SECTOR_GROUP_LABELS` 7 / `SENSITIVITY_LABELS` 4 / `FIRM_SIZE_LABELS` 5 / `BALANCE_SHEET_STYLE_LABELS` 6 / `FUNDING_DEPENDENCY_LABELS` 4 / `DEMAND_CYCLICALITY_LABELS` 5 / `INPUT_COST_EXPOSURE_LABELS` 4 / `STATUS_LABELS` 6 / `VISIBILITY_LABELS` 5); the v1.20.0 hard-naming-boundary `FORBIDDEN_REFERENCE_UNIVERSE_FIELD_NAMES` frozenset composing the v1.18.0 actor-decision tokens with the v1.20.0 real-issuer / real-financial / licensed-taxonomy tokens (`real_company_name` / `real_sector_weight` / `market_cap` / `leverage_ratio` / `revenue` / `ebitda` / `net_income` / `real_financial_value` / `gics` / `msci` / `sp_index` / `topix` / `nikkei` / `jpx`) scanned across every dataclass field name + payload + metadata mapping at construction; three new `RecordType` enum values (`REFERENCE_UNIVERSE_PROFILE_RECORDED` / `GENERIC_SECTOR_REFERENCE_RECORDED` / `SYNTHETIC_SECTOR_FIRM_PROFILE_RECORDED`); kernel wired with `WorldKernel.reference_universe: ReferenceUniverseBook` empty by default; deterministic `build_generic_11_sector_reference_universe(...)` helper constructs the v1.20.0 default fixture (1 universe profile + 11 sector references + 11 firm profiles) — same args -> byte-identical fixture, **does not auto-register** on a kernel; explicit `register_generic_11_sector_reference_universe(book, ...)` helper writes to a caller-supplied book + emits ledger records; default 11-sector / 11-firm vocabulary mapping pinned (`energy_like` / `materials_like` / `industrials_like` / `consumer_discretionary_like` -> `cyclical`; `consumer_staples_like` / `health_care_like` -> `defensive`; `financials_like` -> `financial`; `information_technology_like` / `communication_services_like` -> `technology_related`; `utilities_like` -> `regulated_utility_like`; `real_estate_like` -> `real_asset_related`); every sector label except `unknown` carries the `_like` suffix (pinned by `test_sector_labels_all_carry_like_suffix_except_unknown`); firm ids follow the jurisdiction-neutral `firm:reference_<sector>_a` pattern; **storage only** — no run profile (deferred to v1.20.3), no scenario schedule (v1.20.2), no CLI extension (v1.20.4), no UI extension (v1.20.5); +92 tests in `tests/test_reference_universe.py` covering closed-set vocabularies, hard-naming-boundary disjointness from vocab + dataclass field names + `to_dict` keys + payload keys + metadata keys, frozen immutability, every per-label rejection path, `period_count` / `firm_count` / `sector_count` / `investor_count` / `bank_count` `bool` rejection, `synthetic_only` non-bool rejection, duplicate id rejection (no extra ledger record) on each kind, unknown id `KeyError` on each kind, every `list_*` / filter method on each kind, `list_sectors_by_sensitivity` rejects unknown dimensions / labels, `snapshot()` determinism, ledger one-record-per-add for each kind, kernel wiring, no-`PriceBook`-mutation on each kind, no-`quarterly_default`-`living_world_digest`-move trip-wire (digest stays at `f93bdf3f…b705897c`), no-`monthly_reference`-`living_world_digest`-move trip-wire (digest stays at `75a91cfa…91879d`), no-actor-decision-event-types check, builder produces 11 + 11 records using `_like` sector labels only, builder uses no real company names (word-boundary scan over `toyota` / `sony` / `mufg` / `mizuho` / `apple` / `microsoft` / etc.), builder uses no licensed taxonomy dependency (word-boundary scan over `gics` / `msci` / `factset` / `bloomberg` / `refinitiv` / `topix` / `nikkei` / `jpx`), builder does not auto-register on a kernel, builder is byte-deterministic across runs, explicit registration helper writes to kernel + raises on repeat, default sector / firm orderings pinned, jurisdiction-neutral identifier scan + licensed-taxonomy dependency scan over both module + test text (with module-docstring + FORBIDDEN literal stripped); **synthetic / generic-sector / opt-in-storage / no-run-profile-yet — no order submission, no buy / sell labels, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no investment advice, no real data ingestion, no real indicator values, no real release dates, no real institutional identifiers, no real company names, no real sector index membership, no real financial-statement values, no real market-cap values, no real leverage ratios, no real-issuer mapping, no licensed-taxonomy dependency, no Japan calibration, no LLM execution, no firm decisions, no investor actions, no bank approval logic**; per-period record count (`quarterly_default` 108 / 110), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), `quarterly_default` `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**), and `monthly_reference` `living_world_digest` (**`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`**) all unchanged from v1.19.last by design — v1.20.1 is opt-in storage; only when a caller explicitly registers the fixture does the kernel ledger gain reference-universe records, and even then no other source-of-truth book is mutated; v1.20.2 will add `world/scenario_schedule.py`; v1.20.3 will add the `scenario_monthly_reference_universe` run profile + the v1.20.0 scenario-to-sector impact map; v1.20.4 will extend the CLI exporter; v1.20.5 will extend the static UI; v1.20.last will freeze the v1.20 sequence (docs-only)) | **Shipped (4614 tests)** |
-| **v1.20.0**   | **Monthly Scenario Reference Universe design** (docs-only design note in [`docs/v1_20_monthly_scenario_reference_universe_design.md`](japan-financial-world/docs/v1_20_monthly_scenario_reference_universe_design.md) and `docs/world_model.md` §129; opens the v1.20 sequence as a **realism / granularity layer** that combines temporal granularity (the v1.19.3 12-month `monthly_reference` cadence) with **cross-sectional breadth** (the tiny 3-firm fixture replaced by a generic 11-sector / 11-company synthetic reference universe with 4 investor archetypes + 3 bank archetypes); pins the **new opt-in profile** `scenario_monthly_reference_universe` — the canonical `quarterly_default` and `monthly_reference` digests stay byte-identical unless explicitly invoked; pins three new immutable frozen dataclass shapes — `ReferenceUniverseProfile` (`reference_universe_id` / `universe_profile_label` ∈ `tiny_default` / `generic_11_sector` / `generic_broad_market` / `custom_synthetic` / `unknown`; `firm_count` / `sector_count` / `investor_count` / `bank_count` / `period_count`; `sector_taxonomy_label` ∈ `generic_11_sector_reference` / `generic_macro_sector_reference` / `custom_synthetic` / `unknown`; `synthetic_only` / `status` / `visibility` / `metadata`), `GenericSectorReference` (`sector_id` / `sector_label` / `sector_group_label` plus six sensitivity dimensions on a five-rung closed set), `SyntheticSectorFirmProfile` (one representative firm per sector, jurisdiction-neutral plain-id pattern `firm:reference_<sector>_a`); pins the **closed-set 11-sector taxonomy** (`energy_like` / `materials_like` / `industrials_like` / `consumer_discretionary_like` / `consumer_staples_like` / `health_care_like` / `financials_like` / `information_technology_like` / `communication_services_like` / `utilities_like` / `real_estate_like`) grouped under 6 sector groups (`cyclical_supply` / `cyclical_demand` / `defensive` / `financials` / `growth_innovation` / `rate_sensitive`) — every label carries the `_like` suffix to make the **non-real-membership** discipline visible; pins the **default sensitivity matrix** verbatim (11 sectors × 6 dimensions × five-rung closed set); pins the **investor / bank archetype set** (4 investors: `benchmark_sensitive_institutional` / `active_fund_like` / `liquidity_sensitive_investor` / `stewardship_oriented_investor`; 3 banks: `relationship_bank_like` / `credit_conservative_bank` / `market_liquidity_sensitive_bank`); pins the **bounded performance budget** (12 periods × 11 firms × 4 investors × 3 banks × 11 sectors × 51 arrivals; allowed loop shapes `O(P × F)` / `O(P × I × F)` / `O(P × B × F)` / `O(P × release_count)`; **forbidden loop shapes** `O(P × I × F × venue)` / `O(P × I × F × scenario)` / `O(P × F × order)` / `O(P × day × …)`; **target 200-280 records per period, [2400, 3360] records per run, upper guardrail 4000 records** for the default fixture); pins the **`ScenarioSchedule` / `ScheduledScenarioApplication` storage** with default test fixture (one `credit_tightening_driver` at month 4 affecting firms with `funding_dependency_label ∈ {high, very_high}`) and optional opt-in multi-scenario demo fixture (4 scenarios across months 3 / 4 / 6 / 8); pins the **scenario-to-sector impact map** as a deterministic closed-set table — `rate_repricing_driver` shifts `market_environment` for sectors with `rate_sensitivity_label ∈ {high, very_high}`; `credit_tightening_driver` shifts `market_environment` + `financing_review_surface` for sectors / firms with high credit / funding sensitivity; `funding_window_closure_driver` shifts `financing_review_surface` for firms with high market-access sensitivity; `liquidity_stress_driver` shifts `interbank_liquidity` + `market_environment`; `input_cost_pressure_driver` shifts `firm_financial_state`; `technology_substitution_driver` / `regulatory_risk_driver` / `policy_subsidy_driver` shifts `industry_condition`; `sector_demand_deterioration_driver` shifts `industry_condition` + `firm_financial_state`; `information_gap_driver` shifts `attention_surface`; (other) → v1.18.2 `no_direct_shift` annotation; **this is not actor decision logic** — this is context / evidence preparation, downstream actor responses still flow through the v1.12 / v1.14 / v1.15 / v1.16 mechanisms; carries forward the v1.18.0 audit shape verbatim (`reasoning_mode = "rule_based_fallback"` binding · `reasoning_policy_id` · `reasoning_slot = "future_llm_compatible"` · `evidence_ref_ids` · `unresolved_ref_count` · `boundary_flags`); pins the **per-milestone roadmap** (v1.20.0 design (this); v1.20.1 `world/reference_universe.py` storage; v1.20.2 `world/scenario_schedule.py` storage; v1.20.3 `scenario_monthly_reference_universe` run profile + scenario-to-sector impact map; v1.20.4 CLI export extension; v1.20.5 UI universe / sector / monthly scenario rendering; v1.20.last freeze (docs-only)); success condition: *a reader can run a single CLI command to produce a deterministic local run bundle for the new profile (12 monthly periods, 11 generic sectors, 11 synthetic representative firms, 4 investor archetypes, 3 bank archetypes, scheduled information arrivals, scenario driver applications, append-only context shifts, closed-loop propagation), open the static workbench under `file://`, click Load local bundle, and inspect a sector / firm / month cross-section that visibly differs from the `monthly_reference` baseline because of the scenario impact AND the sector sensitivities; the integration-test `living_world_digest` for the unmodified `quarterly_default` fixture stays byte-identical at `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`; the `monthly_reference` digest stays at `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`*; **synthetic / generic-sector / opt-in-profile / read-only-UI surface, not a market simulator; synthetic representative firms, not real companies; `_like`-suffixed sector labels, not licensed taxonomy — no order submission, no buy / sell labels, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no interest rate, no spread, no coupon, no fee, no offering price, no investment advice, no real data ingestion, no Japan calibration, no LLM execution, no stochastic behaviour probabilities, no learned model, no firm decision rule, no investor action rule, no bank approval logic, no trading decision model, no optimal capital structure rule; no real company name, no real sector index membership, no licensed taxonomy dependency, no real financial-statement value, no real market-cap value, no real leverage ratio, no real-issuer mapping; no browser-to-Python execution, no backend server, no Rails, no real-time execution from UI, no daily full economic simulation in v1.20.x**; no test count change, no `living_world_digest` change, no per-run window change at v1.20.0 — every v1.20.x milestone is opt-in by design, only when the caller picks `scenario_monthly_reference_universe` does the engine emit universe / sector / firm / schedule records) | **Shipped (docs-only design)** |
-| **v1.19.last** | **Local Run Bundle and Monthly Reference freeze** (docs-only milestone closing the v1.19 sequence; ships the single-page reader-facing summary [`docs/v1_19_local_run_bundle_and_monthly_reference_summary.md`](japan-financial-world/docs/v1_19_local_run_bundle_and_monthly_reference_summary.md), §128.20 in `docs/world_model.md`, the v1.19.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.19.last freeze-pin section in [`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md), the v1.19.last `test_inventory.md` header note, the v1.19.last addendum in [`examples/reference_world/README.md`](japan-financial-world/examples/reference_world/README.md), the v1.19.last cross-link in [`docs/fwe_reference_demo_design.md`](japan-financial-world/docs/fwe_reference_demo_design.md), and the v1.19.last sub-section in [`examples/ui/README.md`](japan-financial-world/examples/ui/README.md); no new code, no new tests, no new ledger event types; test count = **4522 / 4522**, per-period record count (`quarterly_default`) = **108 / 110**, per-run window (`quarterly_default`) = **`[432, 480]`**, `living_world_digest` (`quarterly_default`) = **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** (unchanged from v1.18.last by design across the entire v1.19 sequence), `monthly_reference` `living_world_digest` = **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`** with **3-5 arrivals per month, 51 across 12 months** (within the [36, 60] design budget); **first public-FWE local-run-bundle inspection layer** — `RunExportBundle` JSON writer (v1.19.1) + CLI exporter (v1.19.2 / v1.19.3.1) + `monthly_reference` profile + `InformationReleaseCalendar` / `ScheduledIndicatorRelease` / `InformationArrivalRecord` (v1.19.3) + static UI read-only loader (v1.19.4); CLI generates JSON, browser reads JSON, browser does **not** execute Python — **no backend, no Rails, no FastAPI, no Flask, no fetch / XHR / network, no file-system write**; `monthly_reference` is **opt-in synthetic** and emits 51 information arrivals across 12 months from a jurisdiction-neutral synthetic calendar (no real values, no real release dates, no real institutional identifiers); UI loader accepts `quarterly_default` / `monthly_reference` and rejects `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` with `bundle profile '<profile>' is not loadable in v1.19.4 static UI`; **CLI-first / read-only-loader / opt-in-monthly / no-backend — no price formation, no market price, no predicted index, no forecast path, no expected return, no target price, no trading, no orders, no execution, no clearing, no settlement, no financing execution, no investment advice, no real data ingestion, no Japan calibration, no LLM execution, no daily simulation, no browser-to-Python execution**; `reasoning_mode = "rule_based_fallback"` binding at v1.19.x and `reasoning_slot = "future_llm_compatible"` reserves room for a future audited reasoning policy without changing the audit surface; **next roadmap candidates** pinned in the v1.19.last summary: v1.20 Institutional Investor Mandate / Benchmark Pressure design **or** v1.20 `scenario_monthly` profile (wires v1.18.2 `apply_scenario_driver(...)` into the `monthly_reference` profile); v2.0 Japan public calibration in private JFWE only; future LLM reasoning policies remain gated behind audit and source-book immutability; future price formation **remains gated** until the v1.16 / v1.17 / v1.18 / v1.19 surface is operationally legible to a reviewer who has not read this codebase) | **Shipped (4522 tests)** |
-| **v1.19.4**   | **UI local run bundle loader (read-only)** (fourth concrete code milestone of the v1.19 local-run-bridge sequence — adds a static-HTML **Load local bundle** affordance to [`examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html); the browser reads a user-supplied `RunExportBundle` JSON file produced by the v1.19.2 / v1.19.3.1 CLI exporter via the standard `<input type="file">` + `FileReader.readAsText` API path — **no `fetch()`, no XHR, no backend, no engine execution from the browser**; the loader parses with `JSON.parse` (never `eval`), validates the v1.19.1 top-level key set + the v1.19.0 default 8-flag boundary-flag block, accepts the executable profiles `quarterly_default` / `monthly_reference`, and explicitly rejects the deferred profiles `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` with status text `bundle profile '<profile>' is not loadable in v1.19.4 static UI`; renders user-loaded values via `textContent` only (never `innerHTML`); caps the rendered ledger excerpt at 20 rows; new `current_data_source` label tracks `inline_fixture` / `sample_manifest` / `local_bundle` and flips back to `inline_fixture` whenever the user clicks **Run mock**, to `sample_manifest` whenever they click **Load sample run**, and to `local_bundle` whenever they pick a JSON file; new **Local run bundle** card on the Inputs tab surfaces the loaded bundle's `run_profile_label` / `regime_label` / `selected_scenario_label` / `period_count` / `digest` / `generated_at_policy_label` plus a profile badge; for `monthly_reference` bundles a sub-card renders the v1.19.3 `metadata.information_arrival_summary` (calendar count / scheduled releases / arrivals + per-`indicator_family_label` / per-`release_importance_label` / per-`arrival_status_label` histograms — all label-counts only, no real values); the loader preserves the v1.17.4 / v1.18.4 no-jump discipline verbatim (no `scrollIntoView`, no `location.hash` mutation, no active-sheet shift, capture-and-restore protocol on scroll position); the in-page `Validate` button gains six new audit checks (loader button + file input + Local run bundle card + `current_data_source` label presence; `validateBundleSchema` function + `BUNDLE_REQUIRED_TOP_KEYS` / `BUNDLE_REQUIRED_BOUNDARY_FLAGS` / `BUNDLE_EXECUTABLE_PROFILES` / `BUNDLE_DEFERRED_PROFILES` constants present and well-shaped); workflow: 1) run `python -m examples.reference_world.export_run_bundle --profile <quarterly_default | monthly_reference> --regime <regime> --scenario none_baseline --out /tmp/fwe_run_bundle.json` in a terminal, 2) open `examples/ui/fwe_workbench_mockup.html` directly under `file://`, 3) click **Load local bundle**, 4) inspect the result; **read-only static viewer — no engine execution, no backend, no file-system write, no browser-to-Python execution, no daily simulation, no price formation, no trading, no financing execution, no investment advice, no real data ingestion, no Japan calibration, no LLM execution**; static HTML / CSS / JS only; no test count change (this milestone is HTML/JS-only — pytest unchanged at **4522 / 4522**); per-period record count, per-run window, default 4-period sweep total, and `living_world_digest` all unchanged from v1.19.3.1 by design — the workbench loads JSON; it never touches a kernel; v1.19.last freeze (docs-only) is the next milestone in the v1.19 sequence) | **Shipped (4522 tests)** |
-| **v1.19.3**   | **`monthly_reference` profile + `InformationReleaseCalendar` layer** (third concrete code milestone of the v1.19 local-run-bridge sequence — adds [`world/information_release.py`](japan-financial-world/world/information_release.py) with three immutable frozen record shapes (`InformationReleaseCalendar` / `ScheduledIndicatorRelease` / `InformationArrivalRecord`) and one append-only `InformationReleaseBook`, nine closed-set frozensets (`RELEASE_CADENCE_LABELS` 8 / `INDICATOR_FAMILY_LABELS` 12 / `RELEASE_IMPORTANCE_LABELS` 5 / `JURISDICTION_SCOPE_LABELS` 4 / `ARRIVAL_STATUS_LABELS` 5 / `REASONING_MODE_LABELS` 4 / `REASONING_SLOT_LABELS` 4 / `STATUS_LABELS` 6 / `VISIBILITY_LABELS` 3); the v1.19.3 hard-naming-boundary `FORBIDDEN_INFORMATION_RELEASE_FIELD_NAMES` frozenset composes the v1.18.0 actor-decision tokens with the v1.19.3 Japan-real-data tokens (`real_indicator_value` / `cpi_value` / `gdp_value` / `policy_rate` / `real_release_date` / `boj` / `fomc` / `ecb`) — scanned across every payload + boundary-flag + metadata mapping at construction; three new `RecordType` enum values (`INFORMATION_RELEASE_CALENDAR_RECORDED` / `SCHEDULED_INDICATOR_RELEASE_RECORDED` / `INFORMATION_ARRIVAL_RECORDED`); kernel wired with `WorldKernel.information_releases: InformationReleaseBook` empty by default; `run_living_reference_world(..., profile=...)` accepts `quarterly_default` (default, byte-identical to v1.19.1) and `monthly_reference` (12 monthly periods on a synthetic month-end ISO schedule with the default jurisdiction-neutral synthetic calendar of 7 indicator families — `central_bank_policy` / `inflation` / `labor_market` / `production_supply` / `consumption_demand` / `gdp_national_accounts` / `market_liquidity`); each monthly period emits one `InformationArrivalRecord` per scheduled release, **bounded at 3-5 arrivals per month and total 51 across 12 months for the default fixture** (within the [36, 60] design budget pinned at v1.19.0); arrival records carry the v1.18.0 reasoning-mode audit shape (`reasoning_mode = "rule_based_fallback"`, `reasoning_slot = "future_llm_compatible"`, `reasoning_policy_id = "v1.19.3:information_release:rule_based_fallback"`) and the v1.19.0 default 8-flag boundary-flag set (`synthetic_only` / `no_price_formation` / `no_trading` / `no_investment_advice` / `no_real_data` / `no_japan_calibration` / `no_llm_execution` / `display_or_export_only`); `LivingReferencePeriodSummary` extended with `scheduled_release_ids` and `information_arrival_ids` tuples (empty for `quarterly_default`); the `monthly_reference` `living_world_digest` is **deterministic** across two kernels and pinned at **`75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`** (`tests/test_living_reference_world.py::test_v1_19_3_monthly_reference_living_world_digest_is_pinned`); the `quarterly_default` `living_world_digest` stays byte-identical at **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** because the new `InformationReleaseBook` is empty by default (pinned by `tests/test_information_release.py::test_empty_information_releases_does_not_move_default_living_world_digest` and `tests/test_living_reference_world.py::test_v1_19_3_quarterly_default_digest_unchanged`); all ledger events on the `information_releases` book use deterministic `simulation_date` values (calendar / scheduled-release setup uses `iso_dates[0]`; arrivals use `arrival.as_of_date`) so no wall-clock timestamp leaks into the canonical view; +88 tests in [`tests/test_information_release.py`](japan-financial-world/tests/test_information_release.py) covering closed-set vocabularies, hard-naming-boundary disjointness from vocab + dataclass field names + `to_dict` keys + payload keys + boundary-flag keys + metadata keys, frozen immutability, every per-label rejection path, `scheduled_period_index` `bool` rejection, duplicate id rejection (no extra ledger record), unknown id `KeyError`, every `list_*` / filter method, `snapshot()` determinism, kernel wiring, no-`PriceBook`-mutation, no-default-`living_world_digest`-move trip-wire, no-actor-decision-event-types check, and jurisdiction-neutral identifier scan over both module + test text; +13 tests extend `tests/test_living_reference_world.py` with monthly_reference-specific assertions (twelve periods; arrival count in `[36, 60]`; per-month bound `[3, 5]`; deterministic-across-two-kernels; pinned digest; no-`PriceBook`-mutation; per-period record count remains bounded; arrival context surface labels valid; default audit shape carried; `quarterly_default` emits no `INFORMATION_*_RECORDED` events; unknown profile label rejected; `monthly_reference` emits no forbidden record types); +3 tests extend `tests/test_living_reference_world_performance_boundary.py` (total arrival count in [36, 60], per-period in [3, 5], no forbidden record types); **storage / synthetic context only — no order submission, no buy / sell labels, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no interest rate, no spread, no coupon, no fee, no offering price, no investment advice, no real data ingestion, no real indicator values, no real release dates, no real institutional identifiers, no Japan calibration, no LLM execution, no firm decisions, no investor actions, no bank approval logic, no trading decision model**; v1.19.4 will land the static UI's read-only **Load local run bundle** affordance) | **Shipped (4494 tests)** |
-| **v1.19.2**   | **CLI run exporter** (second concrete code milestone of the v1.19 local-run-bridge sequence — adds [`examples/reference_world/export_run_bundle.py`](japan-financial-world/examples/reference_world/export_run_bundle.py), the CLI driver runnable as both `python -m examples.reference_world.export_run_bundle …` and `python examples/reference_world/export_run_bundle.py …`; composes the v1.17.2 regime-comparison driver (the read-only path that runs the v1.16 closed loop on a fresh kernel for a chosen regime preset) with the v1.19.1 `world.run_export` infrastructure (`build_run_export_bundle` + `write_run_export_bundle`); writes a deterministic `RunExportBundle` JSON artifact to a caller-supplied `--out` path; **CLI export only** — no monthly profile, no scenario application wiring, no UI bridge. Closed-set CLI vocabularies pinned at v1.19.2: `--profile` executable in v1.19.2 = `quarterly_default` only (designed-but-not-executable: `monthly_reference` / `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` — exit non-zero with stderr `"profile '<profile>' is designed but not executable in v1.19.2"`); `--regime` one of the v1.11.2 presets — `constructive` / `mixed` / `constrained` / `tightening`; `--scenario` defaults to `none_baseline` (other v1.18.4 selector labels exit non-zero with stderr `"scenario '<scenario>' is not yet wired into the CLI in v1.19.2"`); `--out` required output path (NOT embedded in bundle); `--indent` default 2; `--quiet` suppresses success line. Bundle section contents: `manifest` (`{schema_version, profile, regime, scenario, period_count, generated_at_policy_label, fwe_version_label}` — no absolute paths, no wall-clock, no `$USER` / `$HOSTNAME`); `overview` (label-only summary from the v1.17.2 snapshot — `active_regime` / `record_count` / `unresolved_refs_count` / `top_attention_focus_label` / `top_market_pressure_label` / `top_market_intent_direction_label`); `timeline` (`{calendar: "quarterly", display_path_kind: "indicative_pressure_path", boundary_note, event_annotation_count, causal_annotation_count}`); `regime_compare` empty (single-regime export — the v1.17.2 regime-comparison report exists separately); `scenario_trace` (`{selected_scenario_label, summary}` — `none_baseline` only at v1.19.2); `attention_diff` / `market_intent` / `financing` empty (reserved for v1.19.3+ when monthly profile + scenario application are wired); `ledger_excerpt` bounded — at most **20** records from `kernel.ledger.records[:20]` (start-of-run setup chain — the most stable region across regime presets), `LedgerRecord.to_dict()` with the volatile `record_id` / `timestamp` fields stripped per the v1.9.2 canonical-form rule, the deterministic `simulation_date` field preserved; `boundary_flags` carries the v1.19.0 default 8-flag set unchanged; `metadata` (`{export_module: "v1.19.2", indent: <indent>}`). On success the CLI prints (one line, unless `--quiet`): `exported run bundle: <path> · profile=<profile> · regime=<regime> · digest=<digest first 12 chars>`. **Determinism rules**: same CLI args on the same codebase → byte-identical JSON bytes; two runs with the same args, two different `--out` paths, produce byte-identical bytes (pinned by `test_two_runs_to_two_paths_are_byte_identical`); the bundle JSON contains no ISO-style wall-clock timestamp (deterministic `simulation_date` `YYYY-MM-DD` strings explicitly permitted — those are deterministic synthetic dates from the v1.17.2 driver, not wall-clock); the bundle JSON contains no absolute path; no `$USER` / `$HOSTNAME` / `os.getlogin()` capture. **No-mutation invariants**: module imports no FastAPI / Flask / Rails / aiohttp / tornado / starlette / uvicorn / gunicorn / django / selenium / playwright names (pinned by module-text scan); CLI does not mutate `PriceBook` of a separately seeded kernel (pinned by snapshot trip wire); CLI does not move the default-fixture `living_world_digest` of a separately seeded default sweep — the CLI builds its own fresh kernel via the v1.17.2 driver; designed-but-not-executable profile labels and unsupported scenario labels exit non-zero **before** any kernel is built. +20 tests in `tests/test_run_export_cli.py` covering top-level-key matching to `RunExportBundle.to_dict()`, byte-identical determinism across two `--out` paths, every designed-but-not-executable profile rejection path, the unsupported-scenario rejection path, the unsupported-regime rejection path, no-ISO-timestamp invariant, no-absolute-path invariant, ledger-excerpt cap, v1.19.0 default 8-flag set carriage, no-forbidden-field-names-at-any-depth recursion, module-text backend / browser-name scan, no-`PriceBook`-mutation trip wire, default-fixture digest trip wire, success-line shape, `--quiet` suppression, and jurisdiction-neutral identifier scan over module + test text. Per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.19.1 / v1.18.last by design — the CLI is opt-in. v1.19.3 will add the `monthly_reference` run profile + `world/information_release.py`; v1.19.4 will add the static UI's read-only **Load local run bundle** affordance which consumes the v1.19.2 CLI's JSON output) | **Shipped (4410 tests)** |
-| **v1.19.1**   | **`RunExportBundle` dataclass + JSON writer** (first concrete code milestone of the v1.19 local-run-bridge sequence — adds [`world/run_export.py`](japan-financial-world/world/run_export.py) with one immutable frozen `RunExportBundle` dataclass + four closed-set vocabularies (`RUN_PROFILE_LABELS` 6 entries: `quarterly_default` / `monthly_reference` / `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` / `unknown`; `GENERATED_AT_POLICY_LABELS` 4 entries: `stable_for_replay` / `explicit_timestamp` / `omitted` / `unknown`; `STATUS_LABELS` 6 entries: `draft` / `exported` / `stale` / `superseded` / `archived` / `unknown`; `VISIBILITY_LABELS` 5 entries: `public` / `restricted` / `internal` / `private` / `unknown`) + the v1.19.0 hard-naming-boundary `FORBIDDEN_RUN_EXPORT_FIELD_NAMES` frozenset (35+ entries composing the v1.18.0 actor-decision / canonical-judgment names with the v1.17.0 forbidden display names + Japan-calibration / LLM names) scanned **recursively** at any depth across every payload + boundary-flag + metadata mapping at construction; v1.19.0 default boundary-flag set carried on every emitted bundle (`synthetic_only` / `no_price_formation` / `no_trading` / `no_investment_advice` / `no_real_data` / `no_japan_calibration` / `no_llm_execution` / `display_or_export_only`); five module-level helpers — `build_run_export_bundle(...)` (constructor with named-arg signature mirroring the dataclass field set + sensible defaults), `bundle_to_dict(bundle)` (alias for `RunExportBundle.to_dict()`), `bundle_to_json(bundle, *, indent=2)` (deterministic via `sort_keys=True` + `ensure_ascii=False`), `write_run_export_bundle(bundle, path)` (writes UTF-8 JSON), `read_run_export_bundle(path)` (returns plain `dict` — full dataclass restoration is **deferred** to a later milestone, the v1.19.4 read-only UI loader walks the dict); **deterministic JSON output** — same `(bundle_id, run_profile_label, regime_label, selected_scenario_label, period_count, digest, generated_at_policy_label, *payload sections, boundary_flags, status, visibility, metadata)` arguments → byte-identical `RunExportBundle.to_dict()` and byte-identical JSON file (pinned by `test_bundle_to_json_byte_deterministic` + `test_write_twice_produces_byte_identical_files`); `stable_for_replay` is **declarative** — the dataclass carries no wall-clock timestamp field, so the rendered JSON contains no ISO-style timestamp inserted by the export module itself (pinned by `test_stable_for_replay_json_has_no_iso_timestamp`); `period_count` validation rejects `bool` (which is otherwise a subclass of `int`) and negative ints; **export infrastructure only** — no engine run, no monthly profile (deferred to v1.19.3), no CLI (deferred to v1.19.2), no UI bridge (deferred to v1.19.4); the module imports **no kernel / source-of-truth book / scenario-storage module** — pinned by a module-text scan that forbids `from world.kernel` / `from world.prices` / `from world.scenario_drivers` / `from world.scenario_applications` / `from world.market_environment` / `from world.firm_state` / `from world.interbank_liquidity` / `from world.financing_paths` / `from world.market_intents` / `from world.attention` / `from world.attention_feedback` / `from world.reference_living_world` / `from world.display_timeline` / `from world.ledger` / `from world.clock`; constructing a bundle does **not** emit any ledger record (the module imports no `Ledger`); constructing a bundle does **not** mutate the `PriceBook` of a separately seeded kernel; constructing or writing a bundle does **not** move the default-fixture `living_world_digest` of a separately seeded default sweep (pinned by `test_constructing_bundles_does_not_move_default_living_world_digest`); the `monthly_reference` / `scenario_monthly` / `daily_display_only` / `future_daily_full_simulation` profile labels are accepted as **carriers only** — v1.19.1 invokes no engine machinery for any profile label; +56 tests in `tests/test_run_export.py` covering closed-set vocabularies, hard-naming-boundary disjointness from vocab + dataclass field names + `to_dict` keys + every section payload keys + boundary-flag keys + metadata keys + nested payload keys at any depth, default boundary flags, immutability, every per-label rejection path, `period_count` `bool` rejection, `period_count` negative rejection, `period_count` string rejection, byte-deterministic JSON output regardless of insertion order, write/read JSON round-trip via `tmp_path`, `stable_for_replay` no-current-timestamp invariant, `explicit_timestamp` / `omitted` policy labels accepted, all five run-profile labels accepted as carriers, runtime-book-free module-text scan, no-ledger-emission, no-`PriceBook`-mutation, no-default-`living_world_digest`-move trip-wire, jurisdiction-neutral identifier scan over both module and test text; per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.18.last by design — v1.19.1 is opt-in export infrastructure; only when a caller explicitly builds a bundle does any artifact appear, and even then no kernel book is mutated; v1.19.2 will add the CLI exporter that produces a real bundle from a kernel run; v1.19.3 will add the `monthly_reference` run profile + `world/information_release.py` (`InformationReleaseCalendar` + `ScheduledIndicatorRelease` + `InformationArrivalRecord`); v1.19.4 will add the static UI's read-only **Load local run bundle** button) | **Shipped (4390 tests)** |
-| **v1.19.0**   | **Local Run Bridge / Report Export / Temporal Run Profile design** (docs-only design note in [`docs/v1_19_local_run_bridge_and_temporal_profiles_design.md`](japan-financial-world/docs/v1_19_local_run_bridge_and_temporal_profiles_design.md) and `docs/world_model.md` §128; opens the v1.19 sequence as a **bridge layer** between the v1.18.4 static UI and local engine runs, plus a **temporal run profile design** that names five profiles and an `InformationReleaseCalendar` layer; pins the **four-layer separation** (binding) — engine run profile / report export bundle / UI loading mode / local run bridge are kept structurally separate so each can evolve independently; pins **five named run profiles** (`quarterly_default` preserves the canonical digest at `f93bdf3f…b705897c`; `monthly_reference` opt-in 12 monthly periods running the existing closed loop at monthly cadence; `scenario_monthly` opt-in `monthly_reference` + explicit `apply_scenario_driver(...)` invocations on chosen months; `daily_display_only` display / report only via the v1.17.1 `daily_like` `ReportingCalendar` + `SyntheticDisplayPath`, no daily economic records; `future_daily_full_simulation` **explicitly out of scope for v1.19**, gated on the future market-mechanism / price-formation design); pins the **`RunExportBundle`** data shape — immutable frozen dataclass with `bundle_id` / `run_profile_label` / `regime_label` / `selected_scenario_label` / `period_count` / `digest` / `generated_at_policy_label` / `manifest` / `overview` / `timeline` / `regime_compare` / `scenario_trace` / `attention_diff` / `market_intent` / `financing` / `ledger_excerpt` / `boundary_flags` / `metadata`, `generated_at_policy_label` defaults to `stable_for_replay` so same `(profile, regime, scenario, fixture seed)` inputs produce a byte-identical bundle, `boundary_flags` default extends the v1.18.2 set with `no_real_data_ingestion` / `no_japan_calibration` / `stable_for_replay`; pins the **`InformationReleaseCalendar` layer** so monthly profiles are not naive 12× quarterly loops — three new closed-set vocabularies (`ReleaseCadenceLabel` 8 entries: `monthly` / `quarterly` / `meeting_based` / `weekly` / `daily_operational` / `ad_hoc` / `display_only` / `unknown`; `IndicatorFamilyLabel` 12 entries: `central_bank_policy` / `inflation` / `labor_market` / `production_supply` / `consumption_demand` / `capex_investment` / `gdp_national_accounts` / `market_liquidity` / `fiscal_policy` / `sector_specific` / `information_gap` / `unknown`; `ReleaseImportanceLabel` 5 entries: `routine` / `high_attention` / `regime_relevant` / `stress_relevant` / `unknown`) and three record shapes (`InformationReleaseCalendar` / `ScheduledIndicatorRelease` / `InformationArrivalRecord`); **information arrival is not data ingestion** — no real value, no real date, no real institutional identifier; Japan release cadence is a **design reference only**, never encoded as canonical data; pins the **citation graph** (binding) — `InformationArrivalRecord` ids may be cited by `ActorAttentionState` / `InvestorMarketIntent` / `MarketEnvironmentState` / `FirmFinancialState` / `BankCreditReviewLite` / `ScenarioContextShiftRecord` but the arrival layer **never decides actor behaviour**; pins the **CLI-first local bridge** (`python -m examples.reference_world.export_run_bundle --profile <profile> --regime <regime> --scenario <scenario> --out examples/ui/run_bundle.local.json` writing JSON the static UI loads via `<input type="file">`); pins the **optional v1.19.4+ local server bridge** as `127.0.0.1` FastAPI / Flask / `http.server` only — **never Rails**, never deployed SaaS, never network-facing by default; pins the **read-only UI loading** — adding a fourth top-ribbon button (`Load local run bundle`) at v1.19.4 fits the v1.17.4 / v1.18.4 pattern, parses JSON via `JSON.parse` (no `eval`), validates the bundle shape via the existing `Validate` audit pass, renders into the existing tabs, **no browser file-system write, no engine execution from the UI**; pins the **per-milestone roadmap** (v1.19.0 design (this); v1.19.1 `RunExportBundle` dataclass + JSON writer; v1.19.2 CLI exporter; v1.19.3 `monthly_reference` profile + `world/information_release.py` (`InformationReleaseCalendar` + `ScheduledIndicatorRelease` + `InformationArrivalRecord` + closed-set frozensets); v1.19.4 UI local bundle loader mock + optional stub local-server bridge; v1.19.last freeze (docs-only)); success condition: *a reader can run a single CLI command to produce a deterministic local run bundle (JSON) for a chosen `(run profile, regime, scenario)` triple, then open the static workbench under `file://`, click `Load local run bundle`, pick the JSON, and inspect a monthly-profile synthetic FWE run — including any scenario applications and any cited `InformationArrivalRecord` ids — in the existing Overview / Timeline / Regime Compare / Scenario / Ledger tabs; the workbench introduces no backend, no build, no network I/O; the integration-test default `living_world_digest` for the unmodified default fixture stays byte-identical at `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`*; **bridge / report / profile design, not market behaviour; scheduled-information categories, not data ingestion; synthetic closed-loop records at a finer cadence, not price formation; a CLI + JSON file + read-only UI loader, not a SaaS — no order submission, no buy / sell labels, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no interest rate, no spread, no coupon, no fee, no offering price, no investment advice, no real data ingestion, no Japan calibration, no LLM execution, no stochastic behaviour probabilities, no learned model, no firm decision rule, no investor action rule, no bank approval logic, no trading decision model, no optimal capital structure rule; no browser-to-Python execution, no backend server in v1.19.0, no Rails, no real-time execution from UI, no daily full economic simulation in v1.19.x**; no test count change, no `living_world_digest` change, no per-run window change at v1.19.0 — every v1.19.x milestone is opt-in, only when a profile / scenario / bundle is explicitly invoked does the digest move) | **Shipped (docs-only design)** |
-| **v1.18.last** | **Scenario Driver Library freeze** (docs-only milestone closing the v1.18 sequence; ships the single-page reader-facing summary [`docs/v1_18_scenario_driver_library_summary.md`](japan-financial-world/docs/v1_18_scenario_driver_library_summary.md), §127 in `docs/world_model.md`, the v1.18.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.18.last freeze-pin section in [`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md), the v1.18.last test-inventory header note, the v1.18.last addendum in [`examples/reference_world/README.md`](japan-financial-world/examples/reference_world/README.md), the v1.18.last cross-link in [`docs/fwe_reference_demo_design.md`](japan-financial-world/docs/fwe_reference_demo_design.md), and the v1.18.last sub-section in [`examples/ui/README.md`](japan-financial-world/examples/ui/README.md); no new code, no new tests, no new ledger event types; test count = **4334 / 4334**, per-period record count = **108 / 110**, per-run window = **`[432, 480]`**, `living_world_digest` = **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** — all unchanged from v1.17.last by design across the entire v1.18 sequence when no scenario is applied; **first public-FWE scenario-driver inspection layer** over the v1.17 inspection surface and the v1.16 closed loop (synthetic scenario templates → append-only scenario applications → append-only context-shift records → event / causal annotations → markdown scenario report → static UI scenario selector); **append-only, stimulus-only, inspection-only — no price formation, no market price, no predicted index, no forecast path, no expected return, no target price, no trading, no orders, no execution, no clearing, no settlement, no financing execution, no investment advice, no real data ingestion, no Japan calibration, no LLM execution, no LLM prose as source-of-truth, no firm decisions, no investor actions, no bank approval logic, no mutation of pre-existing context records**; static UI scenario selector with seven options (Baseline / Rate repricing / Credit tightening / Funding window closure / Liquidity stress / Information gap / Unmapped fallback) is **fixture switching only — the Python engine is NOT invoked from the UI**; `reasoning_mode = "rule_based_fallback"` binding at v1.18.x and `reasoning_slot = "future_llm_compatible"` reserves room for a future audited reasoning policy without changing the audit surface; **next roadmap candidates** pinned in the v1.18.last summary: v1.19 local run bridge / report export (conditional, only if interactive scenario execution becomes necessary); v2.0 Japan public calibration in private JFWE only; future LLM reasoning policies remain gated behind audit and source-book immutability; future price formation **remains gated** until the v1.16 / v1.17 / v1.18 surface is operationally legible to a reviewer who has not read this codebase) | **Shipped (4334 tests)** |
-| **v1.18.3**   | **Scenario report and causal timeline integration** (third concrete code milestone of the v1.18 scenario-driver library — adds three pure-function display helpers to [`world/display_timeline.py`](japan-financial-world/world/display_timeline.py) and a deterministic markdown driver at [`examples/reference_world/scenario_report.py`](japan-financial-world/examples/reference_world/scenario_report.py); the helpers `build_event_annotations_from_scenario_shifts(...)`, `build_causal_timeline_annotations_from_scenario_shifts(...)`, and `render_scenario_application_markdown(...)` turn v1.18.2 `ScenarioDriverApplicationRecord` / `ScenarioContextShiftRecord` outputs into the v1.17.1 `EventAnnotationRecord` / `CausalTimelineAnnotation` shapes; **standalone-display discipline preserved** — `world/display_timeline.py` imports no source-of-truth book or kernel (pinned by a module-text scan for forbidden imports); the helpers read only the records passed in, mutate nothing, emit no ledger records, and never move the default-fixture `living_world_digest`; surface-to-annotation-type mapping (`market_environment` / `interbank_liquidity` / `industry_condition` / `firm_financial_state` → `market_environment_change`; `market_pressure_surface` → `market_pressure_change`; `financing_review_surface` → `financing_constraint`; `attention_surface` → `attention_shift`; `display_annotation_surface` / `unknown` → `synthetic_event`; any `shift_direction_label = no_direct_shift` overrides the surface mapping to `synthetic_event`); severity coercion `stress` → `high` so the higher rung is preserved without inventing a new label in the v1.17.1 `SEVERITY_LABELS = {low, medium, high, unknown}` vocabulary; causal annotation shape `(template_id, application_id) → shift_id` with the v1.18.0 audit-metadata block carried verbatim (`reasoning_mode = "rule_based_fallback"` binding, `reasoning_policy_id`, `reasoning_slot = "future_llm_compatible"`, `boundary_flags` — `no_actor_decision` / `no_llm_execution` / `no_price_formation` / `no_trading` / `no_financing_execution` / `no_investment_advice` / `synthetic_only`); optional `reporting_calendar` snaps annotation dates deterministically to the nearest calendar point; the markdown report renders six sections (`Scenario templates` / `Scenario applications` / `Emitted context shifts` / `Event annotations` / `Causal timeline annotations` / `Boundary statement`) with a binding boundary statement re-pinning the v1.18.0 / v1.18.2 discipline; the `examples/reference_world/scenario_report.py` driver builds a deterministic six-template default fixture exercising all five v1.18.2-mapped families plus the `no_direct_shift` fallback path through a `thematic_attention_driver`, registers each via `kernel.scenario_drivers.add_template`, applies each via `apply_scenario_driver(...)`, and renders a deterministic markdown report — same fixture + same `as_of_date` → byte-identical markdown; the `no_direct_shift` callout in the report ("this is not an error — the template is stored but not yet mapped to a concrete context surface") makes the v1.18 design intent (rule-based-fallback only at v1.18.2; future audited reasoning policies can replace the rule table) visible at the report surface; +23 tests in `tests/test_display_timeline.py` (mapping coverage for every v1.18.2 family + fallback; severity coercion; reporting-calendar snap; deterministic byte-identical output; metadata-block carriage; no-forbidden-display-name scan; no-kernel-import standalone-display discipline; no-ledger-emission; no-`PriceBook`-mutation; no-default-`living_world_digest`-move) and +18 tests in `tests/test_scenario_report.py` (default-fixture family coverage; deterministic byte-identical markdown; explicit `as_of_date` and ISO-string variants; required-section presence; no forbidden display names / scenario field names in the markdown; no_direct_shift callout visible; no-default-`living_world_digest`-move; no-actor-decision-event-types; audit-metadata block on every annotation; causal annotations cite template + application + shift ids; jurisdiction-neutral identifier scan); **report / display integration only — no living-world scenario execution by default, no mutation of `MarketEnvironmentBook` / `FirmFinancialStateBook` / `InterbankLiquidityStateBook` / `CorporateFinancingPathBook` / `InvestorMarketIntentBook`, no actor decisions, no LLM execution, no LLM prose as source-of-truth, no price formation, no market price, no predicted index, no forecast path, no expected return, no target price, no trading, no orders, no execution, no clearing, no settlement, no financing execution, no investment advice, no real data ingestion, no Japan calibration**; per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.17.last by design — running the v1.18.3 driver builds its own fresh kernel and does not move the digest of a separately seeded default sweep; v1.18.4 will wire the v1.18.3 markdown report into the static workbench as a non-destructive scenario picker — fixture switching only, no engine execution from the UI) | **Shipped (4334 tests)** |
-| **v1.18.2**   | **Scenario driver application helper** (second concrete code milestone of the v1.18 scenario-driver library — adds [`world/scenario_applications.py`](japan-financial-world/world/scenario_applications.py) with two immutable frozen dataclasses (`ScenarioDriverApplicationRecord` — the per-call application receipt; `ScenarioContextShiftRecord` — append-only context-shift record), one append-only `ScenarioApplicationBook` with 14 read methods (`add_application` / `get_application` / `list_applications` / `list_by_template` / `list_by_application_status` / `list_by_date` / `add_context_shift` / `get_context_shift` / `list_context_shifts` / `list_shifts_by_template` / `list_shifts_by_application` / `list_shifts_by_context_surface` / `list_shifts_by_driver_group` / `list_shifts_by_scenario_family` / `snapshot`), three new closed-set vocabularies (`APPLICATION_STATUS_LABELS` 6 entries: `prepared` / `applied_as_context_shift` / `degraded_missing_template` / `degraded_unresolved_refs` / `rejected` / `unknown`; `CONTEXT_SURFACE_LABELS` 9 entries: `market_environment` / `firm_financial_state` / `interbank_liquidity` / `industry_condition` / `attention_surface` / `market_pressure_surface` / `financing_review_surface` / `display_annotation_surface` / `unknown`; `SHIFT_DIRECTION_LABELS` 10 entries: `tighten` / `loosen` / `deteriorate` / `improve` / `increase_uncertainty` / `reduce_uncertainty` / `attention_amplify` / `information_gap` / `no_direct_shift` / `unknown`), and the deterministic `apply_scenario_driver(kernel, *, scenario_driver_template_id, as_of_date, source_context_record_ids=(), application_id=None, unresolved_ref_count=0, metadata=None)` helper that **emits new evidence / context records that cite the scenario driver via plain-id citations — never mutates a pre-existing context record**; the helper reads only the named template via `get_template` and the cited `source_context_record_ids` (no global book scan, pinned by a trip-wire test that patches every other book's `list_*` / `snapshot` methods to raise); five minimal deterministic family→shift mappings (`rate_repricing_driver` / `macro_rates` → `market_environment` × `tighten` (or `increase_uncertainty` for `severity_label = low`) × `market_environment_change`; `credit_tightening_driver` / `credit_liquidity` → two shifts: `market_environment` × `tighten` × `market_environment_change` AND `financing_review_surface` × `tighten` × `financing_constraint`; `funding_window_closure_driver` → `financing_review_surface` × `deteriorate` × `financing_constraint`; `liquidity_stress_driver` / `credit_liquidity` → two shifts: `interbank_liquidity` × `deteriorate` AND `market_environment` × `deteriorate` × `market_environment_change`; `information_gap_driver` / `information_attention` → `attention_surface` × `information_gap` × `attention_shift`); other families fall back to a single `unknown` × `no_direct_shift` × `<template.expected_annotation_type_label>` annotation so every application emits at least one shift; **every emitted record carries the v1.18.0 audit-metadata block** — `reasoning_mode = "rule_based_fallback"` (binding), `reasoning_policy_id = "v1.18.2:scenario_application:rule_based_fallback"`, `reasoning_slot = "future_llm_compatible"`, `evidence_ref_ids = (template_id, *source_context_record_ids)`, `unresolved_ref_count`, and the **seven default boundary flags** (`no_actor_decision` / `no_llm_execution` / `no_price_formation` / `no_trading` / `no_financing_execution` / `no_investment_advice` / `synthetic_only`); two new ledger event types `RecordType.SCENARIO_DRIVER_APPLICATION_RECORDED` and `RecordType.SCENARIO_CONTEXT_SHIFT_RECORDED`; `WorldKernel` gains a `scenario_applications: ScenarioApplicationBook` field — **empty by default**, so the canonical view of an unmodified default sweep is byte-identical to v1.17.last (no application invoked → no ledger emission → no digest movement, pinned by `test_empty_scenario_applications_does_not_move_default_living_world_digest`); ledger emission convention matches v1.18.1 (one record per `add_application` / `add_context_shift`; duplicate raises and emits **no** extra ledger record); `unresolved_ref_count > 0` automatically marks the application `degraded_unresolved_refs`; deterministic `application_id` defaults to `f"scenario_application:{template_id}:{as_of_date}"` so identical inputs produce byte-identical book snapshots across kernels; +72 tests in `tests/test_scenario_applications.py` covering closed-set vocabularies, hard-naming-boundary disjointness from vocab + dataclass field names + `to_dict` keys + ledger payload keys + metadata keys + boundary-flag keys, default reasoning_mode / reasoning_slot / reasoning_policy_id, immutability, every per-label rejection path, every list / filter method on both record kinds, snapshot determinism, ledger one-record-per-add invariant, duplicate emits no extra ledger record, kernel wiring, **per-book no-mutation invariants** (`PriceBook` / `MarketEnvironmentBook` / `FirmFinancialStateBook` / `InterbankLiquidityStateBook` / `CorporateFinancingPathBook` / `InvestorMarketIntentBook` / `ScenarioDriverTemplateBook` snapshots byte-equal pre / post call), no-default-`living_world_digest`-move trip-wire (digest stays at `f93bdf3f…b705897c`), explicit-application-doesn't-touch-default-run trip-wire, no-forbidden-event-types-emitted (`order_submitted` / `trade_executed` / `price_updated` / `clearing_completed` / `settlement_completed` / `loan_approved` / `security_issued` / `underwriting_executed` / `investor_action_taken` / `firm_decision_recorded` / `bank_approval_recorded`), helper-uses-only-cited-ids-trip-wire (every other book's `list_*` / `snapshot` patched to raise; helper still succeeds), all 5 explicit family mappings + the unmapped-family fallback, severity-conditioned rate_repricing direction, deterministic application id, explicit application id override, unresolved-refs degraded-status promotion, future-LLM-compat metadata accepted, jurisdiction-neutral identifier scan over both module and test text; **append-only application — no mutation of pre-existing context records, no actor decisions, no investor actions, no bank approvals, no trading decisions, no LLM execution, no LLM prose as source-of-truth, no price formation, no market price, no predicted index, no forecast path, no expected return, no target price, no trading, no orders, no execution, no clearing, no settlement, no financing execution, no investment advice, no real data ingestion, no Japan calibration, no stochastic behaviour probabilities, no learned model**; per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.17.last by design — scenario application is opt-in; only when `apply_scenario_driver(...)` is explicitly invoked does the kernel ledger gain scenario-application + context-shift records, and even then no other source-of-truth book is mutated; v1.18.3 will wire scenario-driven runs into the v1.17.2 / v1.17.3 inspection layer side-by-side with the unscenario'd default) | **Shipped (4293 tests)** |
-| **v1.18.1**   | **ScenarioDriverTemplate storage** (first concrete code milestone of the v1.18 scenario-driver library — adds [`world/scenario_drivers.py`](japan-financial-world/world/scenario_drivers.py) with one immutable frozen dataclass `ScenarioDriverTemplate`, one append-only `ScenarioDriverTemplateBook`, ten closed-set vocabularies (`SCENARIO_FAMILY_LABELS` 21 entries / `DRIVER_GROUP_LABELS` 10 / `EVENT_DATE_POLICY_LABELS` 6 / `SEVERITY_LABELS` 5 / `AFFECTED_ACTOR_SCOPE_LABELS` 10 / `EXPECTED_ANNOTATION_TYPE_LABELS` 7 / `REASONING_MODE_LABELS` 4 / `REASONING_SLOT_LABELS` 4 / `STATUS_LABELS` 6 / `VISIBILITY_LABELS` 3) + the v1.18.0 hard-naming-boundary `FORBIDDEN_SCENARIO_FIELD_NAMES` frozenset (23 entries: `firm_decision` / `investor_action` / `bank_approval` / `trading_decision` / `optimal_capital_structure` / `buy` / `sell` / `order` / `trade` / `execution` / `price` / `market_price` / `predicted_index` / `forecast_path` / `expected_return` / `target_price` / `recommendation` / `investment_advice` / `real_data_value` / `japan_calibration` / `llm_output` / `llm_prose` / `prompt_text`) — disjoint from every closed-set vocabulary, scanned against dataclass field names + payload keys + metadata keys at construction time; **no `confidence` field** (templates are not predictions); **no numeric magnitude field** (templates are *category* shifts, not magnitudes); **no actor-decision field** (templates do not decide); reasoning-mode default is **`rule_based_fallback`** (binding per the v1.18.0 design — pinned by `test_default_reasoning_mode_is_rule_based_fallback`); reasoning-slot default is **`future_llm_compatible`** so a future audited reasoning policy can replace the rule-based fallback without changing the audit surface; new ledger event type `RecordType.SCENARIO_DRIVER_TEMPLATE_RECORDED`; `WorldKernel` gains a `scenario_drivers: ScenarioDriverTemplateBook` field — **empty by default**, so the canonical view of an unmodified default sweep is byte-identical to v1.17.last (no template registered → no ledger emission → no digest movement, pinned by `test_empty_scenario_drivers_does_not_move_default_living_world_digest`); book methods `add_template` / `get_template` / `list_templates` / `list_by_family` / `list_by_group` / `list_by_severity` / `list_by_actor_scope` / `list_by_status` / `list_by_expected_annotation_type` / `snapshot`; ledger emission convention matches v1.15.4 / v1.15.6 storage books (one record per `add_template`; `source = scenario_family_label`; duplicate raises and emits **no** extra ledger record); +56 tests in `tests/test_scenario_drivers.py` covering closed-set vocabularies, hard-naming-boundary disjointness from vocab + dataclass field names + `to_dict` keys + ledger payload keys + metadata keys, default reasoning_mode / reasoning_slot, immutability, `to_dict` round-trip, every per-label rejection path, every list / filter method, snapshot determinism, ledger one-record-per-add invariant, duplicate emits no extra ledger record, kernel wiring, no-`PriceBook`-mutation, no-default-`living_world_digest`-move trip-wire (digest stays at `f93bdf3f…b705897c`), no-forbidden-event-types-emitted, future-LLM-compat metadata accepted (`reasoning_mode = external_policy_slot` / `reasoning_slot = future_llm_compatible`), module-text scan for forbidden phrases (closed-set literal scrubbed), jurisdiction-neutral identifier scan over both module and test text; **storage-only milestone** — no scenario application yet (v1.18.2 lands `apply_scenario_driver(...)`), no actor decisions, no LLM execution, no LLM prose as source-of-truth, no firm decisions, no investor actions, no bank approval logic, no trading decisions, no optimal capital structure decisions, no price formation, no market price, no predicted index, no forecast path, no expected return, no target price, no trading, no orders, no execution, no clearing, no settlement, no financing execution, no investment advice, no real data ingestion, no Japan calibration, no stochastic behaviour probabilities, no learned model; per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.17.last by design — scenario-driver storage is opt-in; only when a template is explicitly added does the kernel ledger gain a record, and even then no other source-of-truth book is mutated; v1.18.2 will add a deterministic helper that **emits new evidence / context records citing the scenario driver — never mutates existing context records**) | **Shipped (4221 tests)** |
-| **v1.18.0**   | **Scenario Driver Library design** (docs-only design note in [`docs/v1_18_scenario_driver_library_design.md`](japan-financial-world/docs/v1_18_scenario_driver_library_design.md) and `docs/world_model.md` §124; opens the v1.18 sequence as a **synthetic scenario-driver / exogenous context-template layer** for the v1.16 closed loop and the v1.17 inspection layer — a `ScenarioDriverTemplate` names a synthetic exogenous condition and projects it onto pre-existing FWE evidence / context surfaces; downstream actor responses still flow through the existing v1.12 / v1.14 / v1.15 / v1.16 mechanisms — the scenario driver is the **stimulus**, never the **response**; pins the **critical design constraint** (binding): do not overfit corporate / investor / bank judgment, keep decision criteria modular and replaceable, all v1.18.x classifier / mapping rules explicitly labelled `reasoning_mode = "rule_based_fallback"`, six concerns kept structurally separate (evidence collection / driver classification / `ActorReasoningInputFrame` / `ReasoningPolicySlot` / output label / audit metadata); pins the **naming discipline** (binding) — safe names: `ScenarioDriverTemplate` / `ActorReasoningInputFrame` / `ReasoningPolicySlot` / `DriverImpactLabel` / `EvidenceConditionLabel` / `InspectionAnnotation`; forbidden names (read as canonical business judgment): `FirmDecisionRule` / `InvestorActionRule` / `BankApprovalLogic` / `TradingDecisionModel` / `OptimalCapitalStructureRule`; pins the **preferred flow** (`ScenarioDriverTemplate → EvidenceCondition / ContextShift → ActorReasoningInputFrame → existing mechanism OR ReasoningPolicySlot → output label → audit metadata → v1.17 timeline / causal annotation`) and the **forbidden flow** (`ScenarioDriverTemplate → "firm decides X" / "investor reduces Y" / "bank restricts Z"`); pins **20 closed-set scenario family labels** (`rate_repricing_driver` / `credit_tightening_driver` / `funding_window_closure_driver` / `liquidity_stress_driver` / `risk_off_driver` / `sector_demand_deterioration_driver` / `market_access_reopening_driver` / `refinancing_wall_driver` / `input_cost_pressure_driver` / `information_gap_driver` / `regulatory_risk_driver` / `litigation_risk_driver` / `supply_constraint_driver` / `customer_churn_driver` / `technology_substitution_driver` / `policy_subsidy_driver` / `thematic_attention_driver` / `short_squeeze_attention_driver` / `index_inclusion_exclusion_driver` / `capital_policy_uncertainty_driver` / `unknown`) grouped under **9 closed-set group labels** (`macro_rates` / `credit_liquidity` / `demand_earnings` / `cost_supply` / `regulation_legal` / `ownership_market_structure` / `technology_competition` / `capital_structure_refinancing` / `information_attention` / `unknown`); pins the **`ScenarioDriverTemplate` data model** — immutable frozen dataclass with `scenario_driver_template_id` / `scenario_family_label` / `driver_group_label` / `driver_label` / `event_date_policy_label` / `severity_label` / `affected_actor_scope_label` / `affected_context_surface_labels` / `affected_evidence_bucket_labels` / `expected_annotation_type_label` / `reasoning_mode` / `reasoning_policy_id` / `reasoning_slot` / `status` / `visibility` / `metadata`; **no `confidence` field** (templates are not predictions); **no numeric magnitude field** (templates are *category* shifts, not magnitudes); **no actor decision field** (templates do not decide); pins the **audit metadata block** recorded on every emitted record under v1.18.2 application (`reasoning_mode = "rule_based_fallback"` binding · `reasoning_policy_id` · `reasoning_slot = "future_llm_compatible"` · `evidence_ref_ids` · `unresolved_ref_count` · `boundary_flags` — a future LLM-mode policy must populate the same fields, the audit shape is forward-compatible); pins the **per-milestone roadmap inside v1.18** (v1.18.0 design (this); v1.18.1 storage + 20 default templates; v1.18.2 `apply_scenario_driver(...)` helper that **emits new evidence / context records citing the scenario driver — never mutates existing context records**, rule-based-fallback only with `reasoning_mode` binding; v1.18.3 scenario report / causal timeline integration with v1.17.2 / v1.17.3; v1.18.4 UI scenario selector mock — fixture switching only, no-jump-disciplined; v1.18.last freeze (docs-only)); success condition: *a reviewer who has not read this codebase can pick a synthetic scenario driver, project it onto the default v1.16 fixture, and explain — by following plain-id citations from the v1.17 inspection layer — what evidence shifted, which existing mechanism processed the shift, what label changed, and what audit metadata records the chain; no actor decision is asserted by the scenario driver itself; the integration-test `living_world_digest` for the **default** fixture is unchanged at `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`*; **scenario inspection, not prediction; stimulus templates, not response rules; synthetic context shifts, not real data — no order submission, no buy / sell labels, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no interest rate, no spread, no coupon, no fee, no offering price, no investment advice, no real data, no Japan calibration, no LLM execution, no stochastic behavior probabilities, no learned model, no firm decision rule, no investor action rule, no bank approval logic, no trading decision model, no optimal capital structure rule**; no test count change, no `living_world_digest` change, no per-run window change at v1.18.0 — scenario application is opt-in, only when a scenario is explicitly applied does the digest move) | **Shipped (docs-only design)** |
-| **v1.17.last** | **Inspection Layer freeze** (docs-only milestone closing the v1.17 sequence; ships the single-page reader-facing summary [`docs/v1_17_inspection_layer_summary.md`](japan-financial-world/docs/v1_17_inspection_layer_summary.md), §123 in `docs/world_model.md`, the v1.17.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.17.last freeze pin section in [`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md), the v1.17.last test-inventory header note, the v1.17.last addendum in [`examples/reference_world/README.md`](japan-financial-world/examples/reference_world/README.md), the v1.17.last cross-link in [`docs/fwe_reference_demo_design.md`](japan-financial-world/docs/fwe_reference_demo_design.md), and a v1.17.last sub-section in [`examples/ui/README.md`](japan-financial-world/examples/ui/README.md); no new code, no new tests, no new ledger event types; test count = **4165 / 4165**, per-period record count = **108 / 110**, per-run window = **`[432, 480]`**, `living_world_digest` = **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** — all unchanged from v1.16.last by design across the entire v1.17 sequence; **first FWE milestone where the v1.16 closed loop is operationally inspectable** through display timelines, regime comparison, causal annotations, and a single-file static analyst workbench (`Cover · Inputs · Overview · Timeline · Regime Compare · Attention · Market Intent · Financing · Ledger · Appendix`, with strict 1:1 bottom-tab ↔ sheet article bijection enforced at runtime); **inspection / rendering only — no price formation, no market price, no predicted index, no forecast path, no expected return, no target price, no trading, no orders, no execution, no clearing, no settlement, no investment advice, no real data, no Japan calibration, no LLM execution, no stochastic behavior probabilities, no learned model, no new economic source-of-truth records**; static workbench is **fixture switching, not engine execution** — `Run mock` reads a deterministic `SAMPLE_RUNS` fixture, `Compare Regimes` is display-report navigation, `Export HTML` is a non-destructive status update; **next roadmap candidates** pinned in the v1.17.last summary: v1.18 scenario library / exogenous event templates (named, deterministic, reproducible); v1.19 local run bridge / report export (conditional, only if UI execution becomes necessary); v2.0 Japan public calibration in private JFWE only; future price formation **remains gated** until the v1.16 / v1.17 surface is operationally legible to a reviewer who has not read this codebase) | **Shipped (4165 tests)** |
-| **v1.17.4**   | **UI Workbench Redesign** (fourth and final concrete code milestone of the v1.17 inspection layer — single-file static HTML workbench at [`examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html) reorganised around the v1.16 closed loop with ten bottom tabs (`Cover · Inputs · Overview · Timeline · Regime Compare · Attention · Market Intent · Financing · Ledger · Appendix`) in **strict 1:1 bijection with ten sheet articles** (audit-cleaned post-redesign so no orphan or duplicate sheet ids remain; bijection enforced at runtime by the strengthened in-page `Validate` button); **new sheets**: Overview (small SVG closed-loop diagram + 6 compact KPI cards), Regime Compare (the v1.17.2 / v1.17.3 panel promoted to its own tab with the subfield differentiator row), Market Intent (3 tables: investor intent + classifier rule_id / aggregated interest / indicative pressure), Financing (3 tables: path summary / funding option candidates / capital structure review with v1.15.6 pressure citation); **reshaped sheets**: Timeline (renamed from Outputs; Synthetic Display Path + KPI row + causal table + display-only banner under the chart), Attention (new diff strip at top: Previous focus / Trigger / New focus / Dropped / Reinforced / Why — six colour-coded cells answering *what changed* before scrolling into the per-actor cards), Inputs (Strategy / behavior modules folded into a default-collapsed `<details>`); **top-ribbon buttons** (deterministic, no network, no kernel mutation): Load sample run / Run mock (fixture switching from `SAMPLE_RUNS` keyed by the active regime pill — Python engine NOT invoked) / Validate (strict in-page bijection check) / Compare Regimes (activates the dedicated Regime Compare tab and flashes the comparison card) / Export HTML (non-destructive status update); permanent `static fixture only · no backend execution` sub-status visible in the top-ribbon stack; sample manifest tagged `digest_kind: sample_fixture` / `fixture_kind: sample_fixture` / `fixture_note: …`; inline JSON + standalone JSON manifest gain top-level fixture sections (`overview` / `timeline` / `regime_compare` / `attention_diff` / `market_intent` / `financing`); audit cleanup pass removed four orphan unreachable `<article>` blocks (`sheet-market` / `sheet-firms` / `sheet-investors` / `sheet-banks`) so the workbench has exact 1:1 mapping; **single static HTML; no backend; no build; no external runtime; no network I/O; no engine execution from the UI** — opens directly under `file://`; per-period record count, per-run window, default 4-period sweep total, and `living_world_digest` all unchanged from v1.17.3 by design — the workbench is HTML / CSS / JS only and never touches any kernel) | **Shipped (4165 tests)** |
-| **v1.17.3**   | **Event Annotation + Causal Timeline Inspector** (third concrete code milestone of the v1.17 inspection layer — turns the v1.16 closed loop into a **causally inspectable display surface** so two regimes whose histograms collide (e.g. `constrained` vs `tightening` both producing `risk_reduction_review 24`) still differ visibly through per-record event annotations and causal arrows; adds two pure-function helpers to [`world/display_timeline.py`](japan-financial-world/world/display_timeline.py) — `build_event_annotations_from_closed_loop_data(...)` and `build_causal_timeline_annotations_from_closed_loop_data(...)` — that read **anonymous record-like inputs** (duck-typed via `getattr`; **no source-of-truth book imports**, regression-pinned by the v1.17.1 text scan) and emit deterministic `EventAnnotationRecord` + `CausalTimelineAnnotation` tuples using a closed-set rule table (Rule 1: `MarketEnvironmentStateRecord.overall_market_access_label = selective_or_constrained` → `market_environment_change` event with credit / funding / liquidity / volatility / refinancing-window subfields recorded in `metadata` AND embedded in the human-readable `annotation_label` — this is the differentiator that surfaces a visible difference between `constrained` (`credit=stressed, funding=normal, refi=open`) and `tightening` (`credit=tightening, funding=expensive, refi=selective`) when both produce `selective_or_constrained` at the top level; Rule 2: `IndicativeMarketPressureRecord.market_access_label ∈ {constrained, closed}` → `market_pressure_change` event with severity `high` for `closed` else `medium`; Rule 3: `CorporateFinancingPathRecord.constraint_label = market_access_constraint` → `financing_constraint` event; Rule 4: `CorporateFinancingPathRecord.coherence_label = conflicting_evidence` → `causal_checkpoint` event; Rule 5: `ActorAttentionStateRecord.focus_labels` contains any of `{risk, financing, market_access, information_gap, dilution}` → `attention_shift` event); the causal helper renders three plain-id arrows that already exist on the kernel records (`MarketEnvironmentState` → `IndicativeMarketPressure` via `source_market_environment_state_ids`; `IndicativeMarketPressure` → `CorporateFinancingPath` via `indicative_market_pressure_ids`; prior-period pressure / financing path → next-period `ActorAttentionState` via `source_indicative_market_pressure_ids` + `source_corporate_financing_path_ids`); `NamedRegimePanel` gains two new validated tuple fields (`event_annotations`, `causal_annotations`) — non-`EventAnnotationRecord` / non-`CausalTimelineAnnotation` entries rejected at construction; `to_dict` includes both; `render_regime_comparison_markdown` adds three new rows when annotations are present (Event annotations by type / Top events date · type · source / Causal arrows by kind) plus a per-regime `### <regime_id> — events & causal trace` block under the table that lists up to 6 top events and 6 top causal arrows with concrete record ids, dates, severities, and the human-readable annotation label (formatted as bullet lists with monospace ids); the regime-comparison driver at [`examples/reference_world/regime_comparison_report.py`](japan-financial-world/examples/reference_world/regime_comparison_report.py) extends `_RegimeRunSnapshot` with the two annotation tuple fields, and `extract_regime_run_snapshot(...)` walks `kernel.market_environments.list_states()` / `kernel.indicative_market_pressure.list_records()` / `kernel.financing_paths.list_paths()` / `kernel.attention_feedback.list_attention_states()` once and passes them through the v1.17.3 helpers; +29 tests across [`tests/test_display_timeline.py`](japan-financial-world/tests/test_display_timeline.py) (+26: per-rule firing including the env subfield differentiator; helper determinism; no-fire on `open` / coherent inputs; bool / empty-id robustness; `NamedRegimePanel` accepts and validates the two new annotation tuple fields; `to_dict` includes them; markdown renders the event / causal sections when annotations are present and skips them when absent; markdown still has no forbidden display name) and [`tests/test_regime_comparison_report.py`](japan-financial-world/tests/test_regime_comparison_report.py) (+3 new for v1.17.3: snapshot carries event/causal annotations; env-change metadata distinguishes constrained vs tightening on subfield labels; default-args markdown renders event section + per-regime trace block + collision regimes show distinct trace blocks; no-forbidden-trade-keys in default-args markdown after scrubbing the explicit-negation disclaimer line); **annotation rendering, not market behavior; reading aid, not new model behavior; synthetic display, not real data — no orders, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price formation, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no forecast path, no predicted index, no real price series, no real data ingestion, no Japan calibration, no LLM execution, no stochastic behavior probabilities, no learned model, no new economic source-of-truth records**; per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.17.2 by design — the helpers and driver run only when the report is requested; prepares v1.17.4 UI workbench polish) | **Shipped (4165 tests)** |
-| **v1.17.2**   | **Regime Comparison Report** (second concrete code milestone of the v1.17 inspection layer — adds two new immutable display dataclasses to [`world/display_timeline.py`](japan-financial-world/world/display_timeline.py) (`NamedRegimePanel`, `RegimeComparisonPanel`), three deterministic helpers (`build_named_regime_panel(...)`, `build_regime_comparison_panel(...)`, `render_regime_comparison_markdown(...)`), the closed-set `COMPARISON_AXIS_LABELS` frozenset (8 axes: `attention_focus` / `market_intent_direction` / `aggregated_market_interest` / `indicative_market_pressure` / `financing_path_constraint` / `financing_path_coherence` / `unresolved_refs` / `record_count_digest`), and a new kernel-reading driver at [`examples/reference_world/regime_comparison_report.py`](japan-financial-world/examples/reference_world/regime_comparison_report.py) that runs each v1.11.2 regime preset on a fresh kernel and walks the read-only book interface (`kernel.attention_feedback.list_attention_states()`, `kernel.investor_market_intents.list_intents()`, `kernel.aggregated_market_interest.list_records()`, `kernel.indicative_market_pressure.list_records()`, `kernel.financing_paths.list_paths()`) to extract closed-loop label histograms; `DisplayTimelineBook` gains `add_/get_/list_regime_comparison_panel(s)` and the `regime_comparison_panels` snapshot key; the markdown renderer outputs a deterministic side-by-side `## Regime comparison — <panel_id>` table with one column per regime preset (`constructive` / `selective` / `constrained` / `tightening` are the v1.11.2 presets) and one row per axis, sorted-key histograms in each cell so two calls produce byte-identical output, and a closing `_Synthetic display only — counts of the labels emitted by the v1.16 closed-loop records under each regime preset. Not a forecast, not a price, not a recommendation._` disclaimer; the driver is **read-only against the kernel after each run finishes** — a test pins re-running the snapshot extraction is byte-identical and `kernel.prices.snapshot()` is byte-equal pre/post; +37 tests across [`tests/test_display_timeline.py`](japan-financial-world/tests/test_display_timeline.py) (+18: closed-set axes; panel construction + immutability + `to_dict`; histogram correctness; bool / negative-count rejection; duplicate regime-id rejection; closed-set axis rejection; markdown determinism + headline + disclaimer + no-forbidden-name + empty-panel handling; book add / get / list / duplicate / unknown / snapshot-key-presence) and the new [`tests/test_regime_comparison_report.py`](japan-financial-world/tests/test_regime_comparison_report.py) (+19: per-regime determinism; regime distinguishability; non-zero record count; replay-determinism for record count; default-args panel determinism; panel order preservation; two-regime support; closed-set axes; regime distinguishability across at least one axis; markdown default-args determinism; markdown contains every default-axis row; markdown no-forbidden-display-name; markdown jurisdiction-neutral; kernel read-only across re-extraction (`PriceBook` byte-equal pre/post + `living_world_digest` unchanged); no-forbidden-event-types across all regimes (`order_submitted` / `trade_executed` / `price_updated` / `quote_disseminated` / `clearing_completed` / `settlement_completed` / `ownership_transferred` / `loan_approved` / `security_issued` / `underwriting_executed`); module-text no-forbidden-display-name); **comparison rendering, not market behavior; histogram counts, not prices; reading aid, not higher-frequency simulation; synthetic display, not real data — no orders, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price formation, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no forecast path, no predicted index, no real price series, no real data ingestion, no Japan calibration, no LLM execution, no stochastic behavior probabilities, no learned model, no new economic source-of-truth records**; per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.17.1 by design — the driver runs each preset on its own freshly-seeded kernel and never touches the default-fixture kernel; prepares v1.17.3 event annotations + causal timeline) | **Shipped (4136 tests)** |
-| **v1.17.1**   | **Temporal Display Series** (first concrete code milestone of the v1.17 inspection layer — adds a **standalone display-only module** at [`world/display_timeline.py`](japan-financial-world/world/display_timeline.py); five immutable frozen dataclasses (`ReportingCalendar`, `ReferenceTimelineSeries`, `SyntheticDisplayPath`, `EventAnnotationRecord`, `CausalTimelineAnnotation`), one append-only `DisplayTimelineBook` (**not** registered with `WorldKernel` — keeping it standalone makes accidental promotion of a display object into the integration-test canonical view impossible by construction), and two deterministic helpers (`build_reporting_calendar(...)`, `build_synthetic_display_path(...)`); seven closed-set vocabularies pinned at module scope and validated at every record's `__post_init__` (`FREQUENCY_LABELS` = {quarterly, monthly, daily_like, unknown}; `INTERPOLATION_LABELS` = {step, linear, hold_forward, event_weighted, unknown}; `ANNOTATION_TYPE_LABELS` = {market_environment_change, attention_shift, market_pressure_change, financing_constraint, causal_checkpoint, synthetic_event, unknown}; `SEVERITY_LABELS` = {low, medium, high, unknown}; `STATUS_LABELS`; `VISIBILITY_LABELS`; `FORBIDDEN_DISPLAY_NAMES` — the v1.17.0 binding forbidden list, disjoint from every other vocabulary by construction); deterministic date-points generation with a quarter-end-anchored monthly stepping rule (so a chain of monthly steps starting at a month-end stays month-end with no day-of-month drift through short months); three deterministic interpolation kernels (`linear` / `step` / `hold_forward`; `event_weighted` and `unknown` defer to v1.17.3 and fall back to `hold_forward` in v1.17.1); anchors sorted by date before interpolation so the same set of pairs in any order produces the same path; `display_values` are synthetic ordinals in `[0.0, 1.0]` — **never** prices / returns / forecasts; same inputs → byte-identical `to_dict`; module imports no source-of-truth book (regression-pinned by a text scan against `world.kernel` / `world.ledger` / `world.prices` / `world.attention*` / `world.market_pressure` / etc.); takes no kernel argument; no current-date dependency; no randomness; +66 tests in `tests/test_display_timeline.py` covering closed-set vocabularies, hard-naming-boundary disjointness, deterministic date-points generation per frequency (quarterly / monthly / daily_like), interpolation correctness across all four kernels, frozen-dataclass immutability, `to_dict` round-trip determinism, book add / get / list semantics including duplicate / unknown errors, no-source-of-truth-book imports text scan, no-`PriceBook`-mutation around helper calls, no-`living_world_digest`-move trip-wire that builds a calendar + path on a kernel and pins the digest equal pre/post, jurisdiction-neutral scan over both module and test text; **rendering, not market behavior; reading aid, not higher-frequency simulation; synthetic display, not real data — no orders, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price formation, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no forecast path, no predicted index, no real price series, no real data ingestion, no Japan calibration, no LLM execution, no stochastic behavior probabilities, no learned model, no new economic source-of-truth records**; per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `living_world_digest` (**`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`**) all unchanged from v1.16.last by design; prepares v1.17.2 regime comparison report) | **Shipped (4099 tests)** |
-| **v1.17.0**   | **UI / Report / Temporal Display design** (docs-only design note in [`docs/v1_17_ui_report_temporal_display_design.md`](japan-financial-world/docs/v1_17_ui_report_temporal_display_design.md) and `docs/world_model.md` §119; opens the v1.17 sequence as a **presentation and inspection layer** for the v1.16 closed endogenous-market-intent feedback loop — the layer makes the system easier to inspect and demo, **not** a market simulator and **not** a price-formation layer; pins the **three time concepts** that must be kept strictly separate — `simulation_period` (the actual living-world update tick, quarterly, **economic state**), `reporting_calendar` (a monthly / daily-like display axis, **display-only**, no new records / no new decisions / no new evidence), `display_series` (synthetic UI series derived deterministically from existing labels and records — **renderings**, not measurements); pins the **safe display-layer object vocabulary** (closed-set, immutable, never registered with the ledger): `ReferenceTimelineSeries` / `SyntheticDisplayPath` / `EventAnnotationRecord` / `CausalTimelineAnnotation` / `RegimeComparisonPanel`; pins the **hard naming boundary** — allowed: `synthetic_display_index` / `reference_timeline` / `indicative_pressure_path` / `event_annotation` / `causal_timeline` / `regime_comparison` / `attention_focus_density` / `display_series` / `reporting_calendar`; **forbidden** (binding, will be test-pinned at v1.17.1+): `market_price` / `predicted_index` / `predicted_path` / `expected_return` / `target_price` / `forecast_path` / `forecast_index` / `real_price_series` / `actual_price` / `quoted_price` / `last_trade` / `nav` / `index_value` / `benchmark_value` / `valuation_target`; pins the **per-milestone roadmap inside v1.17** (v1.17.0 design (this); v1.17.1 `ReferenceTimelineSeries` / `SyntheticDisplayPath` / `ReportingCalendar` + monthly / daily-like expansion helper; v1.17.2 `RegimeComparisonPanel` + side-by-side markdown panels for the v1.11.2 regime presets `constructive` / `selective` / `constrained` / `tightening`; v1.17.3 `EventAnnotationRecord` + `CausalTimelineAnnotation` walking the v1.16 closed-loop citations; v1.17.4 UI workbench polish — wires v1.17.1 / v1.17.2 / v1.17.3 outputs into [`examples/ui/fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html), adds the Attention "what changed" diff strip and cross-tab click-through; v1.17.last freeze (docs-only)); pins the **page-level target** — every v1.17.4 page must answer five inspection questions (*what happened*, *which actor saw what*, *which evidence changed*, *which intent / review / pressure changed*, *what changed in the next period*) by following plain-id citations from the rendered UI; pins the **monthly / daily-like display expansion** as a **deterministic interpolation** of two adjacent quarterly values that already exist in the kernel records — no new records, no new ledger event types, no `PriceBook` mutation, no new economic decision at monthly / daily granularity (a v1.17.1 trip-wire test will pin that the expansion leaves the kernel byte-identical and that `living_world_digest` does not move); success condition: *a reviewer who has not read this codebase can open the v1.17 workbench, click through three regimes, and explain — in their own words — what happened, which actor saw what, which evidence changed, and what changed in the next period by following plain-id citations from the rendered UI; the integration-test `living_world_digest` is unchanged*; **inspection layer, not market trading; rendering, not price formation; reading aid, not higher-frequency simulation; synthetic display, not real data — no order submission, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no interest rate, no spread, no coupon, no fee, no offering price, no investment advice, no real data, no Japan calibration, no LLM execution, no stochastic behavior probabilities, no learned model, no market price, no predicted index, no expected return, no target price, no forecast path, no real price series**; no test count change, no `living_world_digest` change, no per-run window change at v1.17.0) | **Shipped (docs-only design)** |
-| **v1.16.last** | **Endogenous Market Intent Feedback freeze** (docs-only milestone closing the v1.16 sequence; ships the single-page reader-facing summary [`docs/v1_16_endogenous_market_intent_feedback_summary.md`](japan-financial-world/docs/v1_16_endogenous_market_intent_feedback_summary.md), §118 in `docs/world_model.md`, the v1.16.last release-readiness snapshot in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md), the v1.16.last freeze pin section in [`docs/performance_boundary.md`](japan-financial-world/docs/performance_boundary.md), the v1.16.last test-inventory header note, the v1.16.last addendum in [`examples/reference_world/README.md`](japan-financial-world/examples/reference_world/README.md), the v1.16.last cross-link in [`docs/fwe_reference_demo_design.md`](japan-financial-world/docs/fwe_reference_demo_design.md), and a v1.16.last sub-section in [`examples/ui/README.md`](japan-financial-world/examples/ui/README.md) describing what the analyst workbench should expose for the closed loop; no new code, no new tests, no new ledger event types; test count = **4033 / 4033**, per-period record count = **108 / 110**, per-run window = **`[432, 480]`**, `living_world_digest` = **`f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`** — all unchanged from v1.16.3 by design; **first FWE milestone where the living reference world has a closed deterministic endogenous-market-intent feedback loop**: `attention → InvestorMarketIntent (via the v1.16.1 evidence-conditioned classifier rewired in v1.16.2) → AggregatedMarketInterest → IndicativeMarketPressure → CapitalStructureReview / CorporateFinancingPath → next-period ActorAttentionState focus labels (via the v1.16.3 deterministic mapping)`; **market-interest feedback, not trading; indicative pressure, not price formation; financing-review feedback, not financing execution; attention adaptation, not stochastic behavior learning** — no order submission, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price update, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real exchange mechanics, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no syndication, no pricing, no interest rate, no spread, no coupon, no fee, no offering price, no investment advice, no real data, no Japan calibration, no LLM execution, no stochastic behavior probabilities, no learned model; **known limitation flagged**: the v1.16 classifier and attention-feedback rule helpers are **deterministic and rule-based** — illustrative for auditability and replayable causal structure, **not learned from real market behavior**, **not calibrated**, and **do not claim predictive validity**; the value is auditability and replayable causal structure; **next roadmap candidates** pinned in [`docs/v1_16_endogenous_market_intent_feedback_summary.md`](japan-financial-world/docs/v1_16_endogenous_market_intent_feedback_summary.md): v1.17 UI / report / regime-comparison polish (workbench should expose attention focus, market intent + classifier rule id, aggregated interest, indicative pressure, financing path, next-period attention widening as first-class views); v1.18 scenario library / exogenous event templates (named, deterministic, reproducible); v2.0 Japan public calibration in private JFWE only (public FWE remains jurisdiction-neutral and synthetic); future price formation **out of scope until the v1.16 market-intent feedback layer is easier to inspect** — i.e., until v1.17 / v1.18 make the loop's causal structure operationally legible) | **Shipped (4033 tests)** |
-| **v1.16.3**   | **Securities-market pressure → next-period attention feedback** (third concrete code milestone in the v1.16 sequence — closes the v1.12 endogenous-attention loop with the v1.15 securities-market-pressure / corporate-financing-path loop; in `world/attention_feedback.py`: five new closed-set focus labels (`risk` / `financing` / `dilution` / `market_interest` / `information_gap`) added to `ALL_FOCUS_LABELS`; two new trigger labels (`market_pressure_observed` / `financing_path_observed`); two new tuple slots on `ActorAttentionStateRecord` (`source_indicative_market_pressure_ids` / `source_corporate_financing_path_ids`) — populated, serialised on `to_dict`, and emitted on the `attention_state_created` ledger payload; two new `build_attention_feedback` kwargs (`indicative_market_pressure_ids` / `corporate_financing_path_ids`) that take the cited prior-period ids and resolve them via `kernel.indicative_market_pressure.get_record(...)` and `kernel.financing_paths.get_path(...)`; two new deterministic closed-set rule helpers — `_classify_market_pressure_focus(...)` (`market_access_label ∈ {constrained, closed}` → `market_access` + `funding` + `risk`; `financing_relevance_label = adverse_for_market_access` → `market_access` + `financing` + `risk`; `financing_relevance_label = caution_for_dilution` → `valuation` + `dilution` + `financing`; `liquidity_pressure_label ∈ {tight, stressed}` → `liquidity` + `funding`; `demand_pressure_label = supportive` → `market_interest` + `valuation`; `insufficient_observations` on demand / financing / status → `information_gap`) and `_classify_financing_path_focus(...)` (`coherence_label = conflicting_evidence` → `information_gap` + `financing`; `constraint_label = market_access_constraint` → `market_access` + `financing`; `next_review_label = compare_options` → `financing` + `valuation`); both helpers are pure functions over the cited records, never scan the source-of-truth books globally, and tolerate unresolved ids silently; the v1.16.3 fresh focus set is unioned into the v1.12.8 fresh focus set **before** the v1.12.9 decay / saturation runs, so the budget discipline holds bit-for-bit and a dedicated test pins that v1.16.3 fresh focus can crowd out stale prior focus when the `_MAX_FOCUS_LABELS` cap is reached; in `world/reference_living_world.py`: a small `prev_period_*` buffer carries the previous period's pressure / path ids forward into the next period's attention-feedback phase, for both investors and banks; **no new records** — slot additions and label unions only — per-period record count (`108 / 110`), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `PriceBook`-snapshot byte-equality are all unchanged from v1.16.2; **integration-test `living_world_digest` moves from `0b75e95ad8f157df5e938c1318817c07f00798179c3d11b8629452d30d9398fa` (v1.16.2) to `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c` (v1.16.3)** by design — same record cardinality, different `ActorAttentionStateRecord` payload bytes per period 1+; +34 tests across `tests/test_attention_feedback.py` (+23: closed-set vocabulary, every per-trigger mapping rule, source-id slot construction + `to_dict`, build-helper integration, budget / decay / saturation crowd-out, no-forbidden-payload-keys, unresolved-id tolerance) and `tests/test_living_reference_world.py` (+11: period-zero empty slots, period-1+ cites prior period's full pressure / path id sets, focus labels in closed set, attention-state count invariance, `PriceBook` invariance, no-forbidden-payload-keys on attention-feedback ledger payloads, no-forbidden-event-types (`order_submitted` / `trade_executed` / `price_updated` / `quote_disseminated` / `clearing_completed` / `settlement_completed` / `ownership_transferred` / `loan_approved` / `security_issued` / `underwriting_executed`), byte-identical canonical replay across two runs, jurisdiction-neutral attention-state payloads, conditional pressure-fires-fresh-label); **next-period attention focus, not market trading — no orders, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price formation, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no financing approval, no loan approval, no security issuance, no underwriting, no syndication, no pricing, no interest rates, no spreads, no coupons, no fees, no offering prices, no real data, no Japan calibration, no stochastic behavior probabilities, no LLM execution, no new record types**; prepares v1.16.last freeze) | **Shipped (4033 tests)** |
-| **v1.16.2**   | **Living-world market intent classifier rewire** (second concrete code milestone in the v1.16 sequence — replaces the v1.15.5 four-cycle `(period_idx + investor_idx + firm_idx) % 4` rotation in `world/reference_living_world.py` with a per-pair call into the v1.16.1 pure-function classifier `classify_market_intent_direction(...)`; `intent_direction_label` on every `InvestorMarketIntentRecord` is now produced from cited evidence resolved within the same period: `kernel.investor_intents.get_intent(...).intent_direction`, `kernel.valuations.get_valuation(...).confidence`, `kernel.firm_financial_states.get_state(...).market_access_pressure`, `kernel.market_environments.get_state(...).overall_market_access_label`, and `kernel.attention_feedback.get_attention_state(...).focus_labels`; `intensity_label` is mapped from `(classifier_status, classifier_confidence)` via the deterministic `_intensity_label_for_classifier_confidence(...)` helper (`evidence_deficient` → `unknown`; `default_fallback` → `low`; conf ≥ 0.7 → `elevated`; conf ≥ 0.6 → `moderate`; else `low`); the record's `confidence` field carries the classifier's synthetic confidence (no more hardcoded 0.5); the record's `metadata` mapping carries a compact deterministic classifier-audit block (`classifier_version` = `v1.16.1` / `classifier_rule_id` ∈ the eight v1.16.1 priority rule ids / `classifier_status` ∈ {`evidence_deficient`, `default_fallback`, `classified`} / `classifier_confidence` ∈ `[0.0, 1.0]` / `classifier_unresolved_or_missing_count` ∈ `{0..5}` / `classifier_evidence_summary` = a small JSON-friendly mapping of the abstract evidence the classifier saw); the v1.15.5 module-level rotation tables `_SAFE_INTENT_DIRECTION_BY_ROTATION` and `_MARKET_INTENT_INTENSITY_BY_ROTATION` are removed (regression-pinned by a test); record types, record count (`108 / 110` per period), per-run window (`[432, 480]`), default 4-period sweep total (`460 records`), and `PriceBook`-snapshot byte-equality are all unchanged from v1.15.6 / v1.16.1; **integration-test `living_world_digest` moves from `bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8` (v1.15.6 / v1.16.1) to `0b75e95ad8f157df5e938c1318817c07f00798179c3d11b8629452d30d9398fa` (v1.16.2)** by design — same record shapes, different label / metadata bytes per `InvestorMarketIntentRecord`; +16 tests in `tests/test_living_reference_world.py` covering classifier vocabulary, classifier-audit metadata, classifier-confidence on the record, no-rotation success condition, two-run determinism, intensity-label closed-set membership, record-count invariance, `PriceBook` invariance, evidence-id preservation (`evidence_investor_intent_ids` / `evidence_valuation_ids` / `evidence_market_environment_state_ids` / `evidence_firm_state_ids` / `evidence_security_ids` / `evidence_venue_ids`), no-forbidden-payload-keys (`buy` / `sell` / `order` / `order_id` / `trade` / `trade_id` / `bid` / `ask` / `quote` / `price` / `market_price` / `indicative_price` / `target_price` / `expected_return` / `execution` / `clearing` / `settlement` / `target_weight` / `overweight` / `underweight` / `recommendation` / `investment_advice` / `real_data_value`), classifier rule_id namespace, no-forbidden-event-types (`order_submitted` / `trade_executed` / `price_updated` / `quote_disseminated` / `clearing_completed` / `settlement_completed` / `ownership_transferred`), byte-identical canonical replay across two runs, jurisdiction-neutral metadata scan, classifier-module no-runtime-book-imports text scan, and orchestrator-imports-classifier (rotation-table-absence regression); **endogenous market-interest direction classification, not market trading — no orders, no order book, no matching, no execution, no clearing, no settlement, no quote dissemination, no bid / ask, no price formation, no `PriceBook` mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real data, no Japan calibration, no stochastic behavior probabilities, no LLM execution, no new record types**; prepares v1.16.3 attention-feedback integration that closes the v1.12 → v1.15 loop) | **Shipped (3999 tests)** |
-| **v1.16.1**   | **Endogenous market intent direction classifier** (first concrete code milestone in the v1.16 sequence — implements the pure-function classifier from the v1.16.0 design without rewiring the living world yet; new `world/market_intent_classifier.py` with `MarketIntentClassificationResult` (frozen dataclass) + `classify_market_intent_direction(...)` pure function; **runtime-book-free** by construction — module imports no source-of-truth book (`Ledger` / `WorldKernel` / `InvestorMarketIntentBook` / etc., pinned by a text scan), takes no kernel argument, and so cannot mutate the `PriceBook`; **signature parameter-check rejects positional indices** (`period_idx` / `investor_idx` / `firm_idx` / `period_index` / `investor_index` / `firm_index` / `rotation_index`) by inspection — the v1.15.5 four-cycle rotation those indices drove cannot be re-introduced through the classifier; eight-priority deterministic rule table (priorities 1: evidence-deficient → unknown; 2: engagement_watch + engagement focus → engagement_linked_review; 3a: risk_flag_watch → risk_reduction_review; 3b: deepen_due_diligence + high pressure / closed env → risk_reduction_review; 4a: liquidity/funding focus + selective/constrained/closed env → liquidity_watch; 4b: high firm pressure + liquidity/funding focus → liquidity_watch; 5a: low valuation confidence + constrained/closed env → reduce_interest; 5b: deepen_due_diligence + low confidence + moderate-to-high pressure → reduce_interest; 6: high confidence + low pressure + open/constructive env + routine intent → increase_interest; 7: firm_state/valuation/market focus + no rule above → rebalance_review; 8: default → hold_review); output strictly in `INTENT_DIRECTION_LABELS` (= v1.15 `SAFE_INTENT_LABELS ∪ {"unknown"}`) — `FORBIDDEN_OUTPUT_LABELS` (`buy` / `sell` / `order` / `target_weight` / `overweight` / `underweight` / `execution`) are disjoint by construction, pinned by a test; `status` is one of `evidence_deficient` / `default_fallback` / `classified`; `confidence` is `0.0` (priority 1), `0.3` (priority 8), or `0.5 + 0.05 × evidence_count` clamped to `[0.5, 0.75]` (priorities 2–7); `unresolved_or_missing_count` is 0–5; bounded-numeric validation (booleans rejected, `[0,1]` ranges enforced); +100 tests covering per-rule firing, priority ordering (3 beats 4, 4 beats 5, 2 beats 7, etc.), period_idx-absence regression, evidence-difference regression (success condition: same `(investor, security)` pair produces different labels because evidence differs, not because of index rotation), forbidden-label disjoint invariant, numeric / bool / non-numeric / out-of-range rejection, result immutability, `to_dict` determinism, no-runtime-book-imports text scan, and jurisdiction-neutral scan; **pure-function classifier only — no living-world rewiring yet (v1.16.2 lands the rewire; v1.16.3 closes the v1.12 ↔ v1.15 attention loop; v1.16.last freezes); no kernel access, no `PriceBook` mutation, no order submission, no order book, no matching, no execution, no clearing, no settlement, no real exchange mechanics, no real price formation, no recommendation, no portfolio allocation, no calibrated probability, no LLM, no real data, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.15.last) | **Shipped (3983 tests)** |
-| **v1.16.0**   | **Endogenous market intent direction design** (docs-only design note in [`docs/v1_16_endogenous_market_intent_direction_design.md`](japan-financial-world/docs/v1_16_endogenous_market_intent_direction_design.md) and `docs/world_model.md` §114; proposes replacing the v1.15.5 deterministic four-cycle rotation `(period_idx + investor_idx + firm_idx) % 4` with an evidence-conditioned classifier — every `InvestorMarketIntentRecord.intent_direction_label` becomes a deterministic function of the cited `InvestorIntentRecord.intent_direction` (v1.12.1), `ValuationRecord.confidence` (v1.9.5 / v1.12.5), `FirmFinancialStateRecord.market_access_pressure` (v1.12.0), `MarketEnvironmentStateRecord.overall_market_access_regime_label` (v1.12.2), and `ActorAttentionStateRecord.focus_labels` (v1.12.8); pins the eight-priority rule table (1: evidence-deficient → unknown; 2: engagement focus + engagement_watch → engagement_linked_review; 3: risk_flag_watch / deepen_due_diligence + high firm pressure → risk_reduction_review; 4: liquidity/funding focus + constrained env → liquidity_watch; 5: low valuation confidence + constrained env → reduce_interest; 6: high confidence + low pressure + constructive env + routine intent → increase_interest; 7: firm/valuation/market focus + no other rule → rebalance_review; 8: default → hold_review); the classifier reads only cited evidence ids (no global scan, in the v1.12.3 `EvidenceResolver` / v1.14.4 / v1.15.3 / v1.15.4 helper-discipline tradition), returns one of the v1.15 `SAFE_INTENT_LABELS` set ∪ `unknown`, never calls into a calibrated probability model / LLM / real-data source, and preserves byte-identical replay determinism on the default fixture; per-milestone v1.16.x sub-roadmap pinned (v1.16.1 classifier module + unit tests; v1.16.2 rewire v1.15.5 phase, digest moves; v1.16.3 attention-feedback integration; v1.16.last freeze); success condition: *the same `(investor, security)` pair produces different safe market-interest labels because evidence differs, not because of index rotation*; **endogenous market-interest direction classification, not market trading — no order submission, no order matching, no trade execution, no clearing, no settlement, no real exchange mechanics, no real price formation, no PriceBook mutation, no target price, no expected return, no recommendation, no portfolio allocation, no real data, no Japan calibration, no stochastic behavior probabilities, no LLM execution**; no test count change, no `living_world_digest` change, no per-run window change at v1.16.0) | **Shipped (docs-only design)** |
-| **v1.15.6**   | **Securities market pressure feedback to corporate financing** (closes the first market-interest → corporate-financing feedback loop — `CapitalStructureReviewCandidate` gains a `source_indicative_market_pressure_ids` citation slot, `CorporateFinancingPathRecord` gains an `indicative_market_pressure_ids` slot, both books gain a matching `list_by_indicative_market_pressure` filter; `build_corporate_financing_path` gains an `indicative_market_pressure_ids` kwarg with two deterministic override rules — pressure says `constrained` / `closed` → path's `constraint_label` is forced to `market_access_constraint`; pressure says constrained while reviews say open / selective → path's `coherence_label` is upgraded to `conflicting_evidence`; the helper still reads only cited pressure ids — no global scan, pinned by a trip-wire test; orchestrator **reorders** the per-period sweep so the v1.15.5 securities chain runs *before* the v1.14.5 corporate-financing chain — each firm's review and path now cite the same period's `IndicativeMarketPressureRecord` for the firm's listed equity, and the orchestrator additionally overrides the review's `market_access_label` to match the pressure when constrained / closed and bumps `dilution_concern_label` from `low` to `moderate` / `high` when the pressure's `financing_relevance_label` is `caution_for_dilution` / `adverse_for_market_access`; **no new records** — citation slots only — so per-period record count, per-run window, and setup overhead are unchanged from v1.15.5 (108 / 110 records per period, `[432, 480]` per-run window, 460 records on the default 4-period sweep); **integration-test `living_world_digest` moves from `041686b0c69eea751cb24e3e3e5b4ac25e56a8ae20d4b1bd40a41dc5303403a5` (v1.15.5) to `bd7abdb9a62fb93a1001d3f760b76b3ab4a361313c3af936c8b860f5ab58baf8` (v1.15.6)** by design (phase reorder + new citation slots on every review / path payload); +20 tests across `test_capital_structure.py` (citation slot + filter + ledger payload), `test_financing_paths.py` (citation slot + filter + helper override rules + no-global-scan trip-wire + unresolved-id silent-skip), and `test_living_reference_world.py` (living-world reviews / paths cite same-period pressure, pressure security_id matches firm's listed equity, no `PriceBook` mutation, no forbidden payload keys across all seven chain event types); **citation + label-drift only — no price update, no `PriceBook` mutation, no trading, no order submission, no order matching, no execution, no quote dissemination, no clearing, no settlement, no financing execution, no loan approval, no bond / equity issuance, no underwriting, no pricing, no optimal capital structure decision, no investment recommendation, no real data ingestion, no Japan calibration**) | **Shipped (3883 tests)** |
-| **v1.13.6**   | **EvidenceResolver interbank-liquidity slot** (substrate-gap repair on top of v1.13.5; `world/evidence.py` gains `BUCKET_INTERBANK_LIQUIDITY_STATE`, `ActorContextFrame.resolved_interbank_liquidity_state_ids`, prefix-dispatch row for `interbank_liquidity_state:` ids, the `explicit_interbank_liquidity_state_ids` kwarg on both the resolver class method and the module-level helper; `world/reference_bank_credit_review_lite.py` now reads from the resolver frame bucket instead of scanning `kernel.interbank_liquidity` directly, restoring the v1.12.3 attention/evidence discipline; +14 tests in `tests/test_evidence_resolver.py` covering explicit-kwarg resolution, selection-prefix dispatch, unresolved-ref capture, strict mode, no-mutation, no-ledger-write, deterministic ordering, dedup, `to_dict` round-trip, anti-field absence, and an end-to-end bank-credit-review test pinning every v1.9.7 anti-claim flag; **no calibrated liquidity model, no lending decision, no internal rating, no PD / LGD / EAD, no underwriting, no Japan calibration**; per-period record count, per-run window, and `living_world_digest` unchanged from v1.13.5 / v1.13.last by design) | **Shipped (3066 tests)** |
-| v1.x advanced | Valuation Protocol — Comps Purpose Separation (docs-only advanced design note in [`docs/v1_valuation_protocol_comps_purpose_separation.md`](japan-financial-world/docs/v1_valuation_protocol_comps_purpose_separation.md) and `docs/world_model.md` §84; defines a `ValuationPurpose` vocabulary — `impairment_test` / `market_value_claim` / `internal_review` / `credit_support_review` / `strategic_response_review` — plus a `ComparableSet.purpose` vocabulary — `beta_estimation` / `debt_capacity` / `discount_rate_support` / `valuation_multiple` / `margin_benchmark` — plus comps selection dimensions and a warning-flag vocabulary — `purpose_mismatch` / `double_counting_risk` / `cherry_picking_risk` / `target_capital_structure_misuse` / `unexplained_comps_divergence` / `cash_flow_and_discount_rate_risk_overlap`; **records evidence discipline, never computes a valuation truth** — no beta, no WACC, no D/E, no impairment decision, no fair value conclusion, no investment recommendation, no real data, no Japan calibration, no IFRS/US GAAP/jurisdiction-specific accounting compliance; opt-in for advanced actor types only — the default v1.9 living reference world's investor and bank profiles are unaffected; designed to compose with the v1.12.3 `EvidenceResolver` substrate via plain-id cross-references when a sophisticated actor type adopts it; no test count change, no `living_world_digest` change, no per-run window change) | **Docs-only (advanced design note)** |
-| v1.13.0       | Generic central bank settlement infrastructure design (docs-only design note in [`docs/v1_13_generic_central_bank_settlement_design.md`](japan-financial-world/docs/v1_13_generic_central_bank_settlement_design.md) and `docs/world_model.md` §86; defines eight jurisdiction-neutral vocabulary items — `CentralBankSettlementSystem` (abstract substrate name), `SettlementAccountRecord` (one account at the substrate; labels: `account_id` / `holder_id` / `holder_type` / `account_type` / `status`; **anti-fields**: no `balance` / `available_credit` / `pending_settlement_amount` / `interest_accrued`), `SettlementAccountBook` / `ReserveAccountBook` (append-only storage placeholder), `PaymentInstructionRecord` (labels: `instruction_id` / `from_account_id` / `to_account_id` / `instruction_type` / `priority` / `status` / `time_horizon`; **anti-fields**: no `amount` / `currency_value` / `fx_rate`), `SettlementEvent` (labels: `event_id` / `instruction_id` / `event_type` / `cause_label`), `InterbankLiquidityState` (compact regime label: `tone_label` / `funding_pressure_label` / `cb_intervention_label`), `CollateralEligibilitySignal` (labels: `eligibility_label` / `haircut_tier_label`; **anti-fields**: no haircut percentage, no margin number), `CentralBankOperationSignal` (labels: `operation_label` / `direction_label` / `time_horizon`; **anti-fields**: no operation amount, no policy rate, no monetary-policy stance numeric); cross-references the v1.12.2 `MarketEnvironmentStateRecord` and v1.12.0 `FirmFinancialStateRecord` via plain-id slots planned for v1.13.5; designed to compose with the v1.12.3 `EvidenceResolver` substrate via plain-id cross-references; **records substrate discipline, never executes settlement** — no BOJ-NET / BOJ current accounts / JGB settlement / JSCC / JASDEC / TARGET2 / Fedwire / CHAPS / EBA STEP2 mapping, no payment execution, no RTGS settlement mechanics, no intraday-credit lending, no central-bank accounting / balance-sheet identities / reserve totals / monetary-base aggregates / seigniorage, no securities settlement / DvP / PvP / repo execution, no collateral valuation / haircut calculation / margin computation, no monetary-policy decisions (rate setting, reserve-requirement changes, QE / QT execution, forward guidance), no real central-bank data ingestion, no Japan calibration, no LLM-agent execution, no behaviour probabilities; public / private boundary is binding — every Japan-shaped concept is private JFWE (v2 / v3); proposes the v1.13.x sequence — v1.13.1 settlement-account storage / v1.13.2 instruction + event storage / v1.13.3 liquidity-state storage + classifier / v1.13.4 operation + collateral-eligibility signal storage / v1.13.5 `MarketEnvironment` integration / v1.13.last freeze — each shipped one milestone at a time; no test count change, no `living_world_digest` change, no per-run window change) | **Docs-only (design note)** |
-| v1.10.last    | Public engagement layer freeze (docs-only) | Planned |
-| v2.0          | Japan public-data calibration design gate                 | Not started                  |
-| v3.0          | Proprietary Japan calibration / expert-data layer         | Private                      |
+## 9. Roadmap
 
-For the v1.8.16 freeze surface and the v1.9 plan see:
+The v1.21 sequence is **complete and frozen**. The next steps are
+candidates, not commitments; each requires a fresh design pin
+before any code lands. Silent extension of v1.21 is forbidden.
 
-- [`docs/v1_8_release_summary.md`](japan-financial-world/docs/v1_8_release_summary.md)
-- [`docs/v1_9_living_reference_world_plan.md`](japan-financial-world/docs/v1_9_living_reference_world_plan.md)
-- [`docs/public_prototype_plan.md`](japan-financial-world/docs/public_prototype_plan.md)
+| Version    | Goal                                                                                                        | Status                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| v0.x       | Structural contract                                                                                         | **Frozen at v0.16**                                             |
+| v1.0–v1.7  | Reference content + first closed loop                                                                       | **Frozen at v1.7**                                              |
+| v1.8.x     | Endogenous activity stack                                                                                   | **Shipped (v1.8.16 freeze)**                                    |
+| v1.9.last  | Public prototype (living reference world)                                                                   | **Shipped**                                                     |
+| v1.12.last | Endogenous attention loop                                                                                   | **Shipped**                                                     |
+| v1.13.last | Generic central-bank settlement substrate                                                                   | **Shipped**                                                     |
+| v1.16.last | First closed-loop reference economy                                                                         | **Shipped**                                                     |
+| v1.17.last | Inspection layer                                                                                            | **Shipped**                                                     |
+| v1.18.last | Synthetic scenario-driver library                                                                           | **Shipped**                                                     |
+| v1.19.last | Local run bundle + monthly reference profile                                                                | **Shipped**                                                     |
+| v1.20.last | Monthly scenario reference universe                                                                         | **Shipped**                                                     |
+| **v1.21.last** | **Stress Composition Layer freeze**                                                                     | **Shipped — current**                                           |
+| v1.22 candidate | **Static UI Stress Readout Reflection** — render the v1.21.3 markdown summary verbatim in the static workbench. Read-only static rendering only; no engine execution from the browser, no backend, no fetch / XHR. | Optional candidate. Not started. Requires a fresh design pin. |
+| v1.23 candidate | **Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark / peer-pressure constraints on the v1.15.5 / v1.16.2 investor-intent layer. | Optional candidate. Not started. Requires a fresh design pin. |
+| v2.x       | Japan public calibration — only after data / license boundaries are designed.                              | Not started. Gated by license review and boundary design.       |
+| v3.x       | Japan proprietary calibration — not public; would live in a private repository and would preserve every public-FWE boundary. | Not started. Not public.                                        |
 
-## Project layers
+**Deferred (or never).** `StressInteractionRule` and the
+`amplify` / `dampen` / `offset` / `coexist` interaction-label
+family are deferred to v1.22+ or never. If interaction-style
+annotation is ever reconsidered, it must be
+`manual_annotation`-only — never auto-inferred. See §130.7 of
+[`docs/world_model.md`](japan-financial-world/docs/world_model.md).
 
-The project is organized into five product layers. The current repository
-contains FWE Core only; Japan-specific calibration is layered separately
-above it.
+---
 
-- **FWE Core** — public; jurisdiction-neutral kernel + reference financial
-  system. This is what the current freeze contains.
-- **FWE Reference** — public; planned synthetic / fictional-country demo on
-  top of FWE Core.
-- **JFWE Public** — partially public; Japan public-data calibration (v2
-  territory). Public release depends on per-source redistribution rights.
-- **JFWE Proprietary** — never public; private commercial calibration with
-  paid data, expert input, and proprietary templates (v3 territory).
+## 10. Research direction
 
-FWE / JFWE is **not** a market predictor and **not** investment advice; it
-is a causal, auditable, multi-space financial-world simulation engine. See
-[`docs/product_architecture.md`](japan-financial-world/docs/product_architecture.md),
-[`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md),
-and [`docs/naming_policy.md`](japan-financial-world/docs/naming_policy.md)
-for the full layer definitions, public / restricted artifact rules, and
-naming conventions. The repository keeps its legacy `JWFE` /
-`japan-financial-world/` names in this version; any rename is a separate
-migration.
+The longer arc this substrate is built for, stated honestly and
+without overclaiming:
 
-## Disclaimer
+- **Make the engine legible before claiming any output is
+  useful.** The v1.x line is deliberately useless as a market
+  view. It is meant to be useful as a *foundation* — a layer on
+  which higher layers can be added one at a time, each with the
+  same audit discipline.
+- **Replace narrative with citations.** A reviewer reading a
+  v1.21 stress readout should be able to trace any line of the
+  markdown summary back to the specific records on the specific
+  context surfaces in the specific period that produced it,
+  without reading the source code.
+- **Preserve a hard boundary between substrate and behavior.**
+  Behavior layers (price formation, allocation, lending
+  decisions, policy reaction functions) are explicitly *not* in
+  v1.x. If they are ever added, they will land as new
+  milestones with their own design pins, their own boundary
+  inventories, and their own forbidden-token lists; they will
+  not retrofit existing v1.x records.
+- **Keep public and private cleanly separated.** Public v1.x is
+  jurisdiction-neutral and synthetic. Public v2.x will add only
+  *public, licensed* Japanese data, with the license review
+  done first. Private v3.x — proprietary calibration — would
+  live in a private repository and would preserve every
+  public-FWE boundary listed in §7.
 
-This project is **research software** intended for engine design,
-simulation methodology, and structural exploration of how financial
-worlds can be modeled.
+What this substrate is *not* trying to be: a competitor to any
+existing risk system, a market-view product, or an automated
+trader. The current public release is a deliberately constrained
+design exercise. Whether higher layers eventually justify a
+practical claim is a question for later milestones, after the
+substrate has been used in anger by readers other than the
+author.
 
-- It is **not investment advice.** Nothing in this repository — code,
-  examples, tests, docs, ledger output — should be read as a market
-  view, allocation suggestion, valuation opinion, or trade signal.
-- It is **not a calibrated real-world market model.** v0 and v1 are
-  jurisdiction-neutral and contain only synthetic, fictional reference
-  identifiers. The example data in `data/sample/` and `examples/` is
-  illustrative; numbers and names are placeholders, not measurements.
-- It contains **no proprietary data.** No expert interview notes, no
-  paid feeds, no fund holdings, no named-institution stress results,
-  no client communications. See
-  [`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md)
-  for the public / restricted artifact rules.
-- **Japan calibration is future work.** v2 (Japan public calibration)
-  and v3 (Japan proprietary calibration) have not started. Any
-  reference to BOJ, MUFG, GPIF, Toyota, or other real Japanese
-  institutions in the docs appears only to define what is *prohibited*
-  in v1 or *deferred* to v2 / v3 — never as a present-day capability.
-- It is **not production software.** No SLA, no support commitment,
-  no guarantee of API stability beyond what each milestone's freeze
-  document explicitly promises.
-
-What this project *is*: a causal, auditable, multi-space simulation
-kernel and reference financial system, with an append-only ledger
-designed so that every state-changing event is reconstructable as a
-graph. The intent is to make the *engine* trustworthy in its
-mechanics, not to make any specific *output* trustworthy as a
-real-world claim.
-
-## Version boundary
-
-| Version | Purpose                                                                          | Status                       |
-| ------- | -------------------------------------------------------------------------------- | ---------------------------- |
-| v0.xx   | Jurisdiction-neutral world kernel                                                | **Frozen at v0.16**          |
-| v1.0–v1.7 | Jurisdiction-neutral reference financial system                                | **Frozen at v1.7**           |
-| v1.8.0  | Experiment harness (config-driven driver + manifest + replay gate, no new behavior) | **Tagged `v1.8-public-release`** |
-| v1.8.x  | Endogenous activity infrastructure (interactions / routines / attention / variables / exposures / chain harness / trace report) | Shipped |
-| v1.8.16 | Freeze / readiness / docs                                                        | Shipped                      |
-| v1.9.0–v1.9.8 | Living reference world + three review-only mechanisms + performance boundary | Shipped                      |
-| **v1.9.last** | **Public prototype freeze**                                                  | **Shipped (1626 tests)**     |
-| v2.xx   | Japan public calibration                                                         | Not started                  |
-| v3.xx   | Japan proprietary / commercial calibration                                       | Not started                  |
-
-Despite the project name, no Japan-specific calibration is built into v0 or v1
-— both are fully neutral and could be calibrated to any jurisdiction.
-Japan-specific work begins in v2 (public data) and v3 (proprietary data). For
-the v2 readiness picture see
-[`docs/v2_readiness_notes.md`](japan-financial-world/docs/v2_readiness_notes.md).
-
-## What v1 adds on top of v0
-
-v0 froze the structural contract: books, projections, transport, identity-
-level state, the four-property `bind()` contract, the next-tick rule, the
-no-cross-mutation rule. v1 layers reference content on that contract:
-
-- **v1.1 Valuation / fundamentals** — `ValuationBook`, `ValuationRecord`,
-  `ValuationGap`, `ValuationComparator` (currency vs numeraire stored as
-  data; gaps computed against `PriceBook`).
-- **v1.2 Intraday phase scheduler** — `Phase` enum extended with six
-  intraday phases (overnight → pre_open → opening_auction →
-  continuous_session → closing_auction → post_close);
-  `run_day_with_phases` dispatch; per-date run-mode guard preserving v0
-  date-tick semantics for spaces that have not opted in.
-- **v1.3 Institutional decomposition** — `InstitutionProfile`,
-  `MandateRecord`, `PolicyInstrumentProfile`, `InstitutionalActionRecord`;
-  the **four-property action contract** (explicit inputs / explicit
-  outputs / ledger record / no cross-space mutation).
-- **v1.4 External world process layer** — `ExternalFactorProcess` (spec,
-  not runtime), `ExternalFactorObservation`, `ExternalScenarioPath`. v1
-  stores process specs as data; v2+ runs them.
-- **v1.5 Relationship capital** — `RelationshipRecord` (directed pairs),
-  `RelationshipView`, `RelationshipCapitalBook`. Decay parameters stored
-  but not applied automatically; reads return last-recorded strength
-  deterministically.
-- **v1.6 First closed-loop reference economy** — `ReferenceLoopRunner`, a
-  thin orchestrator that links `ExternalFactorObservation` →
-  `InformationSignal` → `ValuationRecord` → `ValuationGap` →
-  `InstitutionalActionRecord` → `InformationSignal` → `WorldEvent`
-  through cross-references alone, producing a complete causal ledger
-  trace.
-- **v1.7 Reference system freeze** — documentation only; no Python
-  changes. This document, `v1_release_summary.md`, `architecture_v1.md`,
-  `v1_scope.md`, and `v2_readiness_notes.md` were authored as part of
-  the freeze.
-- **v1.8 Experiment harness** — `world/experiment.py` provides
-  `ExperimentConfig` / `load_experiment_config` /
-  `validate_experiment_config` / `run_reference_experiment`. The
-  harness loads a synthetic-only YAML config, validates it, runs the
-  bundled reference demo, and emits a JSON manifest plus a SHA-256
-  ledger digest under the configured `output_dir`. Adds zero
-  simulation behavior; the schema's optional sections are documented
-  for future v1.8.x milestones but raise `NotImplementedError` at
-  runtime in v1.8 itself. See
-  [`docs/v1_experiment_harness_design.md`](japan-financial-world/docs/v1_experiment_harness_design.md).
-- **v1.8.1 → v1.8.15 Endogenous activity stack** — interaction
-  topology (`InteractionBook`, sparse tensor / matrix views), routine
-  infrastructure (`RoutineBook`, `RoutineEngine`, the corporate
-  quarterly reporting routine), attention infrastructure
-  (`AttentionBook`, the `ObservationMenuBuilder` join service, the
-  investor / bank attention demo with explicit variable / exposure
-  hooks), reference variables (`WorldVariableBook`), exposures
-  (`ExposureBook`), the two review routines (`investor_review`,
-  `bank_review`), the orchestration harness
-  (`run_reference_endogenous_chain`), and the read-only ledger trace
-  report (`world/ledger_trace_report.py`). Each milestone landed
-  additively; together they let a caller produce a deterministic,
-  fully ledger-reconstructable non-shock chain. See `docs/world_model.md`
-  §43 – §57 and
-  [`docs/v1_8_release_summary.md`](japan-financial-world/docs/v1_8_release_summary.md).
-- **v1.8.16 Freeze / readiness** — docs and release-readiness only.
-  No new code behavior; consolidates v1.8 as a coherent milestone and
-  prepares v1.9. See
-  [`docs/v1_8_release_summary.md`](japan-financial-world/docs/v1_8_release_summary.md),
-  [`docs/v1_9_living_reference_world_plan.md`](japan-financial-world/docs/v1_9_living_reference_world_plan.md),
-  and
-  [`docs/public_prototype_plan.md`](japan-financial-world/docs/public_prototype_plan.md).
-
-## What v0 vs v1 own
-
-A simple way to assign a feature to a milestone:
-
-| Layer | Owns                                                                  | Examples                                                              |
-| ----- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| v0    | Structure: books, projections, transport, identity, scheduler         | `BalanceSheetView`, `EventBus`, `DomainSpace`, `OwnershipBook`        |
-| v1    | Reference behavior: record types, reference books, action contract, orchestrator | `ValuationBook`, `InstitutionBook`, `ReferenceLoopRunner` |
-| v2    | Japan public calibration                                              | BOJ as `InstitutionProfile`, public macro time series                 |
-| v3    | Japan proprietary calibration                                         | Paid news feeds, fund holdings, expert overrides                      |
-
-If a request would require changing a v1 record shape, it is a **v1+
-behavioral milestone**. If it would require adding Japan public data, it
-is a **v2 task**. If it would require paid data or expert overrides, it
-is a **v3 task**. See
-[`docs/v1_scope.md`](japan-financial-world/docs/v1_scope.md) and
-[`docs/v2_readiness_notes.md`](japan-financial-world/docs/v2_readiness_notes.md).
-
-## What is intentionally NOT in v0, v1, or v1.8
-
-Neither v0 nor v1 (including the v1.8 harness) implements:
-
-- price formation, order matching, market microstructure
-- bank credit decisions, default detection, covenant trips
-- investor strategy, allocation, rebalancing
-- corporate actions, earnings updates, revenue dynamics
-- policy reaction functions, rate-setting rules
-- runtime execution of `ExternalFactorProcess` specs
-- automatic relationship-strength decay
-- iterative loops or year-long simulation drivers
-- any Japan-specific calibration
-
-These belong to v1+ behavioral milestones, v2 (Japan public), or v3
-(Japan proprietary). The v1 contract is structural completeness — every
-record type exists, every cross-reference field is wired, the ledger is
-a complete causal trace — not realism or autonomous dynamics.
-
-## Documentation map
-
-Start here:
-
-**Repo overview:**
-- [docs/world_model.md](japan-financial-world/docs/world_model.md) — the
-  constitutional design document; every milestone has a section.
-
-**v0 (frozen at v0.16):**
-- [docs/v0_release_summary.md](japan-financial-world/docs/v0_release_summary.md)
-- [docs/architecture_v0.md](japan-financial-world/docs/architecture_v0.md)
-- [docs/v0_scope.md](japan-financial-world/docs/v0_scope.md)
-
-**v1 (frozen at v1.7):**
-- [docs/v1_release_summary.md](japan-financial-world/docs/v1_release_summary.md)
-  — what v1 delivered, what it proves, what is out of scope
-- [docs/architecture_v1.md](japan-financial-world/docs/architecture_v1.md)
-  — module stack and text diagram of v0 kernel + v1 modules + ledger
-  causal trace
-- [docs/v1_scope.md](japan-financial-world/docs/v1_scope.md) — explicit
-  in/out boundary for v1
-- [docs/v2_readiness_notes.md](japan-financial-world/docs/v2_readiness_notes.md)
-  — forward-looking note on data sources, entity mapping, license
-  review, and v2 vs v3 boundary
-
-**v1.8 (tagged `v1.8-public-release` at v1.8.0; v1.8.16 freeze):**
-- [docs/v1_8_release_summary.md](japan-financial-world/docs/v1_8_release_summary.md)
-  — v1.8 milestone-by-milestone summary
-- [docs/v1_9_living_reference_world_plan.md](japan-financial-world/docs/v1_9_living_reference_world_plan.md)
-  — next milestone (Living Reference World Demo)
-- [docs/v1_9_public_prototype_summary.md](japan-financial-world/docs/v1_9_public_prototype_summary.md)
-  — single-page reader summary of what v1.9.last freezes (and
-  what it does not claim)
-- [docs/public_prototype_plan.md](japan-financial-world/docs/public_prototype_plan.md)
-  — v1.9.last public-prototype target + acceptance criteria
-- [docs/performance_boundary.md](japan-financial-world/docs/performance_boundary.md)
-  — loop shapes, demo discipline, sparse-gating principles
-- [docs/fwe_reference_demo_design.md](japan-financial-world/docs/fwe_reference_demo_design.md)
-  — reference demo, replay-determinism gate, manifest design
-- [docs/v1_experiment_harness_design.md](japan-financial-world/docs/v1_experiment_harness_design.md)
-  — config-driven harness for the demo
-- [docs/v1_endogenous_reference_dynamics_design.md](japan-financial-world/docs/v1_endogenous_reference_dynamics_design.md)
-  — anti-scenario routine vocabulary (v1.8.1)
-- [docs/v1_interaction_topology_design.md](japan-financial-world/docs/v1_interaction_topology_design.md)
-  — interaction topology + heterogeneous attention design (v1.8.2)
-- [docs/v1_reference_variable_layer_design.md](japan-financial-world/docs/v1_reference_variable_layer_design.md)
-  — reference variable + exposure design (v1.8.8 + hardening)
-- [examples/reference_world/README.md](japan-financial-world/examples/reference_world/README.md)
-  — runnable demos (reference loop + endogenous chain)
-- [examples/ui/README.md](japan-financial-world/examples/ui/README.md)
-  — static HTML analyst-workbench UI prototype
-  ([`fwe_workbench_mockup.html`](japan-financial-world/examples/ui/fwe_workbench_mockup.html);
-  open directly in a browser — no backend, no build tools)
-
-**v1 sub-milestone designs:**
-- [docs/v1_reference_system_design.md](japan-financial-world/docs/v1_reference_system_design.md)
-  — v1 design statement
-- [docs/v1_design_principles.md](japan-financial-world/docs/v1_design_principles.md)
-  — invariants
-- [docs/v1_module_plan.md](japan-financial-world/docs/v1_module_plan.md)
-  — v1.1 → v1.6 sequence
-- [docs/v1_behavior_boundary.md](japan-financial-world/docs/v1_behavior_boundary.md)
-  — per-module behavior owner table
-- [docs/v1_valuation_fundamentals_design.md](japan-financial-world/docs/v1_valuation_fundamentals_design.md)
-  (v1.1)
-- [docs/v1_intraday_phase_design.md](japan-financial-world/docs/v1_intraday_phase_design.md)
-  (v1.2)
-- [docs/v1_institutional_decomposition_design.md](japan-financial-world/docs/v1_institutional_decomposition_design.md)
-  (v1.3)
-- [docs/v1_external_world_process_design.md](japan-financial-world/docs/v1_external_world_process_design.md)
-  (v1.4)
-- [docs/v1_relationship_capital_design.md](japan-financial-world/docs/v1_relationship_capital_design.md)
-  (v1.5)
-- [docs/v1_first_closed_loop_design.md](japan-financial-world/docs/v1_first_closed_loop_design.md)
-  (v1.6)
-- [docs/v1_roadmap.md](japan-financial-world/docs/v1_roadmap.md) —
-  earlier high-level overview, kept for reference
-
-**Tests:**
-- [docs/test_inventory.md](japan-financial-world/docs/test_inventory.md)
-  — 2751 tests grouped by component (444 v0 + 188 v1.0–v1.7 + 2119 post-v1.7)
-
-**Long-form / original ambition (kept for reference):**
-- [docs/architecture.md](japan-financial-world/docs/architecture.md) —
-  original ambition layout
-- [docs/scope.md](japan-financial-world/docs/scope.md) — original
-  ambition scope
-- [docs/ontology.md](japan-financial-world/docs/ontology.md) — domain
-  ontology
-
-## Installing dependencies
-
-From the **repo root** (this directory), install the project plus
-its dev dependencies (pytest + ruff):
-
-```bash
-pip install -e ".[dev]"
-```
-
-This brings in **PyYAML 6.x** (pinned `>=6,<7` in `pyproject.toml`),
-the supported YAML parser for the reference demo's catalog
-(`examples/reference_world/entities.yaml`) and the v1.8 experiment
-harness configs. CI runs the same `pip install -e ".[dev]"` step.
-The `world/loader.py` fallback parser is a defensive minimal
-fallback — **not a full YAML implementation** — and only handles
-the v0 sample-data shape. If you skip PyYAML, the reference demo
-will fail at runtime; see
-[`japan-financial-world/world/loader.py`](japan-financial-world/world/loader.py)
-for the exact policy.
-
-## Running the tests
-
-From the `japan-financial-world` directory:
-
-```bash
-python -m pytest -q
-```
-
-Expected: `2751 passed` at the latest commit (444 v0 + 188 v1
-frozen reference + 1948 post-v1.7 additions covering the reference
-demo, replay, manifest, catalog-shape, experiment harness, the
-v1.8.x endogenous-activity stack — interactions, routines,
-attention, variable / exposure layers, the menu builder, the
-investor / bank attention demo, the two review routines, the chain
-harness, and the ledger trace report — plus the v1.9.x living
-reference world, its trace report, the replay / manifest helpers,
-the v1.9.3 / v1.9.3.1 mechanism interface contract + hardening,
-the CLI argv-isolation pin, the v1.9.4 reference firm operating
-pressure assessment mechanism, the v1.9.5 reference valuation
-refresh lite mechanism, the v1.9.6 integration of those two
-mechanisms into the multi-period sweep, the v1.9.7 reference
-bank credit review lite mechanism integrated into the same sweep,
-the v1.9.8 performance-boundary / sparse-traversal discipline tests
-pinning the loop shapes of that sweep, the v1.10.1 stewardship
-theme signal storage / audit layer, the v1.10.2
-portfolio-company dialogue record metadata storage / audit layer,
-the v1.10.3 investor escalation candidate storage / audit layer
-(extending the engagement test file), the v1.10.3 corporate
-strategic response candidate storage / audit layer in the
-strategic-response test file, the v1.10.4 industry demand
-condition signal storage / audit layer in the new
-industry-conditions test file, the v1.10.4.1 additive
-type-correct industry-condition cross-reference slot on
-`CorporateStrategicResponseCandidate` exercised in the
-strategic-response test file, the v1.10.5 living-world
-integration that wires the v1.10.1 → v1.10.4.1 storage layer
-into the living reference world demo's per-period sweep
-exercised in `tests/test_living_reference_world.py`, and the
-v1.11.0 capital-market surface — `MarketConditionRecord` /
-`MarketConditionBook` plus the v1.11.0 type-correct
-`trigger_market_condition_ids` slot on
-`CorporateStrategicResponseCandidate` plus the per-period
-capital-market phase in the living reference world — exercised
-in the new `tests/test_market_conditions.py` and extended in
-`tests/test_strategic_response.py` and
-`tests/test_living_reference_world.py`, and the v1.11.1
-capital-market readout — `CapitalMarketReadoutRecord` /
-`CapitalMarketReadoutBook` / `build_capital_market_readout`
-plus the per-period readout phase in the living reference
-world — exercised in the new
-`tests/test_market_surface_readout.py` and extended in
-`tests/test_living_reference_world.py`, plus the v1.11.2
-demo market regime presets, the v1.12.0 firm financial
-latent state, the v1.12.1 investor intent signal, the
-v1.12.2 market environment state, the v1.12.3
-EvidenceResolver / ActorContextFrame substrate, the v1.12.4
-attention-conditioned investor intent (first mechanism-level
-use of attention as a real information bottleneck), and the
-v1.12.5 attention-conditioned valuation lite — new
-`run_attention_conditioned_valuation_refresh_lite` helper
-alongside the existing v1.9.5 helper, routing evidence
-through the v1.12.3 substrate and applying a small documented
-synthetic delta on top of the v1.9.5 pressure-haircut formula
-based on what the resolver surfaced for the valuer; helper-
-level + tests only, orchestrator wiring deferred to a future
-v1.12.5.x sub-milestone — exercised in the extended
-`tests/test_reference_valuation_refresh_lite.py`).
-
-To run only v0 tests, exclude the v1 test files; to run only v1 tests:
-
-```bash
-python -m pytest -q tests/test_valuations.py tests/test_phases.py \
-    tests/test_phase_scheduler.py tests/test_institutions.py \
-    tests/test_external_processes.py tests/test_relationships.py \
-    tests/test_reference_loop.py
-```
-
-## Running the empty kernel CLI
-
-`world/cli.py` runs an empty world kernel for a given number of days, loading
-agents/assets/markets from a YAML file. It does not register any of the eight
-domain spaces or any v1 books — it is the v0 smoke-runner, not a full
-simulation.
-
-From the `japan-financial-world` directory:
-
-```bash
-python -m world.cli --world examples/minimal_world.yaml --start 2026-01-01 --days 30
-```
-
-The output reports the final clock date, the number of registered objects, and
-the number of ledger records produced by the run.
-
-For a populated eight-space world, see
-`tests/test_world_kernel_full_structure.py`. For an end-to-end v1 reference
-loop trace, see `tests/test_reference_loop.py`.
-
-## Repository layout
-
-```
-japan-financial-world/
-├── world/                    # v0 kernel (frozen) + v1 books (frozen)
-│   ├── ids.py, registry.py, clock.py, scheduler.py,
-│   ├── ledger.py, state.py, event_bus.py, events.py,
-│   ├── ownership.py, contracts.py, prices.py,
-│   ├── balance_sheet.py, constraints.py, signals.py,
-│   ├── loader.py, validation.py, kernel.py, cli.py,    # ─── v0
-│   ├── valuations.py,                                  # ─── v1.1
-│   ├── phases.py,                                      # ─── v1.2
-│   ├── institutions.py,                                # ─── v1.3
-│   ├── external_processes.py,                          # ─── v1.4
-│   ├── relationships.py,                               # ─── v1.5
-│   └── reference_loop.py                               # ─── v1.6
-├── spaces/                   # DomainSpace base + 8 concrete spaces (v0)
-│   ├── domain.py
-│   ├── corporate/   banking/   investors/   exchange/
-│   ├── real_estate/ information/ policy/    external/
-├── tests/                    # 632 tests (444 v0 + 188 v1)
-├── docs/                     # design, release, scope, readiness docs
-├── schemas/                  # YAML schema fragments
-├── data/                     # example data
-└── examples/                 # example world YAMLs for the CLI
-```
+---
 
 ## License
 
 See `LICENSE`.
+
+## Disclaimer
+
+This project is research software intended for engine design,
+simulation methodology, and structural exploration of how
+financial worlds can be modeled. It is **not investment
+advice**, **not a calibrated real-world model**, and **not
+production software**. No SLA. No support commitment. No
+guarantee of API stability beyond what each milestone's freeze
+document explicitly promises. See
+[`docs/public_private_boundary.md`](japan-financial-world/docs/public_private_boundary.md)
+for the public / restricted artifact rules.
