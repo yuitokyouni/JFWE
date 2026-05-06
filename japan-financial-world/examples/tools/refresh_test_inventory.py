@@ -177,6 +177,87 @@ _V1_24_LAST_BLOCK_RE = re.compile(
 )
 
 
+_V1_25_LAST_LINE_PREFIX = "v1.25.last test count: "
+_V1_25_LAST_BLOCK_RE = re.compile(
+    r"<!-- v1\.25\.last test inventory pin: BEGIN -->"
+    r".*?"
+    r"<!-- v1\.25\.last test inventory pin: END -->",
+    re.DOTALL,
+)
+
+
+def _format_v1_25_last_block(test_count: int) -> str:
+    """Return the v1.25.last final-freeze inventory block."""
+    return (
+        "<!-- v1.25.last test inventory pin: BEGIN -->\n"
+        "\n"
+        "## v1.25.last — Generic Institutional Investor "
+        "Mandate / Benchmark Pressure freeze (docs-only)\n"
+        "\n"
+        "Final freeze section for the v1.25 sequence. "
+        "v1.25.last ships **no** new code, **no** new "
+        "tests, **no** new RecordTypes, **no** new "
+        "dataclasses, **no** new label vocabularies, "
+        "**no** UI regions, **no** export-schema changes. "
+        "The v1.25 sequence is closed.\n"
+        "\n"
+        "v1.25 is **generic and jurisdiction-neutral** "
+        "(``_like`` archetype labels; no real-world "
+        "institutional category claim; no Japan "
+        "calibration; no real data ingestion).\n"
+        "\n"
+        "Sub-milestones shipped:\n"
+        "\n"
+        "- v1.25.0 (docs-only design pin — generic "
+        "investor mandate / benchmark-pressure layer)\n"
+        "- v1.25.1 (storage — InvestorMandateProfile + "
+        "InvestorMandateBook + closed-set vocabularies + "
+        "INVESTOR_MANDATE_PROFILE_RECORDED ledger event "
+        "type + empty-by-default kernel field)\n"
+        "- v1.25.2 (read-only mandate-attention-context "
+        "readout — InvestorMandateReadout + closed-set "
+        "MANDATE_REVIEW_CONTEXT_LABELS + "
+        "MANDATE_ATTENTION_BIAS_LABELS + deterministic "
+        "markdown renderer)\n"
+        "- v1.25.3 (descriptive-only export section "
+        "(omitted when empty) + minimal Universe-sheet "
+        "Investor mandate context panel; no new tab; "
+        "textContent only)\n"
+        "- v1.25.4 (read-only mandate case study showing "
+        "two archetypes reviewing the same v1.21.3 "
+        "stress readout differently; companion narrative "
+        "doc)\n"
+        "- v1.25.last (this freeze)\n"
+        "\n"
+        "Hard boundary re-pinned: attention / review "
+        "context conditioning only; no portfolio "
+        "allocation; no target weight; no rebalancing; "
+        "no trade / order / execution; no expected "
+        "return / target price / recommendation; no "
+        "tracking-error value; no benchmark identifier; "
+        "no actor decision; no investor / market intent "
+        "emitted; no source-of-truth book mutation. All "
+        "v1.21.last canonical ``living_world_digest`` "
+        "values remain byte-identical at every v1.25.x "
+        "sub-milestone.\n"
+        "\n"
+        "Future candidates (NOT scheduled at v1.25.last): "
+        "v1.26 (Entity Lifecycle + Reporting Calendar "
+        "Foundation, generic), v1.27 (Generic Strategic "
+        "Relationship Network + Annotation Provenance "
+        "Hardening, generic), v2.0 (Japan Public "
+        "Calibration Boundary Design — docs-only; no "
+        "data ingestion), v2.1 / v2.2 (Japan public "
+        "calibration implementations; gated by v2.0). "
+        "v3.x proprietary Japan calibration is not "
+        "public.\n"
+        "\n"
+        f"{_V1_25_LAST_LINE_PREFIX}{test_count}\n"
+        "\n"
+        "<!-- v1.25.last test inventory pin: END -->\n"
+    )
+
+
 def _format_v1_24_last_block(test_count: int) -> str:
     """Return the v1.24.last final-freeze inventory block."""
     return (
@@ -434,6 +515,17 @@ def refresh_inventory(test_count: int) -> None:
         if not text.endswith("\n"):
             text += "\n"
         text = text + "\n" + block_v1_24_last
+
+    # v1.25.last freeze block.
+    block_v1_25_last = _format_v1_25_last_block(test_count)
+    if _V1_25_LAST_BLOCK_RE.search(text):
+        text = _V1_25_LAST_BLOCK_RE.sub(
+            block_v1_25_last.rstrip("\n"), text
+        )
+    else:
+        if not text.endswith("\n"):
+            text += "\n"
+        text = text + "\n" + block_v1_25_last
 
     _DOC_PATH.write_text(text, encoding="utf-8")
 

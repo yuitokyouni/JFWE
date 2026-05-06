@@ -1364,3 +1364,187 @@ touches the mandate / benchmark-pressure /
 mandate-attention-context layer must explicitly
 re-open scope under a new design pin (a v1.25.0a
 or later correction); silent extension is forbidden.
+
+---
+
+## 21. v1.25.last freeze (docs-only)
+
+*Final pin section for the v1.25 sequence. Closes the
+**Generic Institutional Investor Mandate / Benchmark
+Pressure** layer milestone as a docs-only freeze;
+v1.25.last ships **no** new code, **no** new tests,
+**no** new ledger event types, **no** new RecordTypes,
+**no** new label vocabularies, **no** UI changes, and
+**no** export-schema changes.*
+
+### 21.1 What v1.25 is (re-pinned)
+
+- v1.25 is **generic and jurisdiction-neutral**. The
+  ``_like`` archetype suffix in `MANDATE_TYPE_LABELS`
+  is binding: every label (`pension_like` /
+  `insurance_like` / `active_manager_like` /
+  `passive_manager_like` / `sovereign_like` /
+  `endowment_like` / `unknown`) is an archetype
+  descriptor, **not** a real institutional category.
+- v1.25 **conditions investor attention / review
+  context only**. The v1.25.2 read-only mandate
+  attention/review-context readout exposes
+  closed-set `review_context_labels` +
+  `selected_attention_bias_labels`; no actor
+  behavior emerges.
+- v1.25 **does not add a time-varying universe**.
+  Entity lifecycle (listings / delistings / merges
+  / renames / splits) is the v1.26 candidate.
+- v1.25 **does not add reporting calendar
+  heterogeneity**. Per-entity fiscal-year-end
+  variation, disclosure clustering, and reporting
+  intensity are the v1.26 candidate.
+- v1.25 **does not add cross-shareholding or strategic
+  relationship network**. Generic synthetic
+  relationship substrate is the v1.27 candidate.
+- v1.25 is **NOT Japan calibration**. v1.25 ships no
+  Japan-specific structure, no real Japanese issuer
+  ids, no real Japanese disclosure calendar, no
+  EDINET adapter, no JPX / TOPIX / Nikkei / GICS /
+  MSCI / S&P / FactSet / Bloomberg / Refinitiv
+  dependency. Japan public calibration is the
+  v2.0 candidate (boundary design only first; no
+  data ingestion).
+- v1.25 **does not create trades, allocations,
+  recommendations, expected returns, target
+  prices, or actions**. The v1.25.0 forbidden-token
+  delta + the v1.25.x dataclass field-name guard
+  reject every actor-behavior token at construction
+  time.
+
+### 21.2 Shipped sequence
+
+| Sub-milestone | Surface | What it shipped |
+| ------------- | ------- | --------------- |
+| **v1.25.0** | docs only | This design pin (§§1-20), §134 in `world_model.md`, README §9 row. |
+| v1.25.1 | runtime + tests | `InvestorMandateProfile` + `InvestorMandateBook` storage in [`world/investor_mandates.py`](../world/investor_mandates.py); closed-set vocabularies (mandate type / benchmark pressure / liquidity need / liability horizon / stewardship priority / review frequency / concentration tolerance / status / visibility); 19 default boundary flags (non-removable); `INVESTOR_MANDATE_PROFILE_RECORDED` ledger event type added to [`world/ledger.py`](../world/ledger.py); `investor_mandates: InvestorMandateBook` field wired into `WorldKernel`; v1.25.0 mandate forbidden-token delta + composed `FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES` added to [`world/forbidden_tokens.py`](../world/forbidden_tokens.py). 10 pin tests. |
+| v1.25.2 | runtime + tests | `InvestorMandateReadout` + `build_investor_mandate_readout(...)` + `render_investor_mandate_readout_markdown(...)` in [`world/investor_mandate_readout.py`](../world/investor_mandate_readout.py). Closed-set `MANDATE_ATTENTION_BIAS_LABELS` + `MANDATE_REVIEW_CONTEXT_LABELS`. 8 pin tests. |
+| v1.25.3 | export + UI + tests | Optional descriptive-only `investor_mandate_readout` payload section on `RunExportBundle` (cardinality: one entry per profile; empty-by-default; omitted from JSON when empty so v1.21.last digests stay byte-identical) via [`world/investor_mandate_export.py`](../world/investor_mandate_export.py) + minimal "Investor mandate context" panel inside the existing Universe sheet of [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html) (no new tab; `textContent` only). 15 pin tests. |
+| v1.25.4 | example + tests + docs | Read-only mandate case study showing two archetypes reviewing the same v1.21.3 stress readout differently. [`world/investor_mandate_case_study.py`](../world/investor_mandate_case_study.py) + [`docs/case_study_002_investor_mandate_attention_context.md`](case_study_002_investor_mandate_attention_context.md). 8 pin tests. |
+| **v1.25.last** | docs only | This freeze section. §134.6 final freeze pin in `world_model.md`. README §4 / §9 refresh. v1.25 sequence frozen. |
+
+### 21.3 Pinned at v1.25.last
+
+- `pytest -q`: **5032 / 5032 passing** (+41 vs
+  v1.24.last 4991; sub-milestone deltas: v1.25.1 +10,
+  v1.25.2 +8, v1.25.3 +15, v1.25.4 +8).
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at every v1.25.x sub-
+  milestone:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` test-fixture
+    — `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- Source-of-truth book mutations from v1.25.x
+  helpers: **0**.
+- Ledger emissions from v1.25.x helpers (other than
+  the one `INVESTOR_MANDATE_PROFILE_RECORDED` event
+  per caller-initiated `add_profile(...)` call): **0**.
+- New `RecordType` values: **1**
+  (`INVESTOR_MANDATE_PROFILE_RECORDED`).
+- New dataclasses: **2**
+  (`InvestorMandateProfile`, `InvestorMandateReadout`).
+- New label vocabularies: **0** outside the design-
+  pinned closed sets.
+- New tabs: **0** (v1.20.5 11-tab ↔ 11-sheet
+  bijection preserved).
+- Export schema changes: **1 optional /
+  omitted-when-empty field**
+  (`investor_mandate_readout`) on `RunExportBundle`.
+- New investor / market intent records emitted: **0**
+  (the v1.25.x layer is read-only with respect to the
+  v1.15.x / v1.16.x intent surface).
+
+### 21.4 Hard boundary re-pinned at v1.25.last
+
+The v1.25.last hard boundary is identical to the
+v1.24.last boundary plus the v1.25-specific
+additions, re-pinned in full:
+
+- No price formation. No trading. No order. No
+  execution. No clearing. No settlement. No
+  financing execution.
+- No forecast / expected return / target price /
+  recommendation / investment advice.
+- No magnitude / probability / expected response.
+- No firm decision / investor action / bank approval
+  logic.
+- No real data / Japan calibration / LLM execution.
+- No interaction auto-inference. No aggregate /
+  combined / net / dominant / composite stress
+  output.
+- No auto-annotation (v1.24.0 boundary applies).
+- **No portfolio allocation / target weight /
+  overweight / underweight / rebalancing.**
+- **No tracking-error value / benchmark identifier /
+  alpha / performance / expected_alpha / active
+  share.**
+- **No mandate-as-action token (no
+  `mandate_action` / `mandate_decision` /
+  `mandate_buy_signal` / `mandate_sell_signal`).**
+- **No investor / market intent emitted from the
+  v1.25 surface.**
+
+### 21.5 Future optional candidates (NOT planned at v1.25.last)
+
+| Future milestone | Description | Status |
+| ---------------- | ----------- | ------ |
+| v1.26 candidate | **Entity Lifecycle + Reporting Calendar Foundation** — generic, country-neutral substrate adding `UniverseEventRecord` (entity_listed / delisted / merged / renamed / split / status_changed) + `ReportingCalendarProfile` (fiscal_year_end_month_label / disclosure_cluster_label / reporting_intensity_label). Synthetic only. Prepares the substrate for future Japan public calibration **without** ingesting Japan data. | Optional candidate. Not started. Requires a fresh design pin. |
+| v1.27 candidate | **Generic Strategic Relationship Network + Annotation Provenance Hardening** — `StrategicRelationshipRecord` (strategic_holding_like / supplier_customer_like / group_affiliation_like / lender_relationship_like / governance_relationship_like / commercial_relationship_like / unknown) **without** percentages, voting power, or real company names; companion `ManualAnnotationProvenanceRecord` for pseudonymous reviewer-role / authority / authorization metadata (no real-person data; no LLM authoring). Prepares the substrate for future Japan cross-shareholding calibration **without** ingesting EDINET. | Optional candidate. Not started. Requires a fresh design pin. |
+| v2.0 candidate | **Japan Public Calibration Boundary Design (docs-only)** — design packet covering public-data-only boundary, license / redistribution policy, EDINET adapter design (no implementation), JPX / TOPIX / Nikkei / GICS dependency policy, real-company-id policy. **No data ingestion in v2.0.** Implementation lands at v2.1 / v2.2 under fresh design pins. | Optional candidate. Not started. Gated by license review and boundary design. |
+| v2.1 candidate | **Japan Universe + Disclosure Calendar Public Calibration** — synthetic v1.26 universe + reporting calendar substrate calibrated to public Japanese data (license-permitting). Real Japanese issuer ids only after v2.0 boundary design pins them. | Optional candidate. Not started. Gated by v2.0. |
+| v2.2 candidate | **Japan Cross-Shareholding Public Data Adapter** — public extraction adapter design for v1.27 strategic-relationship substrate. **Adapter design first; implementation only after license / redistribution policy is pinned.** | Optional candidate. Not started. Gated by v2.0 + v1.27. |
+| v3.x | **Proprietary Japan Calibration** — not public; would live in a private repository and would preserve every public-FWE boundary. | Not public. |
+
+The v1.25 sequence is **frozen**. Subsequent work
+touching the mandate layer requires a fresh design
+pin. v1.26 is the next likely milestone, but its
+implementation requires a fresh design pin; v1.25.last
+makes no commitment about when v1.26 starts.
+
+### 21.6 Closing statement
+
+v1.25.last freezes the institutional investor mandate
+/ benchmark-pressure layer as a **generic, jurisdiction-
+neutral attention-context conditioning surface**. The
+sequence:
+
+1. Did not move any digest.
+2. Added one `RecordType`
+   (`INVESTOR_MANDATE_PROFILE_RECORDED`) and two
+   dataclasses (`InvestorMandateProfile`,
+   `InvestorMandateReadout`) — both empty-by-default
+   on the kernel.
+3. Did not introduce any label vocabulary outside the
+   design-pinned closed sets.
+4. Did not infer interactions, aggregate stresses,
+   produce any predictive metric, or emit any
+   investor / market intent.
+5. Did not create any portfolio allocation, target
+   weight, trade, order, recommendation, or
+   actor decision — and forbids them at construction
+   time.
+6. Demonstrated mandate-conditioned attention
+   divergence via the v1.25.4 case study without
+   inventing new audit semantics.
+
+The v1.25 surface is the next-to-last public-v1.x
+substrate addition before the v2.0 Japan public
+calibration boundary design begins. **v1.25 explicitly
+does not make the system Japan-ready**; that gating
+work is v1.26 (entity lifecycle + reporting calendar
+foundation) → v1.27 (generic strategic relationship
+network) → v2.0 (Japan public calibration boundary
+design only).

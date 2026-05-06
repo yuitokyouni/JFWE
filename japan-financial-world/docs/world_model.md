@@ -11832,3 +11832,122 @@ v1.25.x sub-milestone.
   would preserve every public-FWE boundary.
 
 Silent extension of v1.25 is forbidden.
+
+### 134.6 v1.25.last freeze (docs-only)
+
+*Final freeze section for the v1.25 sequence.
+v1.25.last ships **no** new code, **no** new tests,
+**no** new RecordTypes, **no** new dataclasses, **no**
+new label vocabularies, **no** UI regions, **no**
+export-schema changes. The v1.25 sequence is closed.*
+
+**v1.25 is complete as a generic, jurisdiction-neutral
+attention-context conditioning surface.** The five
+sub-milestones — v1.25.0 design pin, v1.25.1 storage,
+v1.25.2 read-only mandate-attention-context readout,
+v1.25.3 export + minimal UI, v1.25.4 case study — are
+all shipped and frozen at v1.25.last.
+
+**Pinned at v1.25.last:**
+
+- `pytest -q`: 5032 / 5032 passing.
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at every v1.25.x sub-
+  milestone.
+- Source-of-truth book mutations from v1.25.x
+  helpers: 0.
+- Ledger emissions from v1.25.x helpers: 0 (other
+  than the one `INVESTOR_MANDATE_PROFILE_RECORDED`
+  event per caller-initiated `add_profile(...)` call).
+- New `RecordType` values: 1
+  (`INVESTOR_MANDATE_PROFILE_RECORDED`).
+- New dataclasses: 2 (`InvestorMandateProfile`,
+  `InvestorMandateReadout`).
+- New tabs: 0.
+- Export schema changes: 1 optional /
+  omitted-when-empty field
+  (`investor_mandate_readout`).
+- New investor / market intent records emitted: 0.
+
+**v1.25 is generic and jurisdiction-neutral (binding):**
+
+- v1.25 conditions investor attention / review
+  context only.
+- v1.25 does **not** add a time-varying universe
+  (entity lifecycle is the v1.26 candidate).
+- v1.25 does **not** add reporting calendar
+  heterogeneity (per-entity fiscal-year-end
+  variation is the v1.26 candidate).
+- v1.25 does **not** add cross-shareholding or
+  strategic relationship network (generic synthetic
+  relationship substrate is the v1.27 candidate).
+- v1.25 is **NOT Japan calibration**. No Japan-
+  specific structure, no real Japanese issuer ids,
+  no real Japanese disclosure calendar, no EDINET
+  adapter, no JPX / TOPIX / Nikkei / GICS / MSCI /
+  S&P / FactSet / Bloomberg / Refinitiv dependency.
+- v1.25 does **not** create trades, allocations,
+  recommendations, expected returns, target prices,
+  or any actor decision.
+
+**Hard boundary re-pinned at v1.25.last** (identical
+to v1.24.last plus v1.25-specific additions):
+
+- No price formation. No trading. No order. No
+  execution.
+- No forecast / expected return / target price /
+  recommendation / investment advice.
+- No magnitude / probability / expected response.
+- No firm decision / investor action / bank
+  approval.
+- No real data / Japan calibration / LLM execution.
+- No interaction auto-inference. No aggregate /
+  combined / net / dominant / composite stress
+  output.
+- No auto-annotation (v1.24.0 boundary applies).
+- **No portfolio allocation / target weight /
+  overweight / underweight / rebalancing.**
+- **No tracking-error value / benchmark identifier /
+  alpha / performance / expected_alpha / active
+  share.**
+- **No mandate-as-action token.**
+- **No investor / market intent emitted from the
+  v1.25 surface.**
+
+**Future candidates (NOT scheduled, NOT pre-committed
+at v1.25.last):**
+
+- **v1.26 candidate — Entity Lifecycle + Reporting
+  Calendar Foundation.** Generic, country-neutral
+  substrate (`UniverseEventRecord` +
+  `ReportingCalendarProfile`). Synthetic only.
+  Prepares the substrate for future Japan public
+  calibration **without** ingesting Japan data.
+- **v1.27 candidate — Generic Strategic Relationship
+  Network + Annotation Provenance Hardening.**
+  `StrategicRelationshipRecord` (no percentages, no
+  voting power, no real company names) +
+  `ManualAnnotationProvenanceRecord` (pseudonymous,
+  no real-person data, no LLM authoring).
+- **v2.0 candidate — Japan Public Calibration
+  Boundary Design (docs-only).** Design packet only;
+  no data ingestion. Public data only; license /
+  redistribution policy gated.
+- **v2.1 candidate — Japan Universe + Disclosure
+  Calendar Public Calibration.** Implementation
+  gated by v2.0 boundary design.
+- **v2.2 candidate — Japan Cross-Shareholding
+  Public Data Adapter.** Adapter design first;
+  implementation only after license / redistribution
+  policy is pinned.
+- **v3.x — proprietary Japan calibration.** Not
+  public.
+
+The v1.25 sequence is **frozen**. Any subsequent
+change to the mandate / benchmark-pressure /
+mandate-attention-context layer requires a fresh
+design pin under a v1.25.0a or later correction.
+Silent extension of v1.25.last is forbidden.
