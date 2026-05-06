@@ -11951,3 +11951,154 @@ change to the mandate / benchmark-pressure /
 mandate-attention-context layer requires a fresh
 design pin under a v1.25.0a or later correction.
 Silent extension of v1.25.last is forbidden.
+
+## 135 v1.26 — Entity Lifecycle + Reporting Calendar Foundation (design pointer, **v1.26.0 design-only**)
+
+*Constitutional position of the v1.26 generic, country-
+neutral substrate that prepares public-v1.x for future
+Japan public calibration without using any Japan data.
+Anchored to the v1.25.last freeze (§134.6) and the
+post-v1.25 substrate-gap review.*
+
+The binding design pin lives in
+[`v1_26_entity_lifecycle_reporting_calendar_foundation.md`](v1_26_entity_lifecycle_reporting_calendar_foundation.md).
+This section is the constitutional pointer.
+
+### 135.1 Scope statement (binding)
+
+- **Generic and country-neutral.** The v1.26
+  substrate adds two append-only storage primitives
+  + one read-only readout — not a Japan
+  calibration. No real data ingestion. No real
+  company name. No EDINET / TDnet / J-Quants /
+  JPX / TOPIX / Nikkei / GICS / MSCI / S&P /
+  FactSet / Bloomberg / Refinitiv dependency.
+- **Substrate primitives only.** v1.26 closes two
+  substrate gaps the post-v1.25 review identified:
+  time-varying universe (entity listings /
+  delistings / mergers / renames / splits / status
+  changes) and reporting-calendar heterogeneity
+  (per-entity fiscal-year-end month + quarterly
+  reporting months + disclosure cluster +
+  reporting intensity). Neither primitive emits any
+  actor decision; both are descriptive label
+  surfaces.
+- **Append-only.** No event ever mutates a prior
+  event; no profile ever mutates a prior profile;
+  no v1.26 record ever mutates any pre-existing
+  source-of-truth book.
+- **Empty-by-default on the kernel.** Both
+  `UniverseEventBook` and
+  `ReportingCalendarProfileBook` are wired with
+  `field(default_factory=...)`. An empty book emits
+  no ledger record. Therefore a kernel with no
+  `UniverseEventRecord` continues to run as a
+  static universe (exactly as it did at v1.25.last
+  and every prior freeze); a kernel with no
+  `ReportingCalendarProfile` continues to run with
+  the uniform-reporting semantics implied by v1.19's
+  `monthly_reference` profile. Every v1.21.last
+  canonical `living_world_digest` remains byte-
+  identical at every v1.26.x sub-milestone.
+
+### 135.2 Sequence map
+
+| Sub-milestone | Surface | What it ships |
+| ------------- | ------- | ------------- |
+| **v1.26.0** | docs only | The design pin + this §135 + README §9 row. |
+| v1.26.1 | runtime + tests | `UniverseEventRecord` + `UniverseEventBook` storage in [`world/universe_events.py`](../world/universe_events.py) (NEW). Closed-set `UNIVERSE_EVENT_TYPE_LABELS` (entity_listed / entity_delisted / entity_merged / entity_renamed / entity_split / entity_status_changed / unknown). Default boundary flags. v1.26.0 forbidden-token delta (event-side subset). New `UNIVERSE_EVENT_RECORDED` `RecordType`. Empty-by-default kernel field. ~ +12 tests. |
+| v1.26.2 | runtime + tests | `ReportingCalendarProfile` + `ReportingCalendarProfileBook` storage in [`world/reporting_calendar_profiles.py`](../world/reporting_calendar_profiles.py) (NEW). Closed-set `MONTH_LABELS` (12 months + unknown), `DISCLOSURE_CLUSTER_LABELS` (concentrated / moderate / dispersed / unknown), `REPORTING_INTENSITY_LABELS` (low / medium / high / unknown). New `REPORTING_CALENDAR_PROFILE_RECORDED` `RecordType`. Empty-by-default kernel field. ~ +12 tests. |
+| v1.26.3 | runtime + tests | `UniverseCalendarReadout` + `build_universe_calendar_readout(...)` + deterministic markdown renderer in [`world/universe_calendar_readout.py`](../world/universe_calendar_readout.py) (NEW). Read-only / no ledger emission / no mutation. Active-set computation walks events in `effective_period_id` order. ~ +10 tests. |
+| v1.26.4 | export + UI + tests | Optional descriptive-only `universe_calendar_readout` payload section on `RunExportBundle` (omitted-when-empty so v1.21.last digests stay byte-identical) + minimal "Universe / calendar" panel inside the existing Universe sheet (no new tab; `textContent` only). ~ +8 tests. |
+| v1.26.last | docs only | Final freeze. Sequence map, hard-boundary re-pin, future candidates. |
+
+The sequence is **strictly serial**.
+
+### 135.3 What v1.26 is **NOT** (binding)
+
+- **NOT Japan calibration.** No Japanese fiscal-
+  year cluster, no Japanese disclosure cluster, no
+  real Japanese issuer ids, no real Japanese
+  reporting calendar.
+- **NOT real data ingestion.** No external dataset
+  download, parse, or ingest.
+- **NOT a forecast / event-study / earnings-
+  surprise surface.** The v1.26.0 forbidden-token
+  delta hard-forbids `earnings_surprise` /
+  `earnings_beat` / `earnings_miss` /
+  `event_study_alpha` / `event_window_return` /
+  `post_event_drift` / `calendar_arbitrage`.
+- **NOT a portfolio / index surface.** The
+  v1.26.0 delta hard-forbids `universe_weight` /
+  `constituent_weight` / `index_weight_change` /
+  `rebalance_event`.
+- **NOT a strategic-relationship surface.**
+  Cross-shareholding / supplier / governance
+  relationships are the v1.27 candidate.
+- **NOT a UI rebuild.** No new tab; v1.26.4's
+  optional panel sits inside the existing
+  Universe sheet.
+- **NOT an entity book.** v1.26 cites existing
+  entity ids (firms / banks / investors) via plain-
+  id citation. The `UniverseEventBook` is the
+  *event ledger* over those existing ids; v1.26
+  does not introduce a canonical "entities" book.
+- **NOT a market-effect inference.** A reporting-
+  calendar profile says "this entity's fiscal year
+  ends in `month_03`"; it does not say "this
+  entity's earnings move the market in `month_05`".
+
+### 135.4 Hard boundary (re-pinned at v1.26.0)
+
+v1.26.0 inherits and re-pins the v1.25.last hard
+boundary in full (§134.6). v1.26.x adds the v1.26-
+specific prohibitions:
+
+- **No event-to-price mapping.** No
+  `event_to_price_mapping` /
+  `earnings_surprise_to_alpha` field, label, or
+  value.
+- **No earnings-surprise / beat / miss
+  inference.**
+- **No event-study alpha / event-window-return /
+  post-event-drift / calendar-arbitrage claim.**
+- **No EDINET / TDnet / J-Quants / FSA filing
+  adapter** at v1.26.x. A v2.0 design pin will
+  consider EDINET specifically.
+- **No real Japanese fiscal-year distribution
+  claim.** A `concentrated`
+  `disclosure_cluster_label` describes synthetic
+  clustering; v1.26 explicitly does not assert
+  the synthetic distribution mirrors any real
+  jurisdiction.
+- **No universe weight / constituent weight /
+  rebalance event.**
+
+Digest preservation is guaranteed by the empty-by-
+default rule.
+
+### 135.5 Future optional candidates (NOT planned, NOT scoped at v1.26.0)
+
+- **v1.27 candidate — Generic Strategic
+  Relationship Network + Annotation Provenance
+  Hardening.** Generic substrate for cross-
+  shareholding / supplier / governance / lender
+  relationships; pseudonymous reviewer-role
+  metadata. No real company names; no LLM
+  authoring. Independent of v1.26.
+- **v2.0 candidate — Japan Public Calibration
+  Boundary Design (docs-only).** Design packet
+  only; no data ingestion. v2.0 will calibrate
+  on top of v1.26 + v1.27 substrate primitives
+  if license / redistribution policy permits.
+- **v2.1 candidate — Japan Universe + Disclosure
+  Calendar Public Calibration.** Implementation
+  gated by v2.0.
+- **v2.2 candidate — Japan Cross-Shareholding
+  Public Data Adapter.** Adapter design first;
+  implementation only after license /
+  redistribution policy is pinned.
+- **v3.x — proprietary Japan calibration.** Not
+  public.
+
+Silent extension of v1.26 is forbidden.
