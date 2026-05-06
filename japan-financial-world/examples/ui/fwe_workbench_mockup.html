@@ -1403,6 +1403,64 @@
       margin-bottom: 14px;
     }
 
+    /* v1.25.3 — Investor mandate context panel. Mirrors
+       the v1.24.3 manual-annotations-panel CSS for visual
+       consistency; sits below the manual-annotations panel
+       in the Universe sheet. No new tab; no new sheet;
+       textContent only. */
+    .investor-mandate-panel {
+      margin-bottom: 14px;
+    }
+
+    .investor-mandate-empty {
+      padding: 10px 12px;
+      border: 1px dashed #cdcac1;
+      background: #fafaf6;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .investor-mandate-content {
+      margin-top: 6px;
+    }
+
+    .investor-mandate-entry {
+      padding: 10px 12px;
+      border: 1px solid #e1ddd2;
+      background: #fdfdf9;
+      margin-top: 8px;
+    }
+
+    .investor-mandate-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      font-size: 12px;
+    }
+
+    .investor-mandate-summary .label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .investor-mandate-summary .value {
+      font-family: var(--font-mono);
+    }
+
+    .investor-mandate-list {
+      margin-top: 8px;
+      list-style: none;
+      padding-left: 0;
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .investor-mandate-list li {
+      padding: 2px 0;
+    }
+
     /* v1.24.3 — Manual annotations panel. Mirrors the
        v1.22.2 active-stresses-strip CSS for visual
        consistency; sits below the strip in the Universe
@@ -3012,6 +3070,42 @@
               >
                 <div class="manual-annotations-entries"
                   id="manual-annotations-entries"></div>
+              </div>
+            </section>
+
+            <!-- =============================================================== -->
+            <!-- v1.25.3 — Investor mandate context panel.                       -->
+            <!-- Read-only reflection of the v1.25.2 InvestorMandateReadout via  -->
+            <!-- the v1.25.3 ``bundle.investor_mandate_readout`` payload         -->
+            <!-- section. Sits below the Manual annotations panel. No new tab.  -->
+            <!-- No score. No allocation / target weight / performance / chart. -->
+            <!-- No red/green encoding. Renders an empty-state placeholder when -->
+            <!-- the bundle carries no mandate readout (the v1.25.3 omission    -->
+            <!-- rule keeps pre-v1.25 bundles byte-identical).                  -->
+            <!-- =============================================================== -->
+            <section
+              class="card investor-mandate-panel"
+              data-section="investor-mandate"
+              id="card-investor-mandate"
+              aria-live="polite"
+            >
+              <h3 class="card-title">
+                Investor mandate context
+                <span class="tag">v1.25.3 · Read-only mandate readout</span>
+              </h3>
+              <div
+                class="investor-mandate-empty muted"
+                id="investor-mandate-empty"
+              >
+                No investor mandate readout in this bundle.
+              </div>
+              <div
+                class="investor-mandate-content"
+                id="investor-mandate-content"
+                style="display:none;"
+              >
+                <div class="investor-mandate-entries"
+                  id="investor-mandate-entries"></div>
               </div>
             </section>
 
@@ -5302,6 +5396,13 @@
         if (typeof renderManualAnnotationsFromBundle === 'function') {
           renderManualAnnotationsFromBundle({});
         }
+        // v1.25.3 — also reset the Investor mandate
+        // context panel; the legacy inline manifest
+        // predates the v1.25.3 ``investor_mandate_readout``
+        // payload section.
+        if (typeof renderInvestorMandateFromBundle === 'function') {
+          renderInvestorMandateFromBundle({});
+        }
         // v1.23.2b — record that the visible state came from
         // the LEGACY inline sample fixture (a v1.16-era
         // snapshot kept only so the workbench loads under
@@ -6335,6 +6436,23 @@
             "renderManualAnnotationsFromBundle missing"
           );
         }
+        // v1.25.3 self-check — Investor mandate panel.
+        if (!$id('card-investor-mandate')) {
+          failures.push("Investor mandate panel missing");
+        }
+        if (!$id('investor-mandate-empty')
+            || !$id('investor-mandate-content')
+            || !$id('investor-mandate-entries')) {
+          failures.push(
+            "Investor mandate panel slots missing"
+          );
+        }
+        if (typeof renderInvestorMandateFromBundle
+            !== 'function') {
+          failures.push(
+            "renderInvestorMandateFromBundle missing"
+          );
+        }
         if (typeof SENSITIVITY_LABELS === 'undefined'
             || !Array.isArray(SENSITIVITY_LABELS)
             || SENSITIVITY_LABELS.indexOf('low') === -1
@@ -6970,6 +7088,13 @@
         // (which is the pre-v1.24 / no-annotation case
         // for every existing run profile).
         renderManualAnnotationsFromBundle(bundle);
+        // v1.25.3 — Investor mandate context panel. Reads
+        // ``bundle.investor_mandate_readout`` (v1.25.3
+        // descriptive-only payload section). Empty-state
+        // placeholder when the section is absent or empty
+        // (which is the pre-v1.25 / no-mandate case for
+        // every existing run profile).
+        renderInvestorMandateFromBundle(bundle);
       }
 
       // -----------------------------------------------------------------
@@ -7886,6 +8011,144 @@
           }
           entriesEl.appendChild(
             _buildManualAnnotationsEntry(entry)
+          );
+        }
+        emptyEl.style.display = 'none';
+        contentEl.style.display = '';
+        if (window.scrollX !== sx
+            || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+      }
+
+      // v1.25.3 — Investor mandate context renderer.
+      //
+      // Reads ``bundle.investor_mandate_readout`` (the
+      // v1.25.3 descriptive-only payload section). When
+      // the section is absent or empty, the panel stays
+      // in the neutral empty state. When present, the
+      // renderer shows mandate type / benchmark pressure
+      // / liquidity need / liability horizon labels +
+      // stewardship priority list + review context label
+      // list + selected attention bias label list +
+      // warnings.
+      //
+      // Discipline:
+      // - textContent only — never innerHTML — for any
+      //   caller-supplied value.
+      // - No allocation / target weight / performance /
+      //   chart / score / red-or-green encoding.
+      // - Scroll position is captured + restored.
+      function _buildInvestorMandateEntry(entry) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'investor-mandate-entry';
+
+        var summary = document.createElement('div');
+        summary.className = 'investor-mandate-summary';
+        var pairs = [
+          ['Investor id',
+           String(entry.investor_id || '—')],
+          ['Mandate profile id',
+           String(entry.mandate_profile_id || '—')],
+          ['Mandate type',
+           String(entry.mandate_type_label || '—')],
+          ['Benchmark pressure',
+           String(entry.benchmark_pressure_label || '—')],
+          ['Liquidity need',
+           String(entry.liquidity_need_label || '—')],
+          ['Liability horizon',
+           String(entry.liability_horizon_label || '—')],
+        ];
+        for (var i = 0; i < pairs.length; i++) {
+          var labelEl = document.createElement('div');
+          labelEl.className = 'label';
+          labelEl.textContent = pairs[i][0];
+          var valueEl = document.createElement('div');
+          valueEl.className = 'value';
+          valueEl.textContent = pairs[i][1];
+          summary.appendChild(labelEl);
+          summary.appendChild(valueEl);
+        }
+        wrapper.appendChild(summary);
+
+        function _appendList(title, items) {
+          var heading = document.createElement('div');
+          heading.className = 'label';
+          heading.style.marginTop = '8px';
+          heading.textContent = title;
+          wrapper.appendChild(heading);
+          var ul = document.createElement('ul');
+          ul.className = 'investor-mandate-list';
+          if (!items || items.length === 0) {
+            var li0 = document.createElement('li');
+            li0.textContent = '(none)';
+            ul.appendChild(li0);
+          } else {
+            for (var j = 0; j < items.length; j++) {
+              var li = document.createElement('li');
+              li.textContent = String(items[j]);
+              ul.appendChild(li);
+            }
+          }
+          wrapper.appendChild(ul);
+        }
+
+        _appendList(
+          'Stewardship priorities',
+          entry.stewardship_priority_labels || []
+        );
+        _appendList(
+          'Review context labels',
+          entry.review_context_labels || []
+        );
+        _appendList(
+          'Selected attention bias labels',
+          entry.selected_attention_bias_labels || []
+        );
+        _appendList(
+          'Cited mandate fields',
+          entry.cited_mandate_fields || []
+        );
+        var warnings = entry.warnings || [];
+        if (warnings.length > 0) {
+          _appendList('Warnings', warnings);
+        }
+        return wrapper;
+      }
+
+      function renderInvestorMandateFromBundle(bundle) {
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+
+        var emptyEl = $id('investor-mandate-empty');
+        var contentEl = $id('investor-mandate-content');
+        var entriesEl = $id('investor-mandate-entries');
+        if (!emptyEl || !contentEl || !entriesEl) {
+          return;
+        }
+        while (entriesEl.firstChild) {
+          entriesEl.removeChild(entriesEl.firstChild);
+        }
+        var section = (bundle && Array.isArray(
+          bundle.investor_mandate_readout
+        )) ? bundle.investor_mandate_readout : [];
+        if (section.length === 0) {
+          emptyEl.style.display = '';
+          contentEl.style.display = 'none';
+          if (window.scrollX !== sx
+              || window.scrollY !== sy) {
+            window.scrollTo(sx, sy);
+          }
+          return;
+        }
+        for (var i = 0; i < section.length; i++) {
+          var entry = section[i];
+          if (!entry || typeof entry !== 'object'
+              || Array.isArray(entry)) {
+            continue;
+          }
+          entriesEl.appendChild(
+            _buildInvestorMandateEntry(entry)
           );
         }
         emptyEl.style.display = 'none';

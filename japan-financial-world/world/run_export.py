@@ -709,6 +709,55 @@ def _normalize_manual_annotation_readout(
     return tuple(out)
 
 
+def _normalize_investor_mandate_readout(
+    value: (
+        Iterable[Mapping[str, Any]]
+        | tuple[Mapping[str, Any], ...]
+        | None
+    ),
+    *,
+    field_name: str = "investor_mandate_readout",
+) -> tuple[dict[str, Any], ...]:
+    """Normalise the v1.25.3 ``investor_mandate_readout``
+    payload section to a tuple of frozen-dict-like
+    entries. Cardinality is unbounded at the bundle layer
+    (one entry per mandate profile in the kernel); the
+    export helper iterates the
+    :class:`world.investor_mandates.InvestorMandateBook`
+    and projects each profile.
+
+    Forbidden-token boundary scan applies at every key +
+    every whole-string value at any depth, against the
+    v1.23.1 / v1.24.0 / v1.25.0 canonical
+    :data:`world.forbidden_tokens.FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES`
+    composition.
+    """
+    from world.investor_mandate_export import (
+        _scan_export_entry_for_forbidden,
+    )
+    if value is None:
+        return ()
+    if isinstance(value, Mapping):
+        raise ValueError(
+            f"{field_name} must be a list / tuple of "
+            "entries; got a single Mapping (wrap it in a "
+            "list)"
+        )
+    out: list[dict[str, Any]] = []
+    for entry in value:
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                f"{field_name} entries must be Mapping; "
+                f"got {type(entry).__name__}"
+            )
+        normalised = dict(entry)
+        _scan_export_entry_for_forbidden(
+            normalised, field_name=field_name
+        )
+        out.append(normalised)
+    return tuple(out)
+
+
 def _normalize_boundary_flags(
     value: Mapping[str, Any] | Iterable[tuple[str, bool]] | None,
     *,
@@ -816,6 +865,16 @@ class RunExportBundle:
     manual_annotation_readout: tuple[Mapping[str, Any], ...] = (
         field(default_factory=tuple)
     )
+    # v1.25.3 — descriptive-only investor-mandate readout
+    # reflection section. One entry per mandate profile in
+    # the kernel's ``InvestorMandateBook``. Empty by default;
+    # omitted from ``to_dict`` / ``bundle_to_json`` output
+    # when empty so pre-v1.25 bundles stay byte-identical
+    # (every v1.21.last canonical ``living_world_digest`` is
+    # preserved at v1.25.3).
+    investor_mandate_readout: tuple[Mapping[str, Any], ...] = (
+        field(default_factory=tuple)
+    )
 
     REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
         "bundle_id",
@@ -898,6 +957,14 @@ class RunExportBundle:
                 field_name="manual_annotation_readout",
             ),
         )
+        object.__setattr__(
+            self,
+            "investor_mandate_readout",
+            _normalize_investor_mandate_readout(
+                self.investor_mandate_readout,
+                field_name="investor_mandate_readout",
+            ),
+        )
 
     # -- serialisation -----------------------------------------------
 
@@ -947,6 +1014,14 @@ class RunExportBundle:
             out["manual_annotation_readout"] = [
                 dict(e) for e in self.manual_annotation_readout
             ]
+        # v1.25.3 — investor mandate readout omitted when
+        # empty (default), preserving every pre-v1.25
+        # bundle digest byte-identical.
+        if self.investor_mandate_readout:
+            out["investor_mandate_readout"] = [
+                dict(e)
+                for e in self.investor_mandate_readout
+            ]
         return out
 
 
@@ -985,6 +1060,11 @@ def build_run_export_bundle(
         | None
     ) = None,
     manual_annotation_readout: (
+        Iterable[Mapping[str, Any]]
+        | tuple[Mapping[str, Any], ...]
+        | None
+    ) = None,
+    investor_mandate_readout: (
         Iterable[Mapping[str, Any]]
         | tuple[Mapping[str, Any], ...]
         | None
@@ -1037,6 +1117,14 @@ def build_run_export_bundle(
                 for e in manual_annotation_readout
             )
             if manual_annotation_readout
+            else ()
+        ),
+        investor_mandate_readout=(
+            tuple(
+                dict(e)
+                for e in investor_mandate_readout
+            )
+            if investor_mandate_readout
             else ()
         ),
     )
