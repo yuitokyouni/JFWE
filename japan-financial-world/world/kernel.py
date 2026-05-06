@@ -24,6 +24,7 @@ from world.reference_universe import ReferenceUniverseBook
 from world.scenario_applications import ScenarioApplicationBook
 from world.scenario_drivers import ScenarioDriverTemplateBook
 from world.scenario_schedule import ScenarioScheduleBook
+from world.investor_mandates import InvestorMandateBook
 from world.manual_annotations import ManualAnnotationBook
 from world.stress_applications import StressProgramApplicationBook
 from world.stress_programs import StressProgramBook
@@ -244,6 +245,16 @@ class WorldKernel:
     manual_annotations: ManualAnnotationBook = field(
         default_factory=ManualAnnotationBook
     )
+    # v1.25.1 — institutional investor mandate / benchmark
+    # pressure layer storage. Append-only; emits exactly one
+    # ``INVESTOR_MANDATE_PROFILE_RECORDED`` ledger event per
+    # successful ``add_profile(...)`` call. Empty by
+    # default — pinned by
+    # ``tests/test_investor_mandates.py::test_world_kernel_investor_mandates_empty_by_default``
+    # and the existing-profile digest trip-wires.
+    investor_mandates: InvestorMandateBook = field(
+        default_factory=InvestorMandateBook
+    )
     routine_engine: RoutineEngine | None = None
     observation_menu_builder: ObservationMenuBuilder | None = None
     # v1.12.3 — read-only evidence resolution service. Stateless;
@@ -300,6 +311,7 @@ class WorldKernel:
             self.stress_programs,
             self.stress_applications,
             self.manual_annotations,
+            self.investor_mandates,
         ):
             if book.ledger is None:
                 book.ledger = self.ledger

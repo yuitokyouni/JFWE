@@ -145,6 +145,13 @@ class RecordType(str, Enum):
     # ``ManualAnnotationBook.add_annotation(...)`` call. An
     # empty book emits no record (digest preservation).
     MANUAL_ANNOTATION_RECORDED = "manual_annotation_recorded"
+    # v1.25.1 — institutional investor mandate / benchmark-
+    # pressure storage event. Emitted exactly once per
+    # successful ``InvestorMandateBook.add_profile(...)`` call.
+    # An empty book emits no record (digest preservation).
+    INVESTOR_MANDATE_PROFILE_RECORDED = (
+        "investor_mandate_profile_recorded"
+    )
     STATE_SNAPSHOT_CREATED = "state_snapshot_created"
     WARNING = "warning"
     ERROR = "error"

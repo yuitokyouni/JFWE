@@ -312,6 +312,55 @@ FORBIDDEN_TOKENS_V1_24_0_MANUAL_ANNOTATION_DELTA: frozenset[str] = (
 
 
 # ---------------------------------------------------------------------------
+# v1.25.0 INVESTOR MANDATE / BENCHMARK PRESSURE delta — anti-
+# claim tokens specific to the v1.25 institutional investor
+# mandate / benchmark-pressure layer.
+#
+# v1.25's binding discipline: a mandate profile conditions
+# investor attention / review context only — never produces a
+# trade, an allocation, a target weight, an expected return,
+# a recommendation, or any actor decision. The v1.25.0 delta
+# forbids any token that would imply portfolio / allocation /
+# performance / benchmark-number / mandate-as-action
+# semantics. The combined
+# ``FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES`` set composes
+# BASE + v1.19.0 / v1.19.3 / v1.20.0 / v1.21.0a / v1.22.0 /
+# v1.24.0 deltas + this v1.25.0 delta.
+# ---------------------------------------------------------------------------
+
+
+FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA: frozenset[str] = (
+    frozenset(
+        {
+            # v1.25.0 portfolio / allocation language
+            "portfolio_allocation",
+            "target_weight",
+            "overweight",
+            "underweight",
+            "rebalance",
+            "rebalancing",
+            "weight_change",
+            "allocation_band",
+            # v1.25.0 benchmark-number / performance language
+            "tracking_error_value",
+            "tracking_error_basis_points",
+            "benchmark_weight",
+            "benchmark_value",
+            "active_share",
+            "alpha",
+            "performance",
+            "expected_alpha",
+            # v1.25.0 explicit mandate-as-action prohibitions
+            "mandate_action",
+            "mandate_decision",
+            "mandate_buy_signal",
+            "mandate_sell_signal",
+        }
+    )
+)
+
+
+# ---------------------------------------------------------------------------
 # Composed canonical sets
 #
 # These are the canonical re-compositions that the existing
@@ -406,7 +455,27 @@ FORBIDDEN_MANUAL_ANNOTATION_FIELD_NAMES: frozenset[str] = (
 )
 
 
+# The v1.25.0 investor-mandate forbidden-name set — composes
+# BASE with the v1.19.0 / v1.19.3 / v1.20.0 / v1.21.0a /
+# v1.22.0 / v1.24.0 deltas plus the v1.25.0 mandate delta.
+# v1.25.1 storage scans every dataclass field name, payload
+# key, metadata key, and label value against this composed
+# set at construction time.
+FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES: frozenset[str] = (
+    FORBIDDEN_TOKENS_BASE
+    | FORBIDDEN_TOKENS_V1_19_0_RUN_EXPORT_DELTA
+    | FORBIDDEN_TOKENS_V1_19_3_REAL_INDICATOR_DELTA
+    | FORBIDDEN_TOKENS_V1_20_0_REAL_ISSUER_DELTA
+    | FORBIDDEN_TOKENS_V1_20_0_LICENSED_TAXONOMY_DELTA
+    | FORBIDDEN_TOKENS_V1_21_0A_STRESS_DELTA
+    | FORBIDDEN_TOKENS_V1_22_0_EXPORT_DELTA
+    | FORBIDDEN_TOKENS_V1_24_0_MANUAL_ANNOTATION_DELTA
+    | FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA
+)
+
+
 __all__ = [
+    "FORBIDDEN_INVESTOR_MANDATE_FIELD_NAMES",
     "FORBIDDEN_MANUAL_ANNOTATION_FIELD_NAMES",
     "FORBIDDEN_RUN_EXPORT_FIELD_NAMES",
     "FORBIDDEN_STRESS_APPLICATION_FIELD_NAMES",
@@ -421,4 +490,5 @@ __all__ = [
     "FORBIDDEN_TOKENS_V1_21_0A_STRESS_DELTA",
     "FORBIDDEN_TOKENS_V1_22_0_EXPORT_DELTA",
     "FORBIDDEN_TOKENS_V1_24_0_MANUAL_ANNOTATION_DELTA",
+    "FORBIDDEN_TOKENS_V1_25_0_MANDATE_DELTA",
 ]
