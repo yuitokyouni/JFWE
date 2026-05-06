@@ -1,0 +1,13 @@
+# v1.23.2 inter-reviewer reproducibility — format placeholder.
+#
+# This is the format for a reviewer note, not a signed note.
+# The pin tests parse this file and assert the closed-set
+# discipline. v1.24+ will add the runtime annotation layer
+# that consumes the format.
+
+note_id: reviewer_note:placeholder:v1_23_2:example
+readout_id: stress_field_readout:placeholder
+reviewer_kind: human
+reasoning_mode: human_authored
+notes: |
+  Format-placeholder reviewer note. Descriptive only.

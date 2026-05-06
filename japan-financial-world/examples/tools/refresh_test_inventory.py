@@ -1,10 +1,11 @@
 """
-v1.23.1 — Refresh ``docs/test_inventory.md`` v1.23.1 line.
+v1.23.x — Refresh ``docs/test_inventory.md`` substrate-hardening
++ validation-foundation entries.
 
 Runs ``pytest --collect-only -q`` from the repo's
 ``japan-financial-world`` directory, parses the
 ``NNNN tests collected`` line, and writes /
-overwrites the ``v1.23.1 test count: NNNN`` entry in
+overwrites the ``v1.23.1`` and ``v1.23.2`` entries in
 ``docs/test_inventory.md``.
 
 Idempotent: running twice produces the same output.
@@ -140,21 +141,98 @@ def _format_v1_23_1_block(test_count: int) -> str:
     )
 
 
+_V1_23_2_LINE_PREFIX = "v1.23.2 test count: "
+_V1_23_2_BLOCK_RE = re.compile(
+    r"<!-- v1\.23\.2 test inventory pin: BEGIN -->"
+    r".*?"
+    r"<!-- v1\.23\.2 test inventory pin: END -->",
+    re.DOTALL,
+)
+
+
+def _format_v1_23_2_block(test_count: int) -> str:
+    """Return the v1.23.2 inventory block in the canonical
+    format. Marked with HTML comments for idempotent
+    replacement."""
+    return (
+        "<!-- v1.23.2 test inventory pin: BEGIN -->\n"
+        "\n"
+        "## v1.23.2 — Validation foundation\n"
+        "\n"
+        "v1.23.2 ships:\n"
+        "\n"
+        "- ``tests/test_validation_determinism.py`` — "
+        "Validation Category 1 (determinism) pin tests;\n"
+        "- ``tests/test_validation_boundary.py`` — "
+        "Validation Category 2 (boundary preservation) pin "
+        "tests against the v1.23.1 canonical "
+        "``world.forbidden_tokens`` composition;\n"
+        "- ``tests/test_validation_citation_completeness.py`` "
+        "— Validation Category 3 (citation completeness) "
+        "pin tests, including a dangling-citation "
+        "regression-class detection path;\n"
+        "- ``tests/test_validation_partial_application_visibility.py`` "
+        "— Validation Category 4 (partial-application "
+        "visibility) pin tests covering the v1.21.3 "
+        "markdown summary's PARTIAL APPLICATION banner "
+        "and the v1.22.1 export-entry visibility "
+        "fields;\n"
+        "- ``tests/test_validation_placeholder_categories.py`` "
+        "— Categories 5 (inter-reviewer reproducibility) "
+        "+ 6 (null-model comparison) **placeholder** pins;\n"
+        "- ``tests/fixtures/inter_reviewer/`` — Category 5 "
+        "format-placeholder directory + example reviewer "
+        "note;\n"
+        "- ``docs/research_note_002_validating_stress_citation_graphs_without_price_prediction.md`` "
+        "— companion research note.\n"
+        "\n"
+        "Read-only validation only: every pin asserts a "
+        "property of the audit object, never compares the "
+        "readout to a real-world series. v1.23.2 ships **no** "
+        "outcome metric, **no** statistical test, **no** new "
+        "dataclass, **no** new ledger event, **no** new label "
+        "vocabulary. All v1.18.last / v1.19.last / "
+        "v1.20.last / v1.21.last / v1.22.last canonical "
+        "``living_world_digest`` values remain byte-identical "
+        "at v1.23.2.\n"
+        "\n"
+        f"{_V1_23_2_LINE_PREFIX}{test_count}\n"
+        "\n"
+        "<!-- v1.23.2 test inventory pin: END -->\n"
+    )
+
+
 def refresh_inventory(test_count: int) -> None:
-    """Replace (or append) the v1.23.1 inventory block in
-    ``docs/test_inventory.md``."""
+    """Replace (or append) the v1.23.1 + v1.23.2 inventory
+    blocks in ``docs/test_inventory.md``. Both blocks carry
+    the same current ``test_count`` — the most recent
+    milestone's pin reflects the post-milestone collection
+    total."""
     text = _DOC_PATH.read_text(encoding="utf-8")
-    block = _format_v1_23_1_block(test_count)
+
+    # v1.23.1 block.
+    block_1 = _format_v1_23_1_block(test_count)
     if _V1_23_1_BLOCK_RE.search(text):
-        new_text = _V1_23_1_BLOCK_RE.sub(
-            block.rstrip("\n"), text
+        text = _V1_23_1_BLOCK_RE.sub(
+            block_1.rstrip("\n"), text
         )
     else:
-        # Append the block to the end of the doc.
         if not text.endswith("\n"):
             text += "\n"
-        new_text = text + "\n" + block
-    _DOC_PATH.write_text(new_text, encoding="utf-8")
+        text = text + "\n" + block_1
+
+    # v1.23.2 block.
+    block_2 = _format_v1_23_2_block(test_count)
+    if _V1_23_2_BLOCK_RE.search(text):
+        text = _V1_23_2_BLOCK_RE.sub(
+            block_2.rstrip("\n"), text
+        )
+    else:
+        if not text.endswith("\n"):
+            text += "\n"
+        text = text + "\n" + block_2
+
+    _DOC_PATH.write_text(text, encoding="utf-8")
 
 
 def main() -> int:
@@ -162,7 +240,7 @@ def main() -> int:
     refresh_inventory(test_count)
     print(
         f"refreshed {_DOC_PATH.relative_to(_REPO_ROOT)} "
-        f"with v1.23.1 test count = {test_count}"
+        f"with current test count = {test_count}"
     )
     return 0
 

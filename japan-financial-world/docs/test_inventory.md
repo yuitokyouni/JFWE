@@ -1776,6 +1776,26 @@ v1.23.1 ships:
 
 No digest movement: the v1.18.last / v1.19.last / v1.20.last / v1.21.last / v1.22.last canonical ``living_world_digest`` values remain byte-identical at v1.23.1.
 
-v1.23.1 test count: 4913
+v1.23.1 test count: 4928
 
 <!-- v1.23.1 test inventory pin: END -->
+
+<!-- v1.23.2 test inventory pin: BEGIN -->
+
+## v1.23.2 — Validation foundation
+
+v1.23.2 ships:
+
+- ``tests/test_validation_determinism.py`` — Validation Category 1 (determinism) pin tests;
+- ``tests/test_validation_boundary.py`` — Validation Category 2 (boundary preservation) pin tests against the v1.23.1 canonical ``world.forbidden_tokens`` composition;
+- ``tests/test_validation_citation_completeness.py`` — Validation Category 3 (citation completeness) pin tests, including a dangling-citation regression-class detection path;
+- ``tests/test_validation_partial_application_visibility.py`` — Validation Category 4 (partial-application visibility) pin tests covering the v1.21.3 markdown summary's PARTIAL APPLICATION banner and the v1.22.1 export-entry visibility fields;
+- ``tests/test_validation_placeholder_categories.py`` — Categories 5 (inter-reviewer reproducibility) + 6 (null-model comparison) **placeholder** pins;
+- ``tests/fixtures/inter_reviewer/`` — Category 5 format-placeholder directory + example reviewer note;
+- ``docs/research_note_002_validating_stress_citation_graphs_without_price_prediction.md`` — companion research note.
+
+Read-only validation only: every pin asserts a property of the audit object, never compares the readout to a real-world series. v1.23.2 ships **no** outcome metric, **no** statistical test, **no** new dataclass, **no** new ledger event, **no** new label vocabulary. All v1.18.last / v1.19.last / v1.20.last / v1.21.last / v1.22.last canonical ``living_world_digest`` values remain byte-identical at v1.23.2.
+
+v1.23.2 test count: 4928
+
+<!-- v1.23.2 test inventory pin: END -->
