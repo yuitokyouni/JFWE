@@ -12138,3 +12138,47 @@ candidates remain candidate-only.
 The v1.26 sequence is **frozen**. v1.27 candidate
 (Generic Strategic Relationship Network + Annotation
 Provenance Hardening) is the next milestone.
+
+## 136 v1.27 — Generic Strategic Relationship Network + Annotation Provenance Hardening (design pointer, **v1.27.0 design-only**)
+
+*Constitutional position of the v1.27 generic strategic
+relationship + annotation provenance substrate. Anchored
+to the v1.26.last freeze (§135.6).*
+
+The binding design pin lives in
+[`v1_27_generic_relationship_network_annotation_provenance.md`](v1_27_generic_relationship_network_annotation_provenance.md).
+
+### 136.1 Scope
+
+- **`StrategicRelationshipRecord`** —  closed-set
+  archetype labels (`strategic_holding_like` /
+  `supplier_customer_like` /
+  `group_affiliation_like` /
+  `lender_relationship_like` /
+  `governance_relationship_like` /
+  `commercial_relationship_like` / `unknown`).
+  No percentages, no voting power, no market
+  value, no real company names.
+- **`ManualAnnotationProvenanceRecord`** —
+  pseudonymous reviewer-role / authority /
+  authorization metadata companion to v1.24
+  annotations. Anti-email-leak rule rejects
+  `@` characters in `annotator_id_label`.
+  No LLM authoring; no compliance claim.
+
+### 136.2 Sequence
+
+- v1.27.0: docs-only design (this PR)
+- v1.27.1: StrategicRelationship storage
+- v1.27.2: StrategicRelationshipReadout + export
+- v1.27.3: ManualAnnotationProvenance storage
+- v1.27.last: freeze
+
+### 136.3 Hard boundary
+
+v1.27.0 inherits v1.26.last + v1.24.last + v1.25.last
+boundaries plus: no ownership percentage / voting
+power / market value / centrality score / real-data
+adapter / real-person identity / compliance claim.
+
+Silent extension of v1.27 is forbidden.
