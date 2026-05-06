@@ -168,6 +168,66 @@ _V1_23_LAST_BLOCK_RE = re.compile(
 )
 
 
+_V1_24_LAST_LINE_PREFIX = "v1.24.last test count: "
+_V1_24_LAST_BLOCK_RE = re.compile(
+    r"<!-- v1\.24\.last test inventory pin: BEGIN -->"
+    r".*?"
+    r"<!-- v1\.24\.last test inventory pin: END -->",
+    re.DOTALL,
+)
+
+
+def _format_v1_24_last_block(test_count: int) -> str:
+    """Return the v1.24.last final-freeze inventory block."""
+    return (
+        "<!-- v1.24.last test inventory pin: BEGIN -->\n"
+        "\n"
+        "## v1.24.last — Manual Annotation Interaction "
+        "Layer freeze (docs-only)\n"
+        "\n"
+        "Final freeze section for the v1.24 sequence. "
+        "v1.24.last ships **no** new code, **no** new "
+        "tests, **no** new RecordTypes, **no** new "
+        "dataclasses, **no** new label vocabularies, "
+        "**no** UI regions, **no** export-schema changes. "
+        "The v1.24 sequence is closed.\n"
+        "\n"
+        "Sub-milestones shipped:\n"
+        "\n"
+        "- v1.24.0 (docs-only design pin — manual "
+        "annotation layer)\n"
+        "- v1.24.1 (storage — ManualAnnotationRecord + "
+        "ManualAnnotationBook + closed-set vocabularies + "
+        "MANUAL_ANNOTATION_RECORDED ledger event type + "
+        "empty-by-default kernel field)\n"
+        "- v1.24.2 (read-only readout — "
+        "ManualAnnotationReadout + markdown renderer + "
+        "optional non-mandatory v1.23.2 validation hook)\n"
+        "- v1.24.3 (descriptive-only export section "
+        "(omitted when empty) + minimal Universe-sheet "
+        "Manual annotations panel; no new tab; "
+        "textContent only)\n"
+        "- v1.24.last (this freeze)\n"
+        "\n"
+        "Hard boundary re-pinned: human-authored only "
+        "(``source_kind = \"human\"`` / "
+        "``reasoning_mode = \"human_authored\"``); no "
+        "auto-annotation; no LLM-authored annotation in "
+        "public v1.x; no causal proof; no stress "
+        "interaction inference (``amplify`` / "
+        "``dampen`` / ``offset`` / ``coexist`` "
+        "explicitly excluded from ANNOTATION_LABELS); no "
+        "actor-behavior trigger; no source-of-truth "
+        "book mutation. All v1.21.last canonical "
+        "``living_world_digest`` values remain byte-"
+        "identical at every v1.24.x sub-milestone.\n"
+        "\n"
+        f"{_V1_24_LAST_LINE_PREFIX}{test_count}\n"
+        "\n"
+        "<!-- v1.24.last test inventory pin: END -->\n"
+    )
+
+
 def _format_v1_23_last_block(test_count: int) -> str:
     """Return the v1.23.last final-freeze inventory block."""
     return (
@@ -363,6 +423,17 @@ def refresh_inventory(test_count: int) -> None:
         if not text.endswith("\n"):
             text += "\n"
         text = text + "\n" + block_last
+
+    # v1.24.last freeze block.
+    block_v1_24_last = _format_v1_24_last_block(test_count)
+    if _V1_24_LAST_BLOCK_RE.search(text):
+        text = _V1_24_LAST_BLOCK_RE.sub(
+            block_v1_24_last.rstrip("\n"), text
+        )
+    else:
+        if not text.endswith("\n"):
+            text += "\n"
+        text = text + "\n" + block_v1_24_last
 
     _DOC_PATH.write_text(text, encoding="utf-8")
 

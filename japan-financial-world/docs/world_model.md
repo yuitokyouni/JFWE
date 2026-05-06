@@ -11598,3 +11598,86 @@ every v1.24.x sub-milestone.
 - **v3.x — proprietary Japan calibration.** Not public.
 
 Silent extension of v1.24 is forbidden.
+
+### 133.6 v1.24.last freeze (docs-only)
+
+*Final freeze section for the v1.24 sequence. v1.24.last
+ships **no** new code, **no** new tests, **no** new
+RecordTypes, **no** new dataclasses, **no** new label
+vocabularies, **no** UI regions, **no** export-schema
+changes. The v1.24 sequence is closed.*
+
+**v1.24 is complete.** The four sub-milestones — v1.24.0
+design pin, v1.24.1 storage, v1.24.2 readout + optional
+v1.23.2 validation hook, v1.24.3 export + minimal UI panel
+— are all shipped and frozen at v1.24.last.
+
+**Pinned at v1.24.last:**
+
+- `pytest -q`: 4991 / 4991 passing.
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests preserved
+  byte-identical at every v1.24.x sub-milestone.
+- Source-of-truth book mutations from v1.24.x helpers: 0.
+- Ledger emissions from v1.24.x helpers: 0 (other than
+  the one `MANUAL_ANNOTATION_RECORDED` event per
+  caller-initiated `add_annotation(...)` call).
+- New `RecordType` values: 1
+  (`MANUAL_ANNOTATION_RECORDED`).
+- New dataclasses: 2 (`ManualAnnotationRecord`,
+  `ManualAnnotationReadout`).
+- New label vocabularies: 0 outside the four
+  design-pinned closed sets (scope / label / reviewer-
+  role / source-kind=human + reasoning-mode=human_authored
+  singletons).
+- New tabs: 0.
+- Export schema changes: 1 optional /
+  omitted-when-empty field (`manual_annotation_readout`)
+  on `RunExportBundle`. Pre-v1.24 bundles serialise
+  byte-identically.
+
+**Hard boundary re-pinned at v1.24.last** (identical to
+v1.23.last plus v1.24-specific additions):
+
+- No price formation. No trading. No order. No
+  execution. No clearing. No settlement. No financing
+  execution.
+- No forecast / expected return / target price /
+  recommendation / investment advice.
+- No magnitude / probability / expected response.
+- No firm decision / investor action / bank approval.
+- No real data / Japan calibration / LLM execution.
+- No interaction auto-inference. No aggregate /
+  combined / net / dominant / composite stress output.
+- **No auto-annotation.** No helper, classifier,
+  closed-set rule table, LLM, or any other automated
+  layer may emit a `ManualAnnotationRecord`. Storage
+  exposes `add_annotation(record)` only.
+- **`source_kind = "human"` only;
+  `reasoning_mode = "human_authored"` only.** Closed
+  singletons enforced at construction.
+- No causal proof. Annotations are reviewer
+  observations, not causal assertions.
+- No source-of-truth book mutation by v1.24.x.
+- No new tab / sheet / backend in the static UI.
+
+**Future candidates (NOT scheduled, NOT pre-committed at
+v1.24.last):**
+
+- **v1.25 candidate — institutional investor mandate /
+  benchmark pressure.** Remains a candidate; bounded
+  synthetic mandate / benchmark / peer-pressure
+  constraints on the v1.15.5 / v1.16.2 investor-intent
+  layer. Decoupled from the v1.21 / v1.22 / v1.23 /
+  v1.24 stress + audit + annotation surface. Not
+  blocked by v1.24; advances on its own cadence.
+- **v2.x — Japan public calibration.** Gated.
+- **v3.x — proprietary Japan calibration.** Not
+  public.
+
+The v1.24 sequence is **frozen**. Any subsequent change
+to the manual-annotation layer requires a fresh design
+pin under a v1.24.0a or later correction. Silent
+extension of v1.24.last is forbidden.

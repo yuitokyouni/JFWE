@@ -1245,3 +1245,170 @@ The v1.24 sequence is scoped. Subsequent work that
 touches the manual-annotation layer must explicitly
 re-open scope under a new design pin (a v1.24.0a or
 later correction); silent extension is forbidden.
+
+---
+
+## 24. v1.24.last freeze (docs-only)
+
+*Final pin section for the v1.24 sequence. Closes the
+manual-annotation interaction layer milestone as a docs-
+only freeze; v1.24.last ships **no** new code, **no** new
+tests, **no** new ledger event types, **no** new
+RecordTypes, **no** new label vocabularies, **no** UI
+changes, and **no** export-schema changes. Subsequent work
+must re-open scope under a fresh design pin.*
+
+### 24.1 Shipped sequence
+
+| Sub-milestone | Surface | What it shipped |
+| ------------- | ------- | --------------- |
+| **v1.24.0** | docs only | This design pin (§§1-23), §133 in `world_model.md`, README §9 row. |
+| v1.24.1 | runtime + tests | `ManualAnnotationRecord` + `ManualAnnotationBook` storage in [`world/manual_annotations.py`](../world/manual_annotations.py); closed-set vocabularies (scope / label / reviewer-role / source-kind=human / reasoning-mode=human_authored / status / visibility); 15 default boundary flags (non-removable); `MANUAL_ANNOTATION_RECORDED` ledger event type added to [`world/ledger.py`](../world/ledger.py); `manual_annotations: ManualAnnotationBook` field wired into `WorldKernel`; v1.24.0 manual-annotation forbidden-token delta + composed `FORBIDDEN_MANUAL_ANNOTATION_FIELD_NAMES` added to [`world/forbidden_tokens.py`](../world/forbidden_tokens.py). 16 pin tests. **No digest movement.** |
+| v1.24.2 | runtime + tests | `ManualAnnotationReadout` + `build_manual_annotation_readout(...)` + `render_manual_annotation_readout_markdown(...)` + optional non-mandatory v1.23.2 validation hook `build_manual_annotation_validation_hook_summary(...)` in [`world/manual_annotation_readout.py`](../world/manual_annotation_readout.py). 13 pin tests. **No ledger emission. No mutation. No automatic interpretation. Counts are counts, not scores.** |
+| v1.24.3 | export + UI + tests | Optional descriptive-only `manual_annotation_readout` payload section on `RunExportBundle` (cardinality 0 or 1; empty-by-default; omitted from JSON when empty so v1.21.last digests stay byte-identical) via [`world/manual_annotation_export.py`](../world/manual_annotation_export.py) + minimal "Manual annotations" panel inside the existing Universe sheet of [`examples/ui/fwe_workbench_mockup.html`](../examples/ui/fwe_workbench_mockup.html) (no new tab; `textContent` only). 15 pin tests. |
+| **v1.24.last** | docs only | This freeze section. §133 final freeze pin in `world_model.md`. README §4 / §9 refresh. v1.24 sequence frozen. |
+
+### 24.2 Pinned at v1.24.last
+
+- `pytest -q`: **4991 / 4991 passing** (+44 vs v1.23.last
+  4947; sub-milestone deltas: v1.24.1 +16, v1.24.2 +13,
+  v1.24.3 +15).
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests preserved
+  byte-identical at every v1.24.x sub-milestone:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` test-fixture —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- Source-of-truth book mutations from v1.24.x helpers:
+  **0**.
+- Ledger emissions from v1.24.x helpers (other than the
+  one `MANUAL_ANNOTATION_RECORDED` event per
+  `add_annotation` call, which fires only when a caller
+  explicitly adds an annotation): **0**.
+- New `RecordType` values: **1**
+  (`MANUAL_ANNOTATION_RECORDED`).
+- New dataclasses: **2**
+  (`ManualAnnotationRecord`, `ManualAnnotationReadout`).
+- New label vocabularies: **0** new closed sets *outside*
+  the four pinned at v1.24.0 design (scope, label,
+  reviewer-role, source-kind / reasoning-mode singletons).
+- New tabs: **0** (v1.20.5 11-tab ↔ 11-sheet bijection
+  preserved at v1.24.last).
+- Export schema changes: **1 optional / omitted-when-empty
+  field** (`manual_annotation_readout`) added to
+  `RunExportBundle`. Pre-v1.24 bundles serialise
+  byte-identically.
+
+### 24.3 Hard boundary re-pinned at v1.24.last
+
+The v1.24.last hard boundary is identical to the v1.23.last
+boundary plus the v1.24-specific additions, re-pinned in
+full:
+
+**No real-world output.**
+- No price formation. No market price. No order. No trade.
+  No execution. No clearing. No settlement. No financing
+  execution.
+- No forecast / expected return / target price /
+  recommendation / investment advice.
+- No magnitude / probability / expected response.
+- No firm decision. No investor action. No bank approval
+  logic.
+
+**No real-world input.**
+- No real data ingestion. No real institutional
+  identifiers. No licensed taxonomy dependency. No Japan
+  calibration.
+
+**No autonomous reasoning.**
+- No LLM execution at runtime. No LLM prose accepted as
+  source-of-truth.
+- **No auto-annotation.** No helper, classifier, closed-
+  set rule table, LLM, or any other automated layer may
+  emit a `ManualAnnotationRecord`. The storage layer
+  exposes `add_annotation(record)` only — there is no
+  `auto_annotate(...)`, `infer_interaction(...)`,
+  `classify_review_frame(...)`, or
+  `propose_annotation(...)` helper at any v1.24.x
+  sub-milestone.
+- **`source_kind = "human"` only.** The closed singleton
+  is enforced at storage construction time; "auto" /
+  "llm" / any other value raises.
+- **`reasoning_mode = "human_authored"` only.** Same
+  closed-singleton discipline.
+- No interaction auto-inference. No `amplify` / `dampen`
+  / `offset` / `coexist` annotation label is allowed,
+  even when authored by a human (the closed
+  `ANNOTATION_LABELS` set explicitly excludes them).
+- No aggregate / combined / net / dominant / composite
+  stress output via the annotation surface.
+- No causal proof. An annotation is a reviewer
+  observation, not an assertion that one record caused
+  another.
+
+**No source-of-truth book mutation.**
+- v1.24.x ships one storage book + one read-only readout
+  + one optional export section + one optional UI panel.
+  No v1.24.x helper mutates any pre-existing kernel
+  book; pre-existing book snapshots remain byte-
+  identical pre / post any v1.24.x helper call. The
+  only new mutation is the
+  `manual_annotation_recorded` ledger event itself,
+  fired exactly once per `add_annotation(...)` call.
+
+**No backend in the UI.**
+- v1.24.3 added the "Manual annotations" panel inside
+  the existing Universe sheet; the v1.20.5 / v1.22.2 /
+  v1.23.2a / v1.23.2b loader discipline is preserved.
+  No new tab. No new sheet. No backend / fetch / XHR /
+  file-system write. `textContent` only for caller-
+  supplied values.
+
+**No digest movement.**
+- Every v1.24.x sub-milestone preserved every v1.21.last
+  canonical living-world digest byte-identical.
+
+### 24.4 Closing statement
+
+v1.24.last freezes the manual annotation interaction
+layer as a **human-authored, append-only audit overlay**
+on existing citation-graph records. The sequence:
+
+1. Did not move any digest.
+2. Added one `RecordType`
+   (`MANUAL_ANNOTATION_RECORDED`) and two dataclasses
+   (`ManualAnnotationRecord`, `ManualAnnotationReadout`)
+   — all empty-by-default on the kernel.
+3. Did not introduce any label vocabulary outside the
+   four design-pinned closed sets (scope, label, reviewer-
+   role, source-kind / reasoning-mode singletons).
+4. Did not infer interactions, aggregate stresses, or
+   produce any predictive metric.
+5. Did not surface free-form reviewer prose
+   (`note_text`) in the export or the UI; v1.24.3
+   exposes only the multiset shape of the annotation
+   book.
+6. Materialised the v1.23.2 Cat 5 *inter-reviewer
+   reproducibility* placeholder's runtime surface.
+
+The v1.24 sequence is **frozen**. Subsequent work touching
+the manual-annotation layer requires a fresh design pin.
+
+### 24.5 Future optional candidates (NOT planned at v1.24.last)
+
+| Future milestone | Description | Status |
+| ---------------- | ----------- | ------ |
+| v1.25 candidate | **Institutional Investor Mandate / Benchmark Pressure** — bounded synthetic mandate / benchmark / peer-pressure constraints on the v1.15.5 / v1.16.2 investor-intent layer. Decoupled from the v1.21 / v1.22 / v1.23 / v1.24 stress + audit + annotation surface. Not blocked by v1.24; advances on its own cadence. | Optional candidate. Not started. Requires a fresh design pin. |
+| v2.x | **Japan public calibration boundary design** — design-only first; no data ingestion. Gated on data / license boundary review. | Optional candidate. Not started. |
+| v3.x | **Proprietary Japan calibration** — not public; would live in a private repository and would preserve every public-FWE boundary. | Not started. Not public. |
+
+The v1.25 candidate is the next likely milestone, but its
+implementation requires a fresh design pin; v1.24.last
+makes no commitment about when or whether v1.25 starts.

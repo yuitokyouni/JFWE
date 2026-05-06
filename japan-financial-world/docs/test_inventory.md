@@ -1776,7 +1776,7 @@ v1.23.1 ships:
 
 No digest movement: the v1.18.last / v1.19.last / v1.20.last / v1.21.last / v1.22.last canonical ``living_world_digest`` values remain byte-identical at v1.23.1.
 
-v1.23.1 test count: 4947
+v1.23.1 test count: 4991
 
 <!-- v1.23.1 test inventory pin: END -->
 
@@ -1796,7 +1796,7 @@ v1.23.2 ships:
 
 Read-only validation only: every pin asserts a property of the audit object, never compares the readout to a real-world series. v1.23.2 ships **no** outcome metric, **no** statistical test, **no** new dataclass, **no** new ledger event, **no** new label vocabulary. All v1.18.last / v1.19.last / v1.20.last / v1.21.last / v1.22.last canonical ``living_world_digest`` values remain byte-identical at v1.23.2.
 
-v1.23.2 test count: 4947
+v1.23.2 test count: 4991
 
 <!-- v1.23.2 test inventory pin: END -->
 
@@ -1812,7 +1812,7 @@ v1.23.3 ships:
 
 Read-only / no-mutation discipline: the helper does **not** call ``apply_stress_program`` or ``apply_scenario_driver``, does **not** mutate any kernel book, does **not** emit a ledger record, and introduces **no** new dataclass / RecordType / label vocabulary / UI surface / export-schema field. All v1.18.last / v1.19.last / v1.20.last / v1.21.last / v1.22.last canonical ``living_world_digest`` values remain byte-identical at v1.23.3.
 
-v1.23.3 test count: 4947
+v1.23.3 test count: 4991
 
 <!-- v1.23.3 test inventory pin: END -->
 
@@ -1833,6 +1833,26 @@ Sub-milestones shipped in the v1.23 sequence:
 
 All v1.21.last canonical ``living_world_digest`` values remain byte-identical at every v1.23.x sub-milestone. v1.23.x ships a validation foundation, not a validation proof.
 
-v1.23.last test count: 4947
+v1.23.last test count: 4991
 
 <!-- v1.23.last test inventory pin: END -->
+
+<!-- v1.24.last test inventory pin: BEGIN -->
+
+## v1.24.last — Manual Annotation Interaction Layer freeze (docs-only)
+
+Final freeze section for the v1.24 sequence. v1.24.last ships **no** new code, **no** new tests, **no** new RecordTypes, **no** new dataclasses, **no** new label vocabularies, **no** UI regions, **no** export-schema changes. The v1.24 sequence is closed.
+
+Sub-milestones shipped:
+
+- v1.24.0 (docs-only design pin — manual annotation layer)
+- v1.24.1 (storage — ManualAnnotationRecord + ManualAnnotationBook + closed-set vocabularies + MANUAL_ANNOTATION_RECORDED ledger event type + empty-by-default kernel field)
+- v1.24.2 (read-only readout — ManualAnnotationReadout + markdown renderer + optional non-mandatory v1.23.2 validation hook)
+- v1.24.3 (descriptive-only export section (omitted when empty) + minimal Universe-sheet Manual annotations panel; no new tab; textContent only)
+- v1.24.last (this freeze)
+
+Hard boundary re-pinned: human-authored only (``source_kind = "human"`` / ``reasoning_mode = "human_authored"``); no auto-annotation; no LLM-authored annotation in public v1.x; no causal proof; no stress interaction inference (``amplify`` / ``dampen`` / ``offset`` / ``coexist`` explicitly excluded from ANNOTATION_LABELS); no actor-behavior trigger; no source-of-truth book mutation. All v1.21.last canonical ``living_world_digest`` values remain byte-identical at every v1.24.x sub-milestone.
+
+v1.24.last test count: 4991
+
+<!-- v1.24.last test inventory pin: END -->
