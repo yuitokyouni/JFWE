@@ -1143,3 +1143,64 @@ the empty-by-default rule. v1.26 explicitly does
 reporting calendar"; a kernel without v1.26
 records continues to behave as it did at every
 prior freeze.
+
+---
+
+## 15. v1.26.last freeze (docs-only)
+
+*Final pin section for the v1.26 sequence. v1.26.last
+ships **no** new code, no new tests, no new
+RecordTypes, no new dataclasses, no new label
+vocabularies, no UI regions, no export-schema
+changes.*
+
+### 15.1 Shipped sequence
+
+| Sub-milestone | Surface |
+| ------------- | ------- |
+| v1.26.0 | docs-only design pin |
+| v1.26.1 | UniverseEvent storage (12 tests) |
+| v1.26.2 | ReportingCalendarProfile storage (12 tests) |
+| v1.26.3 | UniverseCalendarReadout (10 tests) |
+| v1.26.4 | export + minimal UI panel (10 tests) |
+| v1.26.last | this freeze |
+
+### 15.2 Pinned at v1.26.last
+
+- `pytest -q`: **5076 / 5076 passing** (+44 vs v1.25.last).
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at every v1.26.x sub-
+  milestone.
+- Source-of-truth book mutations from v1.26.x
+  helpers: 0.
+- Ledger emissions from v1.26.x helpers (other than
+  the one `UNIVERSE_EVENT_RECORDED` /
+  `REPORTING_CALENDAR_PROFILE_RECORDED` event per
+  caller-initiated `add_event` / `add_profile` call):
+  0.
+- New `RecordType` values: 2.
+- New dataclasses: 3 (`UniverseEventRecord`,
+  `ReportingCalendarProfile`,
+  `UniverseCalendarReadout`).
+- New tabs: 0.
+- Export schema changes: 1 optional /
+  omitted-when-empty field
+  (`universe_calendar_readout`).
+
+### 15.3 Closing statement
+
+v1.26 substrate is generic and country-neutral. It
+adds time-varying-universe + reporting-calendar
+primitives but does **not** ingest real data, claim
+any Japan calibration, or add real-company
+identifiers. The empty-by-default rule preserves
+every existing fixed fixture byte-identically.
+
+The v1.26 sequence is **frozen**. v1.27 candidate
+(Generic Strategic Relationship Network +
+Annotation Provenance Hardening) is the next
+milestone; v2.0 candidate (Japan Public
+Calibration Boundary Design) follows v1.27.

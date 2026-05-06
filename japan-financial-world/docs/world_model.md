@@ -12102,3 +12102,39 @@ default rule.
   public.
 
 Silent extension of v1.26 is forbidden.
+
+### 135.6 v1.26.last freeze (docs-only)
+
+*Final freeze section for the v1.26 sequence. The
+v1.26 sequence is closed.*
+
+**v1.26 is complete as a generic, jurisdiction-
+neutral substrate** adding time-varying universe +
+reporting calendar primitives. The five sub-
+milestones — v1.26.0 design pin, v1.26.1
+UniverseEvent storage, v1.26.2
+ReportingCalendarProfile storage, v1.26.3
+UniverseCalendarReadout, v1.26.4 export + minimal
+UI panel — are all shipped and frozen.
+
+**Pinned at v1.26.last:**
+- pytest 5076 / 5076 passing
+- ruff + compileall clean
+- All v1.21.last canonical digests byte-identical
+- Source-of-truth book mutations from v1.26.x
+  helpers: 0
+- 2 new RecordTypes
+  (`UNIVERSE_EVENT_RECORDED`,
+  `REPORTING_CALENDAR_PROFILE_RECORDED`)
+- 3 new dataclasses
+- 0 new tabs
+- 1 optional / omitted-when-empty export field
+
+The empty-by-default rule preserves every existing
+fixed fixture byte-identically. v1.26 explicitly is
+**NOT** Japan calibration; v2.0 / v2.1 / v2.2
+candidates remain candidate-only.
+
+The v1.26 sequence is **frozen**. v1.27 candidate
+(Generic Strategic Relationship Network + Annotation
+Provenance Hardening) is the next milestone.
