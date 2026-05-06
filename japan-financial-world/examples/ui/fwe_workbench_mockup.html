@@ -1403,6 +1403,68 @@
       margin-bottom: 14px;
     }
 
+    /* v1.24.3 — Manual annotations panel. Mirrors the
+       v1.22.2 active-stresses-strip CSS for visual
+       consistency; sits below the strip in the Universe
+       sheet. No new tab; no new sheet; textContent only. */
+    .manual-annotations-panel {
+      margin-bottom: 14px;
+    }
+
+    .manual-annotations-empty {
+      padding: 10px 12px;
+      border: 1px dashed #cdcac1;
+      background: #fafaf6;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .manual-annotations-content {
+      margin-top: 6px;
+    }
+
+    .manual-annotations-entry {
+      padding: 10px 12px;
+      border: 1px solid #e1ddd2;
+      background: #fdfdf9;
+      margin-top: 8px;
+    }
+
+    .manual-annotations-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      font-size: 12px;
+    }
+
+    .manual-annotations-summary .label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .manual-annotations-summary .value {
+      font-family: var(--font-mono);
+    }
+
+    .manual-annotations-list {
+      margin-top: 8px;
+      list-style: none;
+      padding-left: 0;
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .manual-annotations-list li {
+      padding: 2px 0;
+    }
+
+    .manual-annotations-list li .count {
+      color: var(--muted);
+      margin-left: 6px;
+    }
+
     .active-stresses-empty {
       padding: 10px 12px;
       border: 1px dashed #cdcac1;
@@ -2914,6 +2976,42 @@
                   class="active-stresses-entries"
                   id="active-stresses-entries"
                 ></div>
+              </div>
+            </section>
+
+            <!-- =============================================================== -->
+            <!-- v1.24.3 — Manual annotations panel.                             -->
+            <!-- Read-only reflection of the v1.24.2 ManualAnnotationReadout via -->
+            <!-- the v1.24.3 ``bundle.manual_annotation_readout`` payload        -->
+            <!-- section. Sits below the Active Stresses strip. No new tab.     -->
+            <!-- No score. No bar height. No interaction-label rendering.        -->
+            <!-- Renders an empty-state placeholder when the bundle carries no  -->
+            <!-- manual annotation readout (the v1.24.3 omission rule keeps     -->
+            <!-- pre-v1.24 bundles byte-identical).                             -->
+            <!-- =============================================================== -->
+            <section
+              class="card manual-annotations-panel"
+              data-section="manual-annotations"
+              id="card-manual-annotations"
+              aria-live="polite"
+            >
+              <h3 class="card-title">
+                Manual annotations
+                <span class="tag">v1.24.3 · Read-only annotation readout</span>
+              </h3>
+              <div
+                class="manual-annotations-empty muted"
+                id="manual-annotations-empty"
+              >
+                No manual annotation readout in this bundle.
+              </div>
+              <div
+                class="manual-annotations-content"
+                id="manual-annotations-content"
+                style="display:none;"
+              >
+                <div class="manual-annotations-entries"
+                  id="manual-annotations-entries"></div>
               </div>
             </section>
 
@@ -5197,6 +5295,13 @@
         if (typeof renderActiveStressesFromBundle === 'function') {
           renderActiveStressesFromBundle({});
         }
+        // v1.24.3 — also reset the Manual annotations
+        // panel; the legacy inline manifest predates the
+        // v1.24.3 ``manual_annotation_readout`` payload
+        // section.
+        if (typeof renderManualAnnotationsFromBundle === 'function') {
+          renderManualAnnotationsFromBundle({});
+        }
         // v1.23.2b — record that the visible state came from
         // the LEGACY inline sample fixture (a v1.16-era
         // snapshot kept only so the workbench loads under
@@ -6213,6 +6318,23 @@
             "renderActiveStressesFromBundle missing"
           );
         }
+        // v1.24.3 self-check — Manual annotations panel.
+        if (!$id('card-manual-annotations')) {
+          failures.push("Manual annotations panel missing");
+        }
+        if (!$id('manual-annotations-empty')
+            || !$id('manual-annotations-content')
+            || !$id('manual-annotations-entries')) {
+          failures.push(
+            "Manual annotations panel slots missing"
+          );
+        }
+        if (typeof renderManualAnnotationsFromBundle
+            !== 'function') {
+          failures.push(
+            "renderManualAnnotationsFromBundle missing"
+          );
+        }
         if (typeof SENSITIVITY_LABELS === 'undefined'
             || !Array.isArray(SENSITIVITY_LABELS)
             || SENSITIVITY_LABELS.indexOf('low') === -1
@@ -6841,6 +6963,13 @@
         // pre-v1.22 / no-stress case for every existing run
         // profile). Read-only static rendering only.
         renderActiveStressesFromBundle(bundle);
+        // v1.24.3 — Manual annotations panel. Reads
+        // ``bundle.manual_annotation_readout`` (v1.24.3
+        // descriptive-only payload section). Empty-state
+        // placeholder when the section is absent or empty
+        // (which is the pre-v1.24 / no-annotation case
+        // for every existing run profile).
+        renderManualAnnotationsFromBundle(bundle);
       }
 
       // -----------------------------------------------------------------
@@ -7570,6 +7699,193 @@
           }
           entriesEl.appendChild(
             _buildActiveStressesEntry(entry)
+          );
+        }
+        emptyEl.style.display = 'none';
+        contentEl.style.display = '';
+        if (window.scrollX !== sx
+            || window.scrollY !== sy) {
+          window.scrollTo(sx, sy);
+        }
+      }
+
+      // v1.24.3 — Manual annotations renderer.
+      //
+      // Reads ``bundle.manual_annotation_readout`` (the
+      // v1.24.3 descriptive-only payload section). When the
+      // section is absent or empty, the panel stays in the
+      // neutral empty state. When present, the renderer
+      // shows annotation count, cited record count,
+      // unresolved citation count, and three count lists
+      // (label / scope / role).
+      //
+      // Discipline:
+      // - textContent only — never innerHTML — for any
+      //   caller-supplied value.
+      // - No note_text rendering at v1.24.3.
+      // - No score / no bar height / no interaction-label
+      //   rendering.
+      // - Scroll position is captured + restored to mirror
+      //   the v1.22.2 strip's no-jump discipline.
+      function _buildManualAnnotationsEntry(entry) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'manual-annotations-entry';
+
+        // Summary row.
+        var summary = document.createElement('div');
+        summary.className = 'manual-annotations-summary';
+        var pairs = [
+          [
+            'Readout id',
+            String(entry.readout_id || '—'),
+          ],
+          [
+            'Annotation count',
+            String((entry.annotation_ids || []).length),
+          ],
+          [
+            'Cited record count',
+            String((entry.cited_record_ids || []).length),
+          ],
+          [
+            'Unresolved cited record count',
+            String(
+              (entry.unresolved_cited_record_ids || []).length
+            ),
+          ],
+        ];
+        for (var i = 0; i < pairs.length; i++) {
+          var labelEl = document.createElement('div');
+          labelEl.className = 'label';
+          labelEl.textContent = pairs[i][0];
+          var valueEl = document.createElement('div');
+          valueEl.className = 'value';
+          valueEl.textContent = pairs[i][1];
+          summary.appendChild(labelEl);
+          summary.appendChild(valueEl);
+        }
+        wrapper.appendChild(summary);
+
+        function _appendCountList(title, pairs) {
+          var heading = document.createElement('div');
+          heading.className = 'label';
+          heading.style.marginTop = '8px';
+          heading.textContent = title;
+          wrapper.appendChild(heading);
+          var ul = document.createElement('ul');
+          ul.className = 'manual-annotations-list';
+          if (!pairs || pairs.length === 0) {
+            var li0 = document.createElement('li');
+            li0.textContent = '(none)';
+            ul.appendChild(li0);
+          } else {
+            for (var j = 0; j < pairs.length; j++) {
+              var pair = pairs[j];
+              var label = String(pair[0] != null ? pair[0] : '');
+              var count = String(pair[1] != null ? pair[1] : 0);
+              var li = document.createElement('li');
+              li.textContent = label;
+              var countSpan = document.createElement('span');
+              countSpan.className = 'count';
+              countSpan.textContent = '(' + count + ')';
+              li.appendChild(countSpan);
+              ul.appendChild(li);
+            }
+          }
+          wrapper.appendChild(ul);
+        }
+
+        _appendCountList(
+          'Annotation labels',
+          entry.annotation_label_counts || []
+        );
+        _appendCountList(
+          'Annotation scopes',
+          entry.annotations_by_scope || []
+        );
+        _appendCountList(
+          'Reviewer roles',
+          entry.reviewer_role_counts || []
+        );
+
+        // Unresolved citations as an id list.
+        var unresolved = entry.unresolved_cited_record_ids
+          || [];
+        if (unresolved.length > 0) {
+          var hUnresolved = document.createElement('div');
+          hUnresolved.className = 'label';
+          hUnresolved.style.marginTop = '8px';
+          hUnresolved.textContent = 'Unresolved citations';
+          wrapper.appendChild(hUnresolved);
+          var ulUnresolved = document.createElement('ul');
+          ulUnresolved.className = 'manual-annotations-list';
+          for (var u = 0; u < unresolved.length; u++) {
+            var liU = document.createElement('li');
+            liU.textContent = String(unresolved[u]);
+            ulUnresolved.appendChild(liU);
+          }
+          wrapper.appendChild(ulUnresolved);
+        }
+
+        // Warnings.
+        var warnings = entry.warnings || [];
+        if (warnings.length > 0) {
+          var hW = document.createElement('div');
+          hW.className = 'label';
+          hW.style.marginTop = '8px';
+          hW.textContent = 'Warnings';
+          wrapper.appendChild(hW);
+          var ulW = document.createElement('ul');
+          ulW.className = 'manual-annotations-list';
+          for (var w = 0; w < warnings.length; w++) {
+            var liW = document.createElement('li');
+            liW.textContent = String(warnings[w]);
+            ulW.appendChild(liW);
+          }
+          wrapper.appendChild(ulW);
+        }
+
+        return wrapper;
+      }
+
+      function renderManualAnnotationsFromBundle(bundle) {
+        var sx = window.scrollX || window.pageXOffset || 0;
+        var sy = window.scrollY || window.pageYOffset || 0;
+
+        var emptyEl = $id('manual-annotations-empty');
+        var contentEl = $id('manual-annotations-content');
+        var entriesEl = $id('manual-annotations-entries');
+        if (!emptyEl || !contentEl || !entriesEl) {
+          return;
+        }
+
+        // Wipe any prior render.
+        while (entriesEl.firstChild) {
+          entriesEl.removeChild(entriesEl.firstChild);
+        }
+
+        var section = (bundle && Array.isArray(
+          bundle.manual_annotation_readout
+        )) ? bundle.manual_annotation_readout : [];
+
+        if (section.length === 0) {
+          emptyEl.style.display = '';
+          contentEl.style.display = 'none';
+          if (window.scrollX !== sx
+              || window.scrollY !== sy) {
+            window.scrollTo(sx, sy);
+          }
+          return;
+        }
+
+        for (var i = 0; i < section.length; i++) {
+          var entry = section[i];
+          if (!entry || typeof entry !== 'object'
+              || Array.isArray(entry)) {
+            continue;
+          }
+          entriesEl.appendChild(
+            _buildManualAnnotationsEntry(entry)
           );
         }
         emptyEl.style.display = 'none';

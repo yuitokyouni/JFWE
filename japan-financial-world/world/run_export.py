@@ -656,6 +656,59 @@ def _normalize_stress_readout(
     )
 
 
+def _normalize_manual_annotation_readout(
+    value: (
+        Iterable[Mapping[str, Any]]
+        | tuple[Mapping[str, Any], ...]
+        | None
+    ),
+    *,
+    field_name: str = "manual_annotation_readout",
+) -> tuple[dict[str, Any], ...]:
+    """Normalise the v1.24.3 ``manual_annotation_readout`` payload
+    section to a tuple of frozen-dict-like entries. Cardinality:
+    ``len(value) ∈ {0, 1}`` (one readout per bundle).
+
+    Forbidden-token boundary scan applies at every key + every
+    whole-string value at any depth, against the v1.23.1
+    canonical
+    :data:`world.forbidden_tokens.FORBIDDEN_MANUAL_ANNOTATION_FIELD_NAMES`
+    composition.
+    """
+    # Imported lazily to avoid a circular import — both
+    # ``world.manual_annotation_export`` and
+    # ``world.run_export`` are part of the run-export surface.
+    from world.manual_annotation_export import (
+        _scan_export_entry_for_forbidden,
+    )
+    if value is None:
+        return ()
+    if isinstance(value, Mapping):
+        raise ValueError(
+            f"{field_name} must be a list / tuple of entries; "
+            "got a single Mapping (wrap it in a list)"
+        )
+    entries = list(value)
+    if len(entries) > 1:
+        raise ValueError(
+            f"{field_name} cardinality (v1.24.3 binding): "
+            f"at most 1 entry; got {len(entries)}"
+        )
+    out: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                f"{field_name} entries must be Mapping; "
+                f"got {type(entry).__name__}"
+            )
+        normalised = dict(entry)
+        _scan_export_entry_for_forbidden(
+            normalised, field_name=field_name
+        )
+        out.append(normalised)
+    return tuple(out)
+
+
 def _normalize_boundary_flags(
     value: Mapping[str, Any] | Iterable[tuple[str, bool]] | None,
     *,
@@ -754,6 +807,15 @@ class RunExportBundle:
     stress_readout: tuple[Mapping[str, Any], ...] = field(
         default_factory=tuple
     )
+    # v1.24.3 — descriptive-only manual-annotation readout
+    # reflection section. Cardinality 0 or 1 entry. Empty by
+    # default; omitted from ``to_dict`` / ``bundle_to_json``
+    # output when empty so pre-v1.24 bundles stay byte-
+    # identical (every v1.21.last canonical
+    # ``living_world_digest`` is preserved at v1.24.3).
+    manual_annotation_readout: tuple[Mapping[str, Any], ...] = (
+        field(default_factory=tuple)
+    )
 
     REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
         "bundle_id",
@@ -828,6 +890,14 @@ class RunExportBundle:
                 self.stress_readout, field_name="stress_readout"
             ),
         )
+        object.__setattr__(
+            self,
+            "manual_annotation_readout",
+            _normalize_manual_annotation_readout(
+                self.manual_annotation_readout,
+                field_name="manual_annotation_readout",
+            ),
+        )
 
     # -- serialisation -----------------------------------------------
 
@@ -870,6 +940,13 @@ class RunExportBundle:
             out["stress_readout"] = [
                 dict(e) for e in self.stress_readout
             ]
+        # v1.24.3 — manual annotation readout omitted when
+        # empty (default), preserving every pre-v1.24
+        # bundle digest byte-identical.
+        if self.manual_annotation_readout:
+            out["manual_annotation_readout"] = [
+                dict(e) for e in self.manual_annotation_readout
+            ]
         return out
 
 
@@ -903,6 +980,11 @@ def build_run_export_bundle(
     visibility: str = "public",
     metadata: Mapping[str, Any] | None = None,
     stress_readout: (
+        Iterable[Mapping[str, Any]]
+        | tuple[Mapping[str, Any], ...]
+        | None
+    ) = None,
+    manual_annotation_readout: (
         Iterable[Mapping[str, Any]]
         | tuple[Mapping[str, Any], ...]
         | None
@@ -947,6 +1029,14 @@ def build_run_export_bundle(
         stress_readout=(
             tuple(dict(e) for e in stress_readout)
             if stress_readout
+            else ()
+        ),
+        manual_annotation_readout=(
+            tuple(
+                dict(e)
+                for e in manual_annotation_readout
+            )
+            if manual_annotation_readout
             else ()
         ),
     )
