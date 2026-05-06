@@ -11463,3 +11463,138 @@ The v1.23 sequence is **frozen**. Any subsequent change to
 the substrate, validation, or case-study layer requires a
 fresh design pin under a v1.23.0a or later correction.
 Silent extension of v1.23.last is forbidden.
+
+## 133 v1.24 — Manual Annotation Layer (design pointer, **v1.24.0 design-only**)
+
+*Constitutional position of the v1.24 manual-annotation
+layer. Anchored to the v1.23.last freeze (§132.9) and the
+v1.23.2 Cat 5 placeholder for inter-reviewer
+reproducibility. v1.24 materialises the placeholder's
+runtime surface — a human-authored, append-only audit
+overlay on existing citation-graph records — without
+introducing auto-inference, causal proof, stress
+interaction inference, world mutation, or actor-behavior
+trigger.*
+
+The binding design pin lives in
+[`v1_24_manual_annotation_layer.md`](v1_24_manual_annotation_layer.md).
+This section is the constitutional pointer.
+
+### 133.1 Scope statement (binding)
+
+- **Human-authored only.** Every emitted record carries
+  `source_kind = "human"` and
+  `reasoning_mode = "human_authored"`. The closed sets
+  contain exactly one element each at v1.24; expanding
+  either requires a fresh design pin.
+- **Append-only.** No annotation ever mutates a prior
+  annotation, and no annotation ever mutates a cited
+  record. A reviewer who wants to revise an annotation
+  appends a new annotation citing the prior one (with
+  `annotation_label = "reviewer_disagreement_placeholder"`
+  if the disagreement is the point).
+- **Read-only with respect to the world.** No source-of-
+  truth book mutation, no scenario application, no stress
+  application, no attention emission, no actor behavior,
+  no ledger record beyond the storage event itself.
+- **Cite-only.** `cited_record_ids` is a tuple of plain-id
+  citations to existing records (v1.21.3 readouts,
+  v1.21.2 program applications, v1.18.2 scenario
+  applications + context shifts, v1.23.3 case-study
+  reports, the reserved `validation_report` plain-id
+  format). The storage layer does not dereference the
+  citations; the v1.24.2 readout surfaces unresolved
+  ones separately.
+- **Boundary-preserved.** The v1.23.1 canonical
+  `world.forbidden_tokens` composition applies verbatim,
+  extended with a v1.24.0 manual-annotation delta:
+  `auto_annotation` / `auto_inference` / `automatic_review`
+  / `llm_annotation` / `inferred_interaction` /
+  `causal_effect` / `causal_proof` / `impact_score` /
+  `actor_decision` are forbidden across the surface.
+
+### 133.2 Sequence map
+
+| Sub-milestone | Surface | What it ships |
+| ------------- | ------- | ------------- |
+| **v1.24.0** | docs only | The design pin + this §133 + README §9 row. |
+| v1.24.1 | runtime + tests | `ManualAnnotationRecord` + `ManualAnnotationBook` storage in [`world/manual_annotations.py`](../world/manual_annotations.py) (NEW). Closed-set vocabularies (scope / label / reviewer-role / source-kind / reasoning-mode). Default boundary flags. Forbidden-token composition extending [`world/forbidden_tokens.py`](../world/forbidden_tokens.py). Optional `MANUAL_ANNOTATION_RECORDED` `RecordType`. ~ +12 tests. |
+| v1.24.2 | runtime + tests | `ManualAnnotationReadout` + `build_manual_annotation_readout(...)` in [`world/manual_annotation_readout.py`](../world/manual_annotation_readout.py) (NEW). Optional v1.23.2 validation hook (non-mandatory; existing validation tests pass without annotations). Read-only / no ledger emission / no mutation. ~ +9 tests. |
+| v1.24.3 | export + optional UI + tests | Optional `manual_annotation_readout` payload section on `RunExportBundle` (descriptive-only, empty-by-default, omitted from JSON when empty). Optional minimal "Manual annotations" panel in an existing sheet of `examples/ui/fwe_workbench_mockup.html` (no new tab; `textContent` only). ~ +8 tests. |
+| v1.24.last | docs only | Final freeze. Sequence map, hard-boundary re-pin, future candidates. |
+
+The sequence is **strictly serial**. Silent extension of
+any sub-milestone (e.g. mutating storage from v1.24.1 in
+v1.24.2 readout, or auto-emitting annotations from a
+v1.24.3 helper) is forbidden.
+
+### 133.3 What v1.24 is **NOT** (binding)
+
+- **NOT auto-inference.** No helper, classifier, closed-
+  set rule table, LLM, or any other automated layer may
+  emit a `ManualAnnotationRecord`. Records are inserted
+  only by an explicit human-authored call to the storage
+  book.
+- **NOT causal proof.** An annotation labelled
+  `same_review_frame` does not assert that two records
+  share a causal frame in the world; it asserts that the
+  reviewer is reading them under one review frame.
+- **NOT stress interaction inference.** No `amplify` /
+  `dampen` / `offset` / `coexist` annotation is allowed,
+  even when authored by a human. The v1.21.0a *Deferred:
+  StressInteractionRule* boundary applies to manual
+  annotations too.
+- **NOT aggregate stress output.** No `aggregate` /
+  `combined` / `net` / `dominant` / `composite`
+  annotation field, label, or value is allowed.
+- **NOT a price / forecast / recommendation.** The v1.18
+  / v1.19 / v1.21 / v1.22 forbidden-token catalogue
+  applies verbatim.
+- **NOT an actor decision.** No `firm_decision` /
+  `investor_action` / `bank_approval` annotation is
+  allowed.
+- **NOT a real-data ingest.** No `real_data` /
+  `japan_calibration` / real-issuer / licensed-taxonomy
+  annotation is allowed.
+- **NOT LLM execution.** v1.24.x does not invoke any LLM
+  at runtime.
+- **NOT a source-of-truth mutation.** Annotation records
+  cite — never mutate — their target records.
+- **NOT a downstream-behavior trigger.** No annotation
+  is consumed as input to the v1.18.2 scenario chain,
+  the v1.21.x stress chain, the v1.16.x closed-loop
+  attention path, the v1.15.x / v1.16.x market-intent
+  path, or the v1.14.x financing-path layer.
+
+### 133.4 Hard boundary (re-pinned at v1.24.0)
+
+v1.24.0 inherits and re-pins the v1.23.last hard
+boundary in full (§132.9). v1.24.x adds:
+
+- **No auto-annotation, no automatic annotation helper,
+  no LLM-authored annotation in public v1.x.**
+- **No annotation field / label / value / metadata key /
+  payload key / `note_text` token may match a v1.18.0 /
+  v1.19.0 / v1.19.3 / v1.20.0 / v1.21.0a / v1.22.0 /
+  v1.24.0 forbidden token.**
+
+Digest preservation is guaranteed by the empty-by-default
+rule: every existing fixture seeds an empty
+`ManualAnnotationBook`; the empty book emits no ledger
+record; therefore no fixture's record count changes.
+v1.21.last canonical digests remain byte-identical at
+every v1.24.x sub-milestone.
+
+### 133.5 Future optional candidates (NOT planned, NOT scoped at v1.24.0)
+
+- **v1.25 candidate — institutional investor mandate /
+  benchmark pressure.** Bounded synthetic mandate /
+  benchmark / peer-pressure constraints on the v1.15.5 /
+  v1.16.2 investor-intent layer. Decoupled from the
+  v1.21 / v1.22 / v1.23 / v1.24 surface. Not blocked by
+  v1.24; advances on its own cadence.
+- **v2.x — Japan public calibration.** Gated; requires
+  data / license boundary design first.
+- **v3.x — proprietary Japan calibration.** Not public.
+
+Silent extension of v1.24 is forbidden.
