@@ -12349,3 +12349,68 @@ leakage. No digest impact for existing canonical
 fixtures.
 
 Silent extension of v2 is forbidden.
+
+### 137.7 v2.0.last freeze
+
+The v2.0 sequence is **frozen** as of v2.0.last:
+
+- v2.0.0 docs-only design pin (boundary; sections
+  A–M)
+- v2.0.last docs-only freeze (this section)
+
+v2.0.last is the freeze of the **public boundary**.
+It marks the point at which the public FWE
+repository commits to remaining a generic substrate +
+boundary-documentation artifact, rather than becoming
+a Japan-calibrated quantitative product. v2.0.last
+re-pins, in addition to everything pinned at v2.0.0:
+
+- **v2.0 is a boundary design only** — not a
+  calibration step, not a Japan-readiness step, not
+  a market-effect step.
+- **v2.0 does not begin Japan calibration.** No
+  Japan-specific factual claim, no Japan-specific
+  identifier, no Japan-specific calibration
+  parameter is admitted at v2.0.last.
+- **v2.1+ Japan calibration work should not proceed
+  in the public repo unless explicitly synthetic
+  and license-safe.** Any v2.1 / v2.2 / v2.3 /
+  v2.4 / v2.5 sub-milestone in the public
+  repository must (a) carry a fresh design pin,
+  (b) commit only synthetic examples or
+  citation-bound generic records per §C.2 of the
+  v2.0 doc, (c) carry a per-source license-review
+  note per §F.3, and (d) preserve every v1.21.last
+  canonical `living_world_digest` byte-identically.
+- **Real-data work belongs in the private JFWE
+  repository.** Real Japanese filings, real
+  cross-shareholding extraction, real ownership /
+  voting / market-value calibration, paid-feed
+  ingestion, expert-interview content, manually
+  curated proprietary relationship maps, and any
+  client-specific calibration are out of scope for
+  this public repository.
+- **Public FWE remains a generic substrate /
+  portfolio artifact.** The public repository's
+  durable purpose is the v1.18 → v1.27.last generic
+  substrate + the v2.0 boundary documentation +
+  any future v2.x synthetic illustration that
+  satisfies the four conditions above. Beyond
+  that, it serves as a portfolio / structural-
+  seriousness artifact — not as a Japan-calibrated
+  quantitative product.
+
+Final state at v2.0.last:
+
+- 5113 / 5113 tests passing (unchanged from v2.0.0
+  and v1.27.last).
+- All v1.21.last canonical `living_world_digest`
+  values byte-identical at v2.0.last.
+- 0 new runtime files; 0 new dataclasses; 0 new
+  ledger event types; 0 new tests; 0 new tabs;
+  0 export schema changes; 0 new fixtures; 0 new
+  real-data adapters; 0 new real Japanese company
+  names; 0 new real securities codes.
+
+Silent extension of v2 remains forbidden. The
+public repository's boundary is frozen.

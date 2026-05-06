@@ -896,3 +896,154 @@ docs-only freeze**. v2.1 / v2.2 / v2.3 / v2.4 / v2.5
 candidates exist on the roadmap but are not scheduled.
 v3.x proprietary calibration belongs to a separate
 proprietary track and is **not** open-sourced.
+
+---
+
+## N. v2.0.last freeze (docs-only)
+
+*Final pin section for the v2.0 sequence. v2.0.last
+ships **no** new code, **no** new tests, **no** new
+RecordTypes, **no** new dataclasses, **no** new label
+vocabularies, **no** UI regions, **no** export-schema
+changes, **no** new fixtures, **no** real-data
+adapter, **no** real Japanese identifier of any kind.*
+
+### N.1 What v2.0.last is
+
+v2.0.last is the freeze of the **public boundary**.
+It marks the point at which the public FWE
+repository commits to remaining a generic substrate
++ boundary-documentation artifact, rather than
+becoming a Japan-calibrated quantitative product.
+
+v2.0.last commits, in addition to everything pinned
+at v2.0.0:
+
+- **v2.0 is a boundary design only.** It defines a
+  contract between layers; it is not a calibration
+  step, not a Japan-readiness step, and not a
+  market-effect step.
+- **v2.0 does not begin Japan calibration.** No
+  Japan-specific factual claim, no Japan-specific
+  identifier, no Japan-specific calibration
+  parameter is admitted at v2.0.last. Every Japan-
+  observable structural anchor that v2.0 §H allows
+  for future v2.x consideration remains *future
+  consideration only* — not started.
+- **v2.1+ Japan calibration work should not proceed
+  in the public repo unless explicitly synthetic and
+  license-safe.** Any v2.1 / v2.2 / v2.3 / v2.4 /
+  v2.5 sub-milestone that ships in this public
+  repository must (a) carry a fresh design pin
+  amending this document under a new revision
+  header, (b) commit only synthetic examples or
+  citation-bound generic records as defined in
+  §C.2, (c) carry a per-source license-review note
+  per §F.3, and (d) preserve every v1.21.last
+  canonical `living_world_digest` byte-identically.
+  Anything that cannot satisfy all four conditions
+  does not belong in this repository.
+- **Real-data work belongs in the private JFWE
+  repository.** Real Japanese filings, real
+  cross-shareholding extraction, real ownership /
+  voting / market-value calibration, paid-feed
+  ingestion, expert-interview content, manually
+  curated proprietary relationship maps, and any
+  client-specific calibration belong to a separate
+  private track. They are out of scope for this
+  public repository.
+- **Public FWE remains a generic substrate /
+  portfolio artifact.** The public repository's
+  durable purpose is (1) the generic FWE substrate
+  shipped at v1.27.last, (2) the v2.0 boundary
+  documentation, and (3) any future v2.x synthetic
+  illustration that satisfies the four conditions
+  above. Beyond that, the public repository serves
+  as a portfolio / structural-seriousness artifact
+  — not as a Japan-calibrated quantitative product.
+
+### N.2 Pinned at v2.0.last
+
+- `pytest -q`: **5113 / 5113 passing** (unchanged
+  from v2.0.0; unchanged from v1.27.last).
+- `ruff check .`: clean.
+- `python -m compileall -q world spaces tests examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at v2.0.last:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- New runtime files: **0**.
+- New runtime modules: **0**.
+- New dataclasses: **0**.
+- New `RecordType` values: **0**.
+- New tests: **0**.
+- New tabs: **0**.
+- Export schema changes: **0**.
+- New real-data adapters: **0**.
+- New real Japanese company names: **0**.
+- New real securities codes: **0**.
+- New fixtures: **0**.
+
+### N.3 Sub-milestone sequence
+
+| Sub-milestone | Surface |
+| ------------- | ------- |
+| v2.0.0 | docs-only design pin (boundary; sections A–M) |
+| **v2.0.last** | this freeze |
+
+### N.4 Hard boundary re-pinned at v2.0.last
+
+The v2.0.0 hard boundary is re-pinned verbatim at
+v2.0.last. To re-state explicitly:
+
+- No EDINET / TDnet / J-Quants / FSA filing /
+  EDGAR / SEDAR adapter implementation in the
+  public repository — at v2.0.last and at every
+  v2.x candidate beyond it.
+- No real Japanese company name, securities code
+  (ticker / ISIN / CUSIP / SEDOL / 4-digit code /
+  LEI), filing id, cross-shareholding figure,
+  fiscal-calendar table, index constituent list, or
+  price / volume series in the public repository.
+- No paid dataset, expert-interview content, or
+  client-specific calibration in the public
+  repository — at any milestone.
+- No investment recommendation, target-price /
+  buy / sell / hold output, portfolio-construction
+  output, alpha claim, or backtest claim in the
+  public repository — at any milestone.
+- No event-to-price mapping in the public
+  repository — at any milestone.
+- No private annotation leakage (real names,
+  emails, phone numbers, national-ids, employee-
+  ids, paraphrased private conversations) in any
+  v2.x annotation, metadata, payload, or text
+  field.
+- No digest impact for existing canonical fixtures
+  at any v2.x sub-milestone.
+
+### N.5 Closing statement
+
+v2.0.last freezes the public-repository boundary
+in its entirety. From here forward, the public
+repository's generic substrate (v1.18 → v1.27.last)
++ boundary documentation (v2.0.0 + this freeze) is
+the public commitment. Future Japan calibration
+proceeds in the private repository; the public
+repository remains the generic substrate +
+boundary artifact, and that is its durable shape.
+
+The v2.0 sequence is **frozen**. v2.1 / v2.2 / v2.3 /
+v2.4 / v2.5 candidates exist on the roadmap but are
+not scheduled in the public repository; if undertaken
+they require fresh per-sub-milestone design pins +
+license review and must satisfy §N.1 in full. v3.x
+proprietary calibration is out of scope for this
+public repository.
