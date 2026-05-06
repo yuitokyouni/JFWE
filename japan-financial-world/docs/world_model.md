@@ -11681,3 +11681,154 @@ The v1.24 sequence is **frozen**. Any subsequent change
 to the manual-annotation layer requires a fresh design
 pin under a v1.24.0a or later correction. Silent
 extension of v1.24.last is forbidden.
+
+## 134 v1.25 — Institutional Investor Mandate / Benchmark Pressure (design pointer, **v1.25.0 design-only**)
+
+*Constitutional position of the v1.25 mandate /
+benchmark-pressure layer. Anchored to the v1.24.last
+freeze (§133.6) and decoupled from the v1.24
+manual-annotation surface — v1.25 conditions attention
+/ review context only, never decides what the investor
+does.*
+
+The binding design pin lives in
+[`v1_25_institutional_investor_mandate_benchmark_pressure.md`](v1_25_institutional_investor_mandate_benchmark_pressure.md).
+This section is the constitutional pointer.
+
+### 134.1 Scope statement (binding)
+
+- **Attention / review context conditioning only.**
+  An `InvestorMandateProfile` is a small, append-
+  only, closed-set-label record cited by an
+  investor via plain id. The v1.25.2 read-only
+  mandate-attention-context readout joins a profile
+  to v1.16.x investor state and exposes selected
+  attention bias labels + review context labels.
+  No actor behavior emerges from v1.25.x.
+- **Bounded synthetic.** Six mandate-type labels
+  (plus `unknown`); five benchmark-pressure /
+  liquidity-need labels; three liability-horizon
+  labels (plus `unknown`); five stewardship-
+  priority labels; three review-frequency labels;
+  small concentration-tolerance set. Every closed
+  set is finalised at v1.25.0 design and pinned at
+  v1.25.1 implementation; expanding any closed set
+  requires a fresh design pin.
+- **Append-only.** Profiles are stored in a single
+  append-only book; no profile mutates a prior
+  profile, and no profile mutates a cited investor
+  record.
+- **Read-only with respect to the world.** No
+  source-of-truth book mutation, no scenario
+  application, no stress application, no market
+  intent emission, no actor decision. The only
+  new ledger mutation is the
+  `investor_mandate_profile_recorded` event itself
+  (fired exactly once per `add_profile(...)`
+  call); empty book → no event → no digest
+  movement.
+- **Decoupled from v1.24.** Manual annotations and
+  investor mandates do not consume each other; both
+  layers cite the same v1.21.x audit surface
+  independently.
+
+### 134.2 Sequence map
+
+| Sub-milestone | Surface | What it ships |
+| ------------- | ------- | ------------- |
+| **v1.25.0** | docs only | The design pin + this §134 + README §9 row. |
+| v1.25.1 | runtime + tests | `InvestorMandateProfile` + `InvestorMandateProfileBook` storage in [`world/investor_mandate_profiles.py`](../world/investor_mandate_profiles.py) (NEW). Closed-set vocabularies (mandate type / benchmark pressure / liquidity need / liability horizon / stewardship priority / review frequency / concentration tolerance / status / visibility). Default boundary flags. Forbidden-token composition extending [`world/forbidden_tokens.py`](../world/forbidden_tokens.py) with the v1.25.0 mandate delta. Optional `INVESTOR_MANDATE_PROFILE_RECORDED` `RecordType`. ~ +14 tests. |
+| v1.25.2 | runtime + tests | `InvestorMandateAttentionContext` + `build_investor_mandate_attention_context(...)` in [`world/investor_mandate_attention_context.py`](../world/investor_mandate_attention_context.py) (NEW). Closed-set bias / review-context vocabularies. Read-only / no ledger emission / no mutation / no intent emission. ~ +9 tests. |
+| v1.25.3 | export + UI + tests | Optional `investor_mandate_readout` payload section on `RunExportBundle` (descriptive-only, empty-by-default, omitted from JSON when empty). Optional minimal "Investor mandate context" panel inside an existing sheet of `examples/ui/fwe_workbench_mockup.html` (no new tab; `textContent` only). ~ +9 tests. |
+| v1.25.4 | example + tests + docs | Read-only mandate case study showing two archetypes reviewing the same v1.21.3 stress readout differently. Companion `case_study_002_investor_mandate_attention_context.md`. ~ +8 tests. |
+| v1.25.last | docs only | Final freeze. Sequence map, hard-boundary re-pin, future candidates. |
+
+The sequence is **strictly serial**. Silent
+extension of any sub-milestone (e.g. emitting a
+market intent from v1.25.2 readout, or auto-creating
+profiles from v1.25.3 helper) is forbidden.
+
+### 134.3 What v1.25 is **NOT** (binding)
+
+- **NOT a portfolio.** No `portfolio_allocation`,
+  `target_weight`, `overweight`, `underweight`,
+  `rebalance`, `weight_change`, `allocation_band`
+  field, label, or value.
+- **NOT a trade.** No `buy`, `sell`, `order`,
+  `trade`, `execution` field, label, or value.
+- **NOT a recommendation.** No `recommendation` /
+  `investment_advice` / `expected_return` /
+  `target_price` field, label, or value.
+- **NOT a benchmark number.** No
+  `tracking_error_value` / `tracking_error_basis_points`
+  / `benchmark_weight` / `active_share` / `alpha`
+  / `performance` / `expected_alpha` field, label,
+  or value. The `benchmark_pressure_label` is a
+  closed-set string descriptor; it carries no
+  numeric tracking-error budget.
+- **NOT an actor decision.** No `actor_decision`,
+  `firm_decision`, `investor_action`,
+  `bank_approval`, `trading_decision`,
+  `optimal_capital_structure` field, label, or
+  value emerges from the v1.25 surface.
+- **NOT a real-data ingest.** No `real_data` /
+  `japan_calibration` / real-issuer / licensed-
+  taxonomy field, label, or value. Public v1.x
+  stays jurisdiction-neutral and synthetic.
+- **NOT LLM-authored.** v1.25.x does not invoke
+  any LLM at runtime. No `llm_output` /
+  `llm_prose` / `prompt_text` field, label, or
+  value.
+- **NOT a stress interaction inference.** v1.25
+  inherits the v1.21.0a *Deferred:
+  StressInteractionRule* boundary verbatim. No
+  `amplify` / `dampen` / `offset` / `coexist` /
+  aggregate / composite / net / dominant field,
+  label, or value.
+- **NOT an auto-annotation.** v1.25 inherits the
+  v1.24.0 manual-annotation boundary; the v1.24
+  surface stays as the exclusive home for
+  human-authored annotation.
+- **NOT a market intent.** The v1.25.2 readout
+  does **not** emit any v1.15.5 / v1.16.2
+  `InvestorMarketIntentRecord` and does **not**
+  modify the v1.16.x closed-loop attention
+  emission.
+
+### 134.4 Hard boundary (re-pinned at v1.25.0)
+
+v1.25.0 inherits and re-pins the v1.24.last hard
+boundary in full (§133.6). v1.25.x adds the
+mandate-specific prohibitions:
+
+- **No portfolio allocation, no target weight, no
+  rebalancing.**
+- **No expected return, no target price, no
+  recommendation emitted from the mandate
+  surface.**
+- **No tracking-error value, no benchmark
+  identifier.**
+- **No mandate field / label / value / metadata
+  key / payload key may match a v1.18.0 /
+  v1.19.0 / v1.19.3 / v1.20.0 / v1.21.0a /
+  v1.22.0 / v1.24.0 / v1.25.0 forbidden token.**
+
+Digest preservation is guaranteed by the
+empty-by-default rule: every existing fixture
+seeds an empty `InvestorMandateProfileBook`; the
+empty book emits no ledger record; therefore no
+fixture's record count changes. v1.21.last
+canonical digests remain byte-identical at every
+v1.25.x sub-milestone.
+
+### 134.5 Future optional candidates (NOT planned, NOT scoped at v1.25.0)
+
+- **v2.x — Japan public calibration.** Gated;
+  requires data / license boundary design first.
+  After v1.25.last, only a docs-only design
+  packet may be prepared; no data ingestion.
+- **v3.x — proprietary Japan calibration.** Not
+  public; would live in a private repository and
+  would preserve every public-FWE boundary.
+
+Silent extension of v1.25 is forbidden.
