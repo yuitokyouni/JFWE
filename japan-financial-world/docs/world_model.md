@@ -12182,3 +12182,35 @@ power / market value / centrality score / real-data
 adapter / real-person identity / compliance claim.
 
 Silent extension of v1.27 is forbidden.
+
+### 136.6 v1.27.last freeze
+
+The v1.27 sequence is **frozen** as of v1.27.last:
+
+- v1.27.0 design pin (docs-only)
+- v1.27.1 StrategicRelationship storage (13 tests)
+- v1.27.2 StrategicRelationshipReadout + optional
+  descriptive-only export (13 tests)
+- v1.27.3 ManualAnnotationProvenance storage with
+  pseudonymous anti-email-leak guard (11 tests)
+- v1.27.last docs-only freeze (this section)
+
+Final state:
+
+- 5113 / 5113 tests passing (+37 vs v1.26.last).
+- All v1.21.last canonical ``living_world_digest``
+  values byte-identical at every v1.27.x sub-
+  milestone.
+- Empty-by-default kernel coexistence preserves
+  every existing fixed fixture.
+- 0 source-of-truth book mutations from v1.27
+  helpers.
+- 0 new tabs; 1 optional omitted-when-empty export
+  section (``strategic_relationship_readout``).
+
+v1.27 closes the **last generic substrate addition**
+in public v1.x. The next milestone is **v2.0 —
+Japan Public Calibration Boundary Design**
+(docs-only design pin), which begins the explicit
+Japan calibration work that v1.24 / v1.25 / v1.26 /
+v1.27 prepared the substrate for.
