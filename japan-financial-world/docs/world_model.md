@@ -12566,3 +12566,80 @@ pin amendment) before implementation.
   any sub-milestone.
 
 Silent extension of v1.28 is forbidden.
+
+## 139 Answer surface and epistemic boundary (constitutional pointer)
+
+*Constitutional position of JFWE's answer surface and
+its epistemic limits. Anchored to every prior section
+of `world_model.md` — the answer surface is the
+ledger trace produced by the primitives those
+sections define.*
+
+The binding positioning document lives in
+[`answer_surface.md`](answer_surface.md).
+
+### 139.1 The primitive question
+
+JFWE answers a single primitive question:
+
+> Given an event or evidence input, how would each
+> **modeled actor** process the evidence, reallocate
+> attention, cite supporting signals, and leave an
+> auditable judgment trace?
+
+JFWE does **not** answer "what will the index return
+be?", "should we buy / sell / hold?", or "what is
+the target price?". Price, flow, and portfolio
+consequences may be modeled downstream — never as
+the primitive answer surface of JFWE.
+
+### 139.2 Primitive output
+
+JFWE's primitive output is **not a number**. It is
+a **structured ledger** of judgment formation. The
+trace shape is:
+
+```
+evidence  →  attention  →  review  →  citation graph  →  ledger
+```
+
+Every step is recoverable from the append-only
+ledger.
+
+### 139.3 Epistemic limits (binding)
+
+- No omniscience.
+- Modeled actors only — never "every market
+  participant" / "all real human minds".
+- Diversity from explicit primitives (archetypes,
+  mandates, constraints, attention budgets,
+  evidence resolvers) — never from real-population
+  sampling or real-market histories.
+- Reproducibility from determinism + append-only
+  ledger traces.
+- Surprise events are inputs, not predictions.
+- No legal-compliance claim of any jurisdiction.
+- No comparison to any named firm, product,
+  vendor, research provider, or competitive
+  offering.
+
+### 139.4 Auditability surface
+
+The judgment trace can be queried later for:
+
+- Post-event audit (which modeled actors attended
+  to which evidence, in which order, under which
+  mandate, citing which records).
+- Stress review (replay how a stress-program
+  application propagated through the citation
+  graph).
+- Decision archaeology (substrate-level reasons a
+  manual annotation was emitted, who pseudonymously
+  authored it, under what authority, citing which
+  evidence).
+
+These are the **value-bearing** queries of JFWE.
+None of them is a price forecast, an investment
+recommendation, or an alpha claim.
+
+Silent relaxation of §139 is forbidden.

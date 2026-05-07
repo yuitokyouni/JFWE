@@ -139,6 +139,99 @@ warnings — not in any reduction or interpretive label.
 
 ---
 
+## What JFWE Answers
+
+JFWE does **not** answer:
+
+> "What will the index return be tomorrow?"
+
+JFWE answers:
+
+> Given this event, how would each **modeled market actor**
+> process the evidence, reallocate attention, cite supporting
+> signals, and leave an auditable judgment trace?
+
+That is the primitive answer surface. Concretely:
+
+- **JFWE's primitive output is not a number.** It is a
+  **structured ledger** of judgment formation.
+- **The trace is** evidence → attention → review → citation
+  graph → ledger. Each step is recoverable from the
+  append-only ledger; the recoverability is the value.
+- **Price, flow, and portfolio consequences may be modeled
+  downstream**, but they are **not** the primitive answer
+  surface of JFWE. The boundary is sharp: JFWE produces a
+  judgment trace; what a downstream consumer of that trace
+  does with it (in a separate, non-public track) is out of
+  scope.
+- **Unexpected events are not predicted in advance.** They
+  are accepted as inputs once they enter the information
+  environment. JFWE describes the judgment-formation
+  *response*, not the event *probability*.
+- **The system grows by cadence.** There is no single
+  punchline. The substrate grows across milestones (v0.x →
+  v1.27.last → v2.0.last → v1.28.0 design pin), each adding
+  a small, audited piece. The cadence is the artifact.
+- **The ledger can be queried later** for post-event audit,
+  stress review, and decision archaeology.
+
+The longer-form treatment lives in
+[`docs/answer_surface.md`](japan-financial-world/docs/answer_surface.md)
+(sections 1–9: primitive question, primitive output,
+downstream-not-primitive boundary, surprise-as-input,
+cadence, epistemic boundary, auditability surface, forbidden
+output classes, closing).
+
+---
+
+## Epistemic Boundary
+
+The following are explicit epistemic limits, binding across
+every milestone and not relaxed without a fresh design pin:
+
+- **JFWE does not claim omniscience.** It does not claim to
+  know the full state of any real market, the full
+  population of any real participant set, or the full
+  information environment of any real event.
+- **JFWE does not model all real participants.** It models
+  a finite, pinned set of **modeled actor archetypes** with
+  deterministic processing rules. Every actor in JFWE is a
+  modeled actor. The `_like` archetype suffix (e.g.
+  `pension_like`, `active_manager_like`, `sovereign_like`
+  in the v1.25 mandate vocabularies) is binding — these are
+  not claims about real-world institutional categories;
+  they are closed-set archetype labels for synthetic
+  actors.
+- **JFWE models pinned actor archetypes with deterministic
+  rules.** Closed-set vocabularies; explicit sort orders;
+  no wall-clock timestamps in canonical material; no Python
+  memory addresses in canonical material; the same input
+  produces a byte-identical trace.
+- **Diversity comes from heterogeneous archetypes,
+  mandates, constraints, attention budgets, and evidence
+  resolvers** — not from real-population sampling or real-
+  market histories. The diversity is drawn from explicit
+  primitives in the substrate.
+- **Reproducibility comes from deterministic processing
+  and append-only ledger traces.** No in-place mutation of
+  historical records; revisions append new records citing
+  the prior. Canonical `living_world_digest` fixtures
+  (`quarterly_default`, `monthly_reference`,
+  `scenario_monthly_reference_universe`, v1.20.4 CLI
+  bundle) enforce byte-identical reproducibility.
+- **Surprise events are inputs, not predictions.** JFWE
+  does not produce surprise-event forecasts. It produces
+  judgment-formation traces conditional on the events in
+  the information environment.
+
+JFWE makes **no** legal-compliance claim of any
+jurisdiction. The positioning above is intrinsic (what JFWE
+is and is not); it does **not** compare JFWE to any named
+firm, product, vendor, research provider, or competitive
+offering.
+
+---
+
 ## 4. Current milestone: v1.28.0
 
 **v1.28.0 Scale Substrate — Event Log + Columnar
