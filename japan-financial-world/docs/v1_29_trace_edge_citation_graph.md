@@ -976,6 +976,115 @@ v1.28 event-log modules unaffected.
 
 ---
 
+## v1.29.3 implementation note
+
+*v1.29.3 ships `CitationGraphProjection` — a frozen,
+deterministic, read-only projection from
+`EventLogRecord` + `TraceEdgeRecord` into an audit-
+oriented graph summary. Materialised view, not source
+of truth. No graph database, no networkx, no centrality
+/ PageRank / community detection / embedding, no
+counterfactual replay.*
+
+### v1.29.3.1 Surface
+
+In [`world/citation_graph_projection.py`](../world/citation_graph_projection.py):
+
+- `CitationGraphProjection` (frozen dataclass:
+  `run_id`, `node_event_ids`, `edge_ids`,
+  `nodes_by_record_type`, `edges_by_type`,
+  `edges_by_category`, `evidence_ref_counts`,
+  `citation_ref_counts`, `actor_edge_counts`,
+  `disconnected_event_ids`,
+  `dangling_source_event_ids`,
+  `dangling_target_event_ids`,
+  `projection_digest`).
+- `build_citation_graph_projection(event_records,
+  trace_edges, *, run_id)` — deterministic builder.
+
+Determinism contract (binding):
+
+- Inputs are not mutated.
+- Event records sorted by `event_id` for the
+  canonical node-id list and for
+  `nodes_by_record_type`.
+- Trace edges sorted by `canonical_sort_key` for the
+  canonical edge-id list, count aggregations, and
+  the `projection_digest` payload.
+- All count-pair tuples sorted by key ascending.
+- Empty inputs → empty outputs (deterministic).
+- Edges whose `source_event_id` /
+  `target_event_id` are not present in the supplied
+  event records surface as
+  `dangling_source_event_ids` /
+  `dangling_target_event_ids` (sorted, deduplicated).
+- Events that appear in no trace edge surface as
+  `disconnected_event_ids` (sorted).
+- `projection_digest` is SHA-256 lowercase hex over
+  the canonical payload that includes the trace
+  edges in canonical sorted order plus the v1.29.1
+  `TRACE_EDGE_SCHEMA_VERSION` sentinel; any edge-
+  semantic change propagates.
+
+### v1.29.3.2 What v1.29.3 does NOT ship
+
+- No graph database (Neo4j / TigerGraph / etc.).
+- No PROV-O / RDF / SPARQL / Cypher / rdflib /
+  networkx / Gremlin.
+- No graph centrality / PageRank / community-
+  detection / embedding (forbidden-scope test
+  enforces `def …centrality` /
+  `def …pagerank` / `def …embedding` / call-site
+  patterns are absent).
+- No counterfactual replay.
+- No `WorldKernel` field.
+- No mutation of inputs.
+- No mutation of any v1.28 event-log file or any
+  v1.29.2 trace-edge file.
+
+### v1.29.3.3 Tests added
+
+`tests/test_citation_graph_projection.py` adds **+28
+tests**. Coverage: dataclass shape; node_event_ids
+sorted; edge_ids sorted by `canonical_sort_key` (NOT
+alphabetic on edge_id — explicit expected-order
+check); `nodes_by_record_type` /
+`edges_by_type` / `edges_by_category` /
+`evidence_ref_counts` / `citation_ref_counts` /
+`actor_edge_counts` correct on a 3-event / 4-edge
+fixture; deterministic across repeated calls;
+edge-insertion-order independent; event-insertion-
+order independent; projection_digest lowercase-hex-64;
+projection_digest reacts to edge-semantic change
+/ event-set change / run_id change; disconnected
+event ids surfaced; dangling source / target
+surfaced; empty-inputs deterministic; no-mutation of
+inputs; type guards; empty run_id rejection; frozen
+dataclass; forbidden-scope (no rdflib / sparql /
+neo4j / networkx / gremlin / Polars / DuckDB /
+PyArrow imports; no `def …centrality` /
+`def …pagerank` / `def …embedding` definitions; no
+`centrality(` / `pagerank(` / `embedding(` /
+`louvain(` / `node2vec(` call sites); no
+`WorldKernel` field; module exports match design
+pin.
+
+### v1.29.3.4 Validation
+
+- `pytest -q`: **5448 passed, 2 skipped, 1 deselected
+  / 5451 collected** (5420 → 5448; +28 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- v1.28 event-log substrate intact.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.29.0 closing statement
 
 v1.29.0 is a docs-only design pin. It introduces
