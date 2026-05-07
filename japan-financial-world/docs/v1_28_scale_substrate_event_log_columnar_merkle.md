@@ -1619,6 +1619,122 @@ helper functions in `__all__`.
 
 ---
 
+## v1.28.4 implementation note
+
+*v1.28.4 ships the inner / root Merkle digest
+construction on top of v1.28.1's
+`compute_leaf_digest(...)` boundary and v1.28.2's JSONL
+reader. The Merkle digest is a **new, separate digest
+surface**; the legacy `living_world_digest` remains
+byte-identical for every existing canonical fixture.*
+
+### v1.28.4.1 Surface
+
+Implemented in
+[`world/event_log_merkle.py`](../world/event_log_merkle.py):
+
+- `compute_manifest_digest(manifest)` — SHA-256 over
+  the canonical-JSON manifest bytes (sort_keys=True);
+  lowercase hex.
+- `compute_partition_leaf_digest(root, partition_key,
+  manifest)` — reads part files in lex-ascending
+  order, parses canonical JSON, reconstructs
+  `EventLogRecord` instances, and **routes through**
+  `compute_leaf_digest(...)` from
+  `world.event_log_schema`. There is exactly one
+  leaf-hash implementation in the project; the
+  v1.28.4 module composes leaves but never re-
+  implements them.
+- `compute_inner_digest(children)` — SHA-256 over
+  canonically-serialised `[[child_key, child_digest],
+  ...]` sorted by `child_key`. Filesystem listing
+  order, dict iteration order, and insertion order
+  all have no effect on the result.
+- `discover_partitions(root)` — walks the three-level
+  partition layout (`year_month=…/sector_id=…/
+  record_type=…/`), skips unrelated directories
+  silently, and returns the partition keys sorted by
+  `(year_month, sector_id, record_type)`.
+- `compute_event_log_root_digest(root, manifest=None)`
+  — composes the root from the per-partition leaves
+  + a `("__manifest__", manifest_digest)` sentinel
+  child via `compute_inner_digest(...)`. The manifest
+  is read from the sidecar if not supplied.
+- `EventLogDigestTree` (frozen dataclass:
+  `root_digest`, `manifest_digest`,
+  `partition_digests`).
+- `build_event_log_digest_tree(root, manifest=None)`
+  — convenience builder returning the dataclass for
+  inspection.
+
+Empty event log behavior: deterministic, manifest-only
+root digest. A partition with no part files (just an
+empty directory) yields the same leaf digest as
+`compute_leaf_digest((), manifest)` and is included
+in the tree.
+
+### v1.28.4.2 What v1.28.4 does NOT ship
+
+- No Polars / DuckDB / PyArrow / xxhash / Rust /
+  PyO3.
+- No legacy `living_world_digest` computation. The
+  Merkle root is **NOT** required to equal the
+  legacy digest. The two surfaces coexist.
+- No materialised view (v1.28.8).
+- No second leaf-hash implementation. Module text
+  forbids reaching in to the partition leaf without
+  routing through `compute_leaf_digest(...)`.
+
+### v1.28.4.3 Tests added
+
+`tests/test_event_log_merkle.py` adds **+32 tests**.
+Coverage: manifest-digest stable / changes-on-field-
+change / type-check; partition-leaf-digest matches
+in-memory `compute_leaf_digest`; partition-leaf-
+digest independent of part-file split; partition-
+leaf-digest reacts to record changes; empty-
+partition-dir matches empty-records; type-check
+guards on partition_key / manifest; inner-digest
+lowercase-hex-64; insertion-order independent; dict-
+iteration-order independent; reacts to child digest
+change; rejects empty / malformed entries;
+discover_partitions walks the three-level layout,
+returns sorted result, skips unrelated directories,
+handles missing root; root-digest stable across
+reruns; root-digest filesystem-listing-order
+independent (two roots seeded with the same logical
+content yield the same root); root-digest reacts to
+record change; unchanged-partition-leaf-stays-equal
+under sibling-mutation; root-digest reacts to
+manifest change; empty-event-log root-digest is
+deterministic and manifest-only; root-digest loads
+manifest from sidecar when omitted;
+build_event_log_digest_tree round-trip;
+forbidden-scope (no Polars / DuckDB / PyArrow /
+xxhash / pyo3 / fastparquet imports); single-leaf-
+implementation pin (monkey-patch
+`event_log_merkle.compute_leaf_digest` to a sentinel
+and verify the partition leaf-digest path explodes —
+no independent code path exists); explicit-recompute
+inner-digest equality match; module-exports match
+design pin; no-legacy-living_world_digest-callable-
+invocation pin.
+
+### v1.28.4.4 Validation
+
+- `pytest -q`: **5261 / 5261 passing** (5229 →
+  5261; +32 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
