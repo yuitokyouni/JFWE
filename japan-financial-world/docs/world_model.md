@@ -12853,3 +12853,73 @@ pin amendment) before implementation.
 - Local-first boundary preserved.
 
 Silent extension of v1.29 is forbidden.
+
+### 140.7 v1.29.last freeze
+
+The v1.29 trace-graph sequence is **frozen** as of
+v1.29.last:
+
+- v1.29.0 docs-only design pin (sections A–P)
+- v1.29.1 `TraceEdgeRecord` schema + canonical
+  serializer + `compute_trace_edge_leaf_digest`
+  boundary (+56 tests)
+- v1.29.2 append-only local trace-edge JSONL writer +
+  manifest sidecar + per-partition leaf-digest hook
+  (+37 tests)
+- v1.29.3 deterministic `CitationGraphProjection` +
+  `build_citation_graph_projection` (+28 tests)
+- v1.29.4 deterministic audit trace query helpers +
+  `AuditTraceSummary` + counterfactual-replay-not-
+  implemented constant (+34 tests)
+- v1.29.5 trace digest + tamper-evidence integration
+  helpers (+21 tests)
+- v1.29.last docs-only freeze (this section)
+
+Final state at v1.29.last:
+
+- 5503 passed, 2 skipped, 1 deselected /
+  5506 collected (5327 → 5503; +176 default-
+  collected tests across the v1.29 implementation
+  sequence).
+- All v1.21.last canonical `living_world_digest`
+  values byte-identical at every v1.29.x sub-
+  milestone.
+- 5 new runtime modules (`trace_edges`,
+  `trace_edge_store`,
+  `citation_graph_projection`,
+  `audit_trace_queries`, `trace_digest`); 0 new
+  example tools; 0 new fixtures.
+- 0 new `RecordType` values; 0 new `WorldKernel`
+  fields; 0 new tabs; 0 export schema changes;
+  0 new runtime dependencies; 0 new optional
+  `[project.optional-dependencies]` entries; no
+  `pyproject.toml` change.
+
+Freeze invariants (binding):
+
+- Event log remains the canonical substrate.
+- Trace edges are the canonical row class for
+  inter-event relationships.
+- Citation graph projection is read-only and
+  recomputable; not a source of truth.
+- Trace digest is a NEW SEPARATE surface from the
+  legacy `living_world_digest` and the v1.28.4
+  Merkle root.
+- Single trace-edge leaf-hash implementation
+  (delegates to v1.29.1 boundary). No parallel hash
+  code path.
+- No `prev_hash` / `self_hash` chain on
+  `TraceEdgeRecord`. Tamper evidence is layered
+  through the v1.28 event-log / manifest / Merkle
+  substrate.
+- No graph database dependency. No PROV-O / RDF /
+  SPARQL / Cypher / Gremlin / rdflib / networkx
+  runtime.
+- No counterfactual replay (deferred to v1.30+).
+- No real data, no Japan calibration, no real-data
+  adapter, no investment output, no sentiment
+  label.
+- v1.28 event-log substrate intact at every v1.29.x
+  sub-milestone.
+
+Silent extension of v1.29 remains forbidden.

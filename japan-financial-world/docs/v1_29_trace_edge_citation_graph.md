@@ -1309,6 +1309,151 @@ Coverage:
 
 ---
 
+## Q. v1.29.last freeze (docs-only)
+
+*Final pin section for the v1.29 sequence. v1.29.last
+ships **no** new code, **no** new tests, **no** new
+RecordTypes, **no** new dataclasses, **no** new label
+vocabularies, **no** UI regions, **no** export-schema
+changes, **no** new fixtures, **no** new dependencies,
+**no** real-data adapter, **no** real Japanese
+identifier of any kind. The v1.29 trace-graph
+sequence is closed.*
+
+### Q.1 Shipped sequence
+
+| Sub-milestone | Surface |
+| ------------- | ------- |
+| v1.29.0 | Docs-only design pin (sections A–P) |
+| v1.29.1 | `TraceEdgeRecord` schema + canonical serializer + `compute_trace_edge_leaf_digest` boundary (+56 tests) |
+| v1.29.2 | Append-only local trace-edge JSONL writer + manifest sidecar + `compute_partition_trace_edge_leaf_digest` hook (+37 tests) |
+| v1.29.3 | Deterministic `CitationGraphProjection` + `build_citation_graph_projection` (+28 tests) |
+| v1.29.4 | Deterministic audit trace query helpers + `AuditTraceSummary` + counterfactual-replay-not-implemented constant (+34 tests) |
+| v1.29.5 | Trace digest + tamper-evidence integration helpers (`compute_trace_edge_collection_digest`, `compute_citation_graph_projection_digest`, `compute_event_log_trace_combined_digest`) (+21 tests) |
+| **v1.29.last** | This freeze |
+
+### Q.2 Pinned at v1.29.last
+
+- `pytest -q`: **5503 passed, 2 skipped, 1 deselected
+  / 5506 collected** (5327 → 5503; +176 default-
+  collected tests across the v1.29 implementation
+  sequence; 2 conditional skips for absent
+  Polars / DuckDB; 1 deselected opt-in heavy v1.28.9
+  scale test).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at every v1.29.x sub-
+  milestone:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- 5 new runtime modules: `trace_edges`,
+  `trace_edge_store`, `citation_graph_projection`,
+  `audit_trace_queries`, `trace_digest`.
+- 0 new `RecordType` values; 0 new `WorldKernel`
+  fields; 0 new tabs; 0 export schema changes; 0
+  new fixtures.
+- 0 new runtime dependencies; 0 new optional
+  `[project.optional-dependencies]` entries; no
+  `pyproject.toml` change.
+
+### Q.3 Freeze invariants (binding)
+
+- **Event log remains the canonical substrate.** No
+  v1.29 record shadows or modifies the v1.28
+  `EventLogRecord`.
+- **Trace edges are the canonical row class for
+  inter-event relationships.** Removing every trace
+  edge leaves the underlying event-log substrate
+  unchanged.
+- **Citation graph projection is read-only**, not a
+  source of truth. Dropping the projection and
+  rebuilding from the same event records + trace
+  edges produces a byte-identical projection.
+- **Graph projection is not canonical source of
+  truth.** No persisted projection artifact is the
+  source for any later derivation.
+- **No graph database dependency.** No Neo4j /
+  TigerGraph / TigerGraph / ArangoDB / Memgraph /
+  AnzoGraph / etc. at any v1.29.x sub-milestone.
+- **No PROV-O formal implementation.** PROV-O-
+  inspired conceptual mapping only — strings, not
+  ontology export. No rdflib / OWL / SPARQL.
+- **No counterfactual replay.** v1.29 audit
+  helpers answer "**which** judgments depend on
+  evidence X?" — they do not answer "**what would
+  change** if evidence X were withdrawn?". Counter-
+  factual replay is deferred to a future milestone
+  (likely v1.30+).
+- **No real data.** No real Japanese identifier, no
+  real filing, no real cross-shareholding, no real
+  reporting calendar, no real price / volume.
+- **No Japan calibration.** v1.29 inherits the
+  v2.0.0 boundary verbatim.
+- **No adapters.** No EDINET / TDnet / J-Quants /
+  FSA / EDGAR / SEDAR / JPX / TOPIX / Nikkei /
+  GICS / MSCI / S&P / FactSet / Bloomberg /
+  Refinitiv / Capital IQ at any v1.29.x sub-
+  milestone.
+- **No investment output.** No buy / sell / hold /
+  target-price / portfolio-allocation / forecast /
+  recommendation / alpha / backtest / event-to-
+  price output. v1.29 forbids sentiment labels
+  (`bullish` / `bearish` / `optimistic` /
+  `pessimistic`) at the closed-set level.
+- **Legacy `living_world_digest` values byte-
+  identical.** The four canonical hex strings under
+  Q.2 are unchanged.
+- **v1.28 event-log substrate intact.** No v1.28
+  module is modified at any v1.29.x sub-milestone.
+  No v1.28 test is affected.
+- **Trace digest is a NEW separate surface.** The
+  `compute_event_log_trace_combined_digest` does
+  **not** equal the legacy `living_world_digest`.
+- **No `prev_hash` / `self_hash` chain on
+  `TraceEdgeRecord`.** Tamper evidence is layered
+  through the v1.28 event-log / manifest / Merkle
+  substrate via the v1.29.1
+  `compute_trace_edge_leaf_digest` boundary.
+- **v1.30 candidate may address human-readable
+  audit report surface** (or counterfactual replay,
+  or both — decision deferred). Regulatory mapping
+  and 1-page commercial design figure are later
+  docs / pitch artifacts, not v1.29 runtime.
+
+### Q.4 Closing statement
+
+The v1.29 trace-graph layer is **frozen** as a
+generic, jurisdiction-neutral, synthetic-only
+audit-oriented projection above the v1.28 event-log
+substrate. It ships the canonical `TraceEdgeRecord`
+row class (with closed-set procedural / structural
+labels — never sentiment, never investment), an
+append-only JSONL trace-edge writer (mirroring v1.28
+discipline), a deterministic `CitationGraphProjection`
+read-only view, deterministic audit query helpers
+(with explicit counterfactual-replay-not-implemented
+boundary), and trace-digest tamper-evidence helpers
+(with single-leaf-hash-implementation guarantee).
+
+The next provisional milestone is **v1.30 candidate**
+— Audit Report Surface design pin (or counterfactual
+replay design pin; decision deferred to a fresh
+design pin). v1.29.last does **not** start it; v1.30
+requires its own design pin or design-pin amendment
+before implementation.
+
+---
+
 ## v1.29.0 closing statement
 
 v1.29.0 is a docs-only design pin. It introduces
