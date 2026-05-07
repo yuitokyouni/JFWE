@@ -1412,6 +1412,113 @@ amendment before implementation.
 
 ---
 
+## v1.28.2 implementation note
+
+*v1.28.2 ships the append-only local JSONL writer. No
+Parquet, no Polars, no DuckDB, no PyArrow, no xxhash, no
+Rust/PyO3, no manifest sidecar (deferred to v1.28.3), no
+inner / root Merkle digest (deferred to v1.28.4), no
+materialised view, no kernel binding.*
+
+### v1.28.2.1 Surface
+
+Implemented in
+[`world/event_log_writer.py`](../world/event_log_writer.py):
+
+- `EventLogPartitionKey` (frozen dataclass; three
+  required non-empty string fields: `year_month`,
+  `sector_id`, `record_type`; `to_path_segments()`
+  produces `("year_month=…", "sector_id=…",
+  "record_type=…")`; `from_record(EventLogRecord)`
+  classmethod).
+- `EventLogPartitionWriter` (per-partition append-only
+  JSONL writer; constructor accepts `root_path`,
+  `partition_key`, `manifest`; `partition_dir` and
+  `sealed_marker` properties; `is_sealed()`;
+  `list_part_files()` returns lex-sorted tuple;
+  `append(records)` writes a NEW part file with a
+  monotonic 6-digit zero-padded index — **never**
+  rewrites an existing part file (uses ``"xb"``
+  exclusive open); `seal()` places a `_SEALED` empty
+  marker file; sealing twice raises
+  `AlreadySealedError`; appending to a sealed
+  partition raises `SealedPartitionWriteError`).
+- `EventLogWriteResult` (frozen dataclass:
+  `partition_key`, `part_file_path`, `part_file_index`,
+  `record_count`, `bytes_written`).
+- `read_partition_part_file(part_path)` — JSONL
+  reader returning a tuple of plain dicts (used by
+  v1.28.4 Merkle leaf digest reuse). Tolerates
+  trailing newline; empty file → empty tuple.
+- Exceptions: `EventLogWriteError` (base),
+  `SealedPartitionWriteError`, `AlreadySealedError`,
+  `EventLogValidationError`.
+- Constants: `SEALED_MARKER_FILE_NAME = "_SEALED"`,
+  `PART_FILE_NAME_PREFIX = "part-"`,
+  `PART_FILE_INDEX_DIGITS = 6`,
+  `PART_FILE_NAME_SUFFIX = ".jsonl"`.
+
+JSONL semantics (binding):
+
+- One canonical record per line (one call to
+  `serialize_canonical_json` + `b"\n"`).
+- Records in a single `append(...)` are sorted by
+  `canonical_sort_key` before serialisation; in-file
+  order is canonical and deterministic.
+- File is written via exclusive open (`"xb"`) so a
+  pre-existing file at the next-index name aborts the
+  append — defensive but unreachable under normal
+  use because the index is monotonic.
+
+### v1.28.2.2 What v1.28.2 does NOT ship
+
+- No Parquet / Polars / DuckDB / PyArrow / xxhash /
+  Rust / PyO3.
+- No manifest sidecar (`_MANIFEST.json` arrives at
+  v1.28.3).
+- No inner / root Merkle digest (v1.28.4).
+- No `WorldKernel` field; no kernel mutation; no
+  fixture mutation; every existing v1.21.last
+  canonical `living_world_digest` value is byte-
+  identical at v1.28.2.
+
+### v1.28.2.3 Tests added
+
+`tests/test_event_log_writer.py` adds **+30 tests**.
+Coverage: partition-key validation; first/second
+append produce `part-000001.jsonl` /
+`part-000002.jsonl`; existing-part-file checksum +
+size unchanged after subsequent append; lex-sorted
+listing; total-size monotonic under append; JSONL
+round-trip via `read_partition_part_file`; in-file
+sort by `canonical_sort_key`; sealing creates marker;
+sealed partition refuses appends; sealing twice
+raises `AlreadySealedError`; sealing-empty-partition
+allowed but blocks future writes; empty-record-list,
+non-record-item, wrong-partition-key rejection;
+invalid constructor arguments; reader-helper round-
+trip + empty-file + trailing-newline tolerance;
+forbidden-scope (no Polars/DuckDB/PyArrow/xxhash/
+pyo3/fastparquet imports; no real-data adapter
+imports; module exports match design pin); writer-
+no-overwrite defensive guard; writer does not
+register a `WorldKernel` field.
+
+### v1.28.2.4 Validation
+
+- `pytest -q`: **5204 / 5204 passing** (5174 → 5204;
+  +30 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
