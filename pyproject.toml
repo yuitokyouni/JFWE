@@ -45,10 +45,21 @@ dev = [
 
 [tool.pytest.ini_options]
 # Tests live under japan-financial-world/tests and import from
-# japan-financial-world/world and japan-financial-world/spaces. CI
-# changes into japan-financial-world/ before running pytest, so this
-# config matches that working directory.
-testpaths = ["tests"]
+# japan-financial-world/world and japan-financial-world/spaces. The
+# config below makes pytest work both from the git root and from
+# japan-financial-world/:
+#   - ``pythonpath = ["japan-financial-world"]`` (root-relative) puts
+#     the source root on sys.path when pytest discovers this config
+#     at the git root, so ``import world`` / ``import spaces`` work
+#     without a manual ``PYTHONPATH=...`` prefix.
+#   - ``testpaths = ["japan-financial-world/tests"]`` (root-relative)
+#     points discovery at the actual test directory.
+# When pytest is invoked from inside japan-financial-world/, it
+# walks up to this pyproject.toml as rootdir and resolves both paths
+# correctly, so ``cd japan-financial-world && PYTHONPATH=. pytest -q``
+# also works.
+pythonpath = ["japan-financial-world"]
+testpaths = ["japan-financial-world/tests"]
 python_files = ["test_*.py"]
 addopts = "-q"
 
