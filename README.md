@@ -1,4 +1,4 @@
-# Financial World Engine (FWE) / Japan Financial World Engine (JFWE)
+# Japan Financial World Engine (JFWE)
 
 FWE is a public, jurisdiction-neutral **synthetic financial world**
 simulation substrate. It models a financial economy through layered
