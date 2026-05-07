@@ -1219,6 +1219,199 @@ or its design pin is amended before proceeding.
 
 ---
 
+## v1.28.1 implementation note
+
+*v1.28.1 ships the smallest possible runtime
+foundation for the future scale substrate. It
+implements one canonical event-log row, one manifest,
+one deterministic canonical-JSON serializer, and one
+SHA-256 leaf-digest function boundary on tiny
+in-memory fixtures only.*
+
+### v1.28.1.1 Surface
+
+Implemented in
+[`world/event_log_schema.py`](../world/event_log_schema.py):
+
+- `EventLogRecord` (frozen dataclass; 18 fields per
+  §D.3 candidate event schema; non-empty-string
+  validation on the 12 required string fields;
+  `event_index` non-negative integer; `parent_event_ids`
+  tuple of non-empty strings — accepts a tuple or a
+  list, rejects a bare `str` and rejects unordered
+  containers like `set`; deterministic defaults for
+  `partition_key` and `canonical_sort_key` per §D.3 —
+  `partition_key = "year_month=…/sector_id=…/record_type=…"`
+  and `canonical_sort_key = "{partition_key}/event_index={NNN}/event_id=…"`
+  with a 12-digit zero-padded `event_index` for stable
+  lex-sort).
+- `EventLogManifest` (frozen dataclass; pins
+  `manifest_version`, `partition_schema_version`,
+  `partition_key_fields`, `event_schema_version`,
+  `canonical_sort_key_fields`, `schema_column_order`,
+  `digest_algorithm` (must be `"sha256"` at v1.28.1),
+  `leaf_serializer` (default `"canonical-json-v1"`),
+  `merkle_tree_version` (default
+  `"merkle-v1-prototype"`); `partition_key_fields`
+  must include `{year_month, sector_id, record_type}`;
+  `canonical_sort_key_fields` must include
+  `canonical_sort_key`; `schema_column_order` must
+  contain exactly the canonical 18-field set, no
+  duplicates).
+- Module-level constants:
+  `CANONICAL_SCHEMA_COLUMN_ORDER` (the canonical
+  18-field tuple) and `CANONICAL_SCHEMA_COLUMN_NAMES`
+  (its frozenset).
+- `event_log_record_to_canonical_dict(record, *,
+  column_order=CANONICAL_SCHEMA_COLUMN_ORDER)` —
+  projects a record into a canonical mapping in the
+  given column order; tuples become lists; rejects an
+  invalid column-order set.
+- `manifest_to_canonical_dict(manifest)` — projects a
+  manifest into a canonical alphabetic-key mapping.
+- `serialize_canonical_json(value, *,
+  sort_keys=False)` — canonical UTF-8 JSON bytes;
+  uses `separators=(",", ":")` and
+  `ensure_ascii=False`; tuples serialise as JSON
+  arrays; no wall-clock timestamp, no Python repr,
+  no memory address, no pandas / Polars / DuckDB /
+  filesystem ordering reaches the canonical bytes.
+- `compute_leaf_digest(records, manifest)` — the
+  **single** future leaf-digest function boundary
+  per §F. Materialises records, sorts by
+  `canonical_sort_key`, projects each through
+  `event_log_record_to_canonical_dict` using
+  `manifest.schema_column_order`, builds
+  `{"manifest": manifest_canonical_dict, "records":
+  [...]}`, serialises with `sort_keys=False`, and
+  returns the lowercase SHA-256 hex digest. Empty
+  record list is allowed and produces a deterministic
+  manifest-only digest.
+
+### v1.28.1.2 What v1.28.1 does NOT ship
+
+- **No Parquet writer / reader.** No PyArrow.
+- **No Polars / DuckDB / xxhash / Rust / PyO3** —
+  not imported, not optional-dependency-declared, not
+  referenced. Tests verify the module text contains
+  none of these tokens (forbidden-scope tests).
+- **No filesystem partition writer.** The module
+  performs no I/O — no `open(...)`, no `Path(...)`,
+  no `os.makedirs`, no `.write_parquet`, no
+  `.read_parquet`. Tests verify this.
+- **No sealed-partition enforcement.** Append-only
+  physical semantics are deferred to v1.28.2+.
+- **No full Merkle tree.** No inner / root digest
+  function; only the leaf-digest boundary.
+- **No materialized views.** No historical lazy
+  loading.
+- **No scale benchmark.** No
+  `@pytest.mark.scale` / `@pytest.mark.slow` /
+  `@pytest.mark.benchmark` test added. The runtime
+  scope is tiny in-memory fixtures only.
+- **No real data, no Japan calibration, no adapter,
+  no investment output, no price-impact model.**
+  Tests verify the module text does not import or
+  reference EDINET / TDnet / J-Quants / FSA / TOPIX /
+  Nikkei / JPX / EDGAR / Bloomberg / Refinitiv /
+  FactSet.
+- **No `WorldKernel` field.** The module does not
+  register itself with the kernel. Every existing
+  v1.21.last canonical `living_world_digest` value
+  remains byte-identical at v1.28.1 (the four
+  canonical hex strings under §L.1 are unchanged).
+
+### v1.28.1.3 Tests added
+
+`tests/test_event_log_schema.py` adds **+61 tests**
+(parametrised cases expand the nominal ~30 test
+functions). Coverage:
+
+- **EventLogRecord:** valid-minimal-record;
+  parametrised empty-required-field rejection (12
+  fields); negative / non-int `event_index`;
+  non-tuple / set / bare-string `parent_event_ids`;
+  empty-string entry in `parent_event_ids`;
+  explicit-partition-key / sort-key bypass; 12-digit
+  zero-padded `event_index` in default sort key;
+  frozen-dataclass immutability.
+- **EventLogManifest:** valid-manifest;
+  parametrised empty-required-string rejection (5
+  fields); non-`sha256` `digest_algorithm` rejection
+  (md5 / sha1 / sha512 / blake3 / xxhash / empty);
+  `partition_key_fields` missing-required-dimension
+  rejection; `canonical_sort_key_fields` missing-
+  required-field rejection; `schema_column_order`
+  missing-field / extra-field / duplicate-field
+  rejection; alternate-valid-column-order acceptance;
+  empty-tuple-field rejection.
+- **Canonical serialization:** explicit column
+  order; tuples-as-lists; construction-order-byte-
+  identical; alternate-column-order-different-bytes;
+  invalid-column-order rejected; compact-separators-
+  and-UTF-8; repeated-call-byte-identical; manifest
+  alphabetic-keys; manifest-bytes stable.
+- **Leaf digest:** lowercase-hex-64; stable across
+  reruns; insertion-order independent; changes when
+  a record changes; changes when manifest's
+  `partition_schema_version` /
+  `event_schema_version` / `partition_key_fields` /
+  `schema_column_order` changes; empty-list
+  manifest-only deterministic; non-record / non-
+  manifest TypeError; explicit
+  hashlib.sha256-recomputed equality match.
+- **Forbidden-scope:** module text has no Polars /
+  DuckDB / PyArrow / xxhash / pyo3 / fastparquet
+  imports; no real-data adapter import (EDINET /
+  TDnet / J-Quants / FSA filing / TOPIX / Nikkei /
+  JPX / EDGAR / Bloomberg / Refinitiv / FactSet);
+  no filesystem I/O (`open(`, `Path(`,
+  `os.makedirs`, `os.path`, `shutil.`,
+  `.write_parquet`, `.to_parquet`,
+  `.read_parquet`).
+- **Module exports:** `__all__` matches the design
+  pin; `CANONICAL_SCHEMA_COLUMN_NAMES` ≡ frozenset
+  of `CANONICAL_SCHEMA_COLUMN_ORDER`; the canonical
+  schema has exactly 18 fields.
+- **Canonical-digests sanity:** the v1.21.last
+  canonical-digests module is still importable and
+  the three constants are 64-character lowercase
+  hex SHA-256 strings (the *exact* hex values are
+  pinned by the canonical-digests module's own
+  tests; duplicating them in this module would trip
+  the
+  `test_no_duplicate_canonical_digest_literals_outside_canonical_module`
+  pin).
+
+### v1.28.1.4 Validation
+
+- `pytest -q`: **5174 / 5174 passing** (5113 →
+  5174; +61 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency added; no `pyproject.toml`
+  change.
+- No new `RecordType` value; no `WorldKernel`
+  field; no kernel mutation.
+- No real Japanese identifier; no real-data
+  adapter; no Japan calibration; no investment
+  output; no alpha or backtest claim; no real
+  data; no paid data; no expert-interview content;
+  no client-specific calibration.
+
+The next milestone (provisional) is **v1.28.2 —
+append-only local event-log writer (JSONL or
+in-memory prototype)**. v1.28.1 does not start it;
+v1.28.2 requires its own design pin or design-pin
+amendment before implementation.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
