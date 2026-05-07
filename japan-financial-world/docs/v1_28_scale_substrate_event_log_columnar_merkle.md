@@ -1906,6 +1906,85 @@ Polars.
 
 ---
 
+## v1.28.7 implementation note
+
+*v1.28.7 ships the DuckDB validation query boundary
+as a soft-import module. No DuckDB dependency added.
+Local-first only: no external service / database
+server / cloud SDK reachable from module text.*
+
+### v1.28.7.1 Surface
+
+Implemented in
+[`world/event_log_query.py`](../world/event_log_query.py):
+
+- `is_duckdb_available()` —
+  `importlib.util.find_spec("duckdb") is not None`.
+- `_require_duckdb()` (private) — lazy
+  `importlib.import_module("duckdb")` with
+  `OptionalDependencyUnavailable` on absence.
+- `DuckDBBackendNotImplementedError(NotImplementedError)`
+  — raised at v1.28.7 entry points when DuckDB is
+  present.
+- Tiny descriptive boundary entry points:
+  - `count_records_by_partition(root, *,
+    manifest=None)`
+  - `count_records_by_record_type(root, *,
+    manifest=None)`
+  - `validate_no_duplicate_event_id(root, *,
+    manifest=None)`
+
+DuckDB is **never** routed through the canonical
+digest path. The module text contains no import or
+call of `compute_leaf_digest`.
+
+### v1.28.7.2 What v1.28.7 does NOT ship
+
+- No DuckDB dependency. No `pyproject.toml` change.
+- No top-level `import duckdb` / `from duckdb`
+  reachable from a stock Python.
+- No external-service imports (no Kafka /
+  Postgres / Redis / cloud SDK reachable from
+  module text).
+- No DuckDB-routed digest path.
+
+### v1.28.7.3 Tests added
+
+`tests/test_event_log_query.py` adds **+11 tests
++ 1 conditional skip**. Coverage: module imports
+without DuckDB; no top-level DuckDB import; no
+external-service imports (the *import statements*,
+not docstring mentions); availability helper
+returns bool; parametrised entry-point error
+behavior across all three boundary functions
+(absent → `OptionalDependencyUnavailable`; present
+→ `DuckDBBackendNotImplementedError`);
+`DuckDBBackendNotImplementedError` is a
+`NotImplementedError` subclass; **DuckDB module
+does not import or call `compute_leaf_digest`**
+(canonical digest path stays out of DuckDB);
+module exports match design pin; conditional
+"DuckDB-present-path" test (skipped when DuckDB is
+absent); default test suite does not require
+DuckDB.
+
+### v1.28.7.4 Validation
+
+- `pytest -q`: **5296 passed, 2 skipped /
+  5298 collected** (5285 → 5296; +11 tests, 1
+  conditional skip cumulative across v1.28.6 +
+  v1.28.7).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
