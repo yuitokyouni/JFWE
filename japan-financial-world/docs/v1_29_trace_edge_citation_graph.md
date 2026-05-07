@@ -1085,6 +1085,133 @@ pin.
 
 ---
 
+## v1.29.4 implementation note
+
+*v1.29.4 ships read-only deterministic audit query
+helpers over `TraceEdgeRecord` collections +
+`CitationGraphProjection`. Answers a small fixed
+catalogue of audit questions about **what is in the
+event log**. Counterfactual replay (**what could
+have been**) is explicitly out of scope.*
+
+### v1.29.4.1 Surface
+
+In [`world/audit_trace_queries.py`](../world/audit_trace_queries.py):
+
+- Edge-type label sets (subsets of v1.29.1
+  `TRACE_EDGE_TYPE_LABELS`):
+  - `LINEAGE_EDGE_TYPE_LABELS`:
+    `cited_as_evidence` / `derived_from` /
+    `reviewed_under` / `constrained_by`.
+  - `PROPAGATION_EDGE_TYPE_LABELS`:
+    `propagated_to`.
+  - `CONTRADICTION_EDGE_TYPE_LABELS`:
+    `contradicted_by`.
+- `list_edges_for_event(event_id, trace_edges)` —
+  every edge that references `event_id` as source
+  or target; sorted by `canonical_sort_key`.
+- `list_evidence_for_judgment_event(event_id,
+  trace_edges)` — sorted unique tuple of
+  `evidence_ref_ids` cited by edges whose
+  `target_event_id` matches.
+- `list_events_citing_evidence(evidence_ref_id,
+  trace_edges)` — sorted unique tuple of target
+  event_ids whose edges include `evidence_ref_id` in
+  `evidence_ref_ids` OR `citation_ids`.
+- `list_edges_by_actor(actor_id, trace_edges)` —
+  every edge whose `actor_id` matches; sorted by
+  `canonical_sort_key`.
+- `list_propagation_edges(trace_edges)` — every edge
+  with `edge_type_label in PROPAGATION_…` or
+  `edge_category_label == "propagation"`.
+- `list_contradiction_pairs(trace_edges)` — sorted
+  unique tuple of
+  `(source_event_id, target_event_id)` pairs from
+  `contradicted_by` edges.
+- `trace_lineage_to_origin(event_id, trace_edges, *,
+  max_depth=16)` — bounded-depth ancestor walk along
+  lineage-type edges. **Cycle-safe** (visited
+  de-duplication). Deterministic regardless of input
+  order.
+- `summarize_audit_questions(projection,
+  trace_edges, *, event_id, actor_id="",
+  max_depth=16)` — single-call bundle returning a
+  frozen :class:`AuditTraceSummary` (event_id,
+  actor_id, edges_for_event, evidence_for_judgment,
+  edges_by_actor, propagation_edges,
+  contradiction_pairs, lineage_ancestors,
+  projection_digest).
+
+Counterfactual boundary (binding):
+
+- `COUNTERFACTUAL_REPLAY_NOT_IMPLEMENTED_MESSAGE` is
+  a module-level constant explicitly stating the
+  boundary.
+- v1.29.4 helpers answer "**which** judgments depend
+  on evidence X?" — i.e. dependency lookup. They do
+  **not** answer "**what would change** if evidence
+  X were withdrawn?" — that requires future
+  deterministic replay (likely v1.30+).
+
+### v1.29.4.2 What v1.29.4 does NOT ship
+
+- No `def replay(`, no `def counterfactual_replay`,
+  no `def what_if_…`, no `def simulate_without_…`.
+- No graph database / Neo4j / TigerGraph / SPARQL /
+  Cypher / Gremlin / rdflib / networkx.
+- No Polars / DuckDB / PyArrow.
+- No prediction / forecast / investment output.
+- No `WorldKernel` field.
+
+### v1.29.4.3 Tests added
+
+`tests/test_audit_trace_queries.py` adds **+34
+tests**. Coverage: edge-type label sets are subsets
+of v1.29.1 `TRACE_EDGE_TYPE_LABELS`;
+`list_edges_for_event` finds source + target /
+deterministic / unknown-id-empty / empty-id-rejected;
+`list_evidence_for_judgment_event` correct +
+deterministic; `list_events_citing_evidence`
+includes evidence_ref AND citation_ids /
+deterministic; `list_edges_by_actor` correct +
+deterministic; `list_propagation_edges` correct +
+includes category-only match; `list_contradiction_pairs`
+correct + deterministic; `trace_lineage_to_origin`
+walks lineage edges to depth 1 ({e1, e2}); respects
+max_depth (0 / 1); handles cycles safely (2-cycle
+terminates); deterministic; rejects negative /
+non-int max_depth; ignores non-lineage edges;
+`summarize_audit_questions` returns dataclass /
+deterministic / rejects non-projection / frozen
+dataclass; counterfactual-replay-not-implemented
+constant is a string, mentions "counterfactual" and
+"v1.30"; module no `def replay` / `def
+counterfactual_replay` / `def what_if_` /
+`def simulate_without_` definitions; module no
+graph DB / SPARQL / Cypher / Gremlin / rdflib /
+networkx / Polars / DuckDB / PyArrow imports; module
+text contains no `buy_signal` / `sell_signal` /
+`target_price` / `alpha_claim` / `backtest_claim` /
+`investment_advice` / `ownership_percentage` /
+`voting_power` identifier; no `WorldKernel` field;
+module exports match design pin.
+
+### v1.29.4.4 Validation
+
+- `pytest -q`: **5482 passed, 2 skipped, 1 deselected
+  / 5485 collected** (5448 → 5482; +34 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- v1.28 event-log substrate intact.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.29.0 closing statement
 
 v1.29.0 is a docs-only design pin. It introduces
