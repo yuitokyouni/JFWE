@@ -2225,6 +2225,158 @@ or `[project.optional-dependencies]` change.
 
 ---
 
+## Y. v1.28.last freeze (docs-only)
+
+*Final pin section for the v1.28 sequence. v1.28.last
+ships **no** new code, **no** new tests, **no** new
+RecordTypes, **no** new dataclasses, **no** new label
+vocabularies, **no** UI regions, **no** export-schema
+changes, **no** new fixtures, **no** new dependencies,
+**no** real-data adapter, **no** real Japanese
+identifier of any kind. The v1.28 scale substrate
+sequence is closed.*
+
+### Y.1 Shipped sequence
+
+| Sub-milestone | Surface |
+| ------------- | ------- |
+| v1.28.0 | Docs-only design pin (architecture: event log + materialised views + Merkle digest tree) |
+| v1.28.1 | Schema + canonical leaf digest (`EventLogRecord`, `EventLogManifest`, `compute_leaf_digest(...)`; +61 tests) |
+| v1.28.2 | Append-only JSONL writer (`EventLogPartitionKey`, `EventLogPartitionWriter`, sealed-marker, monotonic part-file index, JSONL reader; +30 tests) |
+| v1.28.3 | Partition manifest + schema pinning (`_MANIFEST.json` sidecar; `ManifestMismatchError`; eager / lazy verify-or-write; schema-versioning policy; +25 tests) |
+| v1.28.4 | Merkle digest core (`compute_partition_leaf_digest`, `compute_inner_digest`, `compute_event_log_root_digest`, `EventLogDigestTree`; single-leaf-hash-implementation pin; +32 tests) |
+| v1.28.5 | Columnar boundary without hard dependencies (PyArrow / Polars / DuckDB / fastparquet *availability checks only*, `ColumnarBackendNotImplementedError`; no `pyproject.toml` extra; +13 tests) |
+| v1.28.6 | Optional Polars boundary + digest-order guard (soft import; `PolarsBackendNotImplementedError`; single-leaf-hash routing contract; +11 tests + 1 conditional skip) |
+| v1.28.7 | Optional DuckDB boundary (soft import; tiny descriptive query surface; local-first only; DuckDB never routed through canonical digest; +11 tests + 1 conditional skip) |
+| v1.28.8 | Deterministic projection prototype (`EventLogProjectionSummary`, `project_event_log(... period_window)`; partial-window equals full-filtered-to-same-window; +20 tests) |
+| v1.28.9 | Opt-in synthetic scale smoke (`ScaleSmokeRunSummary`, `run_scale_smoke(...)`, CLI; `@pytest.mark.scale`/`slow`/`benchmark` excluded by default; +11 tests + 1 deselected opt-in heavy test) |
+| **v1.28.last** | this freeze |
+
+### Y.2 Pinned at v1.28.last
+
+- `pytest -q`: **5327 passed, 2 skipped, 1
+  deselected / 5330 collected** (5113 → 5327;
+  +214 default-collected tests across the v1.28
+  sequence; 2 conditional skips for absent
+  Polars / DuckDB; 1 deselected opt-in heavy
+  scale test).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at every v1.28.x
+  sub-milestone:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- New runtime modules: 7
+  (`event_log_schema`, `event_log_writer`,
+  `event_log_merkle`, `event_log_columnar`,
+  `event_log_polars`, `event_log_query`,
+  `event_log_projection`).
+- New example tools: 1
+  (`run_v1_28_scale_smoke.py`).
+- New `RecordType` values: **0**.
+- New `WorldKernel` fields: **0**.
+- New tabs: **0**.
+- Export schema changes: **0**.
+- New fixtures: **0**.
+- New runtime dependencies: **0**.
+- New optional `[project.optional-dependencies]`
+  entries: **0**. PyArrow / Polars / DuckDB /
+  fastparquet are checked via
+  `importlib.util.find_spec` only.
+- `pyproject.toml` change: pytest-marker config
+  only (`scale` / `slow` / `benchmark` markers
+  registered + excluded from default `addopts`).
+  No runtime dependency added.
+
+### Y.3 Freeze invariants
+
+- **The event log is opt-in.** No canonical v1.x
+  fixture depends on it. No `WorldKernel` field
+  is added. Importing any of the seven new modules
+  has no side effects on the kernel.
+- **Existing fixtures unchanged.** No fixture file
+  was modified at any v1.28.x sub-milestone.
+- **Legacy `living_world_digest` values byte-
+  identical.** The four canonical hex strings
+  above remain unchanged. No expected-value update
+  was performed.
+- **Merkle digest is a separate surface from the
+  legacy digest.** The Merkle root is **NOT**
+  required to equal the legacy digest. The two
+  surfaces coexist. Drift between them is a
+  detectable substrate bug (per design pin §M).
+- **No Japan calibration.** No real Japanese
+  company name, securities code, fiscal-year-end
+  table, listing date, cross-shareholding figure,
+  index constituent, or price / volume series at
+  any v1.28.x sub-milestone.
+- **No real data.** All synthetic. The opt-in
+  scale smoke uses ``firm:synthetic_NNNNNN`` and
+  ``industry:synthetic_NN`` ids exclusively.
+- **No real-data adapter.** No EDINET / TDnet /
+  J-Quants / FSA / EDGAR / SEDAR / JPX / TOPIX /
+  Nikkei / GICS / MSCI / S&P / FactSet /
+  Bloomberg / Refinitiv / Capital IQ adapter.
+  Forbidden-scope tests verify module text
+  contains no such imports.
+- **No investment outputs.** No buy / sell / hold /
+  target-price / portfolio-allocation / forecast /
+  recommendation / alpha / backtest /
+  event-to-price output.
+- **No citation graph / audit-query layer yet.**
+  The v1.28.8 projection is a generic count-and-
+  group surface, not a citation graph and not an
+  audit-query layer. Citation graph / trace graph
+  / PROV-O / SPARQL / Cypher / counterfactual
+  replay are deferred to a future milestone
+  (likely v1.29+: `TraceEdgeRecord` +
+  `CitationGraphProjection` candidate).
+- **Local-first boundary preserved.** No Kafka,
+  no Postgres, no Redis, no cloud SDK, no
+  external service required to run the suite or
+  validate a fixture.
+- **No hard dependency on external services.**
+  PyArrow / Polars / DuckDB / fastparquet remain
+  optional and lazily imported only when their
+  boundary entry points are called.
+- **Optional dependency behavior documented.**
+  When optional deps are absent, the boundary
+  raises `OptionalDependencyUnavailable`; when
+  present, the boundary raises a
+  ``…NotImplementedError`` until a future design
+  pin enables a specific path.
+
+### Y.4 Closing statement
+
+The v1.28 scale substrate is **frozen** as a generic,
+jurisdiction-neutral, synthetic-only foundation. It
+ships the on-disk append-only event log, the
+manifest sidecar with schema pinning, the Merkle
+digest core (separate from the legacy digest), the
+columnar / Polars / DuckDB *boundaries* (no hard
+dependencies), the deterministic projection
+prototype, and the opt-in synthetic scale smoke
+(default-excluded).
+
+The next provisional milestone is **v1.29
+candidate** — `TraceEdgeRecord` +
+`CitationGraphProjection` design pin (docs-only).
+v1.28.last does not start it; v1.29 requires its
+own design pin or design-pin amendment before
+implementation.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces

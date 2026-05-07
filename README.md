@@ -232,7 +232,125 @@ offering.
 
 ---
 
-## 4. Current milestone: v1.28.0
+## 4. Current milestone: v1.28.last
+
+**v1.28.last Scale Substrate freeze (shipped, docs-
+only).** Closes the v1.28 scale substrate sequence as a
+**generic, jurisdiction-neutral, synthetic-only**
+engineering foundation. v1.28 ships the on-disk
+append-only event log, the manifest sidecar with
+schema pinning, the Merkle digest core (separate from
+the legacy `living_world_digest`), the columnar /
+Polars / DuckDB *boundaries* (no hard dependencies), the
+deterministic projection prototype, and an opt-in
+synthetic scale smoke (default-excluded). The event
+log is **opt-in** — no `WorldKernel` field is added
+and every existing v1.21.last canonical
+`living_world_digest` value remains byte-identical.
+
+Shipped runtime / UI / loop / settlement set:
+
+- **Runtime milestone — v1.9.last public prototype.**
+- **UI prototype — v1.20.5 static workbench**
+  (with the v1.22.2 Active Stresses strip).
+- **Frozen loop — v1.16.last closed-loop freeze**
+  + **v1.12.last endogenous attention loop freeze**.
+- **Settlement substrate — v1.13.last generic
+  central-bank settlement infrastructure freeze.**
+
+v1.28 sequence (10 sub-milestones + freeze):
+
+| Sub-milestone | Surface |
+| ------------- | ------- |
+| v1.28.0 | Docs-only design pin (architecture: event log + materialised views + Merkle digest tree) |
+| v1.28.1 | Schema + canonical leaf digest (`EventLogRecord`, `EventLogManifest`, `compute_leaf_digest(...)`; +61 tests) |
+| v1.28.2 | Append-only JSONL writer (sealed-marker; monotonic part-file index; +30 tests) |
+| v1.28.3 | Partition manifest + schema pinning (`_MANIFEST.json`; `ManifestMismatchError`; +25 tests) |
+| v1.28.4 | Merkle digest core (single-leaf-hash-implementation pin; +32 tests) |
+| v1.28.5 | Columnar boundary without hard dependencies (+13 tests) |
+| v1.28.6 | Optional Polars boundary + digest-order guard (+11 tests + 1 conditional skip) |
+| v1.28.7 | Optional DuckDB boundary (+11 tests + 1 conditional skip) |
+| v1.28.8 | Deterministic projection prototype (`EventLogProjectionSummary`; partial-window equals full-filtered; +20 tests) |
+| v1.28.9 | Opt-in synthetic scale smoke + `@pytest.mark.scale`/`slow`/`benchmark` markers (default-excluded; +11 tests + 1 deselected opt-in heavy test) |
+| **v1.28.last** | This freeze |
+
+**Pinned at v1.28.last:**
+
+- `pytest -q`: **5327 passed, 2 skipped, 1
+  deselected / 5330 collected** (5113 → 5327; +214
+  default-collected tests across the v1.28
+  sequence).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at every v1.28.x sub-
+  milestone:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- 7 new runtime modules; 1 new example tool.
+- 0 new `RecordType` values; 0 new `WorldKernel`
+  fields; 0 new tabs; 0 export schema changes; 0
+  new fixtures.
+- 0 new runtime dependencies; 0 new optional
+  `[project.optional-dependencies]` entries.
+- `pyproject.toml` change: pytest-marker config
+  only (`scale` / `slow` / `benchmark` markers
+  registered + excluded from default `addopts`).
+
+**Freeze invariants (binding):**
+
+- The event log is **opt-in**. No canonical v1.x
+  fixture depends on it.
+- Legacy `living_world_digest` byte-identical for
+  every existing canonical fixture; expected values
+  unchanged.
+- Merkle digest is a separate surface from the
+  legacy digest; Merkle root is **NOT** required
+  to equal the legacy digest.
+- No Japan calibration; no real data; no real-data
+  adapter; no investment output; no alpha or
+  backtest claim.
+- No citation graph / audit-query layer yet —
+  deferred to v1.29+ candidate (`TraceEdgeRecord`
+  + `CitationGraphProjection` design pin).
+- Local-first boundary preserved; no Kafka /
+  Postgres / Redis / cloud SDK / external service
+  required.
+- Optional dependency behavior documented:
+  absent → `OptionalDependencyUnavailable`;
+  present → `…BackendNotImplementedError`.
+
+Opt-in synthetic scale smoke (CLI):
+
+```
+python japan-financial-world/examples/tools/run_v1_28_scale_smoke.py \
+    --firms 3000 --periods 60 --seed synthetic_001 \
+    --output .tmp/v1_28_scale
+```
+
+The default invocation (no flags) runs a tiny smoke
+(10 firms × 4 periods). The opt-in 3000 × 60 heavy
+pytest case runs only under ``pytest -m scale``.
+
+The next provisional milestone is **v1.29
+candidate** — `TraceEdgeRecord` +
+`CitationGraphProjection` design pin (docs-only).
+v1.28.last does not start it; v1.29 requires its own
+design pin or design-pin amendment before
+implementation.
+
+---
+
+### Earlier concrete code milestone: v1.28.0 (frozen as part of v1.28.last)
 
 **v1.28.0 Scale Substrate — Event Log + Columnar
 Storage + Merkle Digest — design pin (shipped, docs-
@@ -1245,17 +1363,8 @@ forbidden.
 | v1.26.last | **Entity Lifecycle + Reporting Calendar Foundation freeze (generic).** v1.26.0 design pin; v1.26.1 `UniverseEventRecord` storage (closed-set `UNIVERSE_EVENT_TYPE_LABELS`: entity_listed / delisted / merged / renamed / split / status_changed / unknown; `UNIVERSE_EVENT_RECORDED` ledger event); v1.26.2 `ReportingCalendarProfile` storage (closed-set `MONTH_LABELS` 1-12 + unknown; `DISCLOSURE_CLUSTER_LABELS`; `REPORTING_INTENSITY_LABELS`; `REPORTING_CALENDAR_PROFILE_RECORDED` ledger event); v1.26.3 read-only `UniverseCalendarReadout` (active/inactive entity walk; reporting-due via deterministic month-label extraction); v1.26.4 optional descriptive-only `universe_calendar_readout` payload section + minimal "Universe / calendar" panel inside the existing Universe sheet (no new tab; textContent only); v1.26.last freeze. **Empty-by-default rule preserves every existing fixed fixture byte-identically** — a kernel without UniverseEventRecord + ReportingCalendarProfile records continues to behave as a static universe exactly as it did at v1.25.last. **Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / JPX / TOPIX / Nikkei / GICS / MSCI / S&P / FactSet / Bloomberg / Refinitiv dependency. No event-to-price mapping. No earnings-surprise / event-study / calendar-arbitrage inference. No portfolio / universe weight / constituent weight / rebalance event. No actor decision. No source-of-truth book mutation. No digest movement.** | **Shipped.** See [`docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md`](japan-financial-world/docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md) §15 and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §135.6. |
 | v1.27.last | **Generic Strategic Relationship Network + Annotation Provenance Hardening freeze.** v1.27.0 design pin; v1.27.1 `StrategicRelationshipRecord` storage (closed-set `RELATIONSHIP_TYPE_LABELS`: strategic_holding_like / supplier_customer_like / group_affiliation_like / lender_relationship_like / governance_relationship_like / commercial_relationship_like / unknown; closed-set `DIRECTION_LABELS`; `STRATEGIC_RELATIONSHIP_RECORDED` ledger event; empty-by-default kernel field; 13 tests); v1.27.2 read-only `StrategicRelationshipReadout` (counts only — no centrality, no rank, no risk score) + optional descriptive-only `strategic_relationship_readout` payload section omitted-when-empty (13 tests); v1.27.3 `ManualAnnotationProvenanceRecord` storage (pseudonymous; closed-set `AUTHORITY_LABELS`: self_review / delegated_review / supervisory_review / audit_review / unknown; closed-set `EVIDENCE_ACCESS_SCOPE_LABELS`: public_synthetic / internal_synthetic / restricted_synthetic / unknown; anti-email-leak guard rejects `@` in `annotator_id_label`; `MANUAL_ANNOTATION_PROVENANCE_RECORDED` ledger event; 11 tests); v1.27.last freeze. **v1.27 closes the last generic substrate addition in public v1.x.** **Empty-by-default kernel fields. Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / EDGAR. No real-company name / relationship claim. No ownership percentage / voting power / market value / fair value / centrality score / systemic-importance score. No real-person name / email / phone / national-id / employee-id. No SOC2 / FISC / ISO27001 / regulatory-attestation compliance claim. No LLM authoring. No source-of-truth book mutation. No digest movement.** | **Shipped.** See [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md) §7 "v1.27.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §136.6. |
 | v2.0.last | **Japan Public Calibration Boundary freeze (docs-only).** Final pin section for the v2.0 sequence; freezes the **public-repository boundary** in its entirety. Re-pins, in addition to v2.0.0: (a) v2.0 is a boundary design only — not a calibration step, not a Japan-readiness step, not a market-effect step; (b) v2.0 does not begin Japan calibration — no Japan-specific factual claim, identifier, or calibration parameter is admitted in the public repository; (c) v2.1+ Japan calibration work should not proceed in the public repo unless explicitly synthetic and license-safe (fresh design pin + synthetic-or-citation-bound records + per-source license-review note + canonical-digest preservation, all four required); (d) real-data work belongs in the private repository — real Japanese filings, real cross-shareholding extraction, real ownership / voting / market-value calibration, paid-feed ingestion, expert-interview content, manually curated proprietary relationship maps, and any client-specific calibration are out of scope for this public repository; (e) public FWE remains a generic substrate / portfolio artifact. v2.0.0 design pin (sections A–M) shipped first; v2.0.last (this freeze) closes the v2.0 sequence. **No runtime change. No new dataclass. No new ledger event. No new test. No new label vocabulary. No new fixture. No real-data adapter. No real Japanese company name. No real securities code. No real filing data. No real cross-shareholding data. No real reporting-calendar data. No index constituent data. No price-impact model. No investment recommendation. No alpha claim. No backtest claim. No digest movement.** | **Shipped.** See [`docs/v2_0_japan_public_calibration_boundary.md`](japan-financial-world/docs/v2_0_japan_public_calibration_boundary.md) §N "v2.0.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §137.7. |
-| **v1.28.0** | **Scale Substrate — Event Log + Columnar Storage + Merkle Digest — design pin (docs-only).** Generic engineering scale substrate proposal. Defines the architecture for moving public FWE off the in-memory Book / Ledger extension path: (1) immutable on-disk append-only event log as canonical source of truth (future target: partitioned Parquet under `events/year_month=…/sector_id=…/record_type=…/part-*.parquet`); (2) materialized views — current period hydrates, history is lazy-loaded, existing v1.x `Book.list_*` and `Book.snapshot()` semantics become deterministic projections over event-log slices; (3) Merkle-style digest tree over partition cells with leaf = SHA-256 over canonically-serialised records, inner = SHA-256 over sorted child digest tuples, root = SHA-256 over top-level child digest tuples, partial recompute on changed cells. Legacy `living_world_digest` remains byte-identical for every existing canonical fixture and coexists with the new Merkle digest as a separate surface; the two surfaces must react consistently to the same semantic change but the Merkle root is **NOT** required to equal the legacy digest. Synthetic scale target: 3000 firms × 60 periods (+ optional 400 investors / 30 banks). Local-first boundary preserved (no Kafka / Postgres / Redis / cloud / database server). v1.28.0 = docs-only design pin; v1.28.1 = event-log schema dataclasses + canonical serializer (no Parquet); v1.28.2 = append-only writer (JSONL/in-memory prototype); v1.28.3 = partition manifest + partition-schema digest tests; v1.28.4 = Merkle digest core; v1.28.5 = optional Parquet behind dependency gate; v1.28.6 = Polars scanner + leaf digest boundary; v1.28.7 = DuckDB validation queries; v1.28.8 = re-projection prototype; v1.28.9 = opt-in 3000 × 60 synthetic scale smoke run; v1.28.last = freeze. **No runtime change. No new dataclass. No new ledger event. No new test. No new label vocabulary. No new fixture. No Polars / DuckDB / PyArrow / xxhash / Rust / PyO3 dependency. No Parquet file. No event-log writer. No benchmark test. No real Japanese identifier. No real-data adapter. No Japan calibration. No investment recommendation. No alpha or backtest claim. No real data. No paid data. No expert-interview content. No client-specific calibration. No digest movement.** | **Design scoped — current.** See [`docs/v1_28_scale_substrate_event_log_columnar_merkle.md`](japan-financial-world/docs/v1_28_scale_substrate_event_log_columnar_merkle.md) and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §138. |
-| v1.28.1 candidate | **Event-log schema dataclasses + canonical serializer** — frozen-dataclass shape for one event row; canonical sorted-key / explicit-column-order serializer; SHA-256 leaf-digest function boundary on tiny in-memory fixtures. No Parquet, no Polars, no DuckDB. | Optional candidate. Not started. Gated by v1.28.0 design pin. |
-| v1.28.2 candidate | **Append-only local event-log writer** — JSONL or in-memory prototype; sealed-file enforcement; new-part-file-on-append; existing-file-checksum-unchanged tests. | Optional candidate. Not started. Gated by v1.28.1. |
-| v1.28.3 candidate | **Partition manifest + partition-schema digest tests** — manifest dataclass; partition-schema-version field; partition-schema-change-changes-Merkle-root tests. | Optional candidate. Not started. Gated by v1.28.2. |
-| v1.28.4 candidate | **Merkle digest core** — leaf / inner / root digest construction on tiny in-memory / JSONL fixtures; sorted-children invariant; partial-recompute property tests. | Optional candidate. Not started. Gated by v1.28.3. |
-| v1.28.5 candidate | **Optional Parquet writer / reader behind dependency gate** — PyArrow / Polars added under `[project.optional-dependencies]`; tests skip cleanly when absent. | Optional candidate. Not started. Gated by v1.28.4. |
-| v1.28.6 candidate | **Polars scanner + deterministic leaf digest boundary** — `pl.scan_parquet` lazy mode; explicit ORDER BY; round-trip leaf-digest equality vs. v1.28.4 in-memory baseline. | Optional candidate. Not started. Gated by v1.28.5. |
-| v1.28.7 candidate | **DuckDB validation queries** — partition-occupancy, citation-resolution, duplicate-event-id, canonical-sort-key-collision integrity checks. | Optional candidate. Not started. Gated by v1.28.6. |
-| v1.28.8 candidate | **Materialized-view re-projection prototype** — full vs. fresh-from-event-log snapshot equality; partial-window-load-equals-full-load-filtered; unload+reload digest-stable. | Optional candidate. Not started. Gated by v1.28.7. |
-| v1.28.9 candidate | **Opt-in 3000 × 60 synthetic scale smoke run** — `@pytest.mark.scale` / `@pytest.mark.slow` / `@pytest.mark.benchmark`; configurable hardware-profile budgets; no real data. | Optional candidate. Not started. Gated by v1.28.8. |
-| v1.28.last candidate | **Docs-only freeze** — final pin section consolidating §A–§X. | Optional candidate. Not started. Gated by v1.28.9 (or earlier if the sequence is wound down). |
+| **v1.28.last** | **Scale Substrate freeze (docs-only).** Closes the v1.28 sequence as a generic, jurisdiction-neutral, synthetic-only engineering foundation. Ships: (a) v1.28.0 docs-only design pin (architecture: event log + materialised views + Merkle digest tree); (b) v1.28.1 schema + canonical leaf digest (`EventLogRecord`, `EventLogManifest`, `compute_leaf_digest(...)`); (c) v1.28.2 append-only JSONL writer with sealed-marker + monotonic part-file index; (d) v1.28.3 partition manifest (`_MANIFEST.json`) + schema pinning (`ManifestMismatchError`); (e) v1.28.4 Merkle digest core (`compute_partition_leaf_digest`, `compute_inner_digest`, `compute_event_log_root_digest`, `EventLogDigestTree`; single-leaf-hash-implementation pin); (f) v1.28.5 columnar boundary without hard dependencies; (g) v1.28.6 optional Polars boundary + digest-order guard; (h) v1.28.7 optional DuckDB boundary; (i) v1.28.8 deterministic projection prototype (partial-window equals full-filtered); (j) v1.28.9 opt-in synthetic scale smoke + `@pytest.mark.scale`/`slow`/`benchmark` markers (default-excluded). Legacy `living_world_digest` remains byte-identical for every existing canonical fixture; Merkle root is **NOT** required to equal legacy digest. **Event log is opt-in. No `WorldKernel` field added. No new `RecordType`. No new fixture. No new runtime dependency. `pyproject.toml` change is pytest-marker config only. No real Japanese identifier. No real-data adapter. No Japan calibration. No investment recommendation. No alpha or backtest claim. No citation graph / audit-query layer (deferred to v1.29+ candidate).** | **Shipped — current.** See [`docs/v1_28_scale_substrate_event_log_columnar_merkle.md`](japan-financial-world/docs/v1_28_scale_substrate_event_log_columnar_merkle.md) §Y "v1.28.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §138.9. |
+| v1.29 candidate | **`TraceEdgeRecord` + `CitationGraphProjection` design pin (docs-only).** Builds on the v1.28 event-log substrate. Defines the citation graph + trace-edge surface that v1.28.8 explicitly deferred. No PROV-O / SPARQL / Cypher implementation; no real-data adapter; no investment output. | Optional candidate. Not started. Gated by v1.28.last + a fresh design pin. |
 | v2.1 candidate | **Japan public entity-universe schema boundary** — synthetic examples only; design-only on what a future Japan-cited `UniverseEventRecord` would look like. No real ids; no real-data adapter at v2.1. | Optional candidate. Not started. Gated by v2.0.0 + license review. |
 | v2.2 candidate | **Japan reporting-calendar public-source mapping design** — synthetic examples only; design-only on what a future Japan-cited `ReportingCalendarProfile` would look like. | Optional candidate. Not started. Gated by v2.1. |
 | v2.3 candidate | **Japan public relationship-source mapping design** — synthetic examples only; design-only on what a future Japan-cited `StrategicRelationshipRecord` + provenance would look like. | Optional candidate. Not started. Gated by v2.2. |

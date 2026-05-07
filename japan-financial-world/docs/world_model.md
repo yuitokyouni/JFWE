@@ -12567,6 +12567,74 @@ pin amendment) before implementation.
 
 Silent extension of v1.28 is forbidden.
 
+### 138.9 v1.28.last freeze
+
+The v1.28 scale substrate is **frozen** as a
+generic, jurisdiction-neutral, synthetic-only
+engineering foundation as of v1.28.last:
+
+- v1.28.0 docs-only design pin (event log +
+  materialised views + Merkle digest tree)
+- v1.28.1 schema + canonical leaf digest (+61 tests)
+- v1.28.2 append-only JSONL writer (+30 tests)
+- v1.28.3 partition manifest + schema pinning
+  (+25 tests)
+- v1.28.4 Merkle digest core (+32 tests)
+- v1.28.5 columnar boundary without hard
+  dependencies (+13 tests)
+- v1.28.6 optional Polars boundary + digest-order
+  guard (+11 tests + 1 conditional skip)
+- v1.28.7 optional DuckDB validation query
+  boundary (+11 tests + 1 conditional skip)
+- v1.28.8 deterministic projection prototype
+  (+20 tests)
+- v1.28.9 opt-in synthetic scale smoke (+11
+  tests + 1 deselected opt-in heavy test)
+- v1.28.last docs-only freeze (this section)
+
+Final state at v1.28.last:
+
+- 5327 passed, 2 skipped, 1 deselected /
+  5330 collected (5113 → 5327; +214 default-
+  collected tests across the v1.28 sequence).
+- All v1.21.last canonical `living_world_digest`
+  values byte-identical at every v1.28.x sub-
+  milestone.
+- 7 new runtime modules (`event_log_schema`,
+  `event_log_writer`, `event_log_merkle`,
+  `event_log_columnar`, `event_log_polars`,
+  `event_log_query`, `event_log_projection`); 1
+  new example tool
+  (`run_v1_28_scale_smoke.py`).
+- 0 new `RecordType` values; 0 new `WorldKernel`
+  fields; 0 new tabs; 0 export schema changes;
+  0 new fixtures; 0 new runtime dependencies; 0
+  new optional dependencies declared in
+  `pyproject.toml`.
+- `pyproject.toml` change: pytest-marker config
+  only (`scale` / `slow` / `benchmark` markers
+  registered + excluded from default runs).
+
+Freeze invariants (binding):
+
+- The event log is opt-in.
+- Existing fixtures unchanged.
+- Legacy digest expected values unchanged.
+- Merkle digest separate from legacy digest;
+  Merkle root **NOT** required to equal legacy
+  `living_world_digest`.
+- No Japan calibration; no real data; no
+  real-data adapter; no investment output; no
+  citation graph / audit-query layer (deferred
+  to v1.29+ candidate `TraceEdgeRecord` +
+  `CitationGraphProjection`).
+- Local-first boundary preserved.
+- Optional dependency behavior documented:
+  absent → `OptionalDependencyUnavailable`;
+  present → `…BackendNotImplementedError`.
+
+Silent extension of v1.28 remains forbidden.
+
 ## 139 Answer surface and epistemic boundary (constitutional pointer)
 
 *Constitutional position of JFWE's answer surface and
