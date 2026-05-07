@@ -12414,3 +12414,155 @@ Final state at v2.0.last:
 
 Silent extension of v2 remains forbidden. The
 public repository's boundary is frozen.
+
+## 138 v1.28 — Scale Substrate: Event Log + Columnar Storage + Merkle Digest (design pointer, **v1.28.0 design-only**)
+
+*Constitutional position of the v1.28 generic
+engineering scale substrate. v1.28 is jurisdiction-
+neutral and Layer-1 (per the v2.0 three-layer
+boundary, §137.2). It addresses ledger explosion,
+book memory pressure, historical snapshot cost,
+full-recompute digest cost, and the future 100x
+synthetic scale target. It is not Japan calibration,
+not real-data ingestion, not investment modeling,
+not alpha research.*
+
+The binding design pin lives in
+[`v1_28_scale_substrate_event_log_columnar_merkle.md`](v1_28_scale_substrate_event_log_columnar_merkle.md).
+
+### 138.1 Scope
+
+v1.28 is a **generic engineering scale substrate
+proposal**. v1.28.0:
+
+- introduces **no** runtime module, no new
+  dataclass, no new ledger event, no new test, no
+  new label vocabulary, no new fixture;
+- adds **no** Polars / DuckDB / PyArrow / xxhash /
+  Rust / PyO3 dependency;
+- writes **no** Parquet file, no event-log writer,
+  no benchmark test;
+- changes **no** current Ledger / Book behavior;
+- changes **no** current canonical
+  `living_world_digest` implementation;
+- preserves every v1.21.last canonical digest
+  byte-identically.
+
+### 138.2 Three-layer architecture
+
+- **Layer 1 — Immutable event log.** Canonical
+  source of truth. Append-only. On-disk in future
+  implementation. Future target: partitioned
+  Parquet with the partition shape
+  `events/year_month=…/sector_id=…/record_type=…/
+  part-*.parquet`. No mutation of historical
+  records.
+- **Layer 2 — Materialized views.** Current period
+  may hydrate; history is lazy-loaded. Existing
+  v1.x `Book.list_*` and `Book.snapshot()`
+  semantics become deterministic projections over
+  event-log slices. Views are caches; the event
+  log is the source of truth.
+- **Layer 3 — Digest tree.** Merkle-style digest
+  over partition cells. Leaf digest: SHA-256 over
+  canonically-serialised records in one cell.
+  Inner digest: SHA-256 over sorted child digest
+  tuples. Root digest: SHA-256 over top-level
+  child digest tuples. Partial recompute when only
+  one cell changes.
+
+### 138.3 Two coexisting digest surfaces
+
+v1.28 keeps the legacy `living_world_digest`
+**byte-identical** for every existing canonical
+fixture (the four v1.21.last hex strings never
+change) and adds the Merkle digest as a separate
+new surface. The Merkle root is **NOT required to
+equal** the legacy digest; instead, both surfaces
+must react consistently to the same semantic
+fixture change. Drift between the two is a
+substrate bug to be detected and fixed.
+
+### 138.4 Forbidden at v1.28
+
+Real company names; securities codes (ticker /
+ISIN / CUSIP / SEDOL / Japanese 4-digit code /
+LEI); real filing data; real cross-shareholding
+data; real reporting calendar data; real price /
+volume data; EDINET / TDnet / J-Quants / FSA /
+EDGAR / SEDAR / JPX / TOPIX / Nikkei / GICS /
+MSCI / S&P / FactSet / Bloomberg / Refinitiv /
+Capital IQ adapters; investment recommendations;
+buy / sell / hold labels; target prices; alpha
+claims; backtest claims; paid data;
+employer / internship-derived data; expert-
+interview-derived data; client-specific
+calibration. v1.28 inherits the v2.0.0 hard
+boundary verbatim.
+
+### 138.5 Synthetic scale target
+
+3000 synthetic firms × 60 synthetic periods
+(plus optional 400 synthetic investors and 30
+synthetic banks). Synthetic sectors only — no
+real GICS / TOPIX / NACE. Synthetic event types
+only — the existing v1.18 + v1.20 + v1.21 +
+v1.22 + v1.24 + v1.25 + v1.26 + v1.27 RecordType
+set. No real data.
+
+### 138.6 Local-first boundary
+
+No Kafka. No Postgres. No Redis. No external
+services. No cloud dependency. No database server.
+Parquet files + DuckDB embedded query engine +
+Polars in-process DataFrame engine + reproducible
+filesystem artifacts. The local-first boundary is
+preserved at every v1.28.x sub-milestone.
+
+### 138.7 Future v1.28.x roadmap (proposal only)
+
+| Sub-milestone | Surface |
+| ------------- | ------- |
+| **v1.28.0** | docs-only design pin (this document) |
+| v1.28.1 | event-log schema dataclasses + canonical serializer; no Parquet |
+| v1.28.2 | append-only local event-log writer (JSONL or in-memory prototype) |
+| v1.28.3 | partition manifest + partition-schema digest tests |
+| v1.28.4 | Merkle digest core on tiny in-memory / JSONL fixtures |
+| v1.28.5 | optional Parquet writer / reader behind dependency gate |
+| v1.28.6 | Polars scanner + deterministic leaf digest boundary |
+| v1.28.7 | DuckDB validation queries |
+| v1.28.8 | materialized-view re-projection prototype |
+| v1.28.9 | opt-in 3000 × 60 synthetic scale smoke run |
+| v1.28.last | docs-only freeze |
+
+v1.28.0 commits to v1.28.0 only. Each later sub-
+milestone requires its own design pin (or design-
+pin amendment) before implementation.
+
+### 138.8 Design invariants
+
+- The legacy `living_world_digest` remains byte-
+  identical for every existing canonical fixture
+  at every v1.28.x sub-milestone.
+- The event-log path is opt-in; no canonical v1.x
+  fixture starts depending on it.
+- The scale prototype uses synthetic data only.
+- The partition schema is pinned in the manifest;
+  silent partition-schema changes are forbidden.
+- Inner Merkle ordering is deterministic (children
+  sorted by partition / child key before
+  hashing); filesystem listing order, dict
+  iteration order, and query-engine row order
+  must never affect digest material.
+- Append-only physical semantics are enforced;
+  sealed partition files are read-only on disk.
+- Legacy / Merkle digest drift can be detected;
+  same semantic change moves both surfaces.
+- Performance budgets are defined and later
+  tested in an opt-in scale suite, not in the
+  default lightweight pytest.
+- The local-first boundary is preserved.
+- No real-data / Japan-calibration leak occurs at
+  any sub-milestone.
+
+Silent extension of v1.28 is forbidden.
