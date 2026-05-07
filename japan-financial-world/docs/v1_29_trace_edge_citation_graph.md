@@ -734,6 +734,114 @@ its design pin is amended before proceeding.
 
 ---
 
+## v1.29.1 implementation note
+
+*v1.29.1 ships the canonical `TraceEdgeRecord` row
+shape + canonical-JSON serializer + SHA-256 leaf
+digest function boundary. No storage, no projection,
+no audit query. No graph database, no PROV-O / RDF /
+SPARQL / Cypher / Neo4j / networkx / rdflib
+dependency. No `prev_hash` / `self_hash` field —
+tamper evidence is delegated to the v1.28 event-log
+/ manifest / Merkle substrate.*
+
+### v1.29.1.1 Surface
+
+In [`world/trace_edges.py`](../world/trace_edges.py):
+
+- Closed-set vocabularies (binding):
+  `TRACE_EDGE_TYPE_LABELS` (10),
+  `TRACE_EDGE_CATEGORY_LABELS` (9),
+  `TRACE_EDGE_CONFIDENCE_LABELS` (5).
+- `TRACE_EDGE_PROV_COMPAT_MAPPING` — descriptive-only
+  string mapping from each `edge_type_label` to a
+  `prov:…Like` / `jfwe:…` name. Strings only; no
+  rdflib / OWL / SPARQL.
+- `CANONICAL_TRACE_EDGE_COLUMN_ORDER` — 14-field
+  canonical column order.
+- `TRACE_EDGE_SCHEMA_VERSION` — schema-version
+  sentinel; bumping it changes every leaf digest.
+- `TraceEdgeRecord` (frozen dataclass; required non-
+  empty `edge_id` / `run_id` / `source_event_id` /
+  `target_event_id` / `provenance_kind`; closed-set
+  `edge_type_label` / `edge_category_label` /
+  `confidence_label`; tuple-of-non-empty-string
+  `evidence_ref_ids` / `citation_ids` (default `()`);
+  optional empty-by-default `actor_id` / `period_id`
+  / `notes`; deterministic `canonical_sort_key`
+  derivation:
+  `run_id=…/source=…/target=…/type=…/edge_id=…`).
+- `trace_edge_to_canonical_dict(record)` — projects
+  to a canonical mapping in `CANONICAL_TRACE_EDGE_COLUMN_ORDER`.
+- `serialize_trace_edges_canonical_json(records)` —
+  canonical JSON bytes (routes through v1.28.1's
+  `serialize_canonical_json`).
+- `compute_trace_edge_leaf_digest(records, *,
+  schema_version=TRACE_EDGE_SCHEMA_VERSION)` —
+  single trace-edge leaf-digest boundary. Sorts
+  records by `canonical_sort_key`, builds
+  `{"schema_version": …, "trace_edges": [...]}`,
+  serialises canonically, hashes with SHA-256,
+  returns lowercase hex.
+
+### v1.29.1.2 What v1.29.1 does NOT ship
+
+- No graph database / PROV-O / RDF / SPARQL / Cypher /
+  Neo4j / networkx / rdflib runtime.
+- No `prev_hash` / `self_hash` / `edge_chain_hash`
+  field on `TraceEdgeRecord`.
+- No `WorldKernel` field (kernel-empty-by-default).
+- No real Japanese identifier, no real-data adapter,
+  no Japan calibration, no investment output, no
+  sentiment label.
+
+### v1.29.1.3 Tests added
+
+`tests/test_trace_edges.py` adds **+56 tests** (after
+parametrisation expansion). Coverage: closed-set
+vocabularies match design pin; parametrised forbidden-
+sentiment-label exclusion across 13 forbidden tokens;
+valid-minimal record acceptance; canonical_sort_key
+default; parametrised empty-required-string rejection
+across 5 fields; invalid edge_type / category /
+confidence label rejection; full-cross-product label
+acceptance (10 × 9 × 5); non-tuple evidence_ref_ids /
+citation_ids rejection; empty-string entry rejection;
+optional empty actor_id / period_id / notes; explicit
+canonical_sort_key bypass; frozen-immutability;
+canonical-dict explicit column order; tuples-as-lists;
+byte-identical repeated calls; serialize uses
+explicit field order; non-record TypeError; leaf
+digest lowercase-hex-64 / stable / insertion-order
+independent / reacts to edge change / reacts to
+evidence_ref / citation_ids change / reacts to
+schema_version change / empty-list deterministic /
+non-record TypeError / empty-schema-version rejection
+/ explicit-recompute SHA-256 equality match; PROV-O
+mapping covers every edge_type_label / values are
+strings / uses descriptive `prov:…Like` or `jfwe:…`
+namespaces; module text contains no rdflib / OWL /
+SPARQL / Neo4j / TigerGraph / Gremlin / networkx /
+Polars / DuckDB / PyArrow imports; no real-data
+adapter imports; no `prev_hash` / `self_hash` /
+`edge_chain_hash` dataclass field; no WorldKernel
+field added; module exports match design pin.
+
+### v1.29.1.4 Validation
+
+- `pytest -q`: **5383 passed, 2 skipped, 1 deselected
+  / 5386 collected** (5327 → 5383; +56 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.29.0 closing statement
 
 v1.29.0 is a docs-only design pin. It introduces
