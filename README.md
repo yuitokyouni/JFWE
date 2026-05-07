@@ -232,7 +232,122 @@ offering.
 
 ---
 
-## 4. Current milestone: v1.28.last
+## 4. Current milestone: v1.29.0
+
+**v1.29.0 TraceEdgeRecord + CitationGraphProjection
+— design pin (shipped, docs-only).** Defines the
+**trace-graph layer** that sits above the v1.28 event-
+log substrate. v1.28 answered "how do we store event
+records deterministically, append-only, and at
+scale?"; v1.29 answers "how do we describe
+relationships between event records so that a future
+auditor can trace evidence, attention, review,
+propagation, and citation paths?". v1.29.0 ships
+**only** the design pin (sections A–P): a future
+`TraceEdgeRecord` shape (closed-set procedural
+relation labels — never sentiment, never investment),
+a future `CitationGraphProjection` (deterministic,
+read-only, recomputable), and a future audit-facing
+query surface. The event log remains the canonical
+substrate; the trace graph is a derived projection.
+v1.29.0 introduces no runtime module, no new
+dataclass, no new ledger event, no new test, no new
+label vocabulary, no new fixture, no PROV-O / RDF /
+SPARQL / Cypher / Neo4j / networkx / rdflib /
+counterfactual-replay implementation, no graph
+database dependency, no investment recommendation
+surface. **Every v1.21.last canonical
+`living_world_digest` value remains byte-identical.**
+
+Shipped runtime / UI / loop / settlement set:
+
+- **Runtime milestone — v1.9.last public prototype.**
+- **UI prototype — v1.20.5 static workbench**
+  (with the v1.22.2 Active Stresses strip).
+- **Frozen loop — v1.16.last closed-loop freeze**
+  + **v1.12.last endogenous attention loop freeze**.
+- **Settlement substrate — v1.13.last generic
+  central-bank settlement infrastructure freeze.**
+
+v1.29.0 deliverables:
+
+| Artifact | Surface |
+| -------- | ------- |
+| **v1.29.0 design pin** | [`docs/v1_29_trace_edge_citation_graph.md`](japan-financial-world/docs/v1_29_trace_edge_citation_graph.md) — sections A–P covering purpose; why v1.29 comes after v1.28; boundary; log vs ledger vs trace graph; canonical source of truth; future `TraceEdgeRecord` shape (closed-set `TRACE_EDGE_TYPE_LABELS` and `TRACE_EDGE_CATEGORY_LABELS`); plain-id citation policy; `CitationGraphProjection` design; audit query surface; relationship to answer surface; determinism and ordering; digest policy; testing plan for v1.29.1+; future sub-milestone plan; boundary and forbidden content; success criteria. |
+| **§140 in `world_model.md`** | [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §140 constitutional pointer to the v1.29.0 design pin. |
+| **§9 roadmap row** | This README §9 — added v1.29.0 row as "Design scoped — current"; v1.29.1–v1.29.last candidates listed but not scheduled. |
+
+**Pinned at v1.29.0:**
+
+- `pytest -q`: **5327 passed, 2 skipped, 1
+  deselected / 5330 collected** (unchanged from
+  v1.28.last)
+- `ruff check japan-financial-world`: clean
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean
+- All v1.21.last canonical living-world digests
+  preserved byte-identical at v1.29.0:
+  - `quarterly_default` —
+    `f93bdf3f4203c20d4a58e956160b0bb1004dcdecf0648a92cc961401b705897c`
+  - `monthly_reference` —
+    `75a91cfa35cbbc29d321ffab045eb07ce4d2ba77dc4514a009bb4e596c91879d`
+  - `scenario_monthly_reference_universe` —
+    `5003fdfaa45d5b5212130b1158729c692616cf2a8df9b425b226baef15566eb6`
+  - v1.20.4 CLI bundle —
+    `ec37715b8b5532841311bbf14d087cf4dcca731a9dc5de3b2868f32700731aaf`
+- New runtime files: **0**
+- New runtime modules: **0**
+- New dataclasses: **0**
+- New `RecordType` values: **0**
+- New tests: **0**
+- New tabs: **0**
+- Export schema changes: **0**
+- New fixtures: **0**
+- New dependencies: **0**
+- No `pyproject.toml` change.
+
+**Five-artifact hierarchy (binding for v1.29.x):**
+
+- **Raw log rows** (domain reference; not a v1.x
+  runtime artifact).
+- **Event ledger records** — `world.ledger.Ledger`
+  events + the v1.28.1 `EventLogRecord`.
+- **Trace edges** — future `TraceEdgeRecord`
+  instances with closed-set `edge_type_label`
+  (`attended_to` / `cited_as_evidence` /
+  `constrained_by` / `reviewed_under` /
+  `propagated_to` / `contradicted_by` /
+  `superseded_by` / `derived_from` / `related_to`
+  / `unknown`) and closed-set
+  `edge_category_label` (`evidence` / `attention`
+  / `review` / `constraint` / `propagation` /
+  `contradiction` / `lineage` / `annotation` /
+  `unknown`). Procedural / structural labels
+  only — never sentiment, never investment.
+- **`CitationGraphProjection`** — deterministic,
+  read-only, recomputable projection over event
+  log + trace edges. Sorted by canonical keys.
+- **Audit-facing query surface** — future
+  read-only deterministic helpers ("which evidence
+  contributed to this judgment?" / "which actor
+  attended to this event first?" / "which
+  judgments cite the same evidence?" / etc.).
+  Counterfactual questions remain **out of
+  scope** — they require a future deterministic
+  replay engine (likely v1.30+).
+
+The next milestone (provisional) is **v1.29.1
+`TraceEdgeRecord` schema + canonical serializer**.
+v1.29.0 does not start it; v1.29.1 requires its
+own design pin or design-pin amendment before
+implementation. v1.29.2–v1.29.last candidates are
+listed on the roadmap but are not scheduled.
+
+---
+
+### Earlier concrete code milestone: v1.28.last (frozen)
 
 **v1.28.last Scale Substrate freeze (shipped, docs-
 only).** Closes the v1.28 scale substrate sequence as a
@@ -1363,8 +1478,14 @@ forbidden.
 | v1.26.last | **Entity Lifecycle + Reporting Calendar Foundation freeze (generic).** v1.26.0 design pin; v1.26.1 `UniverseEventRecord` storage (closed-set `UNIVERSE_EVENT_TYPE_LABELS`: entity_listed / delisted / merged / renamed / split / status_changed / unknown; `UNIVERSE_EVENT_RECORDED` ledger event); v1.26.2 `ReportingCalendarProfile` storage (closed-set `MONTH_LABELS` 1-12 + unknown; `DISCLOSURE_CLUSTER_LABELS`; `REPORTING_INTENSITY_LABELS`; `REPORTING_CALENDAR_PROFILE_RECORDED` ledger event); v1.26.3 read-only `UniverseCalendarReadout` (active/inactive entity walk; reporting-due via deterministic month-label extraction); v1.26.4 optional descriptive-only `universe_calendar_readout` payload section + minimal "Universe / calendar" panel inside the existing Universe sheet (no new tab; textContent only); v1.26.last freeze. **Empty-by-default rule preserves every existing fixed fixture byte-identically** — a kernel without UniverseEventRecord + ReportingCalendarProfile records continues to behave as a static universe exactly as it did at v1.25.last. **Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / JPX / TOPIX / Nikkei / GICS / MSCI / S&P / FactSet / Bloomberg / Refinitiv dependency. No event-to-price mapping. No earnings-surprise / event-study / calendar-arbitrage inference. No portfolio / universe weight / constituent weight / rebalance event. No actor decision. No source-of-truth book mutation. No digest movement.** | **Shipped.** See [`docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md`](japan-financial-world/docs/v1_26_entity_lifecycle_reporting_calendar_foundation.md) §15 and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §135.6. |
 | v1.27.last | **Generic Strategic Relationship Network + Annotation Provenance Hardening freeze.** v1.27.0 design pin; v1.27.1 `StrategicRelationshipRecord` storage (closed-set `RELATIONSHIP_TYPE_LABELS`: strategic_holding_like / supplier_customer_like / group_affiliation_like / lender_relationship_like / governance_relationship_like / commercial_relationship_like / unknown; closed-set `DIRECTION_LABELS`; `STRATEGIC_RELATIONSHIP_RECORDED` ledger event; empty-by-default kernel field; 13 tests); v1.27.2 read-only `StrategicRelationshipReadout` (counts only — no centrality, no rank, no risk score) + optional descriptive-only `strategic_relationship_readout` payload section omitted-when-empty (13 tests); v1.27.3 `ManualAnnotationProvenanceRecord` storage (pseudonymous; closed-set `AUTHORITY_LABELS`: self_review / delegated_review / supervisory_review / audit_review / unknown; closed-set `EVIDENCE_ACCESS_SCOPE_LABELS`: public_synthetic / internal_synthetic / restricted_synthetic / unknown; anti-email-leak guard rejects `@` in `annotator_id_label`; `MANUAL_ANNOTATION_PROVENANCE_RECORDED` ledger event; 11 tests); v1.27.last freeze. **v1.27 closes the last generic substrate addition in public v1.x.** **Empty-by-default kernel fields. Synthetic only. No real data. No Japan calibration. No EDINET / TDnet / J-Quants / EDGAR. No real-company name / relationship claim. No ownership percentage / voting power / market value / fair value / centrality score / systemic-importance score. No real-person name / email / phone / national-id / employee-id. No SOC2 / FISC / ISO27001 / regulatory-attestation compliance claim. No LLM authoring. No source-of-truth book mutation. No digest movement.** | **Shipped.** See [`docs/v1_27_generic_relationship_network_annotation_provenance.md`](japan-financial-world/docs/v1_27_generic_relationship_network_annotation_provenance.md) §7 "v1.27.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §136.6. |
 | v2.0.last | **Japan Public Calibration Boundary freeze (docs-only).** Final pin section for the v2.0 sequence; freezes the **public-repository boundary** in its entirety. Re-pins, in addition to v2.0.0: (a) v2.0 is a boundary design only — not a calibration step, not a Japan-readiness step, not a market-effect step; (b) v2.0 does not begin Japan calibration — no Japan-specific factual claim, identifier, or calibration parameter is admitted in the public repository; (c) v2.1+ Japan calibration work should not proceed in the public repo unless explicitly synthetic and license-safe (fresh design pin + synthetic-or-citation-bound records + per-source license-review note + canonical-digest preservation, all four required); (d) real-data work belongs in the private repository — real Japanese filings, real cross-shareholding extraction, real ownership / voting / market-value calibration, paid-feed ingestion, expert-interview content, manually curated proprietary relationship maps, and any client-specific calibration are out of scope for this public repository; (e) public FWE remains a generic substrate / portfolio artifact. v2.0.0 design pin (sections A–M) shipped first; v2.0.last (this freeze) closes the v2.0 sequence. **No runtime change. No new dataclass. No new ledger event. No new test. No new label vocabulary. No new fixture. No real-data adapter. No real Japanese company name. No real securities code. No real filing data. No real cross-shareholding data. No real reporting-calendar data. No index constituent data. No price-impact model. No investment recommendation. No alpha claim. No backtest claim. No digest movement.** | **Shipped.** See [`docs/v2_0_japan_public_calibration_boundary.md`](japan-financial-world/docs/v2_0_japan_public_calibration_boundary.md) §N "v2.0.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §137.7. |
-| **v1.28.last** | **Scale Substrate freeze (docs-only).** Closes the v1.28 sequence as a generic, jurisdiction-neutral, synthetic-only engineering foundation. Ships: (a) v1.28.0 docs-only design pin (architecture: event log + materialised views + Merkle digest tree); (b) v1.28.1 schema + canonical leaf digest (`EventLogRecord`, `EventLogManifest`, `compute_leaf_digest(...)`); (c) v1.28.2 append-only JSONL writer with sealed-marker + monotonic part-file index; (d) v1.28.3 partition manifest (`_MANIFEST.json`) + schema pinning (`ManifestMismatchError`); (e) v1.28.4 Merkle digest core (`compute_partition_leaf_digest`, `compute_inner_digest`, `compute_event_log_root_digest`, `EventLogDigestTree`; single-leaf-hash-implementation pin); (f) v1.28.5 columnar boundary without hard dependencies; (g) v1.28.6 optional Polars boundary + digest-order guard; (h) v1.28.7 optional DuckDB boundary; (i) v1.28.8 deterministic projection prototype (partial-window equals full-filtered); (j) v1.28.9 opt-in synthetic scale smoke + `@pytest.mark.scale`/`slow`/`benchmark` markers (default-excluded). Legacy `living_world_digest` remains byte-identical for every existing canonical fixture; Merkle root is **NOT** required to equal legacy digest. **Event log is opt-in. No `WorldKernel` field added. No new `RecordType`. No new fixture. No new runtime dependency. `pyproject.toml` change is pytest-marker config only. No real Japanese identifier. No real-data adapter. No Japan calibration. No investment recommendation. No alpha or backtest claim. No citation graph / audit-query layer (deferred to v1.29+ candidate).** | **Shipped — current.** See [`docs/v1_28_scale_substrate_event_log_columnar_merkle.md`](japan-financial-world/docs/v1_28_scale_substrate_event_log_columnar_merkle.md) §Y "v1.28.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §138.9. |
-| v1.29 candidate | **`TraceEdgeRecord` + `CitationGraphProjection` design pin (docs-only).** Builds on the v1.28 event-log substrate. Defines the citation graph + trace-edge surface that v1.28.8 explicitly deferred. No PROV-O / SPARQL / Cypher implementation; no real-data adapter; no investment output. | Optional candidate. Not started. Gated by v1.28.last + a fresh design pin. |
+| v1.28.last | **Scale Substrate freeze (docs-only).** Closes the v1.28 sequence as a generic, jurisdiction-neutral, synthetic-only engineering foundation. Ships: (a) v1.28.0 docs-only design pin (architecture: event log + materialised views + Merkle digest tree); (b) v1.28.1 schema + canonical leaf digest (`EventLogRecord`, `EventLogManifest`, `compute_leaf_digest(...)`); (c) v1.28.2 append-only JSONL writer with sealed-marker + monotonic part-file index; (d) v1.28.3 partition manifest (`_MANIFEST.json`) + schema pinning (`ManifestMismatchError`); (e) v1.28.4 Merkle digest core (`compute_partition_leaf_digest`, `compute_inner_digest`, `compute_event_log_root_digest`, `EventLogDigestTree`; single-leaf-hash-implementation pin); (f) v1.28.5 columnar boundary without hard dependencies; (g) v1.28.6 optional Polars boundary + digest-order guard; (h) v1.28.7 optional DuckDB boundary; (i) v1.28.8 deterministic projection prototype (partial-window equals full-filtered); (j) v1.28.9 opt-in synthetic scale smoke + `@pytest.mark.scale`/`slow`/`benchmark` markers (default-excluded). Legacy `living_world_digest` remains byte-identical for every existing canonical fixture; Merkle root is **NOT** required to equal legacy digest. **Event log is opt-in. No `WorldKernel` field added. No new `RecordType`. No new fixture. No new runtime dependency. `pyproject.toml` change is pytest-marker config only. No real Japanese identifier. No real-data adapter. No Japan calibration. No investment recommendation. No alpha or backtest claim. No citation graph / audit-query layer (deferred to v1.29).** | **Shipped.** See [`docs/v1_28_scale_substrate_event_log_columnar_merkle.md`](japan-financial-world/docs/v1_28_scale_substrate_event_log_columnar_merkle.md) §Y "v1.28.last freeze" and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §138.9. |
+| **v1.29.0** | **`TraceEdgeRecord` + `CitationGraphProjection` — design pin (docs-only).** Defines the trace-graph layer above the v1.28 event-log substrate. Five-artifact hierarchy (raw log rows → event ledger records → trace edges → citation graph projection → audit query surface). Future `TraceEdgeRecord` shape with closed-set `TRACE_EDGE_TYPE_LABELS` (attended_to / cited_as_evidence / constrained_by / reviewed_under / propagated_to / contradicted_by / superseded_by / derived_from / related_to / unknown) and closed-set `TRACE_EDGE_CATEGORY_LABELS` (evidence / attention / review / constraint / propagation / contradiction / lineage / annotation / unknown). Procedural / structural labels only — never sentiment, never investment. Future `CitationGraphProjection` is deterministic, read-only, recomputable; sorted by canonical keys; independent of filesystem / dict / random order. Future audit query surface answers questions about what is in the event log; counterfactual questions remain out of scope (require future replay engine, likely v1.30+). **No runtime change. No new dataclass. No new ledger event. No new test. No new label vocabulary. No new fixture. No PROV-O / RDF / SPARQL / Cypher / Neo4j / networkx / rdflib / counterfactual-replay implementation. No graph database dependency. No `pyproject.toml` change. No real Japanese identifier. No real-data adapter. No Japan calibration. No investment recommendation. No alpha or backtest claim. No digest movement.** v1.29.0 = docs-only design pin; v1.29.1 = `TraceEdgeRecord` schema + canonical serializer; v1.29.2 = `TraceEdgeBook` append-only storage; v1.29.3 = `CitationGraphProjection` on tiny synthetic fixtures; v1.29.4 = audit query helpers; v1.29.5 = trace digest, if needed; v1.29.last = freeze. | **Design scoped — current.** See [`docs/v1_29_trace_edge_citation_graph.md`](japan-financial-world/docs/v1_29_trace_edge_citation_graph.md) and [`docs/world_model.md`](japan-financial-world/docs/world_model.md) §140. |
+| v1.29.1 candidate | **`TraceEdgeRecord` schema + canonical serializer** — frozen-dataclass shape; closed-set label validation; canonical-JSON serializer; deterministic `canonical_sort_key` derivation. No `TraceEdgeBook`, no projection, no audit query. | Optional candidate. Not started. Gated by v1.29.0 design pin. |
+| v1.29.2 candidate | **`TraceEdgeBook` / append-only trace-edge storage** — in-memory or JSONL prototype; sealed-marker; monotonic part-file index; reuses v1.28.2 writer conventions. | Optional candidate. Not started. Gated by v1.29.1. |
+| v1.29.3 candidate | **`CitationGraphProjection` on tiny synthetic fixtures** — deterministic read-only projection over `EventLogRecord` + `TraceEdgeRecord`; sorted nodes / edges; recomputable; partial-window equivalence. | Optional candidate. Not started. Gated by v1.29.2. |
+| v1.29.4 candidate | **Audit query helpers** — deterministic read-only helpers (lineage, dependency, contradiction-pair, evidence-for, first-attender, divergent-reviewers, attention-path). Counterfactual questions remain out of scope. | Optional candidate. Not started. Gated by v1.29.3. |
+| v1.29.5 candidate | **Trace digest / graph projection digest** — if needed; routed through a single approved leaf-digest function (mirroring v1.28.4 §F.1). Decision deferred to v1.29.4 review. | Optional candidate. Not started. Gated by v1.29.4. |
+| v1.29.last candidate | **Docs-only freeze** — final pin section consolidating the v1.29 sequence. | Optional candidate. Not started. Gated by v1.29.5 (or earlier if the sequence is wound down). |
 | v2.1 candidate | **Japan public entity-universe schema boundary** — synthetic examples only; design-only on what a future Japan-cited `UniverseEventRecord` would look like. No real ids; no real-data adapter at v2.1. | Optional candidate. Not started. Gated by v2.0.0 + license review. |
 | v2.2 candidate | **Japan reporting-calendar public-source mapping design** — synthetic examples only; design-only on what a future Japan-cited `ReportingCalendarProfile` would look like. | Optional candidate. Not started. Gated by v2.1. |
 | v2.3 candidate | **Japan public relationship-source mapping design** — synthetic examples only; design-only on what a future Japan-cited `StrategicRelationshipRecord` + provenance would look like. | Optional candidate. Not started. Gated by v2.2. |

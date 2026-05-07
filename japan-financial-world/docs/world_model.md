@@ -12711,3 +12711,145 @@ None of them is a price forecast, an investment
 recommendation, or an alpha claim.
 
 Silent relaxation of §139 is forbidden.
+
+## 140 v1.29 — TraceEdgeRecord + CitationGraphProjection (design pointer, **v1.29.0 design-only**)
+
+*Constitutional position of the v1.29 trace-graph
+layer above the v1.28 event-log substrate. v1.29
+clarifies the boundary between raw log rows, event-
+ledger records, inter-event trace edges, citation-
+graph projections, and the audit-facing query
+surface. Anchored to the v1.28.last freeze (§138.9)
+and to the answer-surface position (§139).*
+
+The binding design pin lives in
+[`v1_29_trace_edge_citation_graph.md`](v1_29_trace_edge_citation_graph.md).
+
+### 140.1 Scope
+
+v1.29 defines the **citation graph / trace-graph
+layer** that sits above the v1.28 event-log
+substrate. v1.29.0:
+
+- introduces **no** runtime module, no new
+  dataclass, no new ledger event, no new test, no
+  new label vocabulary, no new fixture;
+- adds **no** PROV-O / RDF / SPARQL / Cypher /
+  Neo4j / networkx / rdflib / counterfactual-
+  replay implementation;
+- adds **no** runtime dependency;
+- changes **no** v1.28 event-log runtime module;
+- changes **no** existing
+  `living_world_digest` implementation or
+  expected value;
+- preserves every v1.21.last canonical digest
+  byte-identically.
+
+v1.29.0 commits only to the boundary that
+constrains all future v1.29.x work.
+
+### 140.2 Five-artifact hierarchy
+
+v1.29 partitions trace-graph reasoning into a
+strict hierarchy where every later artifact is a
+derived projection:
+
+1. **Raw log rows** (domain reference; not a
+   v1.x runtime artifact).
+2. **Event ledger records** —
+   `world.ledger.Ledger` events + the v1.28.1
+   `EventLogRecord` shipped under
+   `world.event_log_schema`.
+3. **Trace edges** — future `TraceEdgeRecord`
+   instances with closed-set
+   `edge_type_label` (`attended_to` /
+   `cited_as_evidence` / `constrained_by` /
+   `reviewed_under` / `propagated_to` /
+   `contradicted_by` / `superseded_by` /
+   `derived_from` / `related_to` / `unknown`)
+   and closed-set `edge_category_label`
+   (`evidence` / `attention` / `review` /
+   `constraint` / `propagation` /
+   `contradiction` / `lineage` / `annotation` /
+   `unknown`). Procedural / structural labels
+   only — never sentiment, never investment.
+4. **`CitationGraphProjection`** — deterministic,
+   read-only, recomputable projection over event
+   log + trace edges. Sorted by canonical keys.
+5. **Audit-facing query surface** — future
+   read-only deterministic helpers answering
+   specific audit questions ("which evidence
+   contributed to this judgment?"). Counterfactual
+   questions remain out of scope.
+
+### 140.3 Canonical-source-of-truth pin
+
+- `EventLogRecord` (v1.28.1) remains canonical
+  for event facts.
+- Future `TraceEdgeRecord` (v1.29.1+) is
+  canonical for inter-event relationships only;
+  it never shadows or modifies an event-log row.
+- `CitationGraphProjection` is derived, read-
+  only, and recomputable. Dropping the
+  projection and rebuilding from the same event
+  log + trace edges produces a byte-identical
+  projection.
+- No graph object is canonical by itself.
+- No graph database is required at any v1.29.x
+  sub-milestone.
+
+### 140.4 Forbidden at v1.29
+
+PROV-O / RDF / SPARQL / Cypher / Gremlin / Neo4j
+/ TigerGraph / JanusGraph / ArangoDB / Memgraph /
+networkx / rdflib implementation; counterfactual
+replay engine; investment recommendation; price-
+impact model; real-data adapter (EDINET / TDnet /
+J-Quants / FSA / EDGAR / SEDAR / JPX / TOPIX /
+Nikkei / GICS / MSCI / S&P / FactSet /
+Bloomberg / Refinitiv / Capital IQ); paid data;
+expert-interview content; client-specific
+calibration; sentiment labels (`bullish` /
+`bearish` / `optimistic` / `pessimistic`);
+investment labels (`buy` / `sell` / `hold` /
+`target_price` / `alpha` / `recommendation` /
+`advice`); legal-compliance claims.
+
+### 140.5 Future v1.29.x roadmap (proposal only)
+
+| Sub-milestone | Surface |
+| ------------- | ------- |
+| **v1.29.0** | docs-only design pin (this document) |
+| v1.29.1 | `TraceEdgeRecord` schema + canonical serializer |
+| v1.29.2 | `TraceEdgeBook` / append-only trace-edge storage (in-memory or JSONL) |
+| v1.29.3 | `CitationGraphProjection` on tiny synthetic fixtures |
+| v1.29.4 | audit query helpers (deterministic, read-only) |
+| v1.29.5 | trace digest / graph projection digest, if needed |
+| v1.29.last | docs-only freeze |
+
+v1.29.0 commits to v1.29.0 only. Each later sub-
+milestone requires its own design pin (or design-
+pin amendment) before implementation.
+
+### 140.6 Design invariants
+
+- The trace graph remains a projection, not a
+  canonical source of truth.
+- The event log remains the canonical substrate.
+- Existing fixtures unchanged.
+- Legacy `living_world_digest` byte-identical at
+  every v1.29.x sub-milestone.
+- No real data, real-data adapter, or Japan
+  calibration enters the repository at any
+  v1.29.x sub-milestone.
+- No investment-output surface appears.
+- Audit query surface (when implemented) is
+  deterministic and read-only; counterfactual
+  replay is out of scope.
+- Optional graph dependencies (Neo4j / networkx /
+  rdflib / sparql / cypher) are not required by
+  default and are not added to runtime
+  dependencies.
+- Local-first boundary preserved.
+
+Silent extension of v1.29 is forbidden.
