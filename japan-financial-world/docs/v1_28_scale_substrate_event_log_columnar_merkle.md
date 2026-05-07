@@ -1735,6 +1735,95 @@ invocation pin.
 
 ---
 
+## v1.28.5 implementation note
+
+*v1.28.5 ships the columnar backend boundary as a
+**docs + test-gated named-only interface**. No
+PyArrow / Polars / DuckDB / fastparquet dependency
+is added; nothing is added to `pyproject.toml`. The
+canonical prototype backend at v1.28.x remains
+JSONL.*
+
+### v1.28.5.1 Surface
+
+Implemented in
+[`world/event_log_columnar.py`](../world/event_log_columnar.py):
+
+- `OptionalDependencyUnavailable(Exception)` — raised
+  when a future v1.28.5+ columnar backend is
+  requested but its dependency is absent.
+- `ColumnarBackendNotImplementedError(NotImplementedError)`
+  — raised by every boundary entry point at
+  v1.28.5; the boundary is **declared** at v1.28.5
+  but **not implemented**. Callers can catch it
+  generically via `NotImplementedError`.
+- Availability checks via `importlib.util.find_spec`
+  only (never `import …` at module load):
+  `is_pyarrow_available()`,
+  `is_polars_available()`,
+  `is_duckdb_available()`,
+  `is_fastparquet_available()`.
+- `ColumnarBackendStatus` (frozen dataclass) +
+  `columnar_backend_status()` builder — read-only
+  summary of availability + implementation state
+  (`columnar_implementation_state =
+  "boundary-only-v1.28.5"`).
+- Future entry points (raise
+  `ColumnarBackendNotImplementedError` at v1.28.5):
+  - `write_partition_parquet(partition_dir, records,
+    *, manifest=None) -> Path`
+  - `scan_partition_parquet(partition_dir, *,
+    manifest=None)`
+  - `read_partition_records(part_path, *,
+    manifest=None)`
+
+### v1.28.5.2 What v1.28.5 does NOT ship
+
+- No PyArrow / Polars / DuckDB / fastparquet
+  dependency.
+- No `pyproject.toml` change (no
+  `[project.optional-dependencies]` entry).
+- No Parquet file written. No Parquet file read.
+- No Polars / DuckDB query path.
+
+### v1.28.5.3 Tests added
+
+`tests/test_event_log_columnar.py` adds **+13
+tests**. Coverage: module imports without
+PyArrow / Polars / DuckDB / fastparquet; module
+text contains no top-level optional imports;
+availability helpers return bool; helpers use
+`importlib.util.find_spec` (not raw `import`);
+`columnar_backend_status()` returns the frozen
+dataclass with `columnar_implementation_state =
+"boundary-only-v1.28.5"`; `write_partition_parquet`
+/ `scan_partition_parquet` /
+`read_partition_records` raise
+`ColumnarBackendNotImplementedError`; the boundary
+error is a `NotImplementedError` subclass;
+`OptionalDependencyUnavailable` is an `Exception`
+subclass; module exports match design pin; module
+creates no Parquet artifact under any boundary
+call; **`pyproject.toml` introduces no optional
+extra** (test reads the top-level `pyproject.toml`
+and asserts it does not mention `pyarrow` /
+`polars` / `duckdb` / `fastparquet`).
+
+### v1.28.5.4 Validation
+
+- `pytest -q`: **5274 / 5274 passing** (5261 →
+  5274; +13 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
