@@ -61,7 +61,16 @@ dev = [
 pythonpath = ["japan-financial-world"]
 testpaths = ["japan-financial-world/tests"]
 python_files = ["test_*.py"]
-addopts = "-q"
+# v1.28.9 — opt-in scale / slow / benchmark markers.
+# Default test runs do NOT execute these. To run an
+# opt-in scale smoke under, e.g., 200 firms × 6 periods,
+# use ``pytest -m scale``.
+addopts = "-q -m 'not scale and not slow and not benchmark'"
+markers = [
+    "scale: opt-in synthetic-scale smoke runs (default-skipped)",
+    "slow: opt-in slow tests (default-skipped)",
+    "benchmark: opt-in performance benchmarks (default-skipped)",
+]
 
 # ---------------------------------------------------------------------------
 # ruff

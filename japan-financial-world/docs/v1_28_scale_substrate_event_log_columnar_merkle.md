@@ -2086,6 +2086,145 @@ round-trip.
 
 ---
 
+## v1.28.9 implementation note
+
+*v1.28.9 ships an opt-in synthetic scale smoke run plus
+`@pytest.mark.scale` / `slow` / `benchmark` markers
+(default-excluded). Synthetic only. No real Japanese
+identifier. No real-data adapter. No investment
+output.*
+
+### v1.28.9.1 Surface
+
+Implemented in
+[`examples/tools/run_v1_28_scale_smoke.py`](../examples/tools/run_v1_28_scale_smoke.py):
+
+- `ScaleSmokeRunSummary` (frozen dataclass: `firms`,
+  `periods`, `investors`, `banks`, `seed`,
+  `output_dir`, `records_written`,
+  `partitions_written`, `root_digest`,
+  `elapsed_seconds`, `on_disk_bytes`).
+- `run_scale_smoke(*, firms, periods,
+  investors=0, banks=0, seed, output_dir)` —
+  generates `firms × periods` synthetic records (+
+  optional investor / bank overlay records), groups
+  them by partition key, writes them through the
+  v1.28.2 `EventLogPartitionWriter`, computes the
+  v1.28.4 `compute_event_log_root_digest`, and
+  returns the summary. Same inputs → same root
+  digest (deterministic for a fixed seed).
+- `main(argv=None)` CLI entry point with
+  `--firms / --periods / --investors / --banks /
+  --seed / --output` flags. Default is a tiny smoke
+  (10 firms × 4 periods) so accidental copy-paste
+  does not generate gigabytes.
+
+Invocation example (opt-in 3000 × 60):
+
+```
+python japan-financial-world/examples/tools/run_v1_28_scale_smoke.py \
+    --firms 3000 --periods 60 --seed synthetic_001 \
+    --output .tmp/v1_28_scale
+```
+
+Pytest marker policy (binding):
+
+- `pyproject.toml` registers `scale`, `slow`,
+  `benchmark` markers and excludes them from default
+  runs via
+  ``addopts = "-q -m 'not scale and not slow and not benchmark'"``.
+- A heavy 3000 × 60 opt-in test
+  (`test_3000x60_smoke_run_opt_in`) is decorated with
+  all three markers and is excluded from default
+  pytest. Run it explicitly with
+  ``pytest -m scale``.
+- Performance budgets are intentionally **not**
+  asserted in the heavy opt-in test (per design pin
+  §R.3 hardware-profile configurability). The smoke
+  prints elapsed time + on-disk bytes for human
+  inspection.
+
+### v1.28.9.2 What v1.28.9 does NOT ship
+
+- No real Japanese identifier. All firm ids are
+  ``firm:synthetic_NNNNNN``; all sector ids are
+  ``industry:synthetic_NN``.
+- No real-data adapter. Module text imports no
+  EDINET / TDnet / J-Quants / FSA / TOPIX / Nikkei
+  / JPX / EDGAR / Bloomberg / Refinitiv / FactSet.
+- No investment-output term. Module text contains
+  no `buy_signal` / `sell_signal` /
+  `target_price` / `alpha_claim` /
+  `backtest_claim` / `investment_advice` /
+  `ownership_percentage` / `voting_power`
+  identifiers.
+- No new runtime module beyond the example tool.
+  No `world/...` change. No kernel mutation.
+- No new dependency. The single `pyproject.toml`
+  change is the addition of `markers = [...]` and
+  the `addopts` ``-m 'not scale and not slow and not
+  benchmark'`` filter — both are pytest config only,
+  not runtime dependencies.
+
+### v1.28.9.3 Tests added
+
+`tests/test_event_log_scale_smoke.py` adds **+11
+tests** (plus 1 deselected opt-in heavy test).
+Coverage: tiny smoke run completes; deterministic
+for same seed (root digest equal across two roots);
+changed seed changes root digest; changed firms
+changes root digest; optional investors + banks
+overlay; invalid `firms=0` / `periods=0` raises;
+CLI `main()` exit code 0 + summary printed (capsys);
+no real-identifier / adapter / advice imports or
+identifiers in module text; synthetic archetype
+suffix used for sector / firm ids; smoke module
+routes through `world.event_log_writer` /
+`event_log_merkle` / `event_log_schema` (composes
+existing primitives); default test suite excludes
+the 3000 × 60 opt-in heavy test (verified via
+introspection of the module's `pytestmark` set on
+the opt-in function); the opt-in heavy test itself
+runs to completion under
+``pytest -m scale`` (deselected by default).
+
+### v1.28.9.4 pyproject.toml change
+
+Minimal pytest-config-only change:
+
+```toml
+[tool.pytest.ini_options]
+...
+addopts = "-q -m 'not scale and not slow and not benchmark'"
+markers = [
+    "scale: opt-in synthetic-scale smoke runs (default-skipped)",
+    "slow: opt-in slow tests (default-skipped)",
+    "benchmark: opt-in performance benchmarks (default-skipped)",
+]
+```
+
+No runtime dependency added. No `[project.dependencies]`
+or `[project.optional-dependencies]` change.
+
+### v1.28.9.5 Validation
+
+- `pytest -q`: **5327 passed, 2 skipped, 1
+  deselected / 5330 collected** (5316 → 5327; +11
+  default-collected tests, 1 deselected opt-in
+  heavy test).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- Tiny CLI smoke (5 firms × 2 periods, in
+  `.tmp/v1_28_scale_demo`) completes in ~0.02 s
+  with 10 records / 10 partitions.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
