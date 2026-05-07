@@ -1985,6 +1985,107 @@ DuckDB.
 
 ---
 
+## v1.28.8 implementation note
+
+*v1.28.8 ships the deterministic event-log
+projection prototype on tiny synthetic fixtures. The
+projection is a **materialised view**, not a source
+of truth — dropping it and rebuilding from the event
+log produces a byte-identical view (per design pin
+§G + §H). This is **not** the citation graph, **not**
+the audit-query layer, and **not** a domain-aware
+projection. Citation graph / trace graph / PROV-O /
+SPARQL / Cypher / counterfactual replay are deferred
+to a future milestone (likely v1.29+).*
+
+### v1.28.8.1 Surface
+
+Implemented in
+[`world/event_log_projection.py`](../world/event_log_projection.py):
+
+- `EventLogProjectionSummary` (frozen dataclass:
+  `total_records`, `records_by_period`,
+  `records_by_entity`, `records_by_record_type`,
+  `partition_keys`; tuple-of-pair fields sorted by
+  key ascending; `to_dict()` returns a JSON-friendly
+  representation).
+- `project_event_log(root, *, period_window=None)` —
+  walks every physically-present partition under
+  `root` (via `discover_partitions(...)`, sorted),
+  reads part files in lex-ascending order, parses
+  canonical JSONL records, counts globally and groups
+  by `period_id`, `target_entity_id`, and
+  `record_type`. If `period_window=(lo, hi)` is
+  supplied, the projection is restricted to records
+  whose `period_id` falls lex-inclusively in that
+  range, **and partitions with zero matches in the
+  window drop out of `partition_keys`** so a
+  windowed summary equals a full summary filtered to
+  the same window.
+
+### v1.28.8.2 What v1.28.8 does NOT ship
+
+- No `WorldKernel` field; no kernel mutation; no
+  fixture mutation. Every existing v1.21.last
+  canonical `living_world_digest` value is byte-
+  identical at v1.28.8.
+- No rebinding of any v1.x `Book.list_*(...)`
+  method. The existing book APIs are unchanged.
+- No domain semantics (no closed-set vocabulary
+  validation; the projection is a generic count-and-
+  group surface).
+- No citation graph, no trace graph, no PROV-O
+  mapping, no SPARQL / Cypher query layer, no
+  counterfactual replay. (Module text contains no
+  imports of `sparql` / `rdflib` / `neo4j` /
+  `networkx`, no `TraceEdgeRecord` reference, no
+  `CitationGraphProjection(` callable.)
+- No Polars / DuckDB / PyArrow / xxhash dependency.
+
+### v1.28.8.3 Tests added
+
+`tests/test_event_log_projection.py` adds **+20
+tests**. Coverage: summary dataclass shape;
+total_records / records_by_period /
+records_by_entity / records_by_record_type counts
+on a 3-record / 2-partition / 2-period fixture;
+partition_keys sorted; deterministic across
+reruns; identical content under two roots yields
+identical summary; **partial-window equals full-
+filtered-to-same-window** (per §H);
+window-outside-data yields empty summary;
+projection-does-not-mutate-event-log (every
+file's SHA-256 unchanged before/after);
+projection-does-not-register-a-kernel-field
+(WorldKernel dataclass field set unchanged);
+missing-root yields empty summary; manifest-only
+root yields empty summary; module no columnar
+dependency imports; module does not import or
+call any v1.x Book API or its `list_*` methods;
+module imports no citation-graph / trace-graph /
+PROV-O / SPARQL / Cypher modules and contains no
+`TraceEdgeRecord` or `CitationGraphProjection(`
+reference; module exports match design pin;
+EventLogProjectionSummary is frozen; `to_dict()`
+round-trip.
+
+### v1.28.8.4 Validation
+
+- `pytest -q`: **5316 passed, 2 skipped /
+  5318 collected** (5296 → 5316; +20 tests, 2
+  conditional skips cumulative across v1.28.6 +
+  v1.28.7).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
