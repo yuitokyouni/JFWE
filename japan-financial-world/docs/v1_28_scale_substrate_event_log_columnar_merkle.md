@@ -1824,6 +1824,88 @@ and asserts it does not mention `pyarrow` /
 
 ---
 
+## v1.28.6 implementation note
+
+*v1.28.6 ships the Polars scan boundary as a
+**soft-import** module + **single-leaf-hash-
+implementation guard**. No Polars dependency added.
+Module imports succeed without Polars. A future Polars-
+based digest path is required to route through
+`compute_leaf_digest(...)`.*
+
+### v1.28.6.1 Surface
+
+Implemented in
+[`world/event_log_polars.py`](../world/event_log_polars.py):
+
+- `is_polars_available()` —
+  `importlib.util.find_spec("polars") is not None`.
+- `_require_polars()` (private) — lazy
+  `importlib.import_module("polars")` with
+  `OptionalDependencyUnavailable` on absence.
+- `PolarsBackendNotImplementedError(NotImplementedError)`
+  — raised at v1.28.6 entry points.
+- Future entry points (raise the not-implemented
+  error when Polars is present, the unavailable
+  error when Polars is absent):
+  - `scan_partition_with_polars(partition_dir, *,
+    manifest=None)`
+  - `polars_records_to_event_log_leaf_digest(
+    polars_dataframe, *, manifest)` — the **only**
+    approved Polars → digest bridge. Module-level
+    import of `compute_leaf_digest` declares the
+    single-leaf-hash routing contract.
+
+### v1.28.6.2 What v1.28.6 does NOT ship
+
+- No Polars dependency. No `pyproject.toml` change.
+- No top-level `import polars` / `from polars`
+  reachable from a stock Python.
+- No pandas CSV hashing pattern (`to_csv` /
+  `read_csv` / `pandas.dataframe`).
+- No independent leaf-hash function (`hash_records`,
+  `compute_partition_leaf`, `merkle_leaf`,
+  `sha256_partition` — none defined).
+
+### v1.28.6.3 Tests added
+
+`tests/test_event_log_polars.py` adds **+11 tests
++ 1 conditional skip**. Coverage: module imports
+without Polars; module text has no top-level
+Polars import; module text has no pandas-CSV
+hashing pattern; `is_polars_available()` returns
+bool; `scan_partition_with_polars` /
+`polars_records_to_event_log_leaf_digest` raise
+clear errors (Polars-absent →
+`OptionalDependencyUnavailable`; Polars-present →
+`PolarsBackendNotImplementedError`); module
+declares import of `compute_leaf_digest` from
+`world.event_log_schema` (single-leaf-hash
+implementation pin); module does not define a
+separate hash function; module exports match
+design pin; `PolarsBackendNotImplementedError` is
+a `NotImplementedError` subclass; conditional
+"polars-present-path" test (skipped when Polars is
+absent — runs and verifies non-skip behavior when
+present); default test suite does not require
+Polars.
+
+### v1.28.6.4 Validation
+
+- `pytest -q`: **5285 passed, 1 skipped /
+  5286 collected** (5274 → 5285 + 1 conditional
+  skip; +11 tests + 1 conditional).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces
