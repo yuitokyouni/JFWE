@@ -1212,6 +1212,103 @@ module exports match design pin.
 
 ---
 
+## v1.29.5 implementation note
+
+*v1.29.5 ships top-level digest helpers + tamper-
+evidence integration tests. Single trace-edge leaf-hash
+implementation in the project (delegates to v1.29.1
+boundary). The trace digest is a NEW SEPARATE surface
+from the legacy `living_world_digest` and the v1.28.4
+Merkle root.*
+
+### v1.29.5.1 Surface
+
+In [`world/trace_digest.py`](../world/trace_digest.py):
+
+- `compute_trace_edge_collection_digest(records, *,
+  schema_version=TRACE_EDGE_SCHEMA_VERSION)` — clear-
+  named alias that routes verbatim through
+  `world.trace_edges.compute_trace_edge_leaf_digest`
+  (the v1.29.1 single trace-edge leaf-hash boundary).
+- `compute_citation_graph_projection_digest(event_records,
+  trace_edges, *, run_id)` — wraps
+  `world.citation_graph_projection.build_citation_graph_projection`
+  and returns its `projection_digest`.
+- `compute_event_log_trace_combined_digest(*,
+  event_log_root=None, event_log_manifest=None,
+  event_records, trace_edges, run_id)` — composes
+  `{event_log_root_digest, trace_edge_collection_digest,
+  citation_graph_projection_digest, schema_version}`
+  via the v1.28.1 canonical-JSON serializer
+  (sort_keys=True) and SHA-256s. When
+  `event_log_root` is `None`, the literal sentinel
+  `"absent"` fills the event_log_root_digest slot.
+  Otherwise, the v1.28.4
+  `compute_event_log_root_digest(...)` is invoked
+  (read-only — does not modify the event log).
+
+### v1.29.5.2 What v1.29.5 does NOT ship
+
+- No change to the legacy `living_world_digest`. The
+  four canonical hex values shipped at v1.21.last
+  remain byte-identical.
+- No change to the v1.28.4 Merkle root construction.
+- No second trace-edge leaf-hash implementation.
+- No `WorldKernel` field. No `prev_hash` /
+  `self_hash` chain.
+- No graph database / PROV-O / RDF / SPARQL / Cypher /
+  Gremlin / rdflib / networkx.
+- No counterfactual replay.
+
+### v1.29.5.3 Tests added
+
+`tests/test_trace_digest.py` adds **+21 tests**.
+Coverage:
+- `compute_trace_edge_collection_digest` equals the
+  v1.29.1 leaf digest verbatim;
+- collection-digest stable / insertion-order
+  independent / reacts to edge change /
+  citation_ids change / evidence_ref_ids change;
+- `compute_citation_graph_projection_digest` stable /
+  reacts to edge change / event-set change;
+- `compute_event_log_trace_combined_digest`
+  in-memory path stable / reacts to trace-edge
+  change / cross-checks against an actual event-log
+  root (mutating the event log moves the combined
+  digest); rejects empty `run_id`;
+- combined digest is **not** the legacy
+  `living_world_digest`;
+- legacy `living_world_digest` constants remain
+  byte-identical;
+- v1.28.4 event-log Merkle still works after
+  v1.29 modules import;
+- forbidden-scope (no rdflib / sparql / neo4j /
+  networkx / gremlin / Polars / DuckDB / PyArrow
+  imports);
+- no `WorldKernel` field;
+- module exports match design pin;
+- single-leaf-hash-implementation pin (monkey-patch
+  `trace_digest.compute_trace_edge_leaf_digest` to a
+  sentinel and verify the v1.29.5 collection-digest
+  path explodes — no parallel hash code path
+  exists).
+
+### v1.29.5.4 Validation
+
+- `pytest -q`: **5503 passed, 2 skipped, 1 deselected
+  / 5506 collected** (5482 → 5503; +21 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- v1.28 event-log substrate intact.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.29.0 closing statement
 
 v1.29.0 is a docs-only design pin. It introduces
