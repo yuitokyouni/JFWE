@@ -55,6 +55,7 @@ from world.event_log_schema import (
     EventLogManifest,
     EventLogRecord,
     event_log_record_to_canonical_dict,
+    manifest_to_canonical_dict,
     serialize_canonical_json,
 )
 
@@ -68,6 +69,16 @@ SEALED_MARKER_FILE_NAME: str = "_SEALED"
 PART_FILE_NAME_PREFIX: str = "part-"
 PART_FILE_INDEX_DIGITS: int = 6
 PART_FILE_NAME_SUFFIX: str = ".jsonl"
+
+# v1.28.3 — partition manifest sidecar.
+# Each event-log root carries exactly one
+# ``_MANIFEST.json`` sidecar pinning the partition shape,
+# canonical sort-key fields, schema column order, digest
+# algorithm, leaf serializer, and Merkle-tree version.
+# Subsequent writers under the same root must supply a
+# manifest that compares equal; mismatched manifests
+# raise :class:`ManifestMismatchError`.
+MANIFEST_SIDECAR_FILE_NAME: str = "_MANIFEST.json"
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +104,12 @@ class AlreadySealedError(EventLogWriteError):
 class EventLogValidationError(EventLogWriteError):
     """Raised when an append's records do not match the
     writer's partition key."""
+
+
+class ManifestMismatchError(EventLogWriteError):
+    """Raised when an event-log root's existing
+    ``_MANIFEST.json`` sidecar does not match the
+    manifest supplied to the writer."""
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +202,93 @@ def _format_part_file_name(index: int) -> str:
     )
 
 
+def manifest_sidecar_path(root: Path) -> Path:
+    """Path of the manifest sidecar under ``root``."""
+    return Path(root) / MANIFEST_SIDECAR_FILE_NAME
+
+
+def write_manifest_sidecar(
+    root: Path, manifest: EventLogManifest
+) -> Path:
+    """Write the manifest sidecar at ``root /
+    _MANIFEST.json``.
+
+    Refuses to overwrite an existing sidecar — that is
+    the v1.28.3 ``ManifestMismatchError`` path. Use
+    :func:`ensure_manifest_sidecar` if you want
+    write-on-missing-or-verify-equal semantics.
+    """
+    if not isinstance(manifest, EventLogManifest):
+        raise EventLogValidationError(
+            "manifest must be an EventLogManifest"
+        )
+    p = manifest_sidecar_path(root)
+    Path(root).mkdir(parents=True, exist_ok=True)
+    body = serialize_canonical_json(
+        manifest_to_canonical_dict(manifest),
+        sort_keys=True,
+    )
+    with p.open("xb") as fh:
+        fh.write(body)
+    return p
+
+
+def read_manifest_sidecar(root: Path) -> EventLogManifest:
+    """Read and reconstruct a manifest from the sidecar
+    at ``root / _MANIFEST.json``. Raises
+    :class:`FileNotFoundError` if absent."""
+    p = manifest_sidecar_path(root)
+    raw = p.read_bytes()
+    data = json.loads(raw)
+    return EventLogManifest(
+        manifest_version=data["manifest_version"],
+        partition_schema_version=data[
+            "partition_schema_version"
+        ],
+        partition_key_fields=tuple(
+            data["partition_key_fields"]
+        ),
+        event_schema_version=data["event_schema_version"],
+        canonical_sort_key_fields=tuple(
+            data["canonical_sort_key_fields"]
+        ),
+        schema_column_order=tuple(
+            data["schema_column_order"]
+        ),
+        digest_algorithm=data["digest_algorithm"],
+        leaf_serializer=data["leaf_serializer"],
+        merkle_tree_version=data["merkle_tree_version"],
+    )
+
+
+def ensure_manifest_sidecar(
+    root: Path, manifest: EventLogManifest
+) -> Path:
+    """Idempotent sidecar write-or-verify.
+
+    - If the sidecar is missing, write it (creating
+      ``root`` if necessary).
+    - If the sidecar is present and equal to ``manifest``,
+      return its path unchanged.
+    - If the sidecar is present and differs, raise
+      :class:`ManifestMismatchError`.
+    """
+    if not isinstance(manifest, EventLogManifest):
+        raise EventLogValidationError(
+            "manifest must be an EventLogManifest"
+        )
+    p = manifest_sidecar_path(root)
+    if p.is_file():
+        existing = read_manifest_sidecar(root)
+        if existing != manifest:
+            raise ManifestMismatchError(
+                "existing manifest sidecar at "
+                f"{p} differs from supplied manifest"
+            )
+        return p
+    return write_manifest_sidecar(root, manifest)
+
+
 def _list_part_files_sorted(partition_dir: Path) -> tuple[Path, ...]:
     """List part files in lex-ascending order (the canonical
     sort for digest determinism per §F.2.2)."""
@@ -252,6 +356,23 @@ class EventLogPartitionWriter:
             raise EventLogValidationError(
                 "manifest must be an EventLogManifest"
             )
+        # v1.28.3 — eager check: if the root already
+        # carries a manifest sidecar, validate equality
+        # at writer construction so a mismatch surfaces
+        # before any record is written.
+        if (
+            self.root_path.is_dir()
+            and manifest_sidecar_path(
+                self.root_path
+            ).is_file()
+        ):
+            existing = read_manifest_sidecar(self.root_path)
+            if existing != self.manifest:
+                raise ManifestMismatchError(
+                    "existing manifest sidecar at "
+                    f"{manifest_sidecar_path(self.root_path)} "
+                    "differs from supplied manifest"
+                )
 
     # -- path helpers -----------------------------------------------
 
@@ -339,6 +460,11 @@ class EventLogPartitionWriter:
                 "autocreate is disabled: "
                 f"{self.partition_dir}"
             )
+        # v1.28.3 — ensure the manifest sidecar exists
+        # at the event-log root, write-or-verify-equal.
+        ensure_manifest_sidecar(
+            self.root_path, self.manifest
+        )
         part_path = self._next_part_file_path()
         if part_path.exists():
             # Defensive: should be impossible because
@@ -438,10 +564,16 @@ __all__ = [
     "EventLogValidationError",
     "EventLogWriteError",
     "EventLogWriteResult",
+    "MANIFEST_SIDECAR_FILE_NAME",
+    "ManifestMismatchError",
     "PART_FILE_INDEX_DIGITS",
     "PART_FILE_NAME_PREFIX",
     "PART_FILE_NAME_SUFFIX",
     "SEALED_MARKER_FILE_NAME",
     "SealedPartitionWriteError",
+    "ensure_manifest_sidecar",
+    "manifest_sidecar_path",
+    "read_manifest_sidecar",
     "read_partition_part_file",
+    "write_manifest_sidecar",
 ]

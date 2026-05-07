@@ -1519,6 +1519,106 @@ register a `WorldKernel` field.
 
 ---
 
+## v1.28.3 implementation note
+
+*v1.28.3 adds the partition manifest sidecar
+(`_MANIFEST.json` at the event-log root) plus
+schema-pinning validation. Each event-log root carries
+exactly one canonical-JSON manifest; the writer
+write-or-verify-equals on construction and on first
+append. Mismatched manifests raise
+`ManifestMismatchError`. No Parquet, no Polars, no
+DuckDB, no Avro / Protobuf — manifest persistence is
+plain canonical JSON.*
+
+### v1.28.3.1 Surface
+
+Extends `world/event_log_writer.py`:
+
+- `MANIFEST_SIDECAR_FILE_NAME = "_MANIFEST.json"`.
+- `manifest_sidecar_path(root) -> Path`.
+- `write_manifest_sidecar(root, manifest) -> Path` —
+  exclusive-open write; refuses to overwrite an
+  existing sidecar (the raw write is the
+  ManifestMismatchError-or-equality path; use
+  `ensure_manifest_sidecar` for write-or-verify
+  semantics).
+- `read_manifest_sidecar(root) -> EventLogManifest` —
+  parses the canonical JSON and reconstructs the
+  frozen dataclass. Tuples come back as tuples (the
+  manifest's `__post_init__` normalises the lists from
+  JSON to tuples).
+- `ensure_manifest_sidecar(root, manifest) -> Path` —
+  idempotent write-or-verify-equal. Missing → write;
+  present and equal → return path; present and
+  different → raise `ManifestMismatchError`.
+- `ManifestMismatchError(EventLogWriteError)`.
+
+`EventLogPartitionWriter` integration:
+
+- `__post_init__` eagerly validates an existing
+  sidecar against the supplied manifest at writer
+  construction. A mismatch raises before any record
+  is written.
+- `append(...)` calls `ensure_manifest_sidecar(...)`
+  before opening any part file, so first append
+  writes the sidecar and subsequent appends verify
+  equality.
+
+Schema-versioning policy (re-pinned at v1.28.3):
+
+- v1.28 schema is **prototype only** until v1.28.last.
+  Field shape, label set, and partition path
+  conventions may change between v1.28.x sub-
+  milestones.
+- After v1.28.last freeze, schema changes require
+  versioned readers or an explicit migration plan.
+- Avro / Protobuf are explicitly **not introduced**
+  at v1.28.3. Manifest persistence is plain canonical
+  JSON.
+
+### v1.28.3.2 Tests added
+
+`tests/test_event_log_manifest_sidecar.py` adds
+**+25 tests**. Coverage: sidecar path; raw write
+creates file; raw write refuses overwrite; round-trip
+read; missing-file FileNotFoundError; canonical bytes
+stable across reruns; bytes match
+`serialize_canonical_json(manifest_to_canonical_dict,
+sort_keys=True)`; ensure-helper writes when missing /
+idempotent on equal / raises on mismatch; first-
+append-creates-sidecar; writer-construction-validates-
+existing-sidecar; subsequent-appends-with-same-
+manifest succeed; parametrised mismatch rejection
+across 8 manifest fields (`manifest_version`,
+`partition_schema_version`, `event_schema_version`,
+`partition_key_fields`, `schema_column_order`,
+`canonical_sort_key_fields`, `merkle_tree_version`,
+`leaf_serializer`); same-records-different-
+partition-schema yield different leaf digest; same-
+records-different-column-order yield different leaf
+digest; helper non-manifest argument rejection.
+
+The v1.28.2 module-exports test is updated to expect
+the new `MANIFEST_SIDECAR_FILE_NAME` constant,
+`ManifestMismatchError` class, and the four sidecar
+helper functions in `__all__`.
+
+### v1.28.3.3 Validation
+
+- `pytest -q`: **5229 / 5229 passing** (5204 →
+  5229; +25 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.28.0 closing statement
 
 v1.28.0 is a docs-only design pin. It introduces

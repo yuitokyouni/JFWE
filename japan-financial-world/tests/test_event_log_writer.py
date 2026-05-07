@@ -500,12 +500,18 @@ def test_event_log_writer_module_exports_match_design_pin() -> None:
         "EventLogValidationError",
         "EventLogWriteError",
         "EventLogWriteResult",
+        "MANIFEST_SIDECAR_FILE_NAME",
+        "ManifestMismatchError",
         "PART_FILE_INDEX_DIGITS",
         "PART_FILE_NAME_PREFIX",
         "PART_FILE_NAME_SUFFIX",
         "SEALED_MARKER_FILE_NAME",
         "SealedPartitionWriteError",
+        "ensure_manifest_sidecar",
+        "manifest_sidecar_path",
+        "read_manifest_sidecar",
         "read_partition_part_file",
+        "write_manifest_sidecar",
     }
     assert set(event_log_writer.__all__) == expected
 
