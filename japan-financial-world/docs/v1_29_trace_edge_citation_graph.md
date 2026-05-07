@@ -842,6 +842,140 @@ field added; module exports match design pin.
 
 ---
 
+## v1.29.2 implementation note
+
+*v1.29.2 ships the append-only local trace-edge JSONL
+writer + manifest sidecar + `compute_partition_trace_edge_leaf_digest`
+hook. Mirrors the v1.28.2 + v1.28.3 event-log writer
+discipline. No graph database, no PROV-O, no `prev_hash` /
+`self_hash` chain. Tamper evidence routes through the
+v1.29.1 leaf-digest boundary.*
+
+### v1.29.2.1 Surface
+
+In [`world/trace_edge_store.py`](../world/trace_edge_store.py):
+
+- `TraceEdgePartitionKey` (`run_id`,
+  `period_id_or_unknown`, `edge_category_label`;
+  empty `period_id` becomes
+  `PERIOD_ID_UNKNOWN_PATH_VALUE = "unknown"` in the
+  partition path; closed-set
+  `edge_category_label` validation;
+  `to_path_segments()` produces
+  `("run_id=…", "period_id=…", "edge_category=…")`;
+  `from_record(TraceEdgeRecord)` classmethod).
+- `TraceEdgeManifest` (frozen dataclass; pins
+  `manifest_version`, `trace_edge_schema_version`,
+  `partition_key_fields`,
+  `canonical_sort_key_fields`, `schema_column_order`,
+  `digest_algorithm` (must be `"sha256"`),
+  `leaf_serializer` (default `"canonical-json-v1"`);
+  `partition_key_fields` must include
+  `{run_id, period_id, edge_category_label}`;
+  `schema_column_order` must equal the
+  v1.29.1 canonical 14-field set).
+- `default_trace_edge_manifest()` — convenience
+  builder pinned at the v1.29.1 schema version.
+- `TraceEdgePartitionWriter` (per-partition append-
+  only JSONL writer with monotonic 6-digit zero-
+  padded part-file index, sealed-marker, exclusive-
+  open append, eager manifest sidecar verification at
+  construction, ensure-or-write sidecar on first
+  append). Mirrors v1.28.2 conventions.
+- `TraceEdgeWriteResult` frozen dataclass.
+- Sidecar helpers
+  `write_trace_edges_manifest_sidecar`,
+  `read_trace_edges_manifest_sidecar`,
+  `ensure_trace_edges_manifest_sidecar`.
+- `read_trace_edge_part_file(part_path)` — JSONL
+  reader returning a tuple of plain dicts (used by
+  v1.29.3 / v1.29.5).
+- `compute_partition_trace_edge_leaf_digest(root,
+  partition_key, manifest=None)` — walks part files
+  in lex-ascending order, parses canonical JSONL,
+  reconstructs `TraceEdgeRecord` instances, and
+  routes through
+  `world.trace_edges.compute_trace_edge_leaf_digest`
+  (the v1.29.1 single boundary). **Single trace-edge
+  leaf-hash implementation in the project.**
+- Exception hierarchy: `TraceEdgeWriteError` (base),
+  `TraceEdgeSealedPartitionError`,
+  `TraceEdgeAlreadySealedError`,
+  `TraceEdgeValidationError`,
+  `TraceEdgeManifestMismatchError`.
+
+Path layout (binding):
+
+    <root>/
+      run_id=<run_id>/
+        period_id=<period_id_or_unknown>/
+          edge_category=<edge_category_label>/
+            part-000001.jsonl
+            ...
+            _SEALED   (optional)
+      _TRACE_EDGES_MANIFEST.json   (per-root sidecar)
+
+### v1.29.2.2 What v1.29.2 does NOT ship
+
+- No graph database / Neo4j / TigerGraph.
+- No PROV-O / RDF / SPARQL / Cypher / rdflib /
+  networkx.
+- No Polars / DuckDB / PyArrow / xxhash / Rust /
+  PyO3.
+- No `prev_hash` / `self_hash` / `edge_chain_hash`
+  field on `TraceEdgeRecord`.
+- No `WorldKernel` field. No mutation of any v1.28
+  event-log file.
+- No projection (v1.29.3) and no audit query
+  (v1.29.4).
+
+### v1.29.2.3 Tests added
+
+`tests/test_trace_edge_store.py` adds **+37 tests**.
+Coverage: partition-key validation; path segments;
+`from_record` with non-empty period_id; `from_record`
+with empty period_id resolves to
+`PERIOD_ID_UNKNOWN_PATH_VALUE`; default manifest
+valid; manifest rejects non-sha256 / missing partition
+dimension / invalid schema_column_order; sidecar
+round-trip + canonical-bytes-stable; ensure-helper
+idempotent on equal / raises on mismatch; first append
+creates `part-000001.jsonl`; second append creates
+`part-000002.jsonl`; existing-part-file SHA-256 + size
+unchanged after subsequent append; lex-sorted listing;
+JSONL round-trip via `read_trace_edge_part_file`;
+in-file canonical_sort_key sort; sealing creates
+marker, refuses appends, refuses re-seal; empty-record-
+list / non-record-item / wrong-partition-key rejection;
+invalid constructor argument rejection; eager manifest-
+mismatch at construction; partition-digest matches
+in-memory `compute_trace_edge_leaf_digest`; partition-
+digest reacts to record change; partition-digest
+independent of part-file split; forbidden-scope
+(no Polars / DuckDB / PyArrow / xxhash / rdflib /
+sparql / Neo4j / networkx / Gremlin imports; no real-
+data adapter imports); no `WorldKernel` field; no
+`prev_hash` / `self_hash` / `edge_chain_hash` field on
+`TraceEdgeRecord`; module exports match design pin;
+v1.28 event-log modules unaffected.
+
+### v1.29.2.4 Validation
+
+- `pytest -q`: **5420 passed, 2 skipped, 1 deselected
+  / 5423 collected** (5383 → 5420; +37 tests).
+- `ruff check japan-financial-world`: clean.
+- `python -m compileall -q
+  japan-financial-world/world japan-financial-world/spaces
+  japan-financial-world/tests japan-financial-world/examples`:
+  clean.
+- All v1.21.last canonical living-world digests
+  preserved byte-identical.
+- v1.28 event-log substrate intact; no v1.28 test
+  affected.
+- No new dependency; no `pyproject.toml` change.
+
+---
+
 ## v1.29.0 closing statement
 
 v1.29.0 is a docs-only design pin. It introduces
