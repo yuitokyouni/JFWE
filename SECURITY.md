@@ -82,7 +82,7 @@ should be reverted.
 The intended pattern is:
 
 ```
-PUBLIC repository (this one — JWFE on GitHub)
+PUBLIC repository (this one — JFWE on GitHub)
    FWE Core code (world/, spaces/)
    FWE Reference (planned synthetic demo)
    Tests, docs, schemas, synthetic examples

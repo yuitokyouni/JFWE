@@ -48,9 +48,12 @@ The only acceptable use of "WFE" in this project is to explain why we
 The following legacy names are not changed in this version. They will
 remain stable until a future, explicit rename migration:
 
-- **Repository name on GitHub:** `JWFE`. (Historical accident; "J" =
-  Japan, "WFE" = World Financial Engine — predating the WFE-collision
-  rule above.)
+- **Repository name on GitHub:** `JFWE` (renamed from the legacy
+  `JWFE` repository name; the rename is purely a GitHub-side relabel
+  and changed no runtime, no model logic, no canonical digest, no
+  package import path). The legacy `JWFE` name was a historical
+  accident: "J" = Japan, "WFE" = World Financial Engine — predating
+  the WFE-collision rule above.
 - **Top-level working directory:** `japan-financial-world/`.
 - **Python packages:** `world/`, `spaces/`.
 - **Imports:** `from world.kernel import WorldKernel`, etc.
@@ -71,12 +74,17 @@ When writing new docs, talks, or external materials:
 - Refer to the **engine** as FWE / Financial World Engine.
 - Refer to the **Japan calibration layers** as JFWE Public or JFWE
   Proprietary, qualified.
-- Acknowledge the **repository name** as `JWFE` only when discussing
+- Acknowledge the **repository name** as `JFWE` only when discussing
   installation or repository operations (clone URL, repository
-  structure). Do not promote `JWFE` as the engine's name.
+  structure). Do not promote `JFWE` as the engine's name — the
+  engine is FWE / Financial World Engine; `JFWE` is the GitHub
+  repository label, a separate concept. The repository previously
+  carried the legacy `JWFE` label; both names refer to the same
+  underlying repository and history.
 - When a sentence would otherwise have to say "the JFWE / `japan-
   financial-world` codebase," prefer "the FWE Core codebase" or "the
-  current FWE Core repository (named `JWFE` for legacy reasons)."
+  current FWE Core repository (the GitHub repository named `JFWE`,
+  legacy `JWFE`)."
 
 This keeps the public-facing identity consistent with the product
 architecture even while the directory tree carries the legacy names.
@@ -110,6 +118,6 @@ names" section are authoritative.
 | Generic engine, alternative long form     | FinWorld Engine                    | (none)                           |
 | Japan public calibration                  | JFWE Public                        | JFWE (alone, ambiguous)          |
 | Japan private calibration                 | JFWE Proprietary                   | JFWE (alone, ambiguous)          |
-| Repository name (legacy)                  | `JWFE`                             | (do not rename in this version)  |
+| Repository name (current; legacy `JWFE`)  | `JFWE`                             | promoting the repo label as the engine's name |
 | Working directory (legacy)                | `japan-financial-world/`           | (do not rename in this version)  |
 | Python package (legacy)                   | `world/`, `spaces/`                | (do not rename in this version)  |

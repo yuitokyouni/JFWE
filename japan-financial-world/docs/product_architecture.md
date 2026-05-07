@@ -245,8 +245,9 @@ descriptions of the project should not contradict them.
 Despite the project name and the layered product picture above, the
 **current repository keeps its existing names**:
 
-- Repository: `JWFE` (the GitHub repo name is unchanged in this
-  version).
+- Repository: `JFWE` (renamed from the legacy `JWFE` repository
+  name; the rename is purely a GitHub-side relabel and changed no
+  runtime, no model logic, no canonical digest).
 - Working directory: `japan-financial-world/`.
 - Python packages: `world/`, `spaces/`, `tests/`, `docs/`,
   `examples/`, `schemas/`, `data/`.

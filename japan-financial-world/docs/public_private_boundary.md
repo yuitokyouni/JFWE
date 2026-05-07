@@ -167,7 +167,9 @@ boundaries:
 
 At v1.7 freeze:
 
-- This repository (`JWFE` on GitHub) contains only FWE Core code,
+- This repository (`JFWE` on GitHub; renamed from the legacy
+  `JWFE` repository name — relabel only, no runtime / model /
+  digest impact) contains only FWE Core code,
   tests, docs, schemas, and minimal-world examples. It contains no
   expert interview notes, no paid data, no proprietary calibration,
   no real-institution stress results, no client reports, and no
